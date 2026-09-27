@@ -5,7 +5,6 @@ package io.github.kdroidfilter.seforimapp.framework.session
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
@@ -49,31 +48,6 @@ object SessionManager {
     private fun hasSavedSessionToRestore(): Boolean =
         AppSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
 
-    @Volatile
-    private var cachedStateForRestore: DesktopsState? = null
-
-    /**
-     * Boot-time peek at the focused window's saved geometry, so the very first window is created
-     * directly with the right placement instead of flashing maximized before the async session
-     * restore applies the real geometry. Decodes the session file once and caches the result for
-     * [restoreIfEnabled].
-     */
-    fun peekInitialWindowGeometry(): SavedGeometry? {
-        if (!AppSettings.isPersistSessionEnabled()) return null
-        val file = desktopsFile()
-        if (!file.exists()) return null
-        val state =
-            runCatching { proto.decodeFromByteArray(DesktopsState.serializer(), file.readBytes()) }
-                .getOrNull() ?: return null
-        cachedStateForRestore = state
-        val openIds = state.effectiveOpenDesktopIds()
-        val focusedId = state.focusedDesktopId.takeIf { it in openIds } ?: openIds.firstOrNull() ?: return null
-        return state.snapshots[focusedId]
-            ?.effectiveWindows()
-            ?.firstOrNull()
-            ?.geometry
-    }
-
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled(appGraph: AppGraph) {
         if (!AppSettings.isPersistSessionEnabled()) return
@@ -100,30 +74,29 @@ object SessionManager {
         }
     }
 
-    /** Restores a saved session snapshot if the user enabled persistence in settings. */
+    /**
+     * The saved session, decoded synchronously at boot so the first frame already has its windows:
+     * an application composing no window at all is closed at once. Null when disabled or absent.
+     */
+    fun loadBootState(): DesktopsState? {
+        if (!AppSettings.isPersistSessionEnabled()) return null
+        return loadDesktopsState()?.takeIf { it.desktops.isNotEmpty() }
+    }
+
+    /** Fills in the titles the restored tabs were saved without (book names are looked up in the DB). */
     suspend fun restoreIfEnabled(appGraph: AppGraph) {
-        if (!AppSettings.isPersistSessionEnabled()) return
-
-        _isRestoringSession.value = true
         try {
-            val desktopsState = loadDesktopsState() ?: return
-            if (desktopsState.desktops.isEmpty()) return
-
-            val enrichedState = enrichMissingTabTitles(desktopsState, appGraph)
-
-            debugln {
-                buildString {
-                    append("[SessionManager] Restoring desktops session: ${enrichedState.desktops.size} desktops, ")
-                    append("active=${enrichedState.activeDesktopId}\n")
+            if (!AppSettings.isPersistSessionEnabled()) return
+            val state = appGraph.desktopManager.buildDesktopsState()
+            val enriched = enrichMissingTabTitles(state, appGraph)
+            val sessions = appGraph.desktopManager.sessions.value
+            enriched.snapshots.values.flatMap { it.effectiveWindows() }.forEach { window ->
+                window.titles.forEach { (tabId, title) ->
+                    sessions.firstOrNull { it.item(tabId)?.title?.isBlank() == true }?.updateTitle(tabId, title.title, title.tabType)
                 }
             }
-
-            appGraph.desktopManager.restoreFromDesktopsState(enrichedState)
-
-            // Give Compose one recomposition cycle to process the restored tabs
-            // and create ViewModels (whose initial state has isLoading=true).
-            // Without this, the flag clears before ViewModels exist, causing
-            // a brief Home page flash.
+            // Give Compose one recomposition cycle to create the restored tabs' ViewModels (whose
+            // initial state has isLoading=true); clearing the flag earlier flashes the Home page.
             withContext(NonCancellable) { delay(150) }
         } finally {
             _isRestoringSession.value = false
@@ -133,20 +106,14 @@ object SessionManager {
     /**
      * Loads [DesktopsState], migrating from legacy [SavedSessionV2] if needed.
      */
-    private suspend fun loadDesktopsState(): DesktopsState? {
-        // Already decoded at boot by peekInitialWindowGeometry — don't re-read the file.
-        cachedStateForRestore?.let {
-            cachedStateForRestore = null
-            return it
-        }
-
+    private fun loadDesktopsState(): DesktopsState? {
         val desktopsF = desktopsFile()
         val legacyF = legacySessionFile()
 
         // Try new format first
         if (desktopsF.exists()) {
-            val bytes = withContext(Dispatchers.IO) { desktopsF.readBytes() }
-            return runSuspendCatching {
+            val bytes = desktopsF.readBytes()
+            return runCatching {
                 proto.decodeFromByteArray(DesktopsState.serializer(), bytes)
             }.getOrElse {
                 runCatching { desktopsF.delete() }
@@ -156,9 +123,9 @@ object SessionManager {
 
         // Migrate from legacy format
         if (legacyF.exists()) {
-            val bytes = withContext(Dispatchers.IO) { legacyF.readBytes() }
+            val bytes = legacyF.readBytes()
             val saved =
-                runSuspendCatching {
+                runCatching {
                     proto.decodeFromByteArray(SavedSessionV2.serializer(), bytes)
                 }.getOrElse {
                     runCatching { legacyF.delete() }

@@ -18,14 +18,14 @@ import dev.nucleusframework.window.jewel.JewelTitleBar
 import dev.nucleusframework.window.macOSLargeCornerRadius
 import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsView
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 
+/** The title bar of a main window; [tabs] is the window's tab strip (see `TabsView`). */
 @Composable
-fun DecoratedWindowScope.MainTitleBar() {
+fun DecoratedWindowScope.MainTitleBar(tabs: @Composable () -> Unit) {
     JewelTitleBar(
         modifier = Modifier.newFullscreenControls().macOSLargeCornerRadius(),
         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
@@ -68,7 +68,7 @@ fun DecoratedWindowScope.MainTitleBar() {
                             .align(Alignment.Start)
                             .width(tabsAreaWidth),
                 ) {
-                    TabsView()
+                    tabs()
                 }
                 Row(
                     modifier =

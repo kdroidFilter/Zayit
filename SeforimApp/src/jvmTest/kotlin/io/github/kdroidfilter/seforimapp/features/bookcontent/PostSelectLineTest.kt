@@ -3,8 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent
 import androidx.lifecycle.SavedStateHandle
 import androidx.paging.PagingData
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.AltTocUseCase
@@ -15,6 +14,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.ContentUs
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NotesUseCase
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -51,7 +51,7 @@ class PostSelectLineTest {
     private lateinit var repository: SeforimRepository
     private lateinit var useCaseFactory: BookContentUseCaseFactory
     private lateinit var titleUpdateManager: TabTitleUpdateManager
-    private lateinit var tabsViewModel: TabsViewModel
+    private lateinit var desktopManager: DesktopManager
 
     // Mocked use cases
     private lateinit var contentUseCase: ContentUseCase
@@ -72,11 +72,7 @@ class PostSelectLineTest {
         persistedStore = TabPersistedStateStore()
         repository = mockk(relaxed = true)
         titleUpdateManager = TabTitleUpdateManager()
-        tabsViewModel =
-            TabsViewModel(
-                titleUpdateManager = titleUpdateManager,
-                startDestination = TabsDestination.Home(tabId = "start"),
-            )
+        desktopManager = mockk(relaxed = true)
 
         // Create mocked use cases
         contentUseCase = mockk(relaxed = true)
@@ -129,7 +125,8 @@ class PostSelectLineTest {
             repository = repository,
             useCaseFactory = useCaseFactory,
             titleUpdateManager = titleUpdateManager,
-            tabsViewModel = tabsViewModel,
+            desktopManager = desktopManager,
+            historyStore = mockk<HistoryStore>(relaxed = true),
         )
     }
 

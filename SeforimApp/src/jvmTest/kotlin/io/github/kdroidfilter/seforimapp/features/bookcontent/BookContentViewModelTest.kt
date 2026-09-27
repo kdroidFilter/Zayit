@@ -2,8 +2,6 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent
 
 import androidx.lifecycle.SavedStateHandle
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.*
@@ -193,27 +191,6 @@ class BookContentViewModelTest {
 
         // Then: It's not null
         assertNotNull(manager)
-    }
-
-    @Test
-    fun `tabsViewModel can be created with start destination`() {
-        // Given: A title update manager
-        val titleManager = TabTitleUpdateManager()
-        val startDestination =
-            TabsDestination.BookContent(
-                bookId = testBookId,
-                tabId = testTabId,
-            )
-
-        // When: We create a TabsViewModel
-        val tabsViewModel =
-            TabsViewModel(
-                titleUpdateManager = titleManager,
-                startDestination = startDestination,
-            )
-
-        // Then: It has one tab
-        assertEquals(1, tabsViewModel.tabs.value.size)
     }
 
     @Test

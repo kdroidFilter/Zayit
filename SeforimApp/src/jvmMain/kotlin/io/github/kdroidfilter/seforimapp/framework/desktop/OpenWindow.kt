@@ -1,8 +1,10 @@
 package io.github.kdroidfilter.seforimapp.framework.desktop
 
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.ui.window.WindowState
 import androidx.lifecycle.viewModelScope
 import dev.nucleusframework.application.NucleusWindow
 import dev.nucleusframework.application.NucleusWindowBounds
@@ -11,53 +13,30 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * One live OS window. A window always displays exactly one virtual desktop; a desktop can span
- * several windows. Window-scoped ViewModels ([tabsViewModel], [searchHomeViewModel]) live and die
- * with the window — per-tab state stays in the app-wide TabPersistedStateStore, keyed by tabId.
+ * One live OS window: a group of its desktop's `TabWorkspace` ([id] is the group id). It exists
+ * while the workspace shows the group, which is while the group holds tabs. Window-scoped
+ * ViewModels ([tabsViewModel], [searchHomeViewModel]) live and die with it.
  */
 @Stable
 class OpenWindow internal constructor(
     val id: String,
-    desktopId: String,
+    val session: DesktopSession,
     val tabsViewModel: TabsViewModel,
     val searchHomeViewModel: SearchHomeViewModel,
-    val windowState: WindowState,
 ) {
-    private val _desktopId = MutableStateFlow(desktopId)
-    val desktopId: StateFlow<String> = _desktopId.asStateFlow()
-
-    /** True while this window's tab set is being swapped to another desktop (shows a loader). */
-    private val _isSwitching = MutableStateFlow(false)
-    val isSwitching: StateFlow<Boolean> = _isSwitching.asStateFlow()
+    /** The desktop this window displays; windows never change desktop. */
+    val desktopId: StateFlow<String> = MutableStateFlow(session.desktopId)
 
     /** Visibility of this window's tab-search popup (title-bar button / Cmd+Shift+A). */
     val tabSearchVisible = MutableStateFlow(false)
 
-    /** Attached by the window composable once the native window exists; used for toFront/focus. */
-    @Volatile
-    var nucleusWindow: NucleusWindow? = null
+    /** Attached by the window composable once the native window exists. */
+    var nucleusWindow: NucleusWindow? by mutableStateOf(null)
 
-    /**
-     * Outer window bounds in logical screen coordinates (backend-agnostic: AWT and Tao), or null
-     * while the native window isn't realized. Used for cross-window drag & drop hit-testing.
-     */
+    /** Outer window bounds in logical screen coordinates, or null while the native window isn't realized. */
     fun boundsOnScreen(): NucleusWindowBounds? = nucleusWindow?.boundsOnScreen()
-
-    internal fun setDesktop(desktopId: String) {
-        _desktopId.value = desktopId
-    }
-
-    internal fun markSwitching() {
-        _isSwitching.value = true
-    }
-
-    /** Cleared by TabsContent after the first frame of the restored desktop has rendered. */
-    fun clearSwitching() {
-        _isSwitching.value = false
-    }
 
     fun requestFocus() {
         nucleusWindow?.let {
@@ -73,6 +52,6 @@ class OpenWindow internal constructor(
     }
 }
 
-/** The window hosting the current composition. Provided by MainAppWindow. */
+/** The window hosting the current composition. */
 val LocalOpenWindow =
     staticCompositionLocalOf<OpenWindow> { error("No OpenWindow provided") }

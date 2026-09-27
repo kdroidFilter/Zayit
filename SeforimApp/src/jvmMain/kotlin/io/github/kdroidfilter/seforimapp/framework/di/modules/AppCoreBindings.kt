@@ -23,7 +23,6 @@ import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriv
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
-import io.github.kdroidfilter.seforimapp.framework.desktop.TabDockManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
@@ -218,11 +217,7 @@ object AppCoreBindings {
                     settings = settings,
                 )
             },
-            initialWindowGeometry = SessionManager.peekInitialWindowGeometry(),
+            bootState = SessionManager.loadBootState(),
             defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideTabDockManager(desktopManager: DesktopManager): TabDockManager = TabDockManager(desktopManager)
 }

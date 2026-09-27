@@ -10,6 +10,9 @@ import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.NucleusApp
 import dev.nucleusframework.energymanager.EnergyManager
+import dev.nucleusframework.window.NucleusDecoratedWindowTheme
+import dev.nucleusframework.window.jewel.rememberJewelTitleBarStyle
+import dev.nucleusframework.window.jewel.rememberJewelWindowStyle
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -21,8 +24,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
-import io.github.kdroidfilter.seforimapp.core.presentation.window.TabDragGhostWindow
+import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopWindows
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
@@ -51,6 +53,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
@@ -141,6 +144,8 @@ fun main(args: Array<String>) {
     ) {
         aotTraining(duration = AOT_TRAINING_DURATION)
 
+        // Explicit: the data directory (database, session) is keyed on this id, whatever
+        // Nucleus derives on its own.
         FileKit.init(appId)
 
         // Retry any database cleanup a previous run could not finish (e.g. a file locked
@@ -264,164 +269,175 @@ fun main(args: Array<String>) {
                 theme = themeDefinition,
                 styling = componentStyling,
             ) {
-                if (showOnboarding) {
-                    OnBoardingWindow()
-                } else if (showDatabaseUpdate) {
-                    DatabaseUpdateWindow(
-                        onUpdateComplete = {
-                            // After database update, refresh the version check and show main app
-                            showDatabaseUpdate = false
-                        },
-                        isDatabaseMissing = isDatabaseMissing,
-                    )
-                } else {
-                    val desktopManager = appGraph.desktopManager
-                    val windows by desktopManager.windows.collectAsState()
-                    val focusedWindowId by desktopManager.focusedWindowId.collectAsState()
-                    val focusedWindow = windows.find { it.id == focusedWindowId } ?: windows.firstOrNull()
+                // Above the windows: the tab workspaces open them, so there is no window call site
+                // for JewelDecoratedWindow to install the Jewel window and title-bar styles at.
+                NucleusDecoratedWindowTheme(
+                    isDark = JewelTheme.isDark,
+                    windowStyle = rememberJewelWindowStyle(),
+                    titleBarStyle = rememberJewelTitleBarStyle(),
+                ) {
+                    if (showOnboarding) {
+                        OnBoardingWindow()
+                    } else if (showDatabaseUpdate) {
+                        DatabaseUpdateWindow(
+                            onUpdateComplete = {
+                                // After database update, refresh the version check and show main app
+                                showDatabaseUpdate = false
+                            },
+                            isDatabaseMissing = isDatabaseMissing,
+                        )
+                    } else {
+                        val desktopManager = appGraph.desktopManager
+                        val windows by desktopManager.windows.collectAsState()
+                        val focusedWindowId by desktopManager.focusedWindowId.collectAsState()
+                        val focusedWindow = windows.find { it.id == focusedWindowId } ?: windows.firstOrNull()
 
-                    // One ViewModelStore shared by every main window, so window-agnostic
-                    // ViewModels (settings dialog state) resolve to a single instance app-wide.
-                    val windowViewModelOwner = rememberWindowViewModelStoreOwner()
-                    val settingsWindowViewModel: SettingsWindowViewModel =
-                        metroViewModel(viewModelStoreOwner = windowViewModelOwner)
+                        // One ViewModelStore shared by every main window, so window-agnostic
+                        // ViewModels (settings dialog state) resolve to a single instance app-wide.
+                        val windowViewModelOwner = rememberWindowViewModelStoreOwner()
+                        val settingsWindowViewModel: SettingsWindowViewModel =
+                            metroViewModel(viewModelStoreOwner = windowViewModelOwner)
 
-                    val onQuit = {
-                        // Persist session if enabled, apply any pending silent update, then exit.
-                        // installPendingOnClose() launches the installer and exits the process
-                        // itself when a silent (Win/Mac PATCH) update is ready.
-                        SessionManager.saveIfEnabled(appGraph)
-                        appGraph.appUpdateService.installPendingOnClose()
-                        exitApplication()
-                    }
-                    // Chrome-like: closing the last tab of the last window quits the app
-                    SideEffect { desktopManager.onQuitRequest = onQuit }
+                        val onQuit = {
+                            // Persist session if enabled, apply any pending silent update, then exit.
+                            // installPendingOnClose() launches the installer and exits the process
+                            // itself when a silent (Win/Mac PATCH) update is ready.
+                            SessionManager.saveIfEnabled(appGraph)
+                            appGraph.appUpdateService.installPendingOnClose()
+                            exitApplication()
+                        }
+                        // Chrome-like: closing the last tab of the last window quits the app
+                        SideEffect { desktopManager.onQuitRequest = onQuit }
 
-                    // App-level launcher integrations follow the focused window's tabs. key() forces
-                    // their internal effects (dock/jumplist listeners) to re-register on the new
-                    // window's TabsViewModel when focus moves — they capture it in closures.
-                    if (focusedWindow != null) {
-                        key(focusedWindow.id) {
-                            if (PlatformInfo.isMacOS) {
-                                // Native macOS menu bar (no-op on other platforms)
-                                AppNativeMenuBar(
-                                    mainAppState = mainAppState,
+                        // App-level launcher integrations follow the focused window's tabs. key() forces
+                        // their internal effects (dock/jumplist listeners) to re-register on the new
+                        // window's TabsViewModel when focus moves — they capture it in closures.
+                        if (focusedWindow != null) {
+                            key(focusedWindow.id) {
+                                if (PlatformInfo.isMacOS) {
+                                    // Native macOS menu bar (no-op on other platforms)
+                                    AppNativeMenuBar(
+                                        mainAppState = mainAppState,
+                                        tabsViewModel = focusedWindow.tabsViewModel,
+                                        settingsWindowViewModel = settingsWindowViewModel,
+                                        onQuit = onQuit,
+                                    )
+
+                                    // Native macOS dock menu with desktops and tabs
+                                    AppDockMenu(
+                                        desktopManager = desktopManager,
+                                        tabsViewModel = focusedWindow.tabsViewModel,
+                                    )
+                                }
+
+                                // Windows taskbar jump list with tabs and desktops
+                                AppJumpList(
+                                    desktopManager = desktopManager,
                                     tabsViewModel = focusedWindow.tabsViewModel,
-                                    settingsWindowViewModel = settingsWindowViewModel,
-                                    onQuit = onQuit,
+                                    pendingDeepLink = pendingDeepLink,
+                                    onClearDeepLink = { pendingDeepLink.value = null },
                                 )
 
-                                // Native macOS dock menu with desktops and tabs
-                                AppDockMenu(
+                                // Linux taskbar quicklist with tabs and desktops
+                                AppLinuxQuicklist(
                                     desktopManager = desktopManager,
                                     tabsViewModel = focusedWindow.tabsViewModel,
                                 )
                             }
-
-                            // Windows taskbar jump list with tabs and desktops
-                            AppJumpList(
-                                desktopManager = desktopManager,
-                                tabsViewModel = focusedWindow.tabsViewModel,
-                                pendingDeepLink = pendingDeepLink,
-                                onClearDeepLink = { pendingDeepLink.value = null },
-                            )
-
-                            // Linux taskbar quicklist with tabs and desktops
-                            AppLinuxQuicklist(
-                                desktopManager = desktopManager,
-                                tabsViewModel = focusedWindow.tabsViewModel,
-                            )
                         }
-                    }
 
-                    // Resolve shareable zayit:// content deep links (cross-platform); opens in
-                    // the window focused at the time the link arrives.
-                    ContentDeepLinkHandler(
-                        desktopManager = desktopManager,
-                        repository = appGraph.repository,
-                        pendingDeepLink = pendingDeepLink,
-                        onClearDeepLink = { pendingDeepLink.value = null },
-                    )
+                        // Resolve shareable zayit:// content deep links (cross-platform); opens in
+                        // the window focused at the time the link arrives.
+                        ContentDeepLinkHandler(
+                            desktopManager = desktopManager,
+                            repository = appGraph.repository,
+                            pendingDeepLink = pendingDeepLink,
+                            onClearDeepLink = { pendingDeepLink.value = null },
+                        )
 
-                    // Restore previously saved session (open desktops, windows, geometry) once.
-                    var sessionRestored by remember { mutableStateOf(false) }
-                    LaunchedEffect(Unit) {
-                        if (!sessionRestored) {
-                            SessionManager.restoreIfEnabled(appGraph)
-                            sessionRestored = true
-                        }
-                    }
-
-                    // Check for updates once at startup. PATCH updates are pre-downloaded
-                    // here; MINOR/MAJOR surface the title-bar icon + UpdateDialog.
-                    LaunchedEffect(Unit) {
-                        appGraph.appUpdateService.checkOnStartup()
-                    }
-
-                    // Debounced session autosave: any tab/window change persists ~2s later, so a
-                    // crash no longer loses the whole session (previously saved only on quit).
-                    LaunchedEffect(Unit) {
-                        desktopManager.windows
-                            .flatMapLatest { ws ->
-                                if (ws.isEmpty()) {
-                                    emptyFlow()
-                                } else {
-                                    combine(ws.map { w -> w.tabsViewModel.state }) { }
-                                }
-                            }.drop(1)
-                            .debounce(2.seconds)
-                            .collect {
-                                if (!SessionManager.isRestoringSession.value) {
-                                    SessionManager.saveIfEnabled(appGraph)
-                                }
+                        // Restore previously saved session (open desktops, windows, geometry) once.
+                        var sessionRestored by remember { mutableStateOf(false) }
+                        LaunchedEffect(Unit) {
+                            if (!sessionRestored) {
+                                SessionManager.restoreIfEnabled(appGraph)
+                                sessionRestored = true
                             }
-                    }
-
-                    // Efficiency mode only when EVERY window is minimized
-                    val allMinimized = windows.isNotEmpty() && windows.all { it.windowState.isMinimized }
-                    LaunchedEffect(allMinimized) {
-                        if (allMinimized) {
-                            EnergyManager.enableEfficiencyMode()
-                        } else {
-                            EnergyManager.disableEfficiencyMode()
                         }
-                    }
 
-                    // App-level dialogs: single instance shared by all windows. They inherit the
-                    // Rtl layout direction and theme from the providers above.
-                    // The settings dialog is normally composed inside its owner window
-                    // (see MainAppWindow) so it is modal to that window only; this
-                    // app-scope fallback only covers an owner window that disappeared,
-                    // making the dialog app-modal instead of silently dropping it.
-                    val settingsWindowState by settingsWindowViewModel.state.collectAsState()
-                    if (settingsWindowState.isVisible && windows.none { it.id == settingsWindowState.ownerWindowId }) {
-                        SettingsWindow(
-                            onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
-                            initialDestination = settingsWindowState.initialDestination,
-                        )
-                    }
-                    val updateDialogVisible by appGraph.appUpdateService.dialogVisible.collectAsState()
-                    if (updateDialogVisible) {
-                        UpdateDialog(
-                            service = appGraph.appUpdateService,
-                            onClose = { appGraph.appUpdateService.closeDialog() },
-                        )
-                    }
+                        // Check for updates once at startup. PATCH updates are pre-downloaded
+                        // here; MINOR/MAJOR surface the title-bar icon + UpdateDialog.
+                        LaunchedEffect(Unit) {
+                            appGraph.appUpdateService.checkOnStartup()
+                        }
 
-                    // The windows themselves — one per open desktop window.
-                    windows.forEach { w ->
-                        key(w.id) {
-                            MainAppWindow(
-                                openWindow = w,
-                                settingsWindowViewModel = settingsWindowViewModel,
-                                windowViewModelOwner = windowViewModelOwner,
-                                onQuit = onQuit,
+                        // Debounced session autosave: any tab/window change persists ~2s later, so a
+                        // crash no longer loses the whole session (previously saved only on quit).
+                        LaunchedEffect(Unit) {
+                            desktopManager.windows
+                                .flatMapLatest { ws ->
+                                    if (ws.isEmpty()) {
+                                        emptyFlow()
+                                    } else {
+                                        combine(ws.map { w -> w.tabsViewModel.state }) { }
+                                    }
+                                }.drop(1)
+                                .debounce(2.seconds)
+                                .collect {
+                                    if (!SessionManager.isRestoringSession.value) {
+                                        SessionManager.saveIfEnabled(appGraph)
+                                    }
+                                }
+                        }
+
+                        // Efficiency mode only when EVERY window is minimized
+                        val allMinimized = windows.isNotEmpty() && windows.all { it.nucleusWindow?.isMinimized == true }
+                        LaunchedEffect(allMinimized) {
+                            if (allMinimized) {
+                                EnergyManager.enableEfficiencyMode()
+                            } else {
+                                EnergyManager.disableEfficiencyMode()
+                            }
+                        }
+
+                        // App-level dialogs: single instance shared by all windows. They inherit the
+                        // Rtl layout direction and theme from the providers above.
+                        // The settings dialog is normally composed inside its owner window
+                        // (see MainAppWindow) so it is modal to that window only; this
+                        // app-scope fallback only covers an owner window that disappeared,
+                        // making the dialog app-modal instead of silently dropping it.
+                        val settingsWindowState by settingsWindowViewModel.state.collectAsState()
+                        if (settingsWindowState.isVisible && windows.none { it.id == settingsWindowState.ownerWindowId }) {
+                            SettingsWindow(
+                                onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
+                                initialDestination = settingsWindowState.initialDestination,
                             )
                         }
-                    }
+                        val updateDialogVisible by appGraph.appUpdateService.dialogVisible.collectAsState()
+                        if (updateDialogVisible) {
+                            UpdateDialog(
+                                service = appGraph.appUpdateService,
+                                onClose = { appGraph.appUpdateService.closeDialog() },
+                            )
+                        }
 
-                    // Floating preview while a tab is dragged outside its strip
-                    TabDragGhostWindow(appGraph.tabDockManager)
+                        // The windows themselves: each open desktop's tab workspace opens its own.
+                        val sessions by desktopManager.sessions.collectAsState()
+                        sessions.forEach { session ->
+                            key(session.desktopId) {
+                                DesktopWindows(
+                                    session = session,
+                                    settingsWindowViewModel = settingsWindowViewModel,
+                                    windowViewModelOwner = windowViewModelOwner,
+                                )
+                            }
+                        }
+
+                        // A system quit (Dock → Quit) ends the app without asking the tab windows,
+                        // which leave the session to their workspace: persist it on the way out.
+                        DisposableEffect(Unit) {
+                            onDispose { SessionManager.saveIfEnabled(appGraph) }
+                        }
+                    }
                 }
             }
         }

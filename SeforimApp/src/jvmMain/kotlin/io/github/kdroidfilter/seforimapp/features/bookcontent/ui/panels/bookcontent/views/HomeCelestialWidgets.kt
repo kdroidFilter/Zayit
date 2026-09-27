@@ -53,6 +53,7 @@ import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.util.GeoLocation
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
@@ -612,24 +613,27 @@ fun HomeCelestialWidgets(
                                     .then(rightColumnHeightModifier),
                             backgroundColor = Color.Black,
                         ) {
-                            EarthWidgetZmanimView(
-                                modifier = Modifier.fillMaxSize(),
-                                sphereSize = sphereSize,
-                                locationOverride = effectiveLocation,
-                                targetTimeMillis = earthWidgetTargetTime?.time,
-                                targetDateEpochDay = selectedDate.toEpochDay(),
-                                onDateSelect = onDateSelected,
-                                onLocationSelect = onLocationSelectedHandler,
-                                containerBackground = Color.Transparent,
-                                showOrbitLabels = true,
-                                showMoonInOrbit = true,
-                                earthSizeFraction = 0.6f,
-                                locationLabel = effectiveCityLabel,
-                                locationOptions = locationOptions,
-                                kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
-                                kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
-                                kiddushLevanaColorRgb = accentRgbInt,
-                            )
+                            // Filament renders every vsync while composed; hidden tabs stay composed, so drop it there.
+                            if (LocalTabSelected.current) {
+                                EarthWidgetZmanimView(
+                                    modifier = Modifier.fillMaxSize(),
+                                    sphereSize = sphereSize,
+                                    locationOverride = effectiveLocation,
+                                    targetTimeMillis = earthWidgetTargetTime?.time,
+                                    targetDateEpochDay = selectedDate.toEpochDay(),
+                                    onDateSelect = onDateSelected,
+                                    onLocationSelect = onLocationSelectedHandler,
+                                    containerBackground = Color.Transparent,
+                                    showOrbitLabels = true,
+                                    showMoonInOrbit = true,
+                                    earthSizeFraction = 0.6f,
+                                    locationLabel = effectiveCityLabel,
+                                    locationOptions = locationOptions,
+                                    kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
+                                    kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
+                                    kiddushLevanaColorRgb = accentRgbInt,
+                                )
+                            }
                         }
                     }
                 }

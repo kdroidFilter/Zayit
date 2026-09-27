@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
@@ -144,11 +145,13 @@ fun EarthWidgetScene(
     viewYawDegrees: Float = 0f,
     viewPitchDegrees: Float = 0f,
     viewAnchorKey: Any? = null,
+    viewZoom: Float = 1f,
 ) {
     // The camera follows the drag instantly, and eases back on recenter.
     val viewSpec = if (animateEarthRotation) SmoothAngleSpringSpec else snap()
     val animatedViewYaw by animateFloatAsState(viewYawDegrees, viewSpec, label = "viewYaw")
     val animatedViewPitch by animateFloatAsState(viewPitchDegrees, viewSpec, label = "viewPitch")
+    val animatedViewZoom by animateFloatAsState(viewZoom, viewSpec, label = "viewZoom")
     val skyJulianDay = julianDay ?: (System.currentTimeMillis() / 86_400_000.0 + 2_440_587.5)
     val animatedSidereal =
         rememberSmoothAnimatedAngle(
@@ -265,10 +268,12 @@ fun EarthWidgetScene(
             viewAzimuthFromSunDegrees = animatedViewAzimuthFromSun,
             viewYawDegrees = animatedViewYaw,
             viewPitchDegrees = animatedViewPitch,
+            viewZoom = animatedViewZoom,
         )
 
     val earthContent: @Composable () -> Unit = {
-        Box(modifier = Modifier.size(sphereSize)) {
+        // Clipped: zoomed-in labels must not spill over the rest of the widget
+        Box(modifier = Modifier.size(sphereSize).clipToBounds()) {
             EarthMoonSceneView(
                 state = sceneState,
                 engine = engine,

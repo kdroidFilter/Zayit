@@ -100,6 +100,8 @@ internal data class EarthRenderState(
     val viewYawDegrees: Float = 0f,
     /** Camera elevation over the ecliptic, from the default one. */
     val viewPitchDegrees: Float = 0f,
+    /** Camera zoom (field of view narrowed by this factor); 1 = the whole orbit fits. */
+    val viewZoom: Float = 1f,
 )
 
 /** Rendering parameters for the Moon-from-marker inset view. */
@@ -183,7 +185,7 @@ internal fun EarthMoonSceneView(
         camera.eye = Position(0f, 0f, geometry.cameraZ)
         camera.projection =
             Projection.Perspective(
-                fovDegrees = 2.0 * atan(geometry.sceneHalf / geometry.cameraZ.toDouble()) * 180.0 / PI,
+                fovDegrees = 2.0 * atan(geometry.sceneHalf / (geometry.cameraZ * state.viewZoom).toDouble()) * 180.0 / PI,
                 near = geometry.cameraZ * 0.25,
                 far = geometry.cameraZ * 3.0,
             )
@@ -730,7 +732,8 @@ internal fun computeOrbitScreenPosition(
 ): OrbitScreenPosition {
     val geometry = computeSceneGeometry(state.renderSizePx, state.earthSizeFraction)
     val orbit = SceneFrame(state, geometry).let { it.view * it.orbitPoint(orbitDegrees) * geometry.orbitRadius }
-    val orbitScale = perspectiveScale(geometry.cameraZ, orbit.z)
+    // Zooming narrows the field of view, which scales the image about its centre
+    val orbitScale = perspectiveScale(geometry.cameraZ, orbit.z) * state.viewZoom
     val x = geometry.sceneHalf + orbit.x * orbitScale
     val y = geometry.sceneHalf - orbit.y * orbitScale
     return OrbitScreenPosition(
@@ -739,7 +742,7 @@ internal fun computeOrbitScreenPosition(
         zCam = orbit.z,
         depth = orbitDepth(orbit.z, geometry.orbitRadius),
         // Behind the Earth's disc (its silhouette is ~the z = 0 radius; the camera sits well back)
-        hiddenByEarth = orbit.z < 0f && hypot(x - geometry.sceneHalf, y - geometry.sceneHalf) < geometry.earthRadiusPx,
+        hiddenByEarth = orbit.z < 0f && hypot(x - geometry.sceneHalf, y - geometry.sceneHalf) < geometry.earthRadiusPx * state.viewZoom,
     )
 }
 

@@ -7,10 +7,7 @@ filekitCore = "0.14.2"
 hebrewNumerals = "0.2.6"
 jsoup = "1.22.2"
 jvmToolchain = "25"
-# Local build (mavenLocal) of nucleus-2.6 + the TabWindows titleBar slot; back to a published
-# dev version once that lands upstream.
-nucleus = "2.6.0-dev-202609271000"
-nucleusPlugin = "2.6.0-dev-202609251324"
+nucleus = "2.6.0-dev-202609270906"
 koalaplotCore = "0.11.2"
 kotlin = "2.4.20"
 compose = "1.12.1"
@@ -185,7 +182,7 @@ sqlDelight = { id = "app.cash.sqldelight", version.ref = "sqlDelight" }
 android-library = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
 caupain =  { id = "com.deezer.caupain", version = "1.9.1"}
 metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
-nucleus = { id = "dev.nucleusframework", version.ref = "nucleusPlugin" }
+nucleus = { id = "dev.nucleusframework", version.ref = "nucleus" }
 stability-analyzer = { id = "com.github.skydoves.compose.stability.analyzer", version = "0.10.0" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }

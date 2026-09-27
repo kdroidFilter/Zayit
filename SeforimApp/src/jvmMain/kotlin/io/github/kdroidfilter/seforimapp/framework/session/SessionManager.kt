@@ -59,6 +59,12 @@ object SessionManager {
 
         val desktopManager: DesktopManager = appGraph.desktopManager
         val desktopsState = desktopManager.buildDesktopsState()
+        // The hover-card pictures of tabs no desktop holds any more.
+        appGraph.tabThumbnailStore.prune(
+            desktopsState.snapshots.values
+                .flatMap { snapshot -> snapshot.effectiveWindows().flatMap { it.destinations } }
+                .mapTo(HashSet()) { it.tabId },
+        )
 
         debugln {
             buildString {

@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePrepar
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
@@ -32,6 +33,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val catalogAccess: CatalogAccess
     abstract val selectionContext: SelectionContext
     abstract val tabPersistedStateStore: TabPersistedStateStore
+    abstract val tabThumbnailStore: TabThumbnailStore
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val settings: Settings
     abstract val categoryDisplaySettingsStore: CategoryDisplaySettingsStore

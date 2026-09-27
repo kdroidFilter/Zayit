@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCas
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.mockk.coEvery
@@ -76,6 +77,12 @@ class PostSelectLineTest {
         desktopManager =
             DesktopManager(
                 tabPersistedStateStore = persistedStore,
+                thumbnails =
+                    TabThumbnailStore(
+                        kotlin.io.path
+                            .createTempDirectory()
+                            .toFile(),
+                    ),
                 titleUpdateManager = titleUpdateManager,
                 searchHomeViewModelFactory = {
                     SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))

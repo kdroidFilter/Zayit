@@ -22,6 +22,8 @@ import io.github.kdroidfilter.seforim.tabs.TabItem
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.WindowPanes
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSession
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
@@ -37,13 +39,23 @@ import seforimapp.seforimapp.generated.resources.home_tab_with_app
 @Composable
 fun NucleusApplicationScope.DesktopTabs(session: DesktopSession) {
     val desktopManager = LocalAppGraph.current.desktopManager
+    val thumbnails = LocalAppGraph.current.tabThumbnailStore
     val homeLabel = stringResource(Res.string.home_tab_with_app, stringResource(Res.string.app_name))
     for (item in session.tabs) {
         val tabId = item.destination.tabId
         key(tabId) {
             // The body is drawn (and kept alive) by the window's TabsContent, not by the workspace.
             Tab(session.workspace, id = tabId, title = tabLabel(item, homeLabel), group = session.initialGroupOf(tabId)) {}
-            LaunchedEffect(tabId) { session.onDeclared(tabId) }
+            // Keyed on the session too: a desktop restored in place is a new session under the same id.
+            LaunchedEffect(session, tabId) {
+                session.onDeclared(tabId)
+                // A restored tab's hover card: the picture saved before the restart, until the tab
+                // is shown again and takes a new one.
+                val entry = session.workspace.tab(tabId) ?: return@LaunchedEffect
+                if (entry.thumbnail != null) return@LaunchedEffect
+                val saved = withContext(Dispatchers.IO) { thumbnails.load(tabId) }
+                if (saved != null && entry.thumbnail == null) entry.thumbnail = saved
+            }
             // Closing a tab is a workspace call (×, window close); a tab still declared once the
             // workspace dropped it would be registered again and hosted nowhere.
             val closed = session.workspace.tab(tabId) == null

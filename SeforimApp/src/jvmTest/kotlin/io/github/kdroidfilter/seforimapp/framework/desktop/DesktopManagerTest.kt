@@ -10,6 +10,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.session.WindowSnapshot
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,12 @@ class DesktopManagerTest {
     private fun manager(bootState: DesktopsState? = null) =
         DesktopManager(
             tabPersistedStateStore = store,
+            thumbnails =
+                TabThumbnailStore(
+                    kotlin.io.path
+                        .createTempDirectory()
+                        .toFile(),
+                ),
             titleUpdateManager = TabTitleUpdateManager(),
             searchHomeViewModelFactory = {
                 SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))

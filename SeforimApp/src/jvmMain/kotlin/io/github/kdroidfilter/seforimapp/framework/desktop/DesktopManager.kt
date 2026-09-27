@@ -16,6 +16,7 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.tabs.withTabId
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
@@ -23,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.SavedGeometry
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.session.WindowSnapshot
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -63,6 +65,7 @@ import kotlin.math.roundToInt
  */
 class DesktopManager(
     private val tabPersistedStateStore: TabPersistedStateStore,
+    private val thumbnails: TabThumbnailStore,
     titleUpdateManager: TabTitleUpdateManager,
     private val searchHomeViewModelFactory: () -> SearchHomeViewModel,
     defaultDesktopName: String,
@@ -317,6 +320,7 @@ class DesktopManager(
             // Added, not opened: the target window keeps its selection.
             addMovedTab(item, newId, state, target, index = target.group()?.ids?.size ?: 0, select = false)
         } else {
+            thumbnails.copy(tabId, newId)
             val snapshot = dormantSnapshots[desktopId] ?: DesktopTabsSnapshot()
             val windows = snapshot.effectiveWindows().filter { it.destinations.isNotEmpty() }
             val first = windows.firstOrNull() ?: WindowSnapshot()
@@ -346,6 +350,7 @@ class DesktopManager(
         select: Boolean,
     ) {
         tabPersistedStateStore.putAll(mapOf(newId to state))
+        thumbnails.copy(item.destination.tabId, newId)
         target.session.addTab(
             item.destination.withTabId(newId),
             target.groupId,
@@ -616,7 +621,15 @@ class DesktopManager(
 
     private fun onWindowEmptied(w: OpenWindow) {
         when {
-            _windows.value.size <= 1 -> onQuitRequest?.invoke()
+            _windows.value.size <= 1 -> {
+                if (E2e.enabled) {
+                    val groups =
+                        w.session.workspace.groups
+                            .map { it.id to it.ids.size }
+                    println("E2E QUIT: window ${w.id.take(8)} of ${w.session.desktopId} emptied (group ${w.groupId}, groups=$groups)")
+                }
+                onQuitRequest?.invoke()
+            }
             windowsOf(w.session.desktopId).size == 1 -> {
                 dormantSnapshots[w.session.desktopId] = DesktopTabsSnapshot()
                 closeSession(w.session, keepWindow = null)

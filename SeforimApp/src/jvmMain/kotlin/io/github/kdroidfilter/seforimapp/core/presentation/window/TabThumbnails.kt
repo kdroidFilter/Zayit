@@ -17,9 +17,12 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.withContext
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -37,6 +40,7 @@ fun rememberTabThumbnails(openWindow: OpenWindow): Modifier {
     val direction = LocalLayoutDirection.current
     val group = openWindow.group()
     val workspace = openWindow.session.workspace
+    val thumbnails = LocalAppGraph.current.tabThumbnailStore
     LaunchedEffect(group, density, direction) {
         if (group == null) return@LaunchedEffect
         var last: String? = null
@@ -47,7 +51,10 @@ fun rememberTabThumbnails(openWindow: OpenWindow): Modifier {
             // A tab that just arrived has not drawn yet; the pointer reaching the strip is the last
             // look at a tab that has.
             if (arrived || !onStrip) delay(SETTLE_MS)
-            reducedPicture(layer, reduced, density, direction)?.let { workspace.tab(id)?.thumbnail = it }
+            val picture = reducedPicture(layer, reduced, density, direction) ?: return@collectLatest
+            workspace.tab(id)?.thumbnail = picture
+            // Kept on disk, so a cold start shows the cards of the tabs it restores.
+            withContext(Dispatchers.IO) { thumbnails.save(id, picture) }
         }
     }
     return Modifier.drawWithContent {

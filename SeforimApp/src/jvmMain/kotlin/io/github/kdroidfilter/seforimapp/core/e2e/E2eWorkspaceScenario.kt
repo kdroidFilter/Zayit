@@ -165,11 +165,34 @@ object E2eWorkspaceScenario {
         dm.closeWindow(targetWindow.id)
         sc.step("36-target-closed")
 
+        // Cold restart: the session saved and restored as at boot — new workspaces, every tab
+        // declared again without a picture — and the background tabs' cards come back from disk.
+        val pictured =
+            main.group()!!.ids.filter {
+                main.session.workspace
+                    .tab(it)
+                    ?.thumbnail != null
+            }
+        check(pictured.size > 1) { "only ${pictured.size} tab(s) with a picture before the restart" }
+        dm.restoreFromDesktopsState(dm.buildDesktopsState())
+        sc.step("37-cold-restart", waitMs = 2500)
+        val restored = dm.windows.value.first()
+        val background = pictured.filter { it != restored.group()?.selectedId }
+        val missing =
+            background.filter {
+                restored.session.workspace
+                    .tab(it)
+                    ?.thumbnail == null
+            }
+        check(background.isNotEmpty() && missing.isEmpty()) { "no picture after the restart for $missing" }
+        sc.note("cold restart: ${background.size} background tab picture(s) restored")
+
         // Closing the other tabs with ×: the window stays with its last tab.
-        val keep = main.tabsViewModel.state.value.selectedTabIndex
-        main.tabsViewModel.onEvent(TabsEvents.CloseOthers(keep))
+        val last = dm.windows.value.first()
+        val keep = last.tabsViewModel.state.value.selectedTabIndex
+        last.tabsViewModel.onEvent(TabsEvents.CloseOthers(keep))
         sc.step("29-close-others")
-        check(main.tabsViewModel.state.value.tabs.size == 1) { "close others: ${main.tabsViewModel.state.value.tabs.size}" }
+        check(last.tabsViewModel.state.value.tabs.size == 1) { "close others: ${last.tabsViewModel.state.value.tabs.size}" }
     }
 
     private fun E2eScenario.graphDesktopManager(): DesktopManager = graph().desktopManager

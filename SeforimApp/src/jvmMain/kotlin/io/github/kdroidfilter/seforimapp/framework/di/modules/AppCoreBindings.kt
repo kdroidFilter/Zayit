@@ -217,7 +217,7 @@ object AppCoreBindings {
                     settings = settings,
                 )
             },
-            bootState = SessionManager.loadBootState(),
+            bootState = SessionManager.loadBootState(repository),
             defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
 }

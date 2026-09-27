@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -35,7 +34,6 @@ import dev.nucleusframework.window.tao.DockSplitterScope
 import dev.nucleusframework.window.tao.SatellitePlacement
 import dev.nucleusframework.window.tao.SatelliteScope
 import dev.nucleusframework.window.tao.SatelliteWorkspace
-import dev.nucleusframework.window.tao.TabWindowGroup
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.rememberSearchShellActions
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.tabBookViewModel
@@ -59,8 +57,13 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.category
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NotesPanel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSession
 import io.github.kdroidfilter.seforimapp.framework.desktop.DockSizes
+import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import kotlinx.coroutines.FlowPreview
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -72,7 +75,7 @@ import seforimapp.seforimapp.generated.resources.links
 import seforimapp.seforimapp.generated.resources.notes_pane
 import seforimapp.seforimapp.generated.resources.sources
 import seforimapp.seforimapp.generated.resources.table_of_contents
-import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * One pane of the reader: a dock satellite of its window, drawing the window's selected tab.
@@ -165,27 +168,28 @@ val LineSideOrder = listOf(DockSide.Bottom, DockSide.Left, DockSide.Right, DockS
  * are open — each tab keeps its own open panes (its ViewModel's visibility flags).
  */
 @Composable
-fun WindowPanes(
-    session: DesktopSession,
-    group: TabWindowGroup,
-) {
-    PaneVisibilitySync(session, group)
+fun WindowPanes(window: OpenWindow) {
+    val session = window.session
+    val groupId = window.groupId
+    PaneSync(window, session, groupId)
     for (pane in ReaderPane.entries) {
         key(pane) {
             Satellite(
-                workspace = pane.workspaceIn(session, group.id),
-                id = pane.idIn(group.id),
+                workspace = pane.workspaceIn(session, groupId),
+                id = pane.idIn(groupId),
                 title = stringResource(pane.title),
                 initialPlacement = pane.home,
                 initiallyOpen = false,
                 dockSides = if (pane.navigation) NavigationDockSides else LineDockSides,
                 floatable = !pane.fixed,
                 reorderable = !pane.fixed,
+                // Zayit's windows are usually maximized: a pane pulled out stays on screen.
+                hideWhileOwnerFullscreenOrMaximized = false,
                 // The pane draws its own header (PaneHeader), which is also its grip.
                 header = {},
             ) {
                 CompositionLocalProvider(LocalPaneSatellite provides this) {
-                    PaneBody(session, group, pane)
+                    PaneBody(session, groupId, pane)
                 }
             }
         }
@@ -200,41 +204,145 @@ private class PaneDemand(
     val layout: LayoutState? = null,
 )
 
+/** One reading of everything the sync depends on. */
+private class PaneFrame(
+    val demand: PaneDemand,
+    val registered: Set<ReaderPane>,
+    val open: Set<ReaderPane>,
+    val sizes: DockSizes?,
+    /** Docked thickness of every open pane, in px. */
+    val extents: Map<ReaderPane, Int>,
+    // Read in the snapshot so a percentage change re-emits.
+    val positions: List<Float>,
+)
+
 /**
- * Keeps the dock's open panes equal to the selected tab's visibility flags, both ways: a tab
- * change or a toolbar toggle opens / closes satellites; a pane closed from the dock itself (its
- * floating window's close button) toggles the flag back.
+ * Keeps the window's docks equal to the selected tab, as its split panes were: which panes are
+ * open (the tab's visibility flags) and how big (the tab's split percentages, with SplitPane's own
+ * px mapping). A tab change or a toolbar toggle sizes then opens / closes satellites — a pane opens
+ * at its size; a pane closed from the dock itself, or a splitter dragged, is written back to the tab.
+ * [OpenWindow.panesReadyFor] names the tab once the docks have laid out as planned: its text lays
+ * out only then, in its final frame.
  */
+@OptIn(ExperimentalSplitPaneApi::class)
 @Composable
-private fun PaneVisibilitySync(
+private fun PaneSync(
+    window: OpenWindow,
     session: DesktopSession,
-    group: TabWindowGroup,
+    groupId: String,
 ) {
-    val demandState = rememberUpdatedState(selectedTabDemand(session, group))
-    val demand by demandState
-    PaneSizeSync(session, group, demandState)
-    LaunchedEffect(session, group.id) {
-        fun entry(pane: ReaderPane) = pane.workspaceIn(session, group.id).satellite(pane.idIn(group.id))
+    val demand = rememberUpdatedState(selectedTabDemand(session, groupId))
+    val splitterDp = if (ThemeUtils.isIslandsStyle()) 0f else 1f
+    LaunchedEffect(window, session, groupId, splitterDp) {
+        val effectScope = this
+        var saveJob: Job? = null
+
+        fun workspace(pane: ReaderPane) = pane.workspaceIn(session, groupId)
+
+        fun entry(pane: ReaderPane) = workspace(pane).satellite(pane.idIn(groupId))
+
+        fun extentDpOf(pane: ReaderPane): Float? {
+            val docked = entry(pane)?.takeIf { it.isOpen }?.placement as? SatellitePlacement.Docked ?: return null
+            // The navigation column is layered (each pane its own width); the inner sides are split.
+            return if (pane.navigation) docked.extent?.value else workspace(pane).dockExtent(docked.side).value
+        }
+
+        fun setExtent(
+            pane: ReaderPane,
+            px: Int,
+            density: Float,
+        ) {
+            val extent = (px / density).dp
+            if (pane.navigation) {
+                workspace(pane).setDockedExtent(pane.idIn(groupId), extent)
+            } else {
+                val side = (entry(pane)?.placement as? SatellitePlacement.Docked)?.side ?: pane.home.side
+                workspace(pane).setDockExtent(side, extent)
+            }
+        }
+
         var applied: Pair<String?, Set<ReaderPane>>? = null
         var appliedRegistered = emptySet<ReaderPane>()
+        var sized = HashMap<ReaderPane, Int>()
+        window.panesReadyFor = null
         snapshotFlow {
             val registered = ReaderPane.entries.filter { entry(it) != null }.toSet()
             val open = registered.filter { entry(it)?.isOpen == true }.toSet()
-            Triple(demand, registered, open)
-        }.collect { (current, registered, open) ->
+            val sizes = window.dockSizes
+            val extents =
+                if (sizes == null) {
+                    emptyMap()
+                } else {
+                    open.mapNotNull { pane -> extentDpOf(pane)?.let { pane to (it * sizes.density).roundToInt() } }.toMap()
+                }
+            PaneFrame(
+                demand.value,
+                registered,
+                open,
+                sizes,
+                extents,
+                demand.value.layout
+                    ?.let(::splitPositions)
+                    .orEmpty(),
+            )
+        }.collect { frame ->
+            val current = frame.demand
+            val sizes = frame.sizes
+            val layout = current.layout
             val wanted = current.tabId to current.panes
-            if (wanted != applied || registered != appliedRegistered) {
-                for (pane in registered) {
-                    val workspace = pane.workspaceIn(session, group.id)
-                    val id = pane.idIn(group.id)
-                    if (pane in current.panes) workspace.open(id) else workspace.close(id)
+            val splitter = sizes?.let { (splitterDp * it.density).roundToInt() } ?: 0
+            if (wanted != applied || frame.registered != appliedRegistered) {
+                // Wait for the dock to be measured: a pane opens at its size or not at all.
+                if (sizes == null && current.panes.isNotEmpty()) return@collect
+                window.panesReadyFor = null
+                val planned = current.panes intersect frame.registered
+                if (sizes != null && layout != null) {
+                    sized = HashMap(plannedExtents(layout, sizes, planned, splitter))
+                    sized.forEach { (pane, px) -> setExtent(pane, px, sizes.density) }
+                }
+                for (pane in frame.registered) {
+                    if (pane in current.panes) workspace(pane).open(pane.idIn(groupId)) else workspace(pane).close(pane.idIn(groupId))
                 }
                 applied = wanted
-                appliedRegistered = registered
-            } else {
-                // The user closed (or reopened) a pane from the dock: follow on the tab.
-                (open - current.panes).plus(current.panes - open).forEach { current.onEvent(it.toggle) }
+                appliedRegistered = frame.registered
+                return@collect
             }
+            val expected = current.panes intersect frame.registered
+            if (frame.open != expected) {
+                // The user closed (or reopened) a pane from the dock: follow on the tab.
+                (frame.open - expected).plus(expected - frame.open).forEach { current.onEvent(it.toggle) }
+                return@collect
+            }
+            if (sizes == null || layout == null) {
+                window.panesReadyFor = current.tabId
+                return@collect
+            }
+            val targets = plannedExtents(layout, sizes, frame.open, splitter)
+            var dragged = false
+            var settled = true
+            for (pane in frame.open) {
+                val extent = frame.extents[pane] ?: continue
+                val target = targets[pane] ?: continue
+                val last = sized[pane]
+                if (last != null && extent != last) {
+                    // A splitter drag: the tab takes the new proportion.
+                    writeBack(pane, extent, layout, sizes, frame.extents, splitter)
+                    sized[pane] = extent
+                    dragged = true
+                } else if (extent != target) {
+                    setExtent(pane, target, sizes.density)
+                    sized[pane] = target
+                    settled = false
+                }
+            }
+            // Saved once the drag settles, as the split panes did (300 ms debounce).
+            if (dragged) {
+                saveJob?.cancel()
+                saveJob = saveLater(effectScope) { current.onEvent(BookContentEvent.SaveState) }
+            }
+            // Ready once the inner dock has been measured around the planned columns.
+            val innerPlanned = innerWidthPx(sizes, targets, frame.open, splitter)
+            if (settled && sizes.innerWidthPx == innerPlanned) window.panesReadyFor = current.tabId
         }
     }
 }
@@ -242,9 +350,9 @@ private fun PaneVisibilitySync(
 @Composable
 private fun selectedTabDemand(
     session: DesktopSession,
-    group: TabWindowGroup,
+    groupId: String,
 ): PaneDemand {
-    val item = group.selectedId?.let(session::item) ?: return PaneDemand(null, emptySet(), onEvent = {})
+    val item = session.group(groupId)?.selectedId?.let(session::item) ?: return PaneDemand(null, emptySet(), onEvent = {})
     val tabId = item.destination.tabId
     return key(tabId) {
         when (val destination = item.destination) {
@@ -263,92 +371,16 @@ private fun selectedTabDemand(
     }
 }
 
-/**
- * Keeps the docked panes' sizes equal to the selected tab's split positions, both ways — each tab
- * keeps its own proportions, as its split panes did: a tab change or a window resize sizes the
- * panes from the tab's percentages, a splitter drag writes the percentage back (and saves it).
- */
-@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
-@Composable
-private fun PaneSizeSync(
-    session: DesktopSession,
-    group: TabWindowGroup,
-    demand: State<PaneDemand>,
-) {
-    val splitter = if (ThemeUtils.isIslandsStyle()) 0f else 1f
-    LaunchedEffect(session, group.id, splitter) {
-        var appliedTab: String? = null
-        val applied = HashMap<ReaderPane, Float>()
-
-        // The navigation column is layered (each pane its own width); the inner sides are split, their
-        // panes sharing the side's thickness.
-        fun extentOf(pane: ReaderPane): Float? {
-            val workspace = pane.workspaceIn(session, group.id)
-            val entry = workspace.satellite(pane.idIn(group.id))?.takeIf { it.isOpen } ?: return null
-            val docked = entry.placement as? SatellitePlacement.Docked ?: return null
-            return if (pane.navigation) docked.extent?.value else workspace.dockExtent(docked.side).value
-        }
-
-        fun setExtent(
-            pane: ReaderPane,
-            extent: Float,
-        ) {
-            val workspace = pane.workspaceIn(session, group.id)
-            if (pane.navigation) {
-                workspace.setDockedExtent(pane.idIn(group.id), extent.dp)
-            } else {
-                val side = (workspace.satellite(pane.idIn(group.id))?.placement as? SatellitePlacement.Docked)?.side ?: return
-                workspace.setDockExtent(side, extent.dp)
-            }
-        }
-        snapshotFlow {
-            val current = demand.value
-            val layout = current.layout
-            val sizes = session.dockSizes[group.id]
-            if (layout == null || sizes == null) {
-                null
-            } else {
-                SizeFrame(current, layout, sizes, ReaderPane.entries.associateWith(::extentOf), splitPositions(layout), splitter)
-            }
-        }.collect { frame ->
-            frame ?: return@collect
-            if (frame.demand.tabId != appliedTab) {
-                appliedTab = frame.demand.tabId
-                applied.clear()
-            }
-            val targets = targetExtents(frame)
-            var dragged = false
-            for (pane in ReaderPane.entries) {
-                val current = frame.extents[pane] ?: continue
-                val target = targets[pane] ?: continue
-                val last = applied[pane]
-                if (last != null && abs(current - last) > EXTENT_TOLERANCE_DP) {
-                    // A splitter drag: the tab takes the new proportion.
-                    writeBack(pane, current, frame)
-                    applied[pane] = current
-                    dragged = true
-                } else if (abs(current - target) > EXTENT_TOLERANCE_DP) {
-                    setExtent(pane, target)
-                    applied[pane] = target
-                } else {
-                    applied[pane] = current
-                }
-            }
-            if (dragged) frame.demand.onEvent(BookContentEvent.SaveState)
-        }
+private fun saveLater(
+    @StructuredScope scope: CoroutineScope,
+    save: () -> Unit,
+): Job =
+    scope.launch {
+        delay(SAVE_DEBOUNCE_MS)
+        save()
     }
-}
 
-private class SizeFrame(
-    val demand: PaneDemand,
-    val layout: LayoutState,
-    val sizes: DockSizes,
-    val extents: Map<ReaderPane, Float?>,
-    // Read in the snapshot so a percentage change re-emits.
-    val positions: List<Float>,
-    /** The split panes' divider: 1 dp, none in the Islands style (see [ReaderSplitter]). */
-    val splitter: Float,
-)
+private const val SAVE_DEBOUNCE_MS = 300L
 
 @OptIn(ExperimentalSplitPaneApi::class)
 private fun splitPositions(layout: LayoutState): List<Float> =
@@ -360,49 +392,81 @@ private fun splitPositions(layout: LayoutState): List<Float> =
         layout.contentSplitState.positionPercentage,
     )
 
-/** The split containers, as the nested split panes had them: each navigation column splits what the previous left. */
-private fun containerOf(
-    pane: ReaderPane,
-    frame: SizeFrame,
-): Float {
-    val splitter = frame.splitter
-    val tree = frame.extents[ReaderPane.Tree]?.plus(splitter) ?: 0f
-    val toc = frame.extents[ReaderPane.Toc]?.plus(splitter) ?: 0f
-    return when (pane) {
-        ReaderPane.Tree -> frame.sizes.outerWidth
-        ReaderPane.Toc -> frame.sizes.outerWidth - tree
-        ReaderPane.Notes -> frame.sizes.outerWidth - tree - toc
-        ReaderPane.Targum -> frame.sizes.innerWidth
-        ReaderPane.Comments, ReaderPane.Sources -> frame.sizes.innerHeight
-    }.coerceAtLeast(1f)
-}
+/** The inner dock's width once the navigation columns [open] have [extents]: the old content column. */
+private fun innerWidthPx(
+    sizes: DockSizes,
+    extents: Map<ReaderPane, Int>,
+    open: Set<ReaderPane>,
+    splitter: Int,
+): Int =
+    sizes.outerWidthPx -
+        ReaderPane.entries.filter { it.navigation && it in open }.sumOf { (extents[it] ?: 0) + splitter }
 
 /**
- * The split pane's own mapping (Compose `SplitPane`): the first pane is
- * `min₁ + p × (container − min₂ − splitter − min₁)`. Navigation panes were the first half of their
- * split, line panes the second.
+ * The px thickness of every pane in [open] for [layout]'s split positions — Compose `SplitPane`'s
+ * own mapping: the first pane is `round(min₁ × (1 − p) + max × p)` with
+ * `max = container − min₂ − splitter` (never under `min₁`). Each navigation column splits what
+ * the previous left; the line panes were the second half of their split, in the content column.
  */
 @OptIn(ExperimentalSplitPaneApi::class)
-private fun targetExtents(frame: SizeFrame): Map<ReaderPane, Float> =
-    buildMap {
-        for (pane in ReaderPane.entries) {
-            if (frame.extents[pane] == null) continue
-            val container = containerOf(pane, frame)
-            val first = pane.firstMin + pane.position(frame.layout) * pane.travel(container, frame.splitter)
-            put(pane, if (pane.navigation) first else container - frame.splitter - first)
-        }
+private fun plannedExtents(
+    layout: LayoutState,
+    sizes: DockSizes,
+    open: Set<ReaderPane>,
+    splitter: Int,
+): Map<ReaderPane, Int> {
+    fun px(dp: Float): Int = (dp * sizes.density).roundToInt()
+
+    fun first(
+        pane: ReaderPane,
+        container: Int,
+    ): Int {
+        val min = px(pane.firstMin)
+        val max = (container - px(SPLIT_SECOND_MIN_DP) - splitter).coerceAtLeast(min)
+        val p = pane.position(layout)
+        return (min * (1 - p) + max * p).roundToInt()
     }
+    val result = HashMap<ReaderPane, Int>()
+    var column = sizes.outerWidthPx
+    for (pane in listOf(ReaderPane.Tree, ReaderPane.Toc, ReaderPane.Notes)) {
+        if (pane !in open) continue
+        val extent = first(pane, column)
+        result[pane] = extent
+        column -= extent + splitter
+    }
+    for (pane in listOf(ReaderPane.Targum, ReaderPane.Comments, ReaderPane.Sources)) {
+        if (pane !in open) continue
+        val container = if (pane == ReaderPane.Targum) column else sizes.innerHeightPx
+        result[pane] = container - splitter - first(pane, container)
+    }
+    return result
+}
 
 @OptIn(ExperimentalSplitPaneApi::class)
 private fun writeBack(
     pane: ReaderPane,
-    extent: Float,
-    frame: SizeFrame,
+    extent: Int,
+    layout: LayoutState,
+    sizes: DockSizes,
+    extents: Map<ReaderPane, Int>,
+    splitter: Int,
 ) {
-    val container = containerOf(pane, frame)
-    val first = if (pane.navigation) extent else container - frame.splitter - extent
-    val ratio = ((first - pane.firstMin) / pane.travel(container, frame.splitter).coerceAtLeast(1f)).coerceIn(0f, 1f)
-    val layout = frame.layout
+    fun px(dp: Float): Int = (dp * sizes.density).roundToInt()
+    var column = sizes.outerWidthPx
+    for (nav in listOf(ReaderPane.Tree, ReaderPane.Toc, ReaderPane.Notes)) {
+        if (nav == pane) break
+        extents[nav]?.let { column -= it + splitter }
+    }
+    val container =
+        when {
+            pane.navigation -> column
+            pane == ReaderPane.Targum -> sizes.innerWidthPx
+            else -> sizes.innerHeightPx
+        }
+    val min = px(pane.firstMin)
+    val max = (container - px(SPLIT_SECOND_MIN_DP) - splitter).coerceAtLeast(min)
+    val first = if (pane.navigation) extent else container - splitter - extent
+    val ratio = if (max == min) 0f else ((first - min).toFloat() / (max - min)).coerceIn(0f, 1f)
     when (pane) {
         ReaderPane.Tree -> layout.mainSplitState.positionPercentage = ratio
         ReaderPane.Toc -> layout.tocSplitState.positionPercentage = ratio
@@ -422,13 +486,7 @@ private fun ReaderPane.position(layout: LayoutState): Float =
         ReaderPane.Comments, ReaderPane.Sources -> layout.contentSplitState.positionPercentage
     }
 
-/** How far the split's divider can travel in [container]. */
-private fun ReaderPane.travel(
-    container: Float,
-    splitter: Float,
-): Float = (container - SPLIT_SECOND_MIN_DP - splitter - firstMin).coerceAtLeast(0f)
-
-/** The first pane's minimum of this pane's split (the text, for the line panes). */
+/** The first pane's minimum of this pane's split (the text, for the line panes), in dp. */
 private val ReaderPane.firstMin: Float
     get() =
         when (this) {
@@ -441,7 +499,6 @@ private val ReaderPane.firstMin: Float
 // EnhancedHorizontalSplitPane / EnhancedVerticalSplitPane defaults.
 private const val SPLIT_FIRST_MIN_DP = 200f
 private const val SPLIT_SECOND_MIN_DP = 200f
-private const val EXTENT_TOLERANCE_DP = 1f
 
 private fun desiredPanes(
     uiState: BookContentState,
@@ -465,10 +522,10 @@ private fun desiredPanes(
 @Composable
 private fun SatelliteScope.PaneBody(
     session: DesktopSession,
-    group: TabWindowGroup,
+    groupId: String,
     pane: ReaderPane,
 ) {
-    val item = group.selectedId?.let(session::item) ?: return
+    val item = session.group(groupId)?.selectedId?.let(session::item) ?: return
     val tabId = item.destination.tabId
     key(tabId) {
         when (val destination = item.destination) {

@@ -75,7 +75,13 @@ class BookContentStateManager(
                     showSources = persisted.showSources,
                     scrollIndex = persisted.contentScrollIndex,
                     scrollOffset = persisted.contentScrollOffset,
-                    anchorId = persisted.contentAnchorLineId,
+                    // A restored tab with no saved position opens on its selected line: its pager is
+                    // centred there, and the text lays out on it, the lines above loading as it scrolls up.
+                    anchorId =
+                        persisted.contentAnchorLineId.takeIf { it > 0 }
+                            ?: persisted.primarySelectedLineId.takeIf {
+                                it > 0 && persisted.contentScrollIndex == 0 && persisted.contentScrollOffset == 0
+                            } ?: persisted.contentAnchorLineId,
                     anchorIndex = persisted.contentAnchorIndex,
                     paragraphScrollPosition = persisted.paragraphScrollPosition,
                     chapterScrollPosition = persisted.chapterScrollPosition,

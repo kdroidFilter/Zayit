@@ -38,6 +38,7 @@ import androidx.savedstate.savedState
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
@@ -97,10 +98,12 @@ fun TabsContent() {
     val tabsViewModel: TabsViewModel = openWindow.tabsViewModel
     val searchHomeViewModel = openWindow.searchHomeViewModel
 
-    val group = session.group(openWindow.id)
+    val group = openWindow.group()
     val tabIds = group?.ids.orEmpty()
     val currentTabId = group?.selectedId
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
+    val isSwitchingDesktop by openWindow.isSwitching.collectAsState()
+    val isTransitioning = isRestoringSession || isSwitchingDesktop
 
     val searchUi by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
     val scope = rememberCoroutineScope()
@@ -188,6 +191,15 @@ fun TabsContent() {
         knownTabIds.addAll(tabIds)
     }
 
+    // Clear the desktop-switching flag after the first frame so the loader disappears
+    LaunchedEffect(isSwitchingDesktop) {
+        if (isSwitchingDesktop) {
+            // Wait one frame for ViewModels to initialize with persisted state
+            kotlinx.coroutines.delay(100)
+            openWindow.clearSwitching()
+        }
+    }
+
     val isIslands = ThemeUtils.isIslandsStyle()
     val canvasBg =
         if (isIslands) {
@@ -235,7 +247,7 @@ fun TabsContent() {
                                         tabOwner = tabOwner,
                                         destination = destination,
                                         isSelected = isSelected,
-                                        isRestoringSession = isRestoringSession,
+                                        isRestoringSession = isTransitioning,
                                         searchUi = searchUi,
                                         searchCallbacks = homeSearchCallbacks,
                                     )
@@ -254,7 +266,7 @@ fun TabsContent() {
                                         tabOwner = tabOwner,
                                         destination = destination,
                                         isSelected = isSelected,
-                                        isRestoringSession = isRestoringSession,
+                                        isRestoringSession = isTransitioning,
                                         searchUi = searchUi,
                                         searchCallbacks = homeSearchCallbacks,
                                     )
@@ -439,7 +451,9 @@ fun tabBookViewModel(
     destination: TabsDestination,
 ): BookContentViewModel {
     tabOwner.prepare(destination)
-    return assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+    val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+    E2e.registerBookViewModel(destination.tabId, viewModel)
+    return viewModel
 }
 
 /** The search ViewModel of a search tab, shared by its results and its facet panes. */

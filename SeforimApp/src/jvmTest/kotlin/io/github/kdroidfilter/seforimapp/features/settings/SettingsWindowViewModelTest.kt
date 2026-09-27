@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.settings
 
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.mockk.mockk
@@ -17,7 +18,9 @@ class SettingsWindowViewModelTest {
         DesktopManager(
             tabPersistedStateStore = TabPersistedStateStore(),
             titleUpdateManager = TabTitleUpdateManager(),
-            searchHomeViewModelFactory = { mockk(relaxed = true) },
+            searchHomeViewModelFactory = {
+                SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+            },
             defaultDesktopName = "D1",
         )
 

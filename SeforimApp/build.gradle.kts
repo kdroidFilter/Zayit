@@ -222,7 +222,7 @@ kotlin {
 nucleus.application {
 
     mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
-
+    nucleusOptimization = true
     graalvm {
         isEnabled = true
         imageName = "zayit"

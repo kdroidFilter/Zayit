@@ -36,7 +36,6 @@ import androidx.compose.ui.input.pointer.isSecondary
 import androidx.compose.ui.input.pointer.isTertiary
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
@@ -50,10 +49,13 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
 import dev.nucleusframework.window.ExperimentalNucleusApi
 import dev.nucleusframework.window.tao.TabStripScope
-import dev.nucleusframework.window.tao.tabSlot
+import dev.nucleusframework.window.tao.rememberTabStripDrag
+import dev.nucleusframework.window.tao.tabStripCarry
 import dev.nucleusframework.window.tao.tabStripGeometry
+import dev.nucleusframework.window.tao.tabStripGrip
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
@@ -90,7 +92,6 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
-import sh.calvin.reorderable.ReorderableRow
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import kotlin.math.roundToInt
@@ -123,10 +124,21 @@ private val HideCloseTabWidthThreshold = 80.dp
 private val LocalCompactIconOnly = compositionLocalOf { false }
 
 @Composable
-fun TabStripScope.TabsView() {
-    val viewModel: TabsViewModel = LocalOpenWindow.current.tabsViewModel
+fun TabsView() {
+    val openWindow = LocalOpenWindow.current
+    val viewModel: TabsViewModel = openWindow.tabsViewModel
     val state by viewModel.state.collectAsState()
-    DefaultTabShowcase(state = state, onEvents = viewModel::onEvent)
+    // The strip of this window's group: what tab drags, drops and tear-offs resolve against.
+    val workspace = openWindow.session.workspace
+    val group = openWindow.group() ?: return
+    val stripScope =
+        remember(workspace, group) {
+            object : TabStripScope {
+                override val workspace = workspace
+                override val group = group
+            }
+        }
+    with(stripScope) { DefaultTabShowcase(state = state, onEvents = viewModel::onEvent) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -221,10 +233,7 @@ private fun TabStripScope.DefaultTabShowcase(
                             onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
                             onDetach =
                                 if (state.tabs.size > 1) {
-                                    {
-                                        desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId)
-                                        Unit
-                                    }
+                                    { desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId) }
                                 } else {
                                     null
                                 },
@@ -299,10 +308,7 @@ private fun TabStripScope.DefaultTabShowcase(
                             onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
                             onDetach =
                                 if (state.tabs.size > 1) {
-                                    {
-                                        desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId)
-                                        Unit
-                                    }
+                                    { desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId) }
                                 } else {
                                     null
                                 },
@@ -375,7 +381,11 @@ private fun TabStripScope.RtlAwareTabStripContent(
     // Track which tabs already existed to avoid double width + expand animation on new entries
     val openWindow = LocalOpenWindow.current
     val tabsViewModel = openWindow.tabsViewModel
-    val crossWindowDrag = rememberCrossWindowTabDrag()
+    // The workspace's gestures for this strip: carry along it, slide home, hand-over to another
+    // window or a new one once a tab leaves it (the platform drag session on native Wayland).
+    val tabDrag = rememberTabStripDrag()
+    // Chrome-like: the tab being dragged is selected.
+    LaunchedEffect(tabDrag.held) { tabDrag.held?.let(workspace::select) }
     val skipAnimation by tabsViewModel.skipNextAnimation.collectAsState()
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
     val currentKeys = remember(tabs) { tabs.map { it.key } }
@@ -425,10 +435,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .onPlaced { crossWindowDrag.stripCoordinates = it },
+            modifier = Modifier.fillMaxWidth(),
         ) {
             // Use hysteresis around the threshold to avoid flicker/glitch when toggling modes
             var shrinkToFitActive by remember { mutableStateOf(false) }
@@ -468,35 +475,34 @@ private fun TabStripScope.RtlAwareTabStripContent(
                 val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
                 val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
 
-                ReorderableRow(
-                    list = currentKeys,
-                    onSettle = { fromIdx, toIdx ->
-                        // A tab carried out of the strip was moved by the workspace, not reordered here.
-                        if (!reorderingEnabled || crossWindowDrag.consumeHandedOver()) return@ReorderableRow
-                        onReorder(fromIdx, toIdx)
-                    },
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = rowModifier,
-                ) { index, key, isBeingDragged ->
-                    val tabEntry = tabEntriesByKey[key] ?: return@ReorderableRow
-                    key(key) {
-                        val isClosing = closingKeys.contains(tabEntry.key)
-                        val isNew = !knownKeys.contains(tabEntry.key)
+                ) {
+                    currentKeys.forEachIndexed { index, key ->
+                        val tabEntry = tabEntriesByKey[key] ?: return@forEachIndexed
+                        val workspaceTab = workspace.tab(key) ?: return@forEachIndexed
+                        key(key) {
+                            val isClosing = closingKeys.contains(tabEntry.key)
+                            val isNew = !knownKeys.contains(tabEntry.key)
 
-                        ReorderableItem {
                             Box(
                                 modifier =
                                     Modifier
-                                        .tabSlot(group, group.ids.indexOf(tabEntry.key))
-                                        .draggableHandle(
-                                            enabled = reorderingEnabled && !isClosing,
-                                            onDragStarted = {
-                                                // Chrome-like behavior: selecting a tab when starting to drag it
-                                                tabEntry.onClick()
-                                                // Dragging past the strip hands the tab to the workspace
-                                                // (a new window, or a drop on another strip).
-                                                crossWindowDrag.arm(tabEntry.key)
+                                        // Carried or sliding home, it is drawn over its neighbours.
+                                        .zIndex(if (tabDrag.animating == key) 1f else 0f)
+                                        .then(
+                                            // A tab closing (or just moved away) is no longer in the group.
+                                            if (reorderingEnabled && !isClosing && key in group.ids) {
+                                                Modifier.tabStripGrip(
+                                                    this@RtlAwareTabStripContent,
+                                                    tabDrag,
+                                                    workspaceTab,
+                                                    group.ids.indexOf(key),
+                                                )
+                                            } else {
+                                                Modifier
                                             },
                                         ),
                             ) {
@@ -504,7 +510,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                 LaunchedEffect(isClosing) {
                                     visible = !isClosing
                                 }
-                                Row {
+                                Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
                                     AnimatedVisibility(
                                         visible = visible,
                                         exit =
@@ -542,7 +548,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
-                                            isDragging = isBeingDragged,
+                                            isDragging = tabDrag.held == key,
                                         )
                                     }
                                 }
@@ -564,7 +570,6 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                 baseModifier
                             }
                         }.hoverable(interactionSource)
-                        .crossWindowTabDrag(workspace, crossWindowDrag)
                         .animateContentSize(animationSpec = tabsContainerAnimationSpec),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

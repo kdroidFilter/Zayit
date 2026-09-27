@@ -18,13 +18,18 @@ import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eWorkspaceScenario
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopWindows
+import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
+import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
@@ -390,7 +395,7 @@ fun main(args: Array<String>) {
                         }
 
                         // Efficiency mode only when EVERY window is minimized
-                        val allMinimized = windows.isNotEmpty() && windows.all { it.nucleusWindow?.isMinimized == true }
+                        val allMinimized = windows.isNotEmpty() && windows.all { it.windowState.isMinimized }
                         LaunchedEffect(allMinimized) {
                             if (allMinimized) {
                                 EnergyManager.enableEfficiencyMode()
@@ -420,15 +425,30 @@ fun main(args: Array<String>) {
                             )
                         }
 
-                        // The windows themselves: each open desktop's tab workspace opens its own.
+                        // Every open desktop's tabs, its windows' pane satellites and its tab-drag ghost.
                         val sessions by desktopManager.sessions.collectAsState()
                         sessions.forEach { session ->
-                            key(session.desktopId) {
-                                DesktopWindows(
-                                    session = session,
+                            key(session.desktopId) { DesktopTabs(session) }
+                        }
+
+                        // The windows themselves — one per open desktop window.
+                        windows.forEach { w ->
+                            key(w.id) {
+                                MainAppWindow(
+                                    openWindow = w,
                                     settingsWindowViewModel = settingsWindowViewModel,
                                     windowViewModelOwner = windowViewModelOwner,
+                                    onQuit = onQuit,
                                 )
+                            }
+                        }
+
+                        if (E2e.enabled) {
+                            LaunchedEffect(Unit) {
+                                E2eScenario.run(appGraph, extra = {
+                                    E2eWorkspaceScenario.run(it)
+                                    E2eTortureScenario.run(it)
+                                }) { exitApplication() }
                             }
                         }
 

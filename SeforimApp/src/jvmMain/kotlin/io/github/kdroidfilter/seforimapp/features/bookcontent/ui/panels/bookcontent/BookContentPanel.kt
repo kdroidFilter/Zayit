@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +33,12 @@ import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+
+/**
+ * Whether the window's panes for a tab are in place (see `PaneSync`): a book's text first lays out
+ * only then, so its initial scroll anchoring happens in its final frame. Always true outside a window.
+ */
+val LocalBookTextReady = staticCompositionLocalOf<(String) -> Boolean> { { true } }
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -122,6 +129,13 @@ private fun BookContentPanelContent(
 ) {
     val providers = uiState.providers ?: return
     val selectedBook = uiState.navigation.selectedBook ?: return
+    // Latched: once laid out, the text stays composed whatever the panes do next.
+    var laidOut by remember(selectedBook.id) { mutableStateOf(false) }
+    if (!laidOut && LocalBookTextReady.current(uiState.tabId)) laidOut = true
+    if (!laidOut) {
+        LoaderPanel()
+        return
+    }
     var isBookContentZoomInProgress by remember { mutableStateOf(false) }
 
     // Create LazyListState AFTER loading check, so anchorId is correctly set

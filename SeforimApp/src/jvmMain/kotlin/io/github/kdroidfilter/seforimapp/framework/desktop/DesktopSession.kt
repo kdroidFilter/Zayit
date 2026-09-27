@@ -4,8 +4,6 @@ package io.github.kdroidfilter.seforimapp.framework.desktop
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import dev.nucleusframework.window.ExperimentalNucleusApi
@@ -18,16 +16,16 @@ import io.github.kdroidfilter.seforim.tabs.TabItem
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.SimpleTabViewModelOwner
-import io.github.kdroidfilter.seforimapp.framework.session.SavedGeometry
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
 import io.github.kdroidfilter.seforimapp.framework.session.WindowSnapshot
 import java.util.UUID
 
-/** The measured docks of a window: the outer one's width, the inner one's width and height. */
+/** The measured docks of a window, in px: the outer one's width, the inner one's width and height. */
 data class DockSizes(
-    val outerWidth: Float,
-    val innerWidth: Float,
-    val innerHeight: Float,
+    val outerWidthPx: Int,
+    val innerWidthPx: Int,
+    val innerHeightPx: Int,
+    val density: Float,
 )
 
 /**
@@ -36,7 +34,7 @@ data class DockSizes(
  *
  * [tabs] is what the app declares against the workspace, one `Tab` each; per-tab ViewModels live in
  * [ownerOf] for as long as the tab exists, so moving a tab to another window keeps them hot. Each
- * window also gets its own pane dock ([panesOf]).
+ * group — one window of the app — also gets its own pane docks ([panesOf]).
  */
 @Stable
 class DesktopSession internal constructor(
@@ -47,21 +45,14 @@ class DesktopSession internal constructor(
     /** Every tab of the desktop, in declaration order. */
     val tabs = mutableStateListOf<TabItem>()
 
-    /** Live windows of this desktop, keyed by workspace group id. */
-    internal val windows = mutableStateMapOf<String, OpenWindow>()
-
-    private val navPaneWorkspaces = mutableStateMapOf<String, SatelliteWorkspace>()
-    private val linePaneWorkspaces = mutableStateMapOf<String, SatelliteWorkspace>()
+    // Plain maps: a workspace is created on first lookup, which may happen while a snapshot flow
+    // reads — a state write there would throw.
+    private val navPaneWorkspaces = HashMap<String, SatelliteWorkspace>()
+    private val linePaneWorkspaces = HashMap<String, SatelliteWorkspace>()
     private val owners = HashMap<String, SimpleTabViewModelOwner>()
 
     /** Tabs waiting for their first declaration: where they land, and the tab they replace. */
     private val pending = HashMap<String, Placement>()
-
-    /** Measured size of each window's docks (outer width, inner width and height), in dp. */
-    val dockSizes = mutableStateMapOf<String, DockSizes>()
-
-    /** Groups restored from a maximized window; maximized once when their window opens. */
-    internal val maximizeOnOpen = HashSet<String>()
 
     private class Placement(
         val groupId: String,
@@ -146,10 +137,9 @@ class DesktopSession internal constructor(
     }
 
     internal fun forgetWindow(groupId: String) {
-        dockSizes.remove(groupId)
+        restoredByGroup.remove(groupId)
         navPaneWorkspaces.remove(groupId)
         linePaneWorkspaces.remove(groupId)
-        maximizeOnOpen.remove(groupId)
     }
 
     /** Closes every tab (the windows follow); used when the desktop goes dormant. */
@@ -160,17 +150,24 @@ class DesktopSession internal constructor(
     internal fun dispose() {
         owners.values.forEach { it.clear() }
         owners.clear()
-        windows.values.forEach { it.dispose() }
-        windows.clear()
     }
 
     // ---- Persistence ----
 
-    /** Lays [snapshots] out as windows; each gets a fresh group id (never "group-N", see [newGroupId]). */
-    fun restore(snapshots: List<WindowSnapshot>) {
-        restoredWindows = snapshots.filter { it.destinations.isNotEmpty() }
+    /**
+     * What [restore] laid out for each group, until the workspace has placed it: restored tabs only
+     * reach their group once `Tab` declares them, and a save before that must not lose them.
+     */
+    private val restoredByGroup = HashMap<String, WindowSnapshot>()
+
+    /**
+     * Lays [snapshots] out as groups of the workspace — one per window, in order — and returns
+     * their ids (fresh UUIDs: the workspace's own tear-offs are named "group-N"). Geometry stays
+     * with the app's windows.
+     */
+    fun restore(snapshots: List<WindowSnapshot>): List<String> {
         val groups =
-            snapshots.filter { it.destinations.isNotEmpty() }.map { snapshot ->
+            snapshots.map { snapshot ->
                 val groupId = newGroupId()
                 snapshot.destinations.forEach { destination ->
                     val saved = snapshot.titles[destination.tabId]
@@ -182,59 +179,40 @@ class DesktopSession internal constructor(
                             tabType = saved?.tabType ?: tabTypeFor(destination),
                         )
                 }
-                val geometry = snapshot.geometry
-                if (geometry == null || geometry.placement == "Maximized") maximizeOnOpen += groupId
+                restoredByGroup[groupId] = snapshot
                 TabGroupSnapshot(
                     id = groupId,
                     tabIds = snapshot.destinations.map { it.tabId },
                     selectedId = snapshot.destinations.getOrNull(snapshot.selectedIndex)?.tabId,
-                    position = geometry?.visiblePosition(),
-                    size =
-                        geometry?.let { DpSize(it.width.coerceIn(400, 10_000).dp, it.height.coerceIn(300, 10_000).dp) }
-                            ?: workspace.defaultWindowSize,
+                    position = null,
+                    size = workspace.defaultWindowSize,
                 )
             }
         if (groups.isNotEmpty()) workspace.restore(TabLayoutSnapshot(groups))
+        return groups.map { it.id }
     }
 
-    /**
-     * What [restore] laid out, until the workspace has placed it: the restored tabs only reach
-     * their groups once `Tab` declares them, and a save before that must not lose them.
-     */
-    private var restoredWindows: List<WindowSnapshot> = emptyList()
+    /** [groupId] now exists in the workspace: it waits for nothing any more. */
+    internal fun onGroupPlaced(groupId: String) {
+        restoredByGroup.remove(groupId)
+    }
 
-    fun snapshotWindows(): List<WindowSnapshot> {
-        if (workspace.groups.isEmpty()) return restoredWindows.filter { w -> w.destinations.any { item(it.tabId) != null } }
-        restoredWindows = emptyList()
-        return workspace.snapshot().groups.map { group ->
-            val items = group.tabIds.mapNotNull(::item)
-            val maximized = windows[group.id]?.nucleusWindow?.isMaximized ?: (group.id in maximizeOnOpen)
-            WindowSnapshot(
-                destinations = items.map { stripEphemeral(it.destination) },
-                selectedIndex = items.indexOfFirst { it.destination.tabId == group.selectedId }.coerceAtLeast(0),
-                titles = items.associate { it.destination.tabId to SerializableTabTitle(it.title, it.tabType) },
-                geometry =
-                    SavedGeometry(
-                        x =
-                            group.position
-                                ?.x
-                                ?.value
-                                ?.toInt() ?: SavedGeometry.UNSPECIFIED,
-                        y =
-                            group.position
-                                ?.y
-                                ?.value
-                                ?.toInt() ?: SavedGeometry.UNSPECIFIED,
-                        width =
-                            group.size.width.value
-                                .toInt(),
-                        height =
-                            group.size.height.value
-                                .toInt(),
-                        placement = if (maximized) "Maximized" else "Floating",
-                    ),
-            )
+    /** True while [groupId] was restored and is waiting for its tabs to be declared. */
+    fun isAwaiting(groupId: String): Boolean = workspace.group(groupId) == null && groupId in restoredByGroup
+
+    /** The tabs of window [groupId] for the session file: its group, or what was restored into it. */
+    fun windowSnapshot(groupId: String): WindowSnapshot? {
+        val group = workspace.group(groupId)
+        if (group == null) {
+            return restoredByGroup[groupId]?.takeIf { w -> w.destinations.any { item(it.tabId) != null } }
         }
+        restoredByGroup.remove(groupId)
+        val items = group.ids.mapNotNull(::item)
+        return WindowSnapshot(
+            destinations = items.map { stripEphemeral(it.destination) },
+            selectedIndex = items.indexOfFirst { it.destination.tabId == group.selectedId }.coerceAtLeast(0),
+            titles = items.associate { it.destination.tabId to SerializableTabTitle(it.title, it.tabType) },
+        )
     }
 
     /** Ids of every tab, placed or still pending. */
@@ -270,8 +248,5 @@ class DesktopSession internal constructor(
                 is TabsDestination.BookContent -> destination.copy(lineId = null)
                 else -> destination
             }
-
-        private fun SavedGeometry.visiblePosition(): DpOffset? =
-            if (x == SavedGeometry.UNSPECIFIED || !isVisibleOnAnyScreen(x, y, width, height)) null else DpOffset(x.dp, y.dp)
     }
 }

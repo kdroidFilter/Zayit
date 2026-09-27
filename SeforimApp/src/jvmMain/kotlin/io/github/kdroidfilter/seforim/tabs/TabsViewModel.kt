@@ -32,9 +32,12 @@ import java.util.UUID
  */
 @Stable
 class TabsViewModel internal constructor(
-    private val session: DesktopSession,
-    private val groupId: String,
+    private val sessionOf: () -> DesktopSession,
+    private val groupIdOf: () -> String,
 ) {
+    private val session: DesktopSession get() = sessionOf()
+    private val groupId: String get() = groupIdOf()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _state = MutableStateFlow(compute())

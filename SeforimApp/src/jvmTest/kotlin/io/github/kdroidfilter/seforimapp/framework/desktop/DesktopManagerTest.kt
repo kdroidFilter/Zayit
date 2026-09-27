@@ -4,6 +4,7 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
@@ -21,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -46,7 +48,9 @@ class DesktopManagerTest {
         DesktopManager(
             tabPersistedStateStore = store,
             titleUpdateManager = TabTitleUpdateManager(),
-            searchHomeViewModelFactory = { mockk(relaxed = true) },
+            searchHomeViewModelFactory = {
+                SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+            },
             defaultDesktopName = "D1",
             bootState = bootState,
         )
@@ -131,18 +135,39 @@ class DesktopManagerTest {
     }
 
     @Test
-    fun `the last tab of the last desktop closing quits, of another desktop puts it to sleep`() {
+    fun `closing a desktop's only window puts it to sleep, the app's last window is never closed here`() {
         val dm = manager()
-        var quit = false
-        dm.onQuitRequest = { quit = true }
         val second = dm.createDesktopInNewWindow("D2")
+        assertEquals(2, dm.windows.value.size)
 
-        dm.onSessionEmptied(dm.sessions.value.first { it.desktopId == second })
-        assertFalse(quit)
+        dm.closeWindow(dm.windowsOf(second).single().id)
         assertFalse(dm.isDesktopOpen(second))
         assertTrue(dm.desktops.value.any { it.id == second })
+        assertEquals(1, dm.windows.value.size)
 
-        dm.onSessionEmptied(dm.sessions.value.single())
-        assertTrue(quit)
+        dm.closeWindow(
+            dm.windows.value
+                .single()
+                .id,
+        )
+        assertEquals(1, dm.windows.value.size, "the quit path is the caller's")
+    }
+
+    @Test
+    fun `switching desktop keeps the window and brings the desktop back as it was`() {
+        val dm = manager()
+        val window = dm.windows.value.single()
+        val first = window.desktopId.value
+        val firstTabs = window.session.tabIds()
+
+        val second = dm.createDesktop(window.id, "D2")
+        assertSame(window, dm.windows.value.single(), "switched in place")
+        assertEquals(second, window.desktopId.value)
+
+        window.clearSwitching() // TabsContent clears it once the desktop has rendered
+        dm.switchTo(window.id, first)
+        assertSame(window, dm.windows.value.single())
+        assertEquals(first, window.desktopId.value)
+        assertEquals(firstTabs, window.session.tabIds())
     }
 }

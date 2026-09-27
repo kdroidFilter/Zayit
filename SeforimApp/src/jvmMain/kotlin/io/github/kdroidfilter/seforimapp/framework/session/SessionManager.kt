@@ -5,10 +5,12 @@ package io.github.kdroidfilter.seforimapp.framework.session
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
@@ -19,6 +21,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
@@ -33,7 +36,8 @@ import java.io.File
 object SessionManager {
     private val proto = ProtoBuf
 
-    private val _isRestoringSession = MutableStateFlow(hasSavedSessionToRestore())
+    // Guarded: outside the app (unit tests) FileKit and the settings are not initialized.
+    private val _isRestoringSession = MutableStateFlow(runCatching { hasSavedSessionToRestore() }.getOrDefault(false))
     val isRestoringSession: StateFlow<Boolean> = _isRestoringSession
 
     private fun sessionDir(): File {
@@ -50,7 +54,8 @@ object SessionManager {
 
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled(appGraph: AppGraph) {
-        if (!AppSettings.isPersistSessionEnabled()) return
+        // The end-to-end harness must never overwrite the user's session.
+        if (E2e.enabled || !AppSettings.isPersistSessionEnabled()) return
 
         val desktopManager: DesktopManager = appGraph.desktopManager
         val desktopsState = desktopManager.buildDesktopsState()
@@ -78,23 +83,19 @@ object SessionManager {
      * The saved session, decoded synchronously at boot so the first frame already has its windows:
      * an application composing no window at all is closed at once. Null when disabled or absent.
      */
-    fun loadBootState(): DesktopsState? {
-        if (!AppSettings.isPersistSessionEnabled()) return null
-        return loadDesktopsState()?.takeIf { it.desktops.isNotEmpty() }
+    fun loadBootState(repository: SeforimRepository): DesktopsState? {
+        if (E2e.enabled || !AppSettings.isPersistSessionEnabled()) return null
+        val state = loadDesktopsState()?.takeIf { it.desktops.isNotEmpty() } ?: return null
+        // Tabs saved without a title (book names come from the DB) are named before they are shown.
+        return runCatching { runBlocking { enrichMissingTabTitles(state, repository) } }.getOrDefault(state)
     }
 
-    /** Fills in the titles the restored tabs were saved without (book names are looked up in the DB). */
-    suspend fun restoreIfEnabled(appGraph: AppGraph) {
+    /** Clears the restoring flag once the restored tabs' ViewModels have been created. */
+    suspend fun restoreIfEnabled(
+        @Suppress("UNUSED_PARAMETER") appGraph: AppGraph,
+    ) {
         try {
             if (!AppSettings.isPersistSessionEnabled()) return
-            val state = appGraph.desktopManager.buildDesktopsState()
-            val enriched = enrichMissingTabTitles(state, appGraph)
-            val sessions = appGraph.desktopManager.sessions.value
-            enriched.snapshots.values.flatMap { it.effectiveWindows() }.forEach { window ->
-                window.titles.forEach { (tabId, title) ->
-                    sessions.firstOrNull { it.item(tabId)?.title?.isBlank() == true }?.updateTitle(tabId, title.title, title.tabType)
-                }
-            }
             // Give Compose one recomposition cycle to create the restored tabs' ViewModels (whose
             // initial state has isLoading=true); clearing the flag earlier flashes the Home page.
             withContext(NonCancellable) { delay(150) }
@@ -181,7 +182,7 @@ object SessionManager {
     private suspend fun computeTabTitles(
         destinations: List<TabsDestination>,
         tabStates: Map<String, TabPersistedState>,
-        appGraph: AppGraph,
+        repository: SeforimRepository,
     ): Map<String, Pair<String, TabType>> {
         val titles = mutableMapOf<String, Pair<String, TabType>>()
         for (dest in destinations) {
@@ -198,7 +199,7 @@ object SessionManager {
                 is TabsDestination.BookContent -> {
                     val bookId = tabStates[tabId]?.bookContent?.selectedBookId?.takeIf { it > 0 } ?: dest.bookId
                     if (bookId > 0) {
-                        val book = withContext(Dispatchers.IO) { appGraph.repository.getBookCore(bookId) }
+                        val book = withContext(Dispatchers.IO) { repository.getBookCore(bookId) }
                         if (book != null) {
                             titles[tabId] = book.title to TabType.BOOK
                         }
@@ -223,7 +224,7 @@ object SessionManager {
 
     private suspend fun enrichMissingTabTitles(
         state: DesktopsState,
-        appGraph: AppGraph,
+        repository: SeforimRepository,
     ): DesktopsState {
         val enrichedSnapshots =
             state.snapshots.mapValues { (_, snapshot) ->
@@ -238,7 +239,7 @@ object SessionManager {
                         if (destinationsMissingTitles.isEmpty()) {
                             windowSnapshot
                         } else {
-                            val computedTitles = computeTabTitles(destinationsMissingTitles, snapshot.tabStates, appGraph)
+                            val computedTitles = computeTabTitles(destinationsMissingTitles, snapshot.tabStates, repository)
                             if (computedTitles.isEmpty()) {
                                 windowSnapshot
                             } else {

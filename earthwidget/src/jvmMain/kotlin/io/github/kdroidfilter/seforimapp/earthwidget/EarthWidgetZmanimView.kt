@@ -1,5 +1,8 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +13,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -20,6 +24,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.text.font.FontWeight
@@ -32,9 +37,10 @@ import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
 import com.kosherjava.zmanim.util.GeoLocation
+import io.github.erkko68.filament.compose.rememberFilamentEngine
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -207,7 +213,6 @@ fun EarthWidgetZmanimView(
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -512,7 +517,6 @@ fun EarthWidgetZmanimView(
             isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-            renderDispatcher = renderDispatcher,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -614,7 +618,6 @@ fun EarthWidgetMoonSkyView(
                 (with(density) { sphereSize.toPx() } * 1.35f).roundToInt().coerceAtLeast(160)
             }
         }
-    val renderer = remember { EarthWidgetRenderer() }
     val moonState =
         remember(
             resolvedRenderSizePx,
@@ -642,19 +645,21 @@ fun EarthWidgetMoonSkyView(
             )
         }
 
-    MoonFromMarkerWidgetView(
-        renderer = renderer,
-        moonTexture = null,
+    val engine = rememberFilamentEngine()
+    MoonFromMarkerSceneView(
         state = moonState,
-        modifier = modifier,
-        sphereSize = sphereSize,
-        animateTransitions = true,
+        engine = engine,
+        moonTexture = rememberWidgetTextures(engine).moon,
+        modifier = modifier.size(sphereSize),
     )
 }
 
 // ============================================================================
 // REUSABLE UI COMPONENTS
 // ============================================================================
+
+/** Higher = the Earth stops sooner after a fling. */
+private const val EARTH_FLING_FRICTION = 1.5f
 
 /**
  * Earth scene with drag-to-rotate support.
@@ -681,7 +686,6 @@ private fun EarthSceneContent(
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val density = LocalDensity.current
     val degreesPerPx =
@@ -691,15 +695,37 @@ private fun EarthSceneContent(
             with(density) { 180f / sphereSize.toPx() }
         }
 
+    val scope = rememberCoroutineScope()
+    var fling by remember { mutableStateOf<Job?>(null) }
+
     Box(
         modifier =
-            modifier.pointerInput(Unit) {
+            modifier.pointerInput(degreesPerPx) {
+                val velocityTracker = VelocityTracker()
                 detectDragGestures(
-                    onDragStart = { onDragStateChange(true) },
-                    onDragEnd = { onDragStateChange(false) },
+                    onDragStart = {
+                        fling?.cancel()
+                        velocityTracker.resetTracking()
+                        onDragStateChange(true)
+                    },
+                    onDragEnd = {
+                        // Inertia: keep spinning with the release velocity, decaying to a stop.
+                        // The drag state stays on meanwhile so the rotation isn't re-smoothed.
+                        val velocityDegPerSec = -velocityTracker.calculateVelocity().x * degreesPerPx
+                        fling =
+                            scope.launch {
+                                var previous = 0f
+                                AnimationState(0f, velocityDegPerSec).animateDecay(exponentialDecay(EARTH_FLING_FRICTION)) {
+                                    onEarthRotationDelta(value - previous)
+                                    previous = value
+                                }
+                                onDragStateChange(false)
+                            }
+                    },
                     onDragCancel = { onDragStateChange(false) },
                 ) { change, dragAmount ->
                     change.consume()
+                    velocityTracker.addPosition(change.uptimeMillis, change.position)
                     // Horizontal drag rotates the Earth (negative because dragging right
                     // should rotate the Earth to show what's on the left)
                     onEarthRotationDelta(-dragAmount.x * degreesPerPx)
@@ -736,7 +762,6 @@ private fun EarthSceneContent(
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-            renderDispatcher = renderDispatcher,
         )
     }
 }

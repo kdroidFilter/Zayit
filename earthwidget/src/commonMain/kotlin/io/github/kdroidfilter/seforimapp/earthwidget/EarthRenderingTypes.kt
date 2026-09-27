@@ -7,32 +7,6 @@ import kotlin.math.sqrt
 // ============================================================================
 
 /**
- * Holds texture data for sphere rendering.
- *
- * @property argb Pixel data in ARGB format.
- * @property width Texture width in pixels.
- * @property height Texture height in pixels.
- */
-internal data class EarthTexture(
-    val argb: IntArray,
-    val width: Int,
-    val height: Int,
-) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is EarthTexture) return false
-        return width == other.width && height == other.height && argb.contentEquals(other.argb)
-    }
-
-    override fun hashCode(): Int {
-        var result = argb.contentHashCode()
-        result = 31 * result + width
-        result = 31 * result + height
-        return result
-    }
-}
-
-/**
  * Represents light direction for illumination calculations.
  *
  * @property lightDegrees Horizontal angle of light source (azimuth).

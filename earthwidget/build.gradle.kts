@@ -23,6 +23,7 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.components.resources)
+            implementation(libs.filament.compose)
         }
 
         jvmMain.dependencies {

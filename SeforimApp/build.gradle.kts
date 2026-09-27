@@ -228,6 +228,9 @@ nucleus.application {
         imageName = "zayit"
         optimization = NativeImageOptimization.LEVEL_3
         nativeImageConfigBaseDir.set(layout.projectDirectory.dir("src/graalvm"))
+        // Jewel's build-time-initialized MacPlatformServices captures an SLF4J logger;
+        // Nucleus 2.6 no longer forces org.slf4j to build time, so opt back in.
+        buildArgs.add("--initialize-at-build-time=org.slf4j")
     }
     nativeDistributions {
         appName = "זית"

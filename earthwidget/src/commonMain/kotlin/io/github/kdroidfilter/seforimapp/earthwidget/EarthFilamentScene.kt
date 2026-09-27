@@ -40,7 +40,9 @@ import io.github.erkko68.filament.compose.scene.toLinearColor
 import seforimapp.earthwidget.generated.resources.Res
 import kotlin.math.PI
 import kotlin.math.atan
+import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -87,6 +89,17 @@ internal data class EarthRenderState(
     val kiddushLevanaStartDegrees: Float? = null,
     val kiddushLevanaEndDegrees: Float? = null,
     val kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    /** Greenwich sidereal angle: spins the Earth in [SceneFrame]. */
+    val siderealDegrees: Float = 0f,
+    val sunLongitudeDegrees: Float = 0f,
+    /** Ecliptic longitude of the Moon's ascending node. */
+    val moonNodeDegrees: Float = 0f,
+    /** Camera azimuth around the ecliptic pole, from the Sun's: the camera is Sun-fixed, so time only spins the Earth. */
+    val viewAzimuthFromSunDegrees: Float = 0f,
+    /** User camera orbit around the ecliptic pole, added to [viewAzimuthFromSunDegrees]. */
+    val viewYawDegrees: Float = 0f,
+    /** Camera elevation over the ecliptic, from the default one. */
+    val viewPitchDegrees: Float = 0f,
 )
 
 /** Rendering parameters for the Moon-from-marker inset view. */
@@ -180,11 +193,21 @@ internal fun EarthMoonSceneView(
             initialIrradianceSh = SphericalHarmonics(1, floatArrayOf(1f, 1f, 1f)),
             initialIntensity = EARTH_NIGHT_AMBIENT * IBL_PER_AMBIENT_UNIT,
         )
-    val sunDir = sunVectorFromAngles(state.lightDegrees, state.sunElevationDegrees)
-    val moonOrbit = transformMoonOrbitPosition(state.moonOrbitDegrees, geometry.orbitRadius, geometry.viewPitchRad)
+    val frame = SceneFrame(state, geometry)
+    val sunDir = frame.view * frame.sun
+    val moonWorld = frame.orbitPoint(state.moonOrbitDegrees)
+    val moonCam = frame.view * moonWorld * geometry.orbitRadius
+    // ponytail: rebuilt whenever the camera or the sky moves (drag, time change); ~2k vertices, cheap so far.
     val orbitMeshes =
-        remember(geometry, state.kiddushLevanaStartDegrees, state.kiddushLevanaEndDegrees) {
-            OrbitMeshes.build(geometry, state.kiddushLevanaStartDegrees, state.kiddushLevanaEndDegrees)
+        remember(
+            frame.view,
+            state.sunLongitudeDegrees,
+            state.moonNodeDegrees,
+            geometry,
+            state.kiddushLevanaStartDegrees,
+            state.kiddushLevanaEndDegrees,
+        ) {
+            OrbitMeshes.build(frame, geometry, state.kiddushLevanaStartDegrees, state.kiddushLevanaEndDegrees)
         }
 
     Box(modifier) {
@@ -207,9 +230,9 @@ internal fun EarthMoonSceneView(
                     material = rememberTexturedMaterialInstance(texture, roughness = 0.7f, sampler = BilinearRepeat),
                     mesh = UnitSphereMesh,
                     scale = geometry.earthRadiusPx,
-                    rotation = bodyRotation(state.earthRotationDegrees, state.earthTiltDegrees),
+                    rotation = frame.view * frame.earth,
                 )
-                Marker(state, geometry)
+                Marker(state, geometry, frame)
             }
             if (showMoon) {
                 textures.moon?.let { texture ->
@@ -217,8 +240,11 @@ internal fun EarthMoonSceneView(
                         material = rememberTexturedMaterialInstance(texture, roughness = 1f, sampler = BilinearRepeat),
                         mesh = UnitSphereMesh,
                         scale = geometry.moonRadiusWorldPx,
-                        position = Position(moonOrbit.x, moonOrbit.yCam, moonOrbit.zCam),
-                        rotation = bodyRotation(state.moonOrbitDegrees + state.earthRotationDegrees, 0f),
+                        position = Position(moonCam.x, moonCam.y, moonCam.z),
+                        // Tidally locked: the near side (texture longitude 0, body +Z) faces the Earth.
+                        rotation =
+                            frame.view *
+                                Rotation.axisAngle(Direction.Up, atan2(-moonWorld.x, -moonWorld.z) * RAD_TO_DEG_F),
                     )
                 }
             }
@@ -309,13 +335,9 @@ private fun FilamentSceneScope.MeshNode(
 private fun FilamentSceneScope.Marker(
     state: EarthRenderState,
     geometry: SceneGeometry,
+    frame: SceneFrame,
 ) {
-    val p =
-        earthBodyToWorld(
-            latLonToUnitVector(state.markerLatitudeDegrees, state.markerLongitudeDegrees),
-            state.earthRotationDegrees,
-            state.earthTiltDegrees,
-        )
+    val p = frame.view * frame.earth * latLonToUnitVector(state.markerLatitudeDegrees, state.markerLongitudeDegrees).toDirection()
     val radius = max(MIN_MARKER_RADIUS_PX, geometry.earthSizePx * MARKER_RADIUS_FRACTION)
     // ponytail: the old white outline ring is gone; a red dot on the surface reads fine at widget size.
     Sphere(
@@ -333,14 +355,16 @@ private fun FilamentSceneScope.Orbit(
     kiddushLevanaColorRgb: Int,
 ) {
     // Unlit colour pre-multiplied over the black sky stands in for the old alpha blending.
-    val front = rememberUnlitColorMaterialInstance(dimmed(ORBIT_COLOR_RGB, ORBIT_ALPHA_FRONT))
-    val back = rememberUnlitColorMaterialInstance(dimmed(ORBIT_COLOR_RGB, ORBIT_ALPHA_BACK))
-    meshes.orbitFront?.let { MeshNode(front, it, 1f) }
-    meshes.orbitBack?.let { MeshNode(back, it, 1f) }
-    val klFront = rememberUnlitColorMaterialInstance(dimmed(kiddushLevanaColorRgb, KIDDUSH_LEVANA_ALPHA_FRONT))
-    val klBack = rememberUnlitColorMaterialInstance(dimmed(kiddushLevanaColorRgb, KIDDUSH_LEVANA_ALPHA_BACK))
-    meshes.klFront?.let { MeshNode(klFront, it, 1f) }
-    meshes.klBack?.let { MeshNode(klBack, it, 1f) }
+    for (band in 0 until ORBIT_DEPTH_BANDS) {
+        val depth = (band + 0.5f) / ORBIT_DEPTH_BANDS
+        val orbit = rememberUnlitColorMaterialInstance(dimmed(ORBIT_COLOR_RGB, depthAlpha(depth, ORBIT_ALPHA_BACK, ORBIT_ALPHA_FRONT)))
+        meshes.orbit[band]?.let { MeshNode(orbit, it, 1f) }
+        val kl =
+            rememberUnlitColorMaterialInstance(
+                dimmed(kiddushLevanaColorRgb, depthAlpha(depth, KIDDUSH_LEVANA_ALPHA_BACK, KIDDUSH_LEVANA_ALPHA_FRONT)),
+            )
+        meshes.kiddushLevana[band]?.let { MeshNode(kl, it, 1f) }
+    }
 }
 
 private fun dimmed(
@@ -388,30 +412,6 @@ private fun GhostOutline(modifier: Modifier = Modifier) {
 // ============================================================================
 // GEOMETRY
 // ============================================================================
-
-/**
- * Node rotation for a textured body. The old shader mapped a world normal to texture space with
- * `Ry(yaw) · Rz(tilt)`; the node rotation is its inverse, `Rz(-tilt) · Ry(-yaw)`.
- */
-private fun bodyRotation(
-    yawDegrees: Float,
-    tiltDegrees: Float,
-): Rotation =
-    Rotation.axisAngle(Direction(0f, 0f, 1f), -tiltDegrees) *
-        Rotation.axisAngle(Direction.Up, -yawDegrees)
-
-/** Same transform as [bodyRotation], applied to a body-space vector (used for the marker). */
-private fun earthBodyToWorld(
-    v: Vec3f,
-    yawDegrees: Float,
-    tiltDegrees: Float,
-): Vec3f {
-    val yaw = yawDegrees * DEG_TO_RAD_F
-    val x1 = v.x * cos(yaw) - v.z * sin(yaw)
-    val z1 = v.x * sin(yaw) + v.z * cos(yaw)
-    val tilt = tiltDegrees * DEG_TO_RAD_F
-    return Vec3f(x1 * cos(tilt) + v.y * sin(tilt), -x1 * sin(tilt) + v.y * cos(tilt), z1)
-}
 
 internal class MeshArrays(
     val positions: FloatArray,
@@ -470,15 +470,14 @@ internal fun latLonSphere(
     return MeshArrays(positions, positions.copyOf(), uvs, indices)
 }
 
-/** Orbit and Kiddush Levana arc as thin tubes, split at zCam = 0 so the far half can be dimmed. */
+/** Orbit and Kiddush Levana arc as thin tubes, cut into [ORBIT_DEPTH_BANDS] depth bands (far → near) to fade the far side. */
 private class OrbitMeshes(
-    val orbitFront: MeshArrays?,
-    val orbitBack: MeshArrays?,
-    val klFront: MeshArrays?,
-    val klBack: MeshArrays?,
+    val orbit: List<MeshArrays?>,
+    val kiddushLevana: List<MeshArrays?>,
 ) {
     companion object {
         fun build(
+            frame: SceneFrame,
             geometry: SceneGeometry,
             klStart: Float?,
             klEnd: Float?,
@@ -486,19 +485,31 @@ private class OrbitMeshes(
             val points =
                 (0..ORBIT_STEPS).map { i ->
                     val deg = i * 360f / ORBIT_STEPS
-                    deg to transformMoonOrbitPosition(deg, geometry.orbitRadius, geometry.viewPitchRad)
+                    val p = frame.view * frame.orbitPoint(deg) * geometry.orbitRadius
+                    deg to MoonOrbitPosition(x = p.x, yCam = p.y, zCam = p.z)
                 }
 
+            val bands =
+                points.map { (_, p) ->
+                    val depth = orbitDepth(p.zCam, geometry.orbitRadius)
+                    (depth * ORBIT_DEPTH_BANDS).toInt().coerceIn(0, ORBIT_DEPTH_BANDS - 1)
+                }
+
+            // A point also closes the previous point's band, so neighbouring bands join without a gap.
             fun tube(
                 radius: Float,
-                keep: (Float, MoonOrbitPosition) -> Boolean,
-            ) = tubeMesh(points.map { (deg, pos) -> if (keep(deg, pos)) pos else null }, radius)
+                band: Int,
+                keep: (Float) -> Boolean,
+            ) = tubeMesh(
+                points.mapIndexed { i, (deg, pos) ->
+                    pos.takeIf { keep(deg) && (bands[i] == band || bands.getOrNull(i - 1) == band) }
+                },
+                radius,
+            )
             val inKl = { deg: Float -> klStart != null && klEnd != null && isAngleInRange(deg, klStart, klEnd) }
             return OrbitMeshes(
-                orbitFront = tube(ORBIT_TUBE_RADIUS) { _, p -> p.zCam >= 0f },
-                orbitBack = tube(ORBIT_TUBE_RADIUS) { _, p -> p.zCam < 0f },
-                klFront = tube(KIDDUSH_LEVANA_TUBE_RADIUS) { d, p -> inKl(d) && p.zCam >= 0f },
-                klBack = tube(KIDDUSH_LEVANA_TUBE_RADIUS) { d, p -> inKl(d) && p.zCam < 0f },
+                orbit = List(ORBIT_DEPTH_BANDS) { tube(ORBIT_TUBE_RADIUS, it) { true } },
+                kiddushLevana = List(ORBIT_DEPTH_BANDS) { tube(KIDDUSH_LEVANA_TUBE_RADIUS, it, inKl) },
             )
         }
     }
@@ -691,24 +702,142 @@ internal fun isAngleInRange(
     return if (s <= e) a in s..e else a >= s || a <= e
 }
 
+/** 0 = the orbit's farthest point from the viewer, 1 = its nearest. */
+internal fun orbitDepth(
+    zCam: Float,
+    orbitRadius: Float,
+): Float = if (orbitRadius > 0f) ((zCam / orbitRadius + 1f) / 2f).coerceIn(0f, 1f) else 1f
+
+/** Alpha fading from [back] at the far side to [front] at the near side. */
+internal fun depthAlpha(
+    depth: Float,
+    back: Int,
+    front: Int,
+): Int = (back + (front - back) * depth).toInt()
+
 internal data class OrbitScreenPosition(
     val x: Float,
     val y: Float,
     val zCam: Float,
+    val depth: Float,
+    val hiddenByEarth: Boolean,
 )
 
 /** Moon orbit position projected into screen space, for UI overlays (labels) aligned with the rendered orbit. */
 internal fun computeOrbitScreenPosition(
-    outputSizePx: Int,
+    state: EarthRenderState,
     orbitDegrees: Float,
-    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ): OrbitScreenPosition {
-    val geometry = computeSceneGeometry(outputSizePx, earthSizeFraction)
-    val orbit = transformMoonOrbitPosition(orbitDegrees, geometry.orbitRadius, geometry.viewPitchRad)
-    val orbitScale = perspectiveScale(geometry.cameraZ, orbit.zCam)
+    val geometry = computeSceneGeometry(state.renderSizePx, state.earthSizeFraction)
+    val orbit = SceneFrame(state, geometry).let { it.view * it.orbitPoint(orbitDegrees) * geometry.orbitRadius }
+    val orbitScale = perspectiveScale(geometry.cameraZ, orbit.z)
+    val x = geometry.sceneHalf + orbit.x * orbitScale
+    val y = geometry.sceneHalf - orbit.y * orbitScale
     return OrbitScreenPosition(
-        x = geometry.sceneHalf + orbit.x * orbitScale,
-        y = geometry.sceneHalf - orbit.yCam * orbitScale,
-        zCam = orbit.zCam,
+        x = x,
+        y = y,
+        zCam = orbit.z,
+        depth = orbitDepth(orbit.z, geometry.orbitRadius),
+        // Behind the Earth's disc (its silhouette is ~the z = 0 radius; the camera sits well back)
+        hiddenByEarth = orbit.z < 0f && hypot(x - geometry.sceneHalf, y - geometry.sceneHalf) < geometry.earthRadiusPx,
     )
+}
+
+// ============================================================================
+// PHYSICAL FRAME
+// ============================================================================
+
+private const val RAD_TO_DEG_F = (180.0 / PI).toFloat()
+private val AxisX = Direction(1f, 0f, 0f)
+private val AxisZ = Direction(0f, 0f, 1f)
+
+/** Earth body axes (see [latLonToUnitVector]) onto equatorial ones: x→y→z→x, so Greenwich goes to +X, north to +Z. */
+private val BodyToEquatorial = Rotation.axisAngle(Direction(1f, 1f, 1f), 120f)
+
+private fun Vec3f.toDirection() = Direction(x, y, z)
+
+private fun earthToWorld(
+    siderealDegrees: Float,
+    obliquityDegrees: Float,
+): Rotation =
+    Rotation.axisAngle(AxisX, -(90f + obliquityDegrees)) *
+        Rotation.axisAngle(AxisZ, siderealDegrees) *
+        BodyToEquatorial
+
+/** Ecliptic longitude → world direction (on the ecliptic). */
+private fun eclipticDirection(longitudeDegrees: Float): Direction {
+    val l = longitudeDegrees * DEG_TO_RAD_F
+    return Direction(cos(l), 0f, -sin(l))
+}
+
+/** Camera azimuth (about the ecliptic pole) that brings [d] in front of the viewer. */
+private fun azimuthOf(d: Direction): Float = atan2(-d.x, d.z) * RAD_TO_DEG_F
+
+/** The Sun-relative camera azimuth that puts the marker in front at this instant: the anchor on open / recenter. */
+internal fun markerAzimuthFromSunDegrees(
+    siderealDegrees: Float,
+    sunLongitudeDegrees: Float,
+    obliquityDegrees: Float,
+    markerLatitudeDegrees: Float,
+    markerLongitudeDegrees: Float,
+): Float {
+    val marker =
+        earthToWorld(siderealDegrees, obliquityDegrees) * latLonToUnitVector(markerLatitudeDegrees, markerLongitudeDegrees).toDirection()
+    return azimuthOf(marker) - azimuthOf(eclipticDirection(sunLongitudeDegrees))
+}
+
+/**
+ * The Earth–Moon system as a real sky, plus the camera looking at it.
+ *
+ * World: +Y = north ecliptic pole, +X = vernal equinox, ecliptic longitude λ at (cos λ, 0, −sin λ), so the Sun
+ * and Moon move counter-clockwise seen from the north, as they do. The Earth turns with Greenwich sidereal time
+ * about an axis tilted by the obliquity, the Sun sits at its ecliptic longitude, and the Moon's orbit is inclined
+ * on its real node line, the Moon at its Hebrew-day elongation from the Sun (day 1 = conjunction).
+ *
+ * Nothing in the world depends on the user: dragging only moves the camera, around the ecliptic pole
+ * ([EarthRenderState.viewYawDegrees]) and in elevation over the ecliptic ([EarthRenderState.viewPitchDegrees]).
+ * The camera is Sun-fixed, so changing the time spins the Earth under its day/night line and nothing else jumps.
+ */
+internal class SceneFrame(
+    state: EarthRenderState,
+    geometry: SceneGeometry,
+) {
+    private val sunLongitude = state.sunLongitudeDegrees
+    private val node = state.moonNodeDegrees * DEG_TO_RAD_F
+
+    /** Earth body → world. */
+    val earth: Rotation = earthToWorld(state.siderealDegrees, state.earthTiltDegrees)
+
+    /** Unit vector from the Earth to the Sun. */
+    val sun: Direction = eclipticDirection(sunLongitude)
+
+    /** World → camera, fixed relative to the Sun (see [markerAzimuthFromSunDegrees] for the default). */
+    val view: Rotation =
+        run {
+            val azimuth = azimuthOf(sun) + state.viewAzimuthFromSunDegrees + state.viewYawDegrees
+            val elevation = geometry.viewPitchRad * RAD_TO_DEG_F + state.viewPitchDegrees
+            Rotation.axisAngle(AxisX, elevation) * Rotation.axisAngle(Direction.Up, azimuth)
+        }
+
+    /** World unit vector of the Moon's orbit at [orbitDegrees], the Hebrew-day angle of the orbit labels. */
+    fun orbitPoint(orbitDegrees: Float): Direction =
+        orbitalPoint(
+            argumentOfLatitude = (sunLongitude + orbitDegrees - ORBIT_DAY_LABEL_START_DEGREES) * DEG_TO_RAD_F - node,
+            inclination = MOON_ORBIT_INCLINATION_DEG * DEG_TO_RAD_F,
+        )
+
+    /** Point of an orbit inclined by [inclination] on the ascending node [node] (0 = the ecliptic, from the equinox). */
+    private fun orbitalPoint(
+        argumentOfLatitude: Float,
+        inclination: Float,
+        nodeRad: Float = if (inclination == 0f) 0f else node,
+    ): Direction {
+        val cu = cos(argumentOfLatitude)
+        val su = sin(argumentOfLatitude)
+        val x = cos(nodeRad) * cu - sin(nodeRad) * su * cos(inclination)
+        val y = sin(nodeRad) * cu + cos(nodeRad) * su * cos(inclination)
+        val z = su * sin(inclination)
+        // Ecliptic (x, y, z) → world (x, z, −y)
+        return Direction(x, z, -y)
+    }
 }

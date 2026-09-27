@@ -132,6 +132,12 @@ internal fun computeMoonHorizontalPosition(
     )
 }
 
+/** Mean ecliptic longitude of the Moon's ascending node (Meeus 47.7), degrees. */
+internal fun computeMoonAscendingNodeLongitude(julianDay: Double): Float {
+    val t = (julianDay - J2000_EPOCH_JD) / DAYS_PER_JULIAN_CENTURY
+    return normalizeAngleDeg(125.0445479 - 1934.1362891 * t).toFloat()
+}
+
 /**
  * Computes the Sun's ecliptic longitude using a simplified algorithm.
  */

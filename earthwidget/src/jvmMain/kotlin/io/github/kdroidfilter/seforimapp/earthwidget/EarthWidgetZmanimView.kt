@@ -54,6 +54,8 @@ import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
 import java.time.LocalDate
 import java.util.*
+import kotlin.math.PI
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 // ============================================================================
@@ -71,9 +73,6 @@ private const val DEFAULT_MARKER_ELEVATION = 800.0
 
 /** Default Earth axial tilt in degrees. */
 private const val DEFAULT_EARTH_TILT_DEGREES = 23.44f
-
-/** Starting orbit angle for day labels (day 1). */
-private const val ORBIT_DAY_LABEL_START_DEGREES = 90f
 
 /**
  * Lunar synodic month in milliseconds.
@@ -227,8 +226,13 @@ fun EarthWidgetZmanimView(
     var showKiddushLevana by remember { mutableStateOf(initialShowKiddushLevana) }
     val showKiddushLevanaLegend = showKiddushLevana && showOrbitPath
 
-    // Earth rotation offset from user drag (added to marker longitude)
-    var earthRotationOffset by remember { mutableFloatStateOf(0f) }
+    // Camera moved by the user's drag: orbit around the ecliptic pole, elevation over the ecliptic
+    var viewYawOffset by remember { mutableFloatStateOf(0f) }
+    var viewPitchOffset by remember { mutableFloatStateOf(0f) }
+
+    // Instant the camera was last aimed at the marker (null = aim at the current one); after that it stays
+    // Sun-fixed while the time changes
+    var viewAnchorTime by remember { mutableStateOf<Date?>(null) }
     var isDraggingEarth by remember { mutableStateOf(false) }
 
     // Date/time selection - initialized once with the default timezone, then preserved across location changes
@@ -274,7 +278,9 @@ fun EarthWidgetZmanimView(
             markerLongitudeDegrees = override.longitude.toFloat()
             markerElevationMeters = override.elevationMeters
             timeZone = override.timeZone
-            earthRotationOffset = 0f
+            viewYawOffset = 0f
+            viewPitchOffset = 0f
+            viewAnchorTime = null
 
             if (targetTimeMillis == null) {
                 val now = Calendar.getInstance(override.timeZone)
@@ -436,15 +442,40 @@ fun EarthWidgetZmanimView(
     val backgroundColor = containerBackground ?: JewelTheme.globalColors.panelBackground
     val globalMenuStyle = JewelTheme.menuStyle
 
+    val currentReferenceTime by rememberUpdatedState(referenceTime)
+    LaunchedEffect(viewAnchorTime == null) {
+        if (viewAnchorTime == null) viewAnchorTime = currentReferenceTime
+    }
+
+    // Like Apple Maps' tilt (MKMapCamera pitch 0…~80° from vertical): from straight over the ecliptic pole down to
+    // MIN_VIEW_ELEVATION_DEGREES above the ecliptic, never under it. The offset is relative to the default elevation.
+    val pitchRangeDegrees by rememberUpdatedState(
+        remember(renderSizePx, earthSizeFraction) {
+            val base = computeSceneGeometry(renderSizePx, earthSizeFraction).viewPitchRad * 180f / PI.toFloat()
+            (MIN_VIEW_ELEVATION_DEGREES - base)..(90f - base)
+        },
+    )
+    val onViewDeltaCallback =
+        remember {
+            { yaw: Float, pitch: Float ->
+                viewYawOffset = (viewYawOffset + yaw + 180f).mod(360f) - 180f
+                viewPitchOffset = (viewPitchOffset + pitch).coerceIn(pitchRangeDegrees)
+            }
+        }
     // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
     // so they remain stable across recompositions while still accessing the latest state
-    val onEarthRotationDeltaCallback = remember { { delta: Float -> earthRotationOffset += delta } }
     val onDragStateChangeCallback = remember { { dragging: Boolean -> isDraggingEarth = dragging } }
-    val onRecenterCallback = remember { { earthRotationOffset = 0f } }
+    val onRecenterCallback =
+        remember {
+            {
+                viewYawOffset = 0f
+                viewPitchOffset = 0f
+                viewAnchorTime = currentReferenceTime
+            }
+        }
 
     // Use rememberUpdatedState to keep the lambda stable while accessing latest values
     val currentTimeZone by rememberUpdatedState(timeZone)
-    val currentReferenceTime by rememberUpdatedState(referenceTime)
     val currentOnDateSelected by rememberUpdatedState(onDateSelect)
 
     val onResetDateTimeCallback: () -> Unit = {
@@ -485,7 +516,9 @@ fun EarthWidgetZmanimView(
         markerLongitudeDegrees = location.longitude.toFloat()
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
-        earthRotationOffset = 0f
+        viewYawOffset = 0f
+        viewPitchOffset = 0f
+        viewAnchorTime = null
         onLocationSelect?.invoke(country, city, location)
     }
 
@@ -502,8 +535,10 @@ fun EarthWidgetZmanimView(
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
             markerLongitudeDegrees = markerLongitudeDegrees,
-            earthRotationOffset = earthRotationOffset,
-            onEarthRotationDelta = onEarthRotationDeltaCallback,
+            viewYawOffset = viewYawOffset,
+            viewPitchOffset = viewPitchOffset,
+            viewAnchorTime = viewAnchorTime,
+            onViewDelta = onViewDeltaCallback,
             onDragStateChange = onDragStateChangeCallback,
             model = model,
             markerLatitudeDegrees = markerLatitudeDegrees,
@@ -527,7 +562,9 @@ fun EarthWidgetZmanimView(
                 legendColorRgb = kiddushLevanaColorRgb,
             )
         }
-        if (earthRotationOffset != 0f || isDateTimeModified) {
+        // Also after a time change: the marker has turned away with the Earth
+        val isViewMoved = viewYawOffset != 0f || viewPitchOffset != 0f || viewAnchorTime.let { it != null && it != referenceTime }
+        if (isViewMoved || isDateTimeModified) {
             Column(
                 modifier =
                     Modifier
@@ -541,7 +578,7 @@ fun EarthWidgetZmanimView(
                     onResetDateTime = onResetDateTimeCallback,
                 )
                 RecenterButton(
-                    earthRotationOffset = earthRotationOffset,
+                    isViewMoved = isViewMoved,
                     onRecenter = onRecenterCallback,
                 )
             }
@@ -661,6 +698,9 @@ fun EarthWidgetMoonSkyView(
 /** Higher = the Earth stops sooner after a fling. */
 private const val EARTH_FLING_FRICTION = 1.5f
 
+/** Lowest camera elevation over the ecliptic (Apple Maps stops ~10° above the horizon). */
+private const val MIN_VIEW_ELEVATION_DEGREES = 10f
+
 /**
  * Earth scene with drag-to-rotate support.
  * Extracted as a separate composable to enable Compose's skipping optimization.
@@ -670,8 +710,10 @@ private fun EarthSceneContent(
     sphereSize: Dp,
     renderSizePx: Int,
     markerLongitudeDegrees: Float,
-    earthRotationOffset: Float,
-    onEarthRotationDelta: (Float) -> Unit,
+    viewYawOffset: Float,
+    viewPitchOffset: Float,
+    viewAnchorTime: Date?,
+    onViewDelta: (yaw: Float, pitch: Float) -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     model: ZmanimModel,
     markerLatitudeDegrees: Float,
@@ -711,13 +753,18 @@ private fun EarthSceneContent(
                     onDragEnd = {
                         // Inertia: keep spinning with the release velocity, decaying to a stop.
                         // The drag state stays on meanwhile so the rotation isn't re-smoothed.
-                        val velocityDegPerSec = -velocityTracker.calculateVelocity().x * degreesPerPx
+                        val velocity = velocityTracker.calculateVelocity()
+                        val speed = hypot(velocity.x, velocity.y)
                         fling =
                             scope.launch {
-                                var previous = 0f
-                                AnimationState(0f, velocityDegPerSec).animateDecay(exponentialDecay(EARTH_FLING_FRICTION)) {
-                                    onEarthRotationDelta(value - previous)
-                                    previous = value
+                                // Decay the release speed along the release direction, split back into yaw/pitch.
+                                if (speed > 0f) {
+                                    var previous = 0f
+                                    AnimationState(0f, speed).animateDecay(exponentialDecay(EARTH_FLING_FRICTION)) {
+                                        val px = (value - previous) * degreesPerPx
+                                        onViewDelta(velocity.x / speed * px, velocity.y / speed * px)
+                                        previous = value
+                                    }
                                 }
                                 onDragStateChange(false)
                             }
@@ -726,9 +773,8 @@ private fun EarthSceneContent(
                 ) { change, dragAmount ->
                     change.consume()
                     velocityTracker.addPosition(change.uptimeMillis, change.position)
-                    // Horizontal drag rotates the Earth (negative because dragging right
-                    // should rotate the Earth to show what's on the left)
-                    onEarthRotationDelta(-dragAmount.x * degreesPerPx)
+                    // Horizontal: turn around the ecliptic pole; vertical: tilt toward the pole.
+                    onViewDelta(dragAmount.x * degreesPerPx, dragAmount.y * degreesPerPx)
                 }
             },
         contentAlignment = Alignment.Center,
@@ -736,12 +782,8 @@ private fun EarthSceneContent(
         EarthWidgetScene(
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
-            earthRotationDegrees = markerLongitudeDegrees + earthRotationOffset,
-            // Compensate light direction for Earth rotation offset.
-            // Model computed lightDegrees for earthRotation = markerLongitude.
-            // Subtracting offset keeps the sun fixed relative to Earth's surface,
-            // so the marker always shows correct day/night for the selected time.
-            lightDegrees = model.lightDegrees - earthRotationOffset,
+            earthRotationDegrees = markerLongitudeDegrees,
+            lightDegrees = model.lightDegrees,
             sunElevationDegrees = model.sunElevationDegrees,
             earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
             moonOrbitDegrees = model.moonOrbitDegrees,
@@ -762,6 +804,9 @@ private fun EarthSceneContent(
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
+            viewYawDegrees = viewYawOffset,
+            viewPitchDegrees = viewPitchOffset,
+            viewAnchorKey = viewAnchorTime,
         )
     }
 }
@@ -771,11 +816,11 @@ private fun EarthSceneContent(
  */
 @Composable
 private fun RecenterButton(
-    earthRotationOffset: Float,
+    isViewMoved: Boolean,
     onRecenter: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (earthRotationOffset != 0f) {
+    if (isViewMoved) {
         IntUiTheme(isDark = true) {
             OutlinedButton(
                 onClick = onRecenter,

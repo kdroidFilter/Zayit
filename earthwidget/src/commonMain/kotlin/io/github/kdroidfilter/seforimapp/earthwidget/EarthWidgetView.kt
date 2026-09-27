@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.earthwidget
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.Layout
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.erkko68.filament.compose.rememberFilamentEngine
+import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -138,7 +141,35 @@ fun EarthWidgetScene(
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    viewYawDegrees: Float = 0f,
+    viewPitchDegrees: Float = 0f,
+    viewAnchorKey: Any? = null,
 ) {
+    // The camera follows the drag instantly, and eases back on recenter.
+    val viewSpec = if (animateEarthRotation) SmoothAngleSpringSpec else snap()
+    val animatedViewYaw by animateFloatAsState(viewYawDegrees, viewSpec, label = "viewYaw")
+    val animatedViewPitch by animateFloatAsState(viewPitchDegrees, viewSpec, label = "viewPitch")
+    val skyJulianDay = julianDay ?: (System.currentTimeMillis() / 86_400_000.0 + 2_440_587.5)
+    val animatedSidereal =
+        rememberSmoothAnimatedAngle(
+            targetValue = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),
+            normalize = ::normalizeAngle360,
+        )
+    val sunLongitude = computeSunEclipticLongitude(skyJulianDay)
+    val animatedSunLongitude = rememberSmoothAnimatedAngle(targetValue = sunLongitude, normalize = ::normalizeAngle360)
+    // Camera anchored so the marker faces the viewer when shown, moved or recentred ([viewAnchorKey]); then time passes
+    // under a Sun-fixed camera: the Earth turns, the marker travels with it.
+    val viewAzimuthFromSun =
+        remember(viewAnchorKey, markerLatitudeDegrees, markerLongitudeDegrees) {
+            markerAzimuthFromSunDegrees(
+                siderealDegrees = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),
+                sunLongitudeDegrees = sunLongitude,
+                obliquityDegrees = earthTiltDegrees,
+                markerLatitudeDegrees = markerLatitudeDegrees,
+                markerLongitudeDegrees = markerLongitudeDegrees,
+            )
+        }
+    val animatedViewAzimuthFromSun = rememberSmoothAnimatedAngle(targetValue = viewAzimuthFromSun, normalize = ::normalizeAngle180)
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation =
         if (animateEarthRotation) {
@@ -228,6 +259,12 @@ fun EarthWidgetScene(
             kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
+            siderealDegrees = animatedSidereal,
+            sunLongitudeDegrees = animatedSunLongitude,
+            moonNodeDegrees = computeMoonAscendingNodeLongitude(skyJulianDay),
+            viewAzimuthFromSunDegrees = animatedViewAzimuthFromSun,
+            viewYawDegrees = animatedViewYaw,
+            viewPitchDegrees = animatedViewPitch,
         )
 
     val earthContent: @Composable () -> Unit = {
@@ -241,11 +278,10 @@ fun EarthWidgetScene(
             )
             if (showOrbitPath && orbitLabels.isNotEmpty()) {
                 OrbitDayLabelsOverlay(
-                    renderSizePx = sceneState.renderSizePx,
+                    state = sceneState,
                     sphereSize = sphereSize,
                     labels = orbitLabels,
                     onLabelClick = onOrbitLabelClick,
-                    earthSizeFraction = earthSizeFraction,
                     modifier = Modifier.matchParentSize(),
                 )
             }
@@ -363,13 +399,13 @@ data class OrbitLabelData(
 
 @Composable
 private fun OrbitDayLabelsOverlay(
-    renderSizePx: Int,
+    state: EarthRenderState,
     sphereSize: Dp,
     labels: List<OrbitLabelData>,
     onLabelClick: ((OrbitLabelData) -> Unit)?,
     modifier: Modifier = Modifier,
-    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ) {
+    val renderSizePx = state.renderSizePx
     if (labels.isEmpty() || renderSizePx <= 0) return
     val fontSize = (sphereSize.value * 0.032f).coerceIn(11f, 20f).sp
     val textStyle =
@@ -383,17 +419,12 @@ private fun OrbitDayLabelsOverlay(
         }
 
     val labelPositions =
-        remember(labels, renderSizePx) {
+        remember(labels, state) {
             val center = renderSizePx / 2f
             val outwardPx = 12f
 
             labels.map { label ->
-                val p =
-                    computeOrbitScreenPosition(
-                        outputSizePx = renderSizePx,
-                        orbitDegrees = label.orbitDegrees,
-                        earthSizeFraction = earthSizeFraction,
-                    )
+                val p = computeOrbitScreenPosition(state, label.orbitDegrees)
                 val dx = p.x - center
                 val dy = p.y - center
                 val len = sqrt(dx * dx + dy * dy)
@@ -401,7 +432,7 @@ private fun OrbitDayLabelsOverlay(
                 val ox = if (len > 1e-3f) dx / len * outwardPx else 0f
                 val oy = if (len > 1e-3f) dy / len * outwardPx else 0f
 
-                Offset(x = p.x + ox, y = p.y + oy)
+                PlacedOrbitLabel(Offset(x = p.x + ox, y = p.y + oy), if (p.hiddenByEarth) 0f else labelAlpha(p.depth))
             }
         }
 
@@ -422,6 +453,7 @@ private fun OrbitDayLabelsOverlay(
                 key(label.dayOfMonth) {
                     OrbitDayLabel(
                         label = label,
+                        alpha = labelPositions.getOrNull(labels.indexOf(label))?.alpha ?: 1f,
                         textStyle = textStyle,
                         hoveredTextStyle = hoveredTextStyle,
                         onClick = onLabelClick,
@@ -441,7 +473,7 @@ private fun OrbitDayLabelsOverlay(
 
         layout(width, height) {
             placeables.forEachIndexed { index, placeable ->
-                val p = labelPositions.getOrNull(index) ?: return@forEachIndexed
+                val p = labelPositions.getOrNull(index)?.offset ?: return@forEachIndexed
                 val x = (p.x * scaleX - placeable.width / 2f).roundToInt()
                 val y = (p.y * scaleY - placeable.height / 2f).roundToInt()
                 // Absolute pixel placement; do not mirror in RTL.
@@ -451,12 +483,21 @@ private fun OrbitDayLabelsOverlay(
     }
 }
 
+private class PlacedOrbitLabel(
+    val offset: Offset,
+    val alpha: Float,
+)
+
+/** Far-side labels fade like the orbit line, but stay readable. */
+private fun labelAlpha(depth: Float): Float = 0.35f + 0.65f * depth
+
 /**
  * Individual orbit day label with hover effect and expanded click area.
  */
 @Composable
 private fun OrbitDayLabel(
     label: OrbitLabelData,
+    alpha: Float,
     textStyle: TextStyle,
     hoveredTextStyle: TextStyle,
     onClick: ((OrbitLabelData) -> Unit)?,
@@ -469,6 +510,7 @@ private fun OrbitDayLabel(
     Box(
         modifier =
             Modifier
+                .graphicsLayer { this.alpha = alpha }
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .then(
                     if (onClick != null) {

@@ -22,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eWorkspaceScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eZoomScenario
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppDockMenu
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpList
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
@@ -451,6 +452,7 @@ fun main(args: Array<String>) {
                                     E2eScenario.run(appGraph, extra = {
                                         E2eWorkspaceScenario.run(it)
                                         E2eTortureScenario.run(it)
+                                        E2eZoomScenario.run(it)
                                     }) { exitApplication() }
                                 }
                             }

@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.nucleusframework.application.Satellite
+import dev.nucleusframework.window.ControlButtonsDirection
 import dev.nucleusframework.window.ExperimentalNucleusApi
 import dev.nucleusframework.window.tao.DockSide
 import dev.nucleusframework.window.tao.DockSplitterScope
@@ -187,6 +188,8 @@ fun WindowPanes(window: OpenWindow) {
                 hideWhileOwnerFullscreenOrMaximized = false,
                 // The pane draws its own header (PaneHeader), which is also its grip.
                 header = {},
+                // The controls where the main window has them: the OS side, not the RTL content's.
+                controlButtonsDirection = ControlButtonsDirection.SystemNative,
             ) {
                 CompositionLocalProvider(LocalPaneSatellite provides this) {
                     PaneBody(session, groupId, pane)

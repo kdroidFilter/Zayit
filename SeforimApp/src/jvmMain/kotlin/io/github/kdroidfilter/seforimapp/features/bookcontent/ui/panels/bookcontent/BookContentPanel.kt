@@ -8,38 +8,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
-import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedVerticalSplitPane
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.*
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
-import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
-import io.github.santimattius.structured.annotations.StructuredScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+
+/**
+ * Whether the window's panes for a tab are in place (see `PaneSync`): a book's text first lays out
+ * only then, so its initial scroll anchoring happens in its final frame. Always true outside a window.
+ */
+val LocalBookTextReady = staticCompositionLocalOf<(String) -> Boolean> { { true } }
 
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
@@ -65,6 +64,7 @@ fun BookContentPanel(
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
     noteDraft: NoteDraftAnchor? = null,
+    tabUi: BookTabUi? = null,
 ) {
     val isIslands = ThemeUtils.isIslandsStyle()
     val homeCardModifier =
@@ -110,13 +110,13 @@ fun BookContentPanel(
                     isSelected = isSelected,
                     bookCharCounts = bookCharCounts,
                     noteDraft = noteDraft,
+                    tabUi = tabUi ?: viewModel { BookTabUi() },
                 )
             }
         }
     }
 }
 
-@OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 private fun BookContentPanelContent(
     uiState: BookContentState,
@@ -124,10 +124,18 @@ private fun BookContentPanelContent(
     showDiacritics: Boolean,
     isSelected: Boolean,
     bookCharCounts: IntArray?,
-    noteDraft: NoteDraftAnchor? = null,
+    noteDraft: NoteDraftAnchor?,
+    tabUi: BookTabUi,
 ) {
     val providers = uiState.providers ?: return
     val selectedBook = uiState.navigation.selectedBook ?: return
+    // Latched: once laid out, the text stays composed whatever the panes do next.
+    var laidOut by remember(selectedBook.id) { mutableStateOf(false) }
+    if (!laidOut && LocalBookTextReady.current(uiState.tabId)) laidOut = true
+    if (!laidOut) {
+        LoaderPanel()
+        return
+    }
     var isBookContentZoomInProgress by remember { mutableStateOf(false) }
 
     // Create LazyListState AFTER loading check, so anchorId is correctly set
@@ -143,40 +151,11 @@ private fun BookContentPanelContent(
             )
         }
 
-    val connectionsCache =
-        remember(selectedBook.id) {
-            mutableStateMapOf<Long, LineConnectionsSnapshot>()
-        }
-    val prefetchScope = rememberCoroutineScope()
-
-    // Line ids whose connections load is currently in flight. The completed-only `connectionsCache`
-    // check is not enough: two requests that arrive before the first load resolves both see the id
-    // as missing and each launch a redundant DB load (the race). Guarding on this set both detects
-    // (logged) and dedups concurrent loads. Mutated only on the composition (Main) thread.
-    val inFlight = remember(selectedBook.id) { mutableSetOf<Long>() }
-
-    fun prefetch(
-        @StructuredScope scope: CoroutineScope,
-        missing: List<Long>,
-    ) {
-        inFlight.addAll(missing)
-        scope.launch {
-            runSuspendCatching { providers.loadLineConnections(missing) }
-                .onSuccess { result -> connectionsCache.putAll(result) }
-                .onFailure { e -> warnln { "connections load failed for=$missing: $e" } }
-            inFlight.removeAll(missing.toSet())
-        }
-    }
-
+    // Shared with the links / commentaries / sources panes of the window showing this tab.
+    val connectionsCache = tabUi.connections(selectedBook.id)
     val prefetchConnections =
-        remember(providers, connectionsCache, inFlight) {
-            { ids: List<Long> ->
-                if (ids.isEmpty()) return@remember
-                // Dedup against in-flight loads so concurrent requests don't launch duplicate DB queries.
-                val missing = ids.filterNot { connectionsCache.containsKey(it) || it in inFlight }.distinct()
-                if (missing.isEmpty()) return@remember
-                prefetch(prefetchScope, missing)
-            }
+        remember(tabUi, selectedBook.id, providers) {
+            { ids: List<Long> -> tabUi.prefetch(selectedBook.id, providers, ids) }
         }
 
     // Warm the text of the commentators that were open for the selected line, so that a background
@@ -192,12 +171,7 @@ private fun BookContentPanelContent(
     val isIslands = ThemeUtils.isIslandsStyle()
     val hasBottomPane = uiState.content.showCommentaries || uiState.content.showSources
     val panelBackground = JewelTheme.globalColors.panelBackground
-
     val paneCardModifier =
-        remember(isIslands, panelBackground) {
-            islandsCardModifier(isIslands, panelBackground)
-        }
-    val topPaneCardModifier =
         remember(isIslands, hasBottomPane, panelBackground) {
             if (hasBottomPane) {
                 islandsCardModifier(isIslands, panelBackground, bottom = 3.dp)
@@ -205,118 +179,76 @@ private fun BookContentPanelContent(
                 islandsCardModifier(isIslands, panelBackground)
             }
         }
-    val bottomPaneCardModifier =
-        remember(isIslands, panelBackground) {
-            islandsCardModifier(isIslands, panelBackground, top = 3.dp)
-        }
 
     // Collect paging data here to keep BookContentView skippable
     val lazyPagingItems = providers.linesPagingData.collectAsLazyPagingItems()
 
     CompositionLocalProvider(LocalBookContentZoomInProgress provides isBookContentZoomInProgress) {
+        // The links / commentaries / sources panes dock around this text and the breadcrumb sits
+        // under them (see the window body), as the split panes had it.
         Column(modifier = Modifier.fillMaxSize()) {
-            EnhancedVerticalSplitPane(
-                splitPaneState = uiState.layout.contentSplitState.asStable(),
-                modifier = Modifier.weight(1f),
-                firstContent = {
-                    EnhancedHorizontalSplitPane(
-                        splitPaneState = uiState.layout.targumSplitState.asStable(),
-                        firstContent = {
-                            BookContentView(
-                                bookId = selectedBook.id,
-                                lazyPagingItems = lazyPagingItems,
-                                selectedLineIds = uiState.content.selectedLineIds,
-                                primarySelectedLineId = uiState.content.primarySelectedLineId,
-                                isTocEntrySelection = uiState.content.isTocEntrySelection,
-                                onLineSelect = { line, isModifier ->
-                                    onEvent(BookContentEvent.LineSelected(line, isModifier))
-                                },
-                                onEvent = onEvent,
-                                tabId = uiState.tabId,
-                                showDiacritics = showDiacritics,
-                                draftNote = noteDraft,
-                                modifier = topPaneCardModifier,
-                                preservedListState = bookListState,
-                                scrollIndex = uiState.content.scrollIndex,
-                                scrollOffset = uiState.content.scrollOffset,
-                                scrollToLineTimestamp = uiState.content.scrollToLineTimestamp,
-                                anchorId = uiState.content.anchorId,
-                                anchorIndex = uiState.content.anchorIndex,
-                                topAnchorLineId = uiState.content.topAnchorLineId,
-                                topAnchorTimestamp = uiState.content.topAnchorRequestTimestamp,
-                                onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
-                                    onEvent(
-                                        BookContentEvent.ContentScrolled(
-                                            anchorId = anchorId,
-                                            anchorIndex = anchorIndex,
-                                            scrollIndex = scrollIndex,
-                                            scrollOffset = scrollOffset,
-                                        ),
-                                    )
-                                },
-                                altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId.asStableAltHeadings(),
-                                lineConnections = connectionsCache,
-                                onPrefetchLineConnections = prefetchConnections,
-                                isSelected = isSelected,
-                                bookCharCounts = bookCharCounts,
-                                onPointerZoomInProgressChange = { isBookContentZoomInProgress = it },
-                            )
-                        },
-                        secondContent =
-                            if (uiState.content.showTargum) {
-                                {
-                                    TargumPane(
-                                        uiState = uiState,
-                                        onEvent = onEvent,
-                                        lineConnections = connectionsCache,
-                                        showDiacritics = showDiacritics,
-                                        modifier = topPaneCardModifier,
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                    )
-                },
-                secondContent =
-                    when {
-                        uiState.content.showCommentaries -> {
-                            {
-                                CommentsPane(
-                                    uiState = uiState,
-                                    onEvent = onEvent,
-                                    lineConnections = connectionsCache,
-                                    showDiacritics = showDiacritics,
-                                    modifier = bottomPaneCardModifier,
-                                )
-                            }
-                        }
-
-                        uiState.content.showSources -> {
-                            {
-                                SourcesPane(
-                                    uiState = uiState,
-                                    onEvent = onEvent,
-                                    lineConnections = connectionsCache,
-                                    showDiacritics = showDiacritics,
-                                    modifier = bottomPaneCardModifier,
-                                )
-                            }
-                        }
-
-                        else -> null
+            Box(modifier = Modifier.weight(1f)) {
+                BookContentView(
+                    bookId = selectedBook.id,
+                    lazyPagingItems = lazyPagingItems,
+                    selectedLineIds = uiState.content.selectedLineIds,
+                    primarySelectedLineId = uiState.content.primarySelectedLineId,
+                    isTocEntrySelection = uiState.content.isTocEntrySelection,
+                    onLineSelect = { line, isModifier ->
+                        onEvent(BookContentEvent.LineSelected(line, isModifier))
                     },
-            )
-
-            BreadcrumbSection(
-                uiState = uiState,
-                onEvent = onEvent,
-                verticalPadding = 8.dp,
-                isIslands = isIslands,
-            )
+                    onEvent = onEvent,
+                    tabId = uiState.tabId,
+                    showDiacritics = showDiacritics,
+                    draftNote = noteDraft,
+                    modifier = paneCardModifier,
+                    preservedListState = bookListState,
+                    scrollIndex = uiState.content.scrollIndex,
+                    scrollOffset = uiState.content.scrollOffset,
+                    scrollToLineTimestamp = uiState.content.scrollToLineTimestamp,
+                    anchorId = uiState.content.anchorId,
+                    anchorIndex = uiState.content.anchorIndex,
+                    topAnchorLineId = uiState.content.topAnchorLineId,
+                    topAnchorTimestamp = uiState.content.topAnchorRequestTimestamp,
+                    onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
+                        onEvent(
+                            BookContentEvent.ContentScrolled(
+                                anchorId = anchorId,
+                                anchorIndex = anchorIndex,
+                                scrollIndex = scrollIndex,
+                                scrollOffset = scrollOffset,
+                            ),
+                        )
+                    },
+                    altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId.asStableAltHeadings(),
+                    lineConnections = connectionsCache,
+                    onPrefetchLineConnections = prefetchConnections,
+                    isSelected = isSelected,
+                    bookCharCounts = bookCharCounts,
+                    onPointerZoomInProgressChange = { isBookContentZoomInProgress = it },
+                )
+            }
         }
     }
 }
+
+/** The breadcrumb under a book's text and its line panes; drawn by the window under its inner dock. */
+@Composable
+fun BookBreadcrumb(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+) {
+    BreadcrumbSection(
+        uiState = uiState,
+        onEvent = onEvent,
+        verticalPadding = 8.dp,
+        isIslands = ThemeUtils.isIslandsStyle(),
+    )
+}
+
+/** Whether [uiState]'s tab shows a book's text (not Home, not a loader): its breadcrumb and line panes follow. */
+fun isBookTextShown(uiState: BookContentState): Boolean =
+    uiState.navigation.selectedBook != null && uiState.providers != null && !uiState.isLoading
 
 @Composable
 private fun LoaderPanel(modifier: Modifier = Modifier) {
@@ -331,7 +263,7 @@ private fun LoaderPanel(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun CommentsPane(
+fun CommentsPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
@@ -349,7 +281,7 @@ private fun CommentsPane(
 }
 
 @Composable
-private fun SourcesPane(
+fun SourcesPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
@@ -368,7 +300,7 @@ private fun SourcesPane(
 }
 
 @Composable
-private fun TargumPane(
+fun TargumPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,

@@ -43,6 +43,10 @@ kotlin {
 //    }
 
     jvm()
+    compilerOptions {
+        // Satellites, dock and tab windows (Nucleus 2.6) are experimental.
+        optIn.add("dev.nucleusframework.window.ExperimentalNucleusApi")
+    }
     jvmToolchain(
         libs.versions.jvmToolchain
             .get()
@@ -218,7 +222,7 @@ kotlin {
 nucleus.application {
 
     mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
-
+    nucleusOptimization = true
     graalvm {
         isEnabled = true
         imageName = "zayit"

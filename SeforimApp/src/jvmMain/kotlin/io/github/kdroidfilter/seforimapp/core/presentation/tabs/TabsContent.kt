@@ -29,6 +29,7 @@ import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.enableSavedStateHandles
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.MutableCreationExtras
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.savedstate.SavedState
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
@@ -37,10 +38,12 @@ import androidx.savedstate.savedState
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.favorites.FavoritesTabContent
@@ -50,7 +53,6 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShell
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
-import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
@@ -81,33 +83,30 @@ private fun saveableKeyFor(destination: TabsDestination): String = "${destinatio
 private fun saveableKeysFor(tabId: String): List<String> = listOf("$tabId:home", "$tabId:search", "$tabId:book")
 
 /**
- * Simplified tab content renderer without Compose Navigation.
+ * The text of every tab of the current window, the centre of its dock layout.
  *
- * Every open tab is composed and kept alive; switching never tears a tab down. Only the selected
- * tab is measured and placed, so hidden tabs incur no layout/draw cost while their ViewModel,
- * paging flow and scroll state stay hot. This is what makes switching instant and glitch-free:
- * the paged content list is never re-collected from empty, so there is no reload-and-jump and no
- * need for any alpha/crossfade masking. The cost is RAM proportional to the number of open tabs.
+ * Every tab of the window stays composed; switching never tears one down. Only the selected tab is
+ * measured and placed, so hidden tabs incur no layout/draw cost while their ViewModel, paging flow
+ * and scroll state stay hot — switching back is instant, with no reload-and-jump. The cost is RAM
+ * proportional to the number of open tabs. The ViewModels themselves belong to the desktop
+ * ([DesktopSession.ownerOf]), so a tab dragged to another window keeps them.
  */
 @Composable
 fun TabsContent() {
-    val appGraph = LocalAppGraph.current
     val openWindow = LocalOpenWindow.current
+    val session = openWindow.session
     val tabsViewModel: TabsViewModel = openWindow.tabsViewModel
     val searchHomeViewModel = openWindow.searchHomeViewModel
-    val persistedStore = appGraph.tabPersistedStateStore
 
-    val tabsState by tabsViewModel.state.collectAsState()
-    val tabs = tabsState.tabs
-    val selectedTabIndex = tabsState.selectedTabIndex
+    val group = openWindow.group()
+    val tabIds = group?.ids.orEmpty()
+    val currentTabId = group?.selectedId
     val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
     val isSwitchingDesktop by openWindow.isSwitching.collectAsState()
     val isTransitioning = isRestoringSession || isSwitchingDesktop
 
     val searchUi by remember(searchHomeViewModel) { searchHomeViewModel.uiState }.collectAsState()
     val scope = rememberCoroutineScope()
-
-    val currentTabId = tabs.getOrNull(selectedTabIndex)?.destination?.tabId
     val latestCurrentTabId by rememberUpdatedState(currentTabId)
 
     fun launchSubmitSearch(
@@ -147,10 +146,9 @@ fun TabsContent() {
         }
 
     // Dismiss suggestions when navigating away from Home
-    LaunchedEffect(tabs, selectedTabIndex) {
-        val dest = tabs.getOrNull(selectedTabIndex)?.destination
-        val isHome = dest is TabsDestination.Home
-        if (!isHome) {
+    val currentDestination = currentTabId?.let(session::item)?.destination
+    LaunchedEffect(currentDestination) {
+        if (currentDestination !is TabsDestination.Home) {
             searchHomeViewModel.dismissSuggestions()
         }
     }
@@ -183,34 +181,14 @@ fun TabsContent() {
         }
     }
 
-    // ViewModel owners per tab - manages lifecycle and state. Owners survive while the
-    // tab is open so re-selecting a tab needs no DB refetch (data is hot in the ViewModel).
-    val tabOwners = remember { mutableMapOf<String, SimpleTabViewModelOwner>() }
-    val knownTabIds = remember { mutableSetOf<String>() }
-    // Holds per-tab saveable UI state across the teardown/rebuild that happens on switch.
+    // Holds per-tab saveable UI state across a destination change of the same tab.
     val saveableStateHolder = rememberSaveableStateHolder()
-
-    // Cleanup removed tabs. A tab that just moved to another window keeps its persisted state
-    // (the store is app-wide, keyed by tabId); only truly closed tabs are purged.
-    LaunchedEffect(tabs) {
-        val activeTabIds = tabs.map { it.destination.tabId }.toSet()
-        val removed = (knownTabIds + tabOwners.keys) - activeTabIds
-        removed.forEach { tabId ->
-            tabOwners.remove(tabId)?.clear()
-            if (!appGraph.desktopManager.isTabOpenInAnotherWindow(tabId, openWindow.id)) {
-                persistedStore.remove(tabId)
-            }
-            saveableKeysFor(tabId).forEach(saveableStateHolder::removeState)
-        }
+    val knownTabIds = remember { mutableSetOf<String>() }
+    LaunchedEffect(tabIds) {
+        val removed = knownTabIds - tabIds.toSet()
+        removed.forEach { tabId -> saveableKeysFor(tabId).forEach(saveableStateHolder::removeState) }
         knownTabIds.clear()
-        knownTabIds.addAll(activeTabIds)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            tabOwners.values.forEach { it.clear() }
-            tabOwners.clear()
-        }
+        knownTabIds.addAll(tabIds)
     }
 
     // Clear the desktop-switching flag after the first frame so the loader disappears
@@ -237,19 +215,13 @@ fun TabsContent() {
                 .fillMaxSize()
                 .background(canvasBg),
     ) {
-        // Keep every open tab's composition alive; a tab is never torn down on switch. Each tab is
-        // measured and drawn only while selected — hidden tabs stay composed (their ViewModel,
-        // paging flow and LazyListState all hot) but are not measured or placed, so they cost no
-        // layout/draw. Crucially, because nothing is disposed, the paged content list never reloads
-        // from empty: switching back is instant, with no reload-and-jump and no alpha/crossfade
-        // masking. The trade-off is RAM proportional to the number of open tabs.
-        tabs.forEach { tabItem ->
-            val tabId = tabItem.destination.tabId
+        tabIds.forEach { tabId ->
+            val tabItem = session.item(tabId) ?: return@forEach
             val isSelected = tabId == currentTabId
             val saveableKey = saveableKeyFor(tabItem.destination)
             key(saveableKey) {
                 saveableStateHolder.SaveableStateProvider(saveableKey) {
-                    val tabOwner = tabOwners.getOrPut(tabId) { SimpleTabViewModelOwner(tabId) }
+                    val tabOwner = session.ownerOf(tabId)
                     CompositionLocalProvider(LocalTabSelected provides isSelected) {
                         Box(
                             modifier =
@@ -273,7 +245,7 @@ fun TabsContent() {
                                 is TabsDestination.Home -> {
                                     HomeTabContent(
                                         tabOwner = tabOwner,
-                                        tabId = tabId,
+                                        destination = destination,
                                         isSelected = isSelected,
                                         isRestoringSession = isTransitioning,
                                         searchUi = searchUi,
@@ -319,14 +291,13 @@ fun TabsContent() {
 @Composable
 private fun HomeTabContent(
     tabOwner: SimpleTabViewModelOwner,
-    tabId: String,
+    destination: TabsDestination.Home,
     isSelected: Boolean,
     isRestoringSession: Boolean,
     searchUi: io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
 ) {
-    tabOwner.setDefaultArgs(savedState { putString(StateKeys.TAB_ID, tabId) })
-    val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+    val viewModel = tabBookViewModel(tabOwner, destination)
     val uiState by viewModel.uiState.collectAsState()
     val showDiacritics by viewModel.showDiacritics.collectAsState()
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
@@ -338,6 +309,7 @@ private fun HomeTabContent(
         isRestoringSession = isRestoringSession,
         searchUi = searchUi,
         searchCallbacks = searchCallbacks,
+        tabUi = tabUi(tabOwner),
         isSelected = isSelected,
         bookCharCounts = bookCharCounts,
     )
@@ -349,15 +321,8 @@ private fun SearchTabContent(
     destination: TabsDestination.Search,
     isSelected: Boolean,
 ) {
-    tabOwner.setDefaultArgs(
-        savedState {
-            putString(StateKeys.TAB_ID, destination.tabId)
-            putString("searchQuery", destination.searchQuery)
-        },
-    )
-
-    val viewModel: SearchResultViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
-    val bookVm: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+    val viewModel = tabSearchViewModel(tabOwner, destination)
+    val bookVm = tabBookViewModel(tabOwner, destination)
 
     // Keep tree computation disabled when tab is not selected
     LaunchedEffect(isSelected) {
@@ -373,58 +338,7 @@ private fun SearchTabContent(
     val visibleResults by viewModel.visibleResultsFlow.collectAsState()
     val isFiltering by viewModel.isFilteringFlow.collectAsState()
     val breadcrumbs by viewModel.breadcrumbsFlow.collectAsState()
-    val searchTree by viewModel.searchTreeFlow.collectAsState()
-    val selectedCategoryIds by viewModel.selectedCategoryIdsFlow.collectAsState()
-    val selectedBookIds by viewModel.selectedBookIdsFlow.collectAsState()
-    val selectedTocIds by viewModel.selectedTocIdsFlow.collectAsState()
-    val tocCounts by viewModel.tocCountsFlow.collectAsState()
-    val tocTree by viewModel.tocTreeFlow.collectAsState()
     val bookCounts by viewModel.bookFacetCountsFlow.collectAsState()
-
-    val actions =
-        remember(viewModel) {
-            SearchShellActions(
-                onSubmit = { q ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                },
-                onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
-                onGlobalExtendedChange = { extended ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
-                },
-                onScroll = { anchorId, anchorIndex, index, offset ->
-                    viewModel.onEvent(
-                        SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset),
-                    )
-                },
-                onCancelSearch = {
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch)
-                },
-                onOpenResult = { r, newTab ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab))
-                },
-                onRequestBreadcrumb = { r ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r))
-                },
-                onLoadMore = { viewModel.loadMore() },
-                onCategoryCheckedChange = { id, checked ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked))
-                },
-                onBookCheckedChange = { id, checked ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked))
-                },
-                onEnsureScopeBookForToc = { id ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id))
-                },
-                onTocToggle = { entry, checked ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked))
-                },
-                onTocFilter = { entry ->
-                    viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
-                },
-            )
-        }
 
     SearchResultInBookShellMvi(
         bookUiState = bcUiState,
@@ -434,17 +348,59 @@ private fun SearchTabContent(
         visibleResults = visibleResults,
         isFiltering = isFiltering,
         breadcrumbs = breadcrumbs,
-        searchTree = searchTree,
-        selectedCategoryIds = selectedCategoryIds,
-        selectedBookIds = selectedBookIds,
-        selectedTocIds = selectedTocIds,
-        tocCounts = tocCounts,
-        tocTree = tocTree,
         bookCounts = bookCounts,
         loadBookHits = viewModel::loadAllHitsForBook,
-        actions = actions,
+        actions = rememberSearchShellActions(viewModel),
+        tabUi = tabUi(tabOwner),
     )
 }
+
+/** What the search screen and its facet panes do with the user's input. */
+@Composable
+fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellActions =
+    remember(viewModel) {
+        SearchShellActions(
+            onSubmit = { q ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+            },
+            onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+            onGlobalExtendedChange = { extended ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
+            },
+            onScroll = { anchorId, anchorIndex, index, offset ->
+                viewModel.onEvent(
+                    SearchResultViewModel.SearchResultEvents.OnScroll(anchorId, anchorIndex, index, offset),
+                )
+            },
+            onCancelSearch = {
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.CancelSearch)
+            },
+            onOpenResult = { r, newTab ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.OpenResult(r, newTab))
+            },
+            onRequestBreadcrumb = { r ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.RequestBreadcrumb(r))
+            },
+            onLoadMore = { viewModel.loadMore() },
+            onCategoryCheckedChange = { id, checked ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetCategoryChecked(id, checked))
+            },
+            onBookCheckedChange = { id, checked ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetBookChecked(id, checked))
+            },
+            onEnsureScopeBookForToc = { id ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.EnsureScopeBookForToc(id))
+            },
+            onTocToggle = { entry, checked ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetTocChecked(entry.id, checked))
+            },
+            onTocFilter = { entry ->
+                viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
+            },
+        )
+    }
 
 @Composable
 private fun BookContentTabContent(
@@ -455,15 +411,7 @@ private fun BookContentTabContent(
     searchUi: io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
 ) {
-    tabOwner.setDefaultArgs(
-        savedState {
-            putString(StateKeys.TAB_ID, destination.tabId)
-            if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
-            destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
-        },
-    )
-
-    val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+    val viewModel = tabBookViewModel(tabOwner, destination)
     val uiState by viewModel.uiState.collectAsState()
     val showDiacritics by viewModel.showDiacritics.collectAsState()
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
@@ -487,16 +435,46 @@ private fun BookContentTabContent(
         isRestoringSession = isRestoringSession,
         searchUi = searchUi,
         searchCallbacks = searchCallbacks,
+        tabUi = tabUi(tabOwner),
         isSelected = isSelected,
         bookCharCounts = bookCharCounts,
     )
 }
 
 /**
+ * The book ViewModel of a tab — shared by its text and the dock panes drawing it. Whoever asks
+ * first creates it with [destination]'s arguments.
+ */
+@Composable
+fun tabBookViewModel(
+    tabOwner: SimpleTabViewModelOwner,
+    destination: TabsDestination,
+): BookContentViewModel {
+    tabOwner.prepare(destination)
+    val viewModel: BookContentViewModel = assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+    E2e.registerBookViewModel(destination.tabId, viewModel)
+    return viewModel
+}
+
+/** The search ViewModel of a search tab, shared by its results and its facet panes. */
+@Composable
+fun tabSearchViewModel(
+    tabOwner: SimpleTabViewModelOwner,
+    destination: TabsDestination.Search,
+): SearchResultViewModel {
+    tabOwner.prepare(destination)
+    return assistedMetroViewModel(viewModelStoreOwner = tabOwner)
+}
+
+/** UI state the tab's text and its panes share (connections cache, note draft). */
+@Composable
+fun tabUi(tabOwner: SimpleTabViewModelOwner): BookTabUi = viewModel(viewModelStoreOwner = tabOwner) { BookTabUi() }
+
+/**
  * Simplified ViewModel owner that manages lifecycle and state for a tab.
  * No Navigation dependency - just pure ViewModel lifecycle management.
  */
-internal class SimpleTabViewModelOwner(
+class SimpleTabViewModelOwner(
     private val tabId: String,
 ) : ViewModelStoreOwner,
     SavedStateRegistryOwner,
@@ -529,6 +507,23 @@ internal class SimpleTabViewModelOwner(
 
     fun setDefaultArgs(defaultArgs: SavedState) {
         creationExtras[DEFAULT_ARGS_KEY] = defaultArgs
+    }
+
+    /** Arguments the tab's ViewModels are created with, from its current destination. */
+    fun prepare(destination: TabsDestination) {
+        setDefaultArgs(
+            savedState {
+                putString(StateKeys.TAB_ID, destination.tabId)
+                when (destination) {
+                    is TabsDestination.Search -> putString("searchQuery", destination.searchQuery)
+                    is TabsDestination.BookContent -> {
+                        if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
+                        destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
+                    }
+                    else -> Unit
+                }
+            },
+        )
     }
 
     fun clear() {

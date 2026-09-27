@@ -25,9 +25,9 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 
 @Composable
-fun DecoratedWindowScope.MainTitleBar() {
+fun DecoratedWindowScope.MainTitleBar(modifier: Modifier = Modifier) {
     JewelTitleBar(
-        modifier = Modifier.newFullscreenControls().macOSLargeCornerRadius(),
+        modifier = modifier.newFullscreenControls().macOSLargeCornerRadius(),
         gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
         controlButtonsDirection = ControlButtonsDirection.SystemNative,
     ) {

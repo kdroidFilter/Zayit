@@ -1,9 +1,22 @@
+@file:OptIn(ExperimentalNucleusApi::class)
+
 package io.github.kdroidfilter.seforimapp.framework.desktop
 
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
+import androidx.compose.ui.window.WindowState
+import dev.nucleusframework.window.ExperimentalNucleusApi
+import dev.nucleusframework.window.tao.TabDropTarget
+import dev.nucleusframework.window.tao.TabWorkspace
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
+import io.github.kdroidfilter.seforim.tabs.TabItem
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforim.tabs.withTabId
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
@@ -11,20 +24,25 @@ import io.github.kdroidfilter.seforimapp.framework.session.SavedGeometry
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.session.WindowSnapshot
+import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toPersistentList
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -33,24 +51,28 @@ import kotlin.math.roundToInt
  * Manages virtual desktops and the OS windows that display them.
  *
  * Model: a desktop is a user-curated set of tabs laid out in 1..n windows. A desktop is either
- * OPEN (all its windows live, each with its own [TabsViewModel]) or DORMANT (a serializable
- * [DesktopTabsSnapshot]). Several desktops can be open at once, each in its own window(s), but a
- * desktop is never open twice. Windows are ephemeral screen real estate; desktops are only ever
- * created/deleted explicitly by the user.
+ * OPEN (a [DesktopSession]: a `TabWorkspace` whose groups are its windows' tab sets) or DORMANT (a
+ * serializable [DesktopTabsSnapshot]). Several desktops can be open at once, each in its own
+ * window(s), but a desktop is never open twice. The app owns its windows ([windows]): one per
+ * group, created for a restored window, a new desktop or a tab the user tore off, and closed with
+ * the group's last tab. Desktops are only ever created/deleted explicitly by the user.
  *
  * Per-tab UI state lives in the app-wide [TabPersistedStateStore] (tabIds are UUIDs, so entries
  * from different windows/desktops never collide); opening/closing a desktop loads/unloads its
  * entries instead of wiping the store.
+ *
+ * Every member is meant for the UI thread, like the workspaces it drives.
  */
 class DesktopManager(
     private val tabPersistedStateStore: TabPersistedStateStore,
-    private val titleUpdateManager: TabTitleUpdateManager,
+    private val thumbnails: TabThumbnailStore,
+    titleUpdateManager: TabTitleUpdateManager,
     private val searchHomeViewModelFactory: () -> SearchHomeViewModel,
     defaultDesktopName: String,
-    // Saved geometry of the focused window, peeked at boot so the first window is created with
-    // the right placement instead of flashing maximized before the async session restore.
-    initialWindowGeometry: SavedGeometry? = null,
+    // The saved session, restored before the first frame (an app composing no window is closed).
+    bootState: DesktopsState? = null,
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val defaultDesktopId = UUID.randomUUID().toString()
 
     private val _desktops =
@@ -59,13 +81,15 @@ class DesktopManager(
         )
     val desktops: StateFlow<ImmutableList<VirtualDesktop>> = _desktops.asStateFlow()
 
-    private val _windows =
-        MutableStateFlow(
-            persistentListOf(newWindow(defaultDesktopId, snapshot = WindowSnapshot(geometry = initialWindowGeometry))),
-        )
+    private val _sessions = MutableStateFlow(persistentListOf<DesktopSession>())
+
+    /** The open desktops; main.kt declares every session's tabs and panes. */
+    val sessions: StateFlow<ImmutableList<DesktopSession>> = _sessions.asStateFlow()
+
+    private val _windows = MutableStateFlow(persistentListOf<OpenWindow>())
     val windows: StateFlow<ImmutableList<OpenWindow>> = _windows.asStateFlow()
 
-    private val _focusedWindowId = MutableStateFlow(_windows.value.first().id)
+    private val _focusedWindowId = MutableStateFlow("")
     val focusedWindowId: StateFlow<String> = _focusedWindowId.asStateFlow()
 
     /** Desktop of the focused window. Kept for consumers that need "the" current desktop. */
@@ -75,11 +99,31 @@ class DesktopManager(
     /** Snapshots of desktops that are not currently open in any window. */
     private val dormantSnapshots = mutableMapOf<String, DesktopTabsSnapshot>()
 
+    /** The coroutine following each open session's groups (tear-offs, emptied windows). */
+    private val watchers = HashMap<DesktopSession, Job>()
+
     /**
      * App-level quit path (persist session, apply pending updates, exit). Wired by main.kt;
      * invoked when the last tab of the last window is closed (Chrome-like).
      */
     var onQuitRequest: (() -> Unit)? = null
+
+    init {
+        if (bootState != null) restoreFromDesktopsState(bootState) else openDesktop(defaultDesktopId)
+        collectTitles(scope, titleUpdateManager)
+        linkWorkspaces(scope)
+    }
+
+    private fun collectTitles(
+        @StructuredScope scope: CoroutineScope,
+        titleUpdateManager: TabTitleUpdateManager,
+    ) {
+        scope.launch {
+            titleUpdateManager.titleUpdates.collect { update ->
+                _sessions.value.firstOrNull { it.updateTitle(update.tabId, update.newTitle, update.tabType) }
+            }
+        }
+    }
 
     // ---- Lookups ----
 
@@ -87,60 +131,57 @@ class DesktopManager(
 
     fun focusedWindow(): OpenWindow? = window(_focusedWindowId.value) ?: _windows.value.firstOrNull()
 
-    fun windowsOf(desktopId: String): List<OpenWindow> = _windows.value.filter { it.desktopId.value == desktopId }
+    fun windowsOf(desktopId: String): List<OpenWindow> = _windows.value.filter { it.session.desktopId == desktopId }
 
-    fun isDesktopOpen(desktopId: String): Boolean = _windows.value.any { it.desktopId.value == desktopId }
+    fun isDesktopOpen(desktopId: String): Boolean = session(desktopId) != null
 
-    /** Ordered list of desktops currently open in windows (window order, distinct). */
-    fun openDesktopIds(): List<String> = _windows.value.map { it.desktopId.value }.distinct()
+    /** Ordered list of desktops currently open in windows. */
+    fun openDesktopIds(): List<String> = _sessions.value.map { it.desktopId }
 
-    fun isTabOpenInAnotherWindow(
-        tabId: String,
-        windowId: String,
-    ): Boolean =
-        _windows.value.any { w ->
-            w.id != windowId &&
-                w.tabsViewModel.state.value.tabs
-                    .any { it.destination.tabId == tabId }
-        }
+    private fun session(desktopId: String): DesktopSession? = _sessions.value.firstOrNull { it.desktopId == desktopId }
+
+    private fun sessionOf(tabId: String): DesktopSession? = _sessions.value.firstOrNull { it.item(tabId) != null }
 
     /** True while [tabId] is open in any window. */
-    fun isTabOpen(tabId: String): Boolean =
-        _windows.value.any { w ->
-            w.tabsViewModel.state.value.tabs
-                .any { it.destination.tabId == tabId }
-        }
+    fun isTabOpen(tabId: String): Boolean = sessionOf(tabId) != null
 
     /**
      * The [TabsViewModel] of the window currently hosting [tabId]. Per-tab ViewModels navigate
      * through this instead of a fixed window reference, so a tab dragged to another window keeps
      * opening its results in whatever window it lives in now.
      */
-    fun tabsViewModelFor(tabId: String): TabsViewModel? =
-        _windows.value
-            .find { w ->
-                w.tabsViewModel.state.value.tabs
-                    .any { it.destination.tabId == tabId }
-            }?.tabsViewModel
+    fun tabsViewModelFor(tabId: String): TabsViewModel? {
+        val session = sessionOf(tabId) ?: return null
+        val groupId =
+            session.workspace
+                .tab(tabId)
+                ?.group
+                ?.id ?: session.initialGroupOf(tabId) ?: return null
+        return _windows.value.firstOrNull { it.session === session && it.groupId == groupId }?.tabsViewModel
+    }
 
     /** Emits whether [tabId] is open in any window; used to cancel work when a tab closes. */
     @OptIn(ExperimentalCoroutinesApi::class)
     fun tabExistsFlow(tabId: String): Flow<Boolean> =
-        windows
-            .flatMapLatest { ws ->
-                if (ws.isEmpty()) {
-                    flowOf(false)
-                } else {
-                    combine(ws.map { it.tabsViewModel.state }) { states ->
-                        states.any { st -> st.tabs.any { it.destination.tabId == tabId } }
-                    }
-                }
-            }.distinctUntilChanged()
+        _sessions
+            .flatMapLatest { sessions -> snapshotFlow { sessions.any { it.item(tabId) != null } } }
+            .distinctUntilChanged()
 
     fun onWindowFocused(windowId: String) {
         if (window(windowId) == null) return
         _focusedWindowId.value = windowId
         refreshActiveDesktop()
+    }
+
+    // ---- Tabs (driven by the tab declarations) ----
+
+    /** A tab the workspace closed (×, window close): forget it and its state. */
+    fun onTabClosed(
+        session: DesktopSession,
+        tabId: String,
+    ) {
+        session.forget(tabId)
+        tabPersistedStateStore.remove(tabId)
     }
 
     // ---- Desktop switching ----
@@ -161,7 +202,7 @@ class DesktopManager(
     ) {
         val win = window(windowId) ?: return
         if (win.isSwitching.value) return
-        if (win.desktopId.value == desktopId) return
+        if (win.session.desktopId == desktopId) return
         if (_desktops.value.none { it.id == desktopId }) return
 
         windowsOf(desktopId).firstOrNull()?.let { other ->
@@ -171,8 +212,8 @@ class DesktopManager(
         }
 
         win.markSwitching()
-        putDesktopDormant(win.desktopId.value, keepWindow = win)
-        openDesktopInto(win, desktopId)
+        putDesktopDormant(win.session, keepWindow = win)
+        openDesktop(desktopId, keepWindow = win)
         refreshActiveDesktop()
     }
 
@@ -187,7 +228,7 @@ class DesktopManager(
         val current = _desktops.value
         if (current.size <= 1) return
         val win = window(windowId) ?: return
-        val index = current.indexOfFirst { it.id == win.desktopId.value }
+        val index = current.indexOfFirst { it.id == win.session.desktopId }
         if (index < 0) return
         val target = current[(index + direction + current.size) % current.size]
         switchTo(windowId, target.id)
@@ -203,19 +244,7 @@ class DesktopManager(
             return
         }
         if (_desktops.value.none { it.id == desktopId }) return
-
-        val snapshot = dormantSnapshots.remove(desktopId)
-        tabPersistedStateStore.putAll(snapshot?.tabStates.orEmpty())
-        val windowSnapshots = snapshot?.effectiveWindows().orEmpty()
-        val spawned =
-            if (windowSnapshots.isEmpty()) {
-                listOf(spawnWindow(desktopId, WindowSnapshot(geometry = cascadedFloatingGeometry(null))))
-            } else {
-                windowSnapshots.map {
-                    spawnWindow(desktopId, it.copy(geometry = cascadedFloatingGeometry(it.geometry)))
-                }
-            }
-        _focusedWindowId.value = spawned.first().id
+        openDesktop(desktopId, cascade = true)
         refreshActiveDesktop()
     }
 
@@ -227,83 +256,143 @@ class DesktopManager(
     fun closeWindow(windowId: String) {
         val win = window(windowId) ?: return
         if (_windows.value.size <= 1) return
-        val desktopId = win.desktopId.value
-        if (windowsOf(desktopId).size == 1) {
-            dormantSnapshots[desktopId] = snapshotOpenDesktop(desktopId)
-        }
-        val tabIds = windowTabIds(win)
-        removeWindow(win)
-        tabPersistedStateStore.removeAll(tabIds)
-        refreshActiveDesktop()
-    }
-
-    // ---- Tab movement between windows (model layer for drag & drop) ----
-
-    /** Moves a tab to another window (possibly another desktop); closes the source if emptied. */
-    fun moveTabToWindow(
-        tabId: String,
-        fromWindowId: String,
-        toWindowId: String,
-        index: Int = Int.MAX_VALUE,
-    ) {
-        if (fromWindowId == toWindowId) return
-        val from = window(fromWindowId) ?: return
-        val to = window(toWindowId) ?: return
-        val item = from.tabsViewModel.takeTab(tabId) ?: return
-        to.tabsViewModel.insertTab(item.destination, item.title, item.tabType, index, select = true)
-        to.requestFocus()
-        _focusedWindowId.value = to.id
-        if (from.tabsViewModel.state.value.tabs
-                .isEmpty()
-        ) {
-            closeWindow(from.id)
+        val session = win.session
+        if (windowsOf(session.desktopId).size == 1) {
+            putDesktopDormant(session, keepWindow = null)
+        } else {
+            val tabIds = session.group(win.groupId)?.ids.orEmpty()
+            removeWindow(win)
+            tabIds.forEach(session.workspace::close)
+            tabPersistedStateStore.removeAll(tabIds)
         }
         refreshActiveDesktop()
     }
 
     /**
-     * Detaches a tab into a new window of the SAME desktop (Chrome-style drag-out). No desktop is
-     * ever created implicitly. Returns the new window, or null when the tab is the window's only
-     * tab (dragging the whole window around covers that case).
+     * Detaches a tab into a new window of the SAME desktop ("open in new window"). No desktop is
+     * ever created implicitly. Returns false when the tab is the window's only tab (dragging the
+     * whole window around covers that case).
      */
     fun detachTabToNewWindow(
         tabId: String,
         fromWindowId: String,
-        screenX: Int? = null,
-        screenY: Int? = null,
-    ): OpenWindow? {
-        val from = window(fromWindowId) ?: return null
-        if (from.tabsViewModel.state.value.tabs.size <= 1) return null
-        val item = from.tabsViewModel.takeTab(tabId) ?: return null
-        val desktopId = from.desktopId.value
+    ): Boolean {
+        val from = window(fromWindowId) ?: return false
+        val group = from.group() ?: return false
+        if (group.ids.size <= 1 || tabId !in group.ids) return false
         // Chrome-like: the detached window floats noticeably smaller than the (often maximized)
-        // source window — it must never inherit a maximized footprint. With pointer coordinates
-        // (drag & drop) it lands under the cursor; without (context-menu action) it cascades
-        // from the source window.
-        val sourceGeometry = from.windowState.toSavedGeometry()
-        val geometry =
-            if (screenX != null && screenY != null) {
-                SavedGeometry(
-                    x = screenX,
-                    y = screenY,
-                    width = (sourceGeometry.width * 3 / 4).coerceIn(640, 1200),
-                    height = (sourceGeometry.height * 3 / 4).coerceIn(480, 840),
-                    placement = "Floating",
-                )
-            } else {
-                cascadedFloatingGeometry(null)
-            }
-        val snapshot =
-            WindowSnapshot(
-                destinations = listOf(item.destination),
-                selectedIndex = 0,
-                titles = mapOf(tabId to SerializableTabTitle(item.title, item.tabType)),
-                geometry = geometry,
+        // source window and cascades from it.
+        val geometry = cascadedFloatingGeometry(null)
+        val rect =
+            Rect(
+                left = geometry.x.toFloat(),
+                top = geometry.y.toFloat(),
+                right = (geometry.x + geometry.width).toFloat(),
+                bottom = (geometry.y + geometry.height).toFloat(),
             )
-        val spawned = spawnWindow(desktopId, snapshot)
-        _focusedWindowId.value = spawned.id
-        refreshActiveDesktop()
-        return spawned
+        // In dp with a 1:1 scale: the workspace places windows in dp. The new group's window is
+        // opened by the session watcher.
+        return from.session.workspace.tearOff(tabId, rect, scaleFactor = 1f) != null
+    }
+
+    /**
+     * Moves a tab to the end of another desktop's first window, open or dormant, with its reading
+     * state. The window's last tab stays (as for [detachTabToNewWindow]: closing it would close
+     * the window, or quit the app).
+     */
+    fun moveTabToDesktop(
+        tabId: String,
+        fromWindowId: String,
+        desktopId: String,
+    ): Boolean {
+        val from = window(fromWindowId) ?: return false
+        val source = from.session
+        val group = from.group() ?: return false
+        val item = source.item(tabId) ?: return false
+        if (group.ids.size <= 1 || desktopId == source.desktopId || _desktops.value.none { it.id == desktopId }) return false
+        // A new id: the source's cleanup of the closed tab (its state, its ViewModels) must not
+        // reach the moved one.
+        val newId = UUID.randomUUID().toString()
+        val destination = item.destination.withTabId(newId)
+        val state = tabPersistedStateStore.get(tabId) ?: TabPersistedState()
+        val target = windowsOf(desktopId).firstOrNull()
+        if (target != null) {
+            // Added, not opened: the target window keeps its selection.
+            addMovedTab(item, newId, state, target, index = target.group()?.ids?.size ?: 0, select = false)
+        } else {
+            thumbnails.copy(tabId, newId)
+            val snapshot = dormantSnapshots[desktopId] ?: DesktopTabsSnapshot()
+            val windows = snapshot.effectiveWindows().filter { it.destinations.isNotEmpty() }
+            val first = windows.firstOrNull() ?: WindowSnapshot()
+            val moved =
+                first.copy(
+                    destinations = first.destinations + destination,
+                    titles = first.titles + (newId to SerializableTabTitle(item.title, item.tabType)),
+                )
+            dormantSnapshots[desktopId] =
+                snapshot.copy(
+                    destinations = emptyList(),
+                    titles = emptyMap(),
+                    tabStates = snapshot.tabStates + (newId to state),
+                    windows = listOf(moved) + windows.drop(1),
+                )
+        }
+        source.workspace.close(tabId)
+        return true
+    }
+
+    private fun addMovedTab(
+        item: TabItem,
+        newId: String,
+        state: TabPersistedState,
+        target: OpenWindow,
+        index: Int,
+        select: Boolean,
+    ) {
+        tabPersistedStateStore.putAll(mapOf(newId to state))
+        thumbnails.copy(item.destination.tabId, newId)
+        target.session.addTab(
+            item.destination.withTabId(newId),
+            target.groupId,
+            index,
+            title = item.title,
+            tabType = item.tabType,
+            select = select,
+        )
+    }
+
+    /**
+     * A tab of [source] dragged onto the strip of another open desktop's window ([target] in
+     * [into]): it joins that window where it was dropped, selected, with its reading state — a
+     * window left empty closes, as after any drag.
+     */
+    private fun onForeignDrop(
+        source: DesktopSession,
+        tabId: String,
+        into: TabWorkspace,
+        target: TabDropTarget,
+    ) {
+        val item = source.item(tabId) ?: return
+        val window = _windows.value.firstOrNull { it.session.workspace === into && it.groupId == target.group.id } ?: return
+        val newId = UUID.randomUUID().toString()
+        addMovedTab(item, newId, tabPersistedStateStore.get(tabId) ?: TabPersistedState(), window, target.index, select = true)
+        source.workspace.close(tabId)
+        window.requestFocus()
+        onWindowFocused(window.id)
+    }
+
+    /** Every open desktop's strips take the others' tab drags (see [onForeignDrop]). */
+    private fun linkWorkspaces(
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        scope.launch {
+            _sessions.collect { open ->
+                for (session in open) {
+                    session.workspace.linkedWorkspaces = open.filter { it !== session }.map { it.workspace }
+                    session.workspace.onForeignDrop = { tab, into, target -> onForeignDrop(session, tab.id, into, target) }
+                }
+            }
+        }
     }
 
     // ---- Desktop CRUD ----
@@ -320,9 +409,8 @@ class DesktopManager(
         val win = window(windowId) ?: return id
         if (win.isSwitching.value) return id
         win.markSwitching()
-        putDesktopDormant(win.desktopId.value, keepWindow = win)
-        freshHomeInto(win)
-        win.setDesktop(id)
+        putDesktopDormant(win.session, keepWindow = win)
+        openDesktop(id, keepWindow = win)
         refreshActiveDesktop()
         return id
     }
@@ -331,8 +419,7 @@ class DesktopManager(
     fun createDesktopInNewWindow(name: String): String {
         val id = UUID.randomUUID().toString()
         _desktops.update { (it + VirtualDesktop(id = id, name = name)).toPersistentList() }
-        val spawned = spawnWindow(id, WindowSnapshot(geometry = cascadedFloatingGeometry(null)))
-        _focusedWindowId.value = spawned.id
+        openDesktop(id, cascade = true)
         refreshActiveDesktop()
         return id
     }
@@ -352,25 +439,20 @@ class DesktopManager(
         val index = current.indexOfFirst { it.id == id }
         if (index < 0) return
 
-        val wins = windowsOf(id)
-        if (wins.isNotEmpty() && wins.size == _windows.value.size) {
-            // The desktop being deleted owns every window: keep one alive on a neighbor desktop.
-            val neighbor = current[if (index > 0) index - 1 else index + 1]
-            val keep = wins.first()
-            wins.drop(1).forEach { w ->
-                tabPersistedStateStore.removeAll(windowTabIds(w))
-                removeWindow(w)
-            }
-            keep.markSwitching()
-            tabPersistedStateStore.removeAll(windowTabIds(keep))
-            openDesktopInto(keep, neighbor.id)
-        } else {
-            wins.forEach { w ->
-                tabPersistedStateStore.removeAll(windowTabIds(w))
-                removeWindow(w)
+        session(id)?.let { doomed ->
+            val wins = windowsOf(id)
+            tabPersistedStateStore.removeAll(doomed.tabIds())
+            if (wins.isNotEmpty() && wins.size == _windows.value.size) {
+                // The desktop being deleted owns every window: keep one alive on a neighbor desktop.
+                val neighbor = current[if (index > 0) index - 1 else index + 1]
+                val keep = wins.first()
+                keep.markSwitching()
+                closeSession(doomed, keepWindow = keep)
+                openDesktop(neighbor.id, keepWindow = keep)
+            } else {
+                closeSession(doomed, keepWindow = null)
             }
         }
-
         dormantSnapshots.remove(id)
         _desktops.update { desktops -> desktops.filter { it.id != id }.toPersistentList() }
         refreshActiveDesktop()
@@ -396,7 +478,7 @@ class DesktopManager(
         val open = openDesktopIds()
         val allSnapshots = dormantSnapshots.toMutableMap()
         open.forEach { allSnapshots[it] = snapshotOpenDesktop(it) }
-        val focusedDesktop = focusedWindow()?.desktopId?.value ?: open.firstOrNull().orEmpty()
+        val focusedDesktop = focusedWindow()?.session?.desktopId ?: open.firstOrNull().orEmpty()
         return DesktopsState(
             desktops = _desktops.value,
             activeDesktopId = focusedDesktop,
@@ -407,68 +489,40 @@ class DesktopManager(
     }
 
     /**
-     * Restores the persisted state at boot: reopens every previously open desktop with its
-     * window geometry (clamped to the current screens). The single boot window is reused as the
-     * focused desktop's first window to avoid a close/reopen flash.
+     * Restores the persisted state at boot: reopens every previously open desktop with its window
+     * geometry (clamped to the current screens). The focused desktop's windows come first.
      */
     fun restoreFromDesktopsState(state: DesktopsState) {
-        if (state.desktops.isEmpty()) return
+        if (state.desktops.isEmpty()) {
+            ensureWindow()
+            return
+        }
+        _sessions.value.forEach { closeSession(it, keepWindow = null) }
+        tabPersistedStateStore.clearAll()
         _desktops.value = state.desktops.toPersistentList()
+        dormantSnapshots.clear()
+        dormantSnapshots.putAll(state.snapshots)
 
         val openIds = state.effectiveOpenDesktopIds().ifEmpty { listOf(state.desktops.first().id) }
-        dormantSnapshots.clear()
-        state.snapshots.forEach { (id, snapshot) ->
-            if (id !in openIds) dormantSnapshots[id] = snapshot
-        }
-
-        val primary = _windows.value.first()
-        _windows.value.drop(1).forEach { removeWindow(it) }
-        tabPersistedStateStore.clearAll()
-        openIds.forEach { id -> state.snapshots[id]?.let { tabPersistedStateStore.putAll(it.tabStates) } }
-
-        val primaryDesktopId = state.focusedDesktopId.takeIf { it in openIds } ?: openIds.first()
-        val primarySnapshots = state.snapshots[primaryDesktopId]?.effectiveWindows().orEmpty()
-        val primaryFirst = primarySnapshots.firstOrNull()
-        if (primaryFirst != null && primaryFirst.destinations.isNotEmpty()) {
-            restoreInto(primary, primaryFirst)
-        } else {
-            freshHomeInto(primary)
-        }
-        primaryFirst?.geometry?.let { applyGeometry(primary.windowState, it) }
-        primary.setDesktop(primaryDesktopId)
-        primarySnapshots.drop(1).forEach { spawnWindow(primaryDesktopId, it) }
-
-        openIds.filter { it != primaryDesktopId }.forEach { id ->
-            val windowSnapshots = state.snapshots[id]?.effectiveWindows().orEmpty()
-            if (windowSnapshots.isEmpty()) {
-                spawnWindow(id, null)
-            } else {
-                windowSnapshots.forEach { spawnWindow(id, it) }
-            }
-        }
-
-        _focusedWindowId.value = primary.id
+        val focused = state.focusedDesktopId.takeIf { it in openIds } ?: openIds.first()
+        (listOf(focused) + openIds.filter { it != focused }).forEach { openDesktop(it) }
+        _windows.value.firstOrNull()?.let { _focusedWindowId.value = it.id }
         refreshActiveDesktop()
+    }
+
+    /** Opens a fresh Home window when nothing is open. */
+    fun ensureWindow() {
+        if (_sessions.value.isEmpty()) openDesktop(_desktops.value.first().id)
     }
 
     /** Serializes an OPEN desktop: all its windows (tabs + geometry) and their persisted states. */
     fun snapshotOpenDesktop(desktopId: String): DesktopTabsSnapshot {
-        val wins = windowsOf(desktopId)
-        val storeSnapshot = tabPersistedStateStore.snapshot()
+        val session = session(desktopId) ?: return dormantSnapshots[desktopId] ?: DesktopTabsSnapshot()
         val windowSnapshots =
-            wins.map { w ->
-                val tabsState = w.tabsViewModel.state.value
-                val destinations = tabsState.tabs.map { stripEphemeral(it.destination) }
-                WindowSnapshot(
-                    destinations = destinations,
-                    selectedIndex = tabsState.selectedTabIndex.coerceIn(0, destinations.lastIndex.coerceAtLeast(0)),
-                    titles =
-                        tabsState.tabs.associate {
-                            it.destination.tabId to SerializableTabTitle(title = it.title, tabType = it.tabType)
-                        },
-                    geometry = w.windowState.toSavedGeometry(),
-                )
+            windowsOf(desktopId).mapNotNull { w ->
+                session.windowSnapshot(w.groupId)?.copy(geometry = w.savedGeometry())
             }
+        val storeSnapshot = tabPersistedStateStore.snapshot()
         val tabIds = windowSnapshots.flatMap { snapshot -> snapshot.destinations.map { it.tabId } }
         return DesktopTabsSnapshot(
             tabStates = tabIds.associateWith { storeSnapshot[it] ?: TabPersistedState() },
@@ -478,52 +532,135 @@ class DesktopManager(
 
     // ---- Internals ----
 
-    private fun newWindow(
+    /**
+     * Opens [desktopId] from its dormant snapshot (or a fresh Home window). [keepWindow] is rebound
+     * to the first window in place (a desktop switch); otherwise every window is new, cascading
+     * from the focused one when [cascade].
+     */
+    private fun openDesktop(
         desktopId: String,
-        snapshot: WindowSnapshot?,
-    ): OpenWindow {
-        val tabsViewModel = TabsViewModel(titleUpdateManager, freshHomeDestination())
-        if (snapshot != null && snapshot.destinations.isNotEmpty()) {
-            tabsViewModel.restoreTabs(
-                destinations = snapshot.destinations,
-                selectedIndex = snapshot.selectedIndex,
-                titles = snapshot.titles.mapValues { (_, t) -> t.title to t.tabType },
-                skipAnimation = true,
-            )
-        }
-        val w =
-            OpenWindow(
-                id = UUID.randomUUID().toString(),
-                desktopId = desktopId,
-                tabsViewModel = tabsViewModel,
-                searchHomeViewModel = searchHomeViewModelFactory(),
-                windowState = snapshot?.geometry.toWindowState(),
-            )
-        // Chrome-like: closing a window's last tab closes the window; closing the last window
-        // quits the app. The tab is already removed, so the desktop snapshot / persisted
-        // session no longer contains it.
-        tabsViewModel.onLastTabClosed = { removed ->
-            tabPersistedStateStore.remove(removed.destination.tabId)
-            if (_windows.value.size > 1) {
-                closeWindow(w.id)
+        keepWindow: OpenWindow? = null,
+        cascade: Boolean = false,
+    ): DesktopSession {
+        session(desktopId)?.let { return it }
+        val snapshot = dormantSnapshots.remove(desktopId)
+        tabPersistedStateStore.putAll(snapshot?.tabStates.orEmpty())
+        val windowSnapshots =
+            snapshot
+                ?.effectiveWindows()
+                .orEmpty()
+                .filter { it.destinations.isNotEmpty() }
+                .ifEmpty { listOf(WindowSnapshot(destinations = listOf(freshHomeDestination()))) }
+        val session = DesktopSession(desktopId)
+        val groupIds = session.restore(windowSnapshots)
+        _sessions.update { it.adding(session) }
+        groupIds.forEachIndexed { index, groupId ->
+            val saved = windowSnapshots[index].geometry
+            if (index == 0 && keepWindow != null) {
+                // The window keeps its current frame on an in-place switch.
+                keepWindow.bind(session, groupId)
             } else {
-                onQuitRequest?.invoke() ?: freshHomeInto(w)
+                val geometry = if (cascade) cascadedFloatingGeometry(saved) else saved
+                spawnWindow(session, groupId, geometry.toWindowState())
             }
         }
-        return w
+        watch(session)
+        refreshActiveDesktop()
+        return session
+    }
+
+    /** Snapshots [session] to dormant and closes all its windows except [keepWindow]. */
+    private fun putDesktopDormant(
+        session: DesktopSession,
+        keepWindow: OpenWindow?,
+    ) {
+        val snapshot = snapshotOpenDesktop(session.desktopId)
+        dormantSnapshots[session.desktopId] = snapshot
+        tabPersistedStateStore.removeAll(snapshot.tabStates.keys)
+        closeSession(session, keepWindow)
+    }
+
+    private fun closeSession(
+        session: DesktopSession,
+        keepWindow: OpenWindow?,
+    ) {
+        watchers.remove(session)?.cancel()
+        _sessions.update { it.removing(session) }
+        windowsOf(session.desktopId).filter { it !== keepWindow }.forEach(::removeWindow)
+        session.dispose()
+    }
+
+    /**
+     * Follows [session]'s groups: a group the user tore off gets a window where the workspace put
+     * it; a window whose group lost its last tab closes (Chrome-like: the last window of a desktop
+     * puts it to sleep, the last window of the app quits).
+     */
+    private fun watch(session: DesktopSession) {
+        watchers[session]?.cancel()
+        watchers[session] = launchWatch(scope, session)
+    }
+
+    private fun launchWatch(
+        @StructuredScope scope: CoroutineScope,
+        session: DesktopSession,
+    ): Job =
+        scope.launch {
+            snapshotFlow { session.workspace.groups.map { it.id } }.collect { groupIds ->
+                groupIds.forEach(session::onGroupPlaced)
+                val shown = windowsOf(session.desktopId).map { it.groupId }.toSet()
+                for (groupId in groupIds) {
+                    if (groupId in shown) continue
+                    val group = session.group(groupId) ?: continue
+                    val position = group.position?.let { WindowPosition.Absolute(it.x, it.y) } ?: WindowPosition.PlatformDefault
+                    spawnWindow(session, groupId, WindowState(WindowPlacement.Floating, position = position, size = group.size))
+                }
+                val emptied = windowsOf(session.desktopId).filter { it.groupId !in groupIds && !session.isAwaiting(it.groupId) }
+                for (w in emptied) onWindowEmptied(w)
+            }
+        }
+
+    private fun onWindowEmptied(w: OpenWindow) {
+        when {
+            _windows.value.size <= 1 -> {
+                if (E2e.enabled) {
+                    val groups =
+                        w.session.workspace.groups
+                            .map { it.id to it.ids.size }
+                    println("E2E QUIT: window ${w.id.take(8)} of ${w.session.desktopId} emptied (group ${w.groupId}, groups=$groups)")
+                }
+                onQuitRequest?.invoke()
+            }
+            windowsOf(w.session.desktopId).size == 1 -> {
+                dormantSnapshots[w.session.desktopId] = DesktopTabsSnapshot()
+                closeSession(w.session, keepWindow = null)
+            }
+            else -> removeWindow(w)
+        }
+        refreshActiveDesktop()
     }
 
     private fun spawnWindow(
-        desktopId: String,
-        snapshot: WindowSnapshot?,
+        session: DesktopSession,
+        groupId: String,
+        state: WindowState,
     ): OpenWindow {
-        val w = newWindow(desktopId, snapshot)
-        _windows.update { it.add(w) }
+        val w =
+            OpenWindow(
+                id = UUID.randomUUID().toString(),
+                session = session,
+                groupId = groupId,
+                searchHomeViewModel = searchHomeViewModelFactory(),
+                windowState = state,
+            )
+        _windows.update { it.adding(w) }
+        if (window(_focusedWindowId.value) == null) _focusedWindowId.value = w.id
         return w
     }
 
     private fun removeWindow(w: OpenWindow) {
-        _windows.update { it.remove(w) }
+        if (w !in _windows.value) return
+        _windows.update { it.removing(w) }
+        w.session.forgetWindow(w.groupId)
         w.dispose()
         if (_focusedWindowId.value == w.id) {
             _focusedWindowId.value =
@@ -534,67 +671,10 @@ class DesktopManager(
         }
     }
 
-    /** Snapshots [desktopId] to dormant and closes all its windows except [keepWindow]. */
-    private fun putDesktopDormant(
-        desktopId: String,
-        keepWindow: OpenWindow?,
-    ) {
-        val snapshot = snapshotOpenDesktop(desktopId)
-        dormantSnapshots[desktopId] = snapshot
-        windowsOf(desktopId).filter { it !== keepWindow }.forEach { removeWindow(it) }
-        tabPersistedStateStore.removeAll(snapshot.tabStates.keys)
-    }
-
-    /** Restores a dormant desktop into [win] (first window) and spawns its remaining windows. */
-    private fun openDesktopInto(
-        win: OpenWindow,
-        desktopId: String,
-    ) {
-        val snapshot = dormantSnapshots.remove(desktopId)
-        tabPersistedStateStore.putAll(snapshot?.tabStates.orEmpty())
-        val windowSnapshots = snapshot?.effectiveWindows().orEmpty()
-        val first = windowSnapshots.firstOrNull()
-        if (first != null && first.destinations.isNotEmpty()) {
-            restoreInto(win, first)
-        } else {
-            freshHomeInto(win)
-        }
-        // The window keeps its current frame on an in-place switch; only extra windows get geometry.
-        windowSnapshots.drop(1).forEach { spawnWindow(desktopId, it) }
-        win.setDesktop(desktopId)
-    }
-
-    private fun restoreInto(
-        win: OpenWindow,
-        snapshot: WindowSnapshot,
-    ) {
-        win.tabsViewModel.restoreTabs(
-            destinations = snapshot.destinations,
-            selectedIndex = snapshot.selectedIndex,
-            titles = snapshot.titles.mapValues { (_, t) -> t.title to t.tabType },
-            skipAnimation = true,
-        )
-    }
-
-    private fun freshHomeInto(win: OpenWindow) {
-        win.tabsViewModel.restoreTabs(
-            destinations = listOf(freshHomeDestination()),
-            selectedIndex = 0,
-            skipAnimation = true,
-        )
-    }
-
-    /**
-     * Geometry for a window opened FROM an existing one ("open desktop in new window", Cmd+N):
-     * it must never land exactly on top of the current window. A saved floating frame is kept as
-     * long as it doesn't collide with an open window's origin; otherwise (or for maximized /
-     * position-less snapshots — typical for desktops only ever used via in-place switching) the
-     * window floats at 3/4 of the reference window, cascaded down-right macOS-style.
-     */
     private fun cascadedFloatingGeometry(saved: SavedGeometry?): SavedGeometry {
         val referenceWindow = focusedWindow()
         val referenceBounds = referenceWindow?.boundsOnScreen()
-        val referenceGeometry = referenceWindow?.windowState?.toSavedGeometry()
+        val referenceGeometry = referenceWindow?.savedGeometry()
 
         var x: Int
         var y: Int
@@ -634,19 +714,10 @@ class DesktopManager(
 
     private fun freshHomeDestination(): TabsDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
 
-    private fun windowTabIds(w: OpenWindow): List<String> =
-        w.tabsViewModel.state.value.tabs
-            .map { it.destination.tabId }
-
-    private fun stripEphemeral(destination: TabsDestination): TabsDestination =
-        when (destination) {
-            is TabsDestination.BookContent -> destination.copy(lineId = null)
-            else -> destination
-        }
-
     private fun refreshActiveDesktop() {
         _activeDesktopId.value =
-            focusedWindow()?.desktopId?.value
+            focusedWindow()?.session?.desktopId
+                ?: _sessions.value.firstOrNull()?.desktopId
                 ?: _desktops.value
                     .firstOrNull()
                     ?.id

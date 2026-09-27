@@ -30,6 +30,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerInputChange
@@ -881,29 +882,54 @@ fun BookContentView(
         }
     }
 
+    // Ctrl/Cmd + wheel (or trackpad swipe) zooms the text.
+    fun zoomScroll(
+        event: PointerEvent,
+        delta: Offset?,
+    ) {
+        val isZoomScroll = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
+        if (!isZoomScroll) return
+        val scrollDelta = delta ?: Offset.Zero
+        val zoomDelta =
+            if (abs(scrollDelta.y) >= abs(scrollDelta.x)) {
+                scrollDelta.y
+            } else {
+                scrollDelta.x
+            }
+        if (zoomDelta == 0f) return
+
+        val exponent = (-zoomDelta * 0.08f).coerceIn(-0.25f, 0.25f)
+        applyPointerZoomFactorState.value(exp(exponent.toDouble()).toFloat())
+        schedulePointerZoomCommit()
+        event.changes.forEach { it.consume() }
+    }
+
     SafeSelectionContainer(
         modifier =
             modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
-                .onPointerEvent(PointerEventType.Scroll) { event ->
-                    val isZoomScroll = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
-                    if (!isZoomScroll) return@onPointerEvent
-
-                    val scrollDelta = event.changes.firstOrNull()?.scrollDelta ?: Offset.Zero
-                    val zoomDelta =
-                        if (abs(scrollDelta.y) >= abs(scrollDelta.x)) {
-                            scrollDelta.y
-                        } else {
-                            scrollDelta.x
-                        }
-                    if (zoomDelta == 0f) return@onPointerEvent
-
-                    val exponent = (-zoomDelta * 0.08f).coerceIn(-0.25f, 0.25f)
-                    applyPointerZoomFactorState.value(exp(exponent.toDouble()).toFloat())
+                .onPointerEvent(PointerEventType.Scroll) { event -> zoomScroll(event, event.changes.firstOrNull()?.scrollDelta) }
+                // A trackpad swipe arrives as Pan on macOS (Nucleus 2.6): AWT's delta × 10 dp.
+                .onPointerEvent(PointerEventType.PanMove) { event ->
+                    zoomScroll(
+                        event,
+                        event.changes
+                            .firstOrNull()
+                            ?.panOffset
+                            ?.div(PAN_DP_PER_NOTCH * density),
+                    )
+                }
+                // A trackpad pinch the platform recognized (Nucleus 2.6: Scale events at the
+                // cursor, each carrying its ratio to the last one).
+                .onPointerEvent(PointerEventType.ScaleChange) { event ->
+                    val factor = event.changes.firstOrNull()?.scaleFactor ?: return@onPointerEvent
+                    if (abs(factor - 1f) > 0.0005f) applyPointerZoomFactorState.value(factor.coerceIn(0.85f, 1.18f))
                     schedulePointerZoomCommit()
                     event.changes.forEach { it.consume() }
-                }.pointerInput(Unit) {
+                }.onPointerEvent(PointerEventType.ScaleEnd) { commitPointerZoom() }
+                // Two real touch contacts (a touchscreen).
+                .pointerInput(Unit) {
                     awaitEachGesture {
                         var previousDistance = 0f
                         var hasZoomed = false
@@ -1274,6 +1300,8 @@ private data class AnchorData(
     val scrollIndex: Int,
     val scrollOffset: Int,
 )
+
+private const val PAN_DP_PER_NOTCH = 10f
 
 private fun averageDistanceToCentroid(changes: List<PointerInputChange>): Float {
     if (changes.isEmpty()) return 0f

@@ -8,9 +8,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -21,10 +23,9 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.window.WindowPlacement
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
@@ -32,11 +33,15 @@ import com.kdroid.gematria.converter.toHebrewNumeral
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.energymanager.EnergyManager
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
+import dev.nucleusframework.window.tao.BindTabGroupWindow
+import dev.nucleusframework.window.tao.JoinSatelliteWorkspace
+import dev.nucleusframework.window.tao.TabGroupWindowPlacement
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.e2eCapture
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
@@ -239,6 +244,26 @@ fun NucleusApplicationScope.MainAppWindow(
             }
         }
 
+        // Remember the floating size: while maximized the native window reports the screen frame.
+        LaunchedEffect(windowState) {
+            snapshotFlow { windowState.placement to windowState.size }.collect { (placement, size) ->
+                if (placement == WindowPlacement.Floating && size.isSpecified) openWindow.floatingSize = size
+            }
+        }
+
+        // The window shows one group of its desktop's tab workspace: binding it is what lets tabs
+        // be dropped here, torn off from here, and moved by the workspace. Its pane docks join it.
+        val session = openWindow.session
+        val groupId = openWindow.groupId
+        key(session, groupId) {
+            openWindow.group()?.let { group ->
+                BindTabGroupWindow(session.workspace, group, nucleusWin.unsafe.taoWindow)
+                TabGroupWindowPlacement(group, windowState)
+            }
+            JoinSatelliteWorkspace(session.panesOf(groupId, navigation = true), nucleusWin.unsafe.taoWindow)
+            JoinSatelliteWorkspace(session.panesOf(groupId, navigation = false), nucleusWin.unsafe.taoWindow)
+        }
+
         // Settings dialog, composed inside the window it was opened from so it
         // picks up this window's modal counter and native transient-for
         // relationship — modal to this window only, the others stay usable.
@@ -255,7 +280,7 @@ fun NucleusApplicationScope.MainAppWindow(
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
             LocalViewModelStoreOwner provides windowViewModelOwner,
         ) {
-            MainTitleBar()
+            MainTitleBar(Modifier.e2eCapture(openWindow.id + E2e.TITLE_BAR))
 
             // Keep the screen awake while a book is open in the current tab and this window is
             // focused — opt-out via the General settings (enabled by default).
@@ -282,25 +307,9 @@ fun NucleusApplicationScope.MainAppWindow(
                 modifier =
                     Modifier
                         .fillMaxSize()
+                        .e2eCapture(openWindow.id)
                         .detectTouchMode { isTouchMode = it }
-                        // Wayland pending-drop resolution: while a cross-window tab drop is
-                        // awaiting its target, the first pointer sample this window receives
-                        // (the compositor's post-release pointer-enter) identifies it as the
-                        // window under the cursor. Non-consuming, no-op otherwise.
-                        .pointerInput(openWindow.id) {
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val e = awaitPointerEvent(PointerEventPass.Initial)
-                                    val dock = appGraph.tabDockManager
-                                    if (dock.hasPendingDrop()) {
-                                        dock.onWindowPointerSample(
-                                            openWindow.id,
-                                            e.changes.first().position,
-                                        )
-                                    }
-                                }
-                            }
-                        }.onPreviewKeyEvent { keyEvent ->
+                        .onPreviewKeyEvent { keyEvent ->
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                 when {
@@ -425,7 +434,7 @@ fun NucleusApplicationScope.MainAppWindow(
                         },
             ) {
                 CompositionLocalProvider(LocalIsTouchMode provides isTouchMode) {
-                    TabsContent()
+                    WindowBody(openWindow)
                 }
             }
         }

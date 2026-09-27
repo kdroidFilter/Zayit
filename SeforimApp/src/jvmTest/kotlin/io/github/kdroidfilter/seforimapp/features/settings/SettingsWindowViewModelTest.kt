@@ -1,5 +1,11 @@
 package io.github.kdroidfilter.seforimapp.features.settings
 
+import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
+import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
+import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -9,17 +15,33 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SettingsWindowViewModelTest {
+    private fun desktopManager() =
+        DesktopManager(
+            tabPersistedStateStore = TabPersistedStateStore(),
+            thumbnails =
+                TabThumbnailStore(
+                    kotlin.io.path
+                        .createTempDirectory()
+                        .toFile(),
+                ),
+            titleUpdateManager = TabTitleUpdateManager(),
+            searchHomeViewModelFactory = {
+                SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+            },
+            defaultDesktopName = "D1",
+        )
+
     @Test
     fun `initial state has isVisible false`() =
         runTest {
-            val viewModel = SettingsWindowViewModel()
+            val viewModel = SettingsWindowViewModel(desktopManager())
             assertFalse(viewModel.state.value.isVisible)
         }
 
     @Test
     fun `OnOpen event sets isVisible to true`() =
         runTest {
-            val viewModel = SettingsWindowViewModel()
+            val viewModel = SettingsWindowViewModel(desktopManager())
 
             viewModel.onEvent(SettingsWindowEvents.OnOpen)
 
@@ -29,7 +51,7 @@ class SettingsWindowViewModelTest {
     @Test
     fun `OnClose event sets isVisible to false`() =
         runTest {
-            val viewModel = SettingsWindowViewModel()
+            val viewModel = SettingsWindowViewModel(desktopManager())
 
             // First open
             viewModel.onEvent(SettingsWindowEvents.OnOpen)
@@ -43,7 +65,7 @@ class SettingsWindowViewModelTest {
     @Test
     fun `multiple OnOpen events keep isVisible true`() =
         runTest {
-            val viewModel = SettingsWindowViewModel()
+            val viewModel = SettingsWindowViewModel(desktopManager())
 
             viewModel.onEvent(SettingsWindowEvents.OnOpen)
             viewModel.onEvent(SettingsWindowEvents.OnOpen)
@@ -54,7 +76,7 @@ class SettingsWindowViewModelTest {
     @Test
     fun `multiple OnClose events keep isVisible false`() =
         runTest {
-            val viewModel = SettingsWindowViewModel()
+            val viewModel = SettingsWindowViewModel(desktopManager())
 
             viewModel.onEvent(SettingsWindowEvents.OnClose)
             viewModel.onEvent(SettingsWindowEvents.OnClose)
@@ -65,7 +87,7 @@ class SettingsWindowViewModelTest {
     @Test
     fun `state flow emits updates`() =
         runTest {
-            val viewModel = SettingsWindowViewModel()
+            val viewModel = SettingsWindowViewModel(desktopManager())
 
             // Collect initial state
             val initialState = viewModel.state.value
@@ -81,7 +103,7 @@ class SettingsWindowViewModelTest {
 
     @Test
     fun `state is a StateFlow`() {
-        val viewModel = SettingsWindowViewModel()
+        val viewModel = SettingsWindowViewModel(desktopManager())
         assertEquals(SettingsWindowState::class, viewModel.state.value::class)
     }
 }

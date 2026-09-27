@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalNucleusApi::class)
+
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
 import androidx.compose.animation.AnimatedVisibility
@@ -6,10 +8,15 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,7 +28,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -30,16 +36,12 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondary
 import androidx.compose.ui.input.pointer.isTertiary
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +54,18 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
+import dev.nucleusframework.window.ExperimentalNucleusApi
+import dev.nucleusframework.window.tao.TabGripCursor
+import dev.nucleusframework.window.tao.TabHoverPreview
+import dev.nucleusframework.window.tao.TabHoverPreviewPopup
+import dev.nucleusframework.window.tao.TabHoverPreviewScope
+import dev.nucleusframework.window.tao.TabPreview
+import dev.nucleusframework.window.tao.TabStripScope
+import dev.nucleusframework.window.tao.rememberTabStripDrag
+import dev.nucleusframework.window.tao.tabStripCarry
+import dev.nucleusframework.window.tao.tabStripGeometry
+import dev.nucleusframework.window.tao.tabStripGrip
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
@@ -88,7 +102,7 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
-import sh.calvin.reorderable.ReorderableRow
+import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import kotlin.math.roundToInt
@@ -111,6 +125,8 @@ private data class TabEntry(
     val onCopyLink: (() -> Unit)?,
     // null when the tab is the window's only one (the window itself already is that tab)
     val onDetach: (() -> Unit)?,
+    // Moves the tab to the desktop of that id; null for the window's only tab
+    val onMoveToDesktop: ((String) -> Unit)?,
 )
 
 private val TabTooltipWidthThreshold = 140.dp
@@ -122,14 +138,25 @@ private val LocalCompactIconOnly = compositionLocalOf { false }
 
 @Composable
 fun TabsView() {
-    val viewModel: TabsViewModel = LocalOpenWindow.current.tabsViewModel
-    val state = rememberTabsState(viewModel)
-    DefaultTabShowcase(state = state, onEvents = viewModel::onEvent)
+    val openWindow = LocalOpenWindow.current
+    val viewModel: TabsViewModel = openWindow.tabsViewModel
+    val state by viewModel.state.collectAsState()
+    // The strip of this window's group: what tab drags, drops and tear-offs resolve against.
+    val workspace = openWindow.session.workspace
+    val group = openWindow.group() ?: return
+    val stripScope =
+        remember(workspace, group) {
+            object : TabStripScope {
+                override val workspace = workspace
+                override val group = group
+            }
+        }
+    with(stripScope) { DefaultTabShowcase(state = state, onEvents = viewModel::onEvent) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DefaultTabShowcase(
+private fun TabStripScope.DefaultTabShowcase(
     onEvents: (TabsEvents) -> Unit,
     state: TabsState,
 ) {
@@ -223,6 +250,12 @@ private fun DefaultTabShowcase(
                                 } else {
                                     null
                                 },
+                            onMoveToDesktop =
+                                if (state.tabs.size > 1) {
+                                    { desktopId -> desktopManager.moveTabToDesktop(tabItem.destination.tabId, windowId, desktopId) }
+                                } else {
+                                    null
+                                },
                         )
                     }.toImmutableList()
             } else {
@@ -298,6 +331,12 @@ private fun DefaultTabShowcase(
                                 } else {
                                     null
                                 },
+                            onMoveToDesktop =
+                                if (state.tabs.size > 1) {
+                                    { desktopId -> desktopManager.moveTabToDesktop(tabItem.destination.tabId, windowId, desktopId) }
+                                } else {
+                                    null
+                                },
                         )
                     }.toImmutableList()
             }
@@ -321,7 +360,7 @@ private fun DefaultTabShowcase(
 }
 
 @Composable
-private fun RtlAwareTabStripWithAddButton(
+private fun TabStripScope.RtlAwareTabStripWithAddButton(
     tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     isRtl: Boolean,
@@ -347,7 +386,7 @@ private fun RtlAwareTabStripWithAddButton(
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun RtlAwareTabStripContent(
+private fun TabStripScope.RtlAwareTabStripContent(
     tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     onAddClick: () -> Unit,
@@ -367,9 +406,15 @@ private fun RtlAwareTabStripContent(
     // Track which tabs already existed to avoid double width + expand animation on new entries
     val openWindow = LocalOpenWindow.current
     val tabsViewModel = openWindow.tabsViewModel
-    val dockManager = LocalAppGraph.current.tabDockManager
-    val density = LocalDensity.current
-    val dragFallbackTitle = stringResource(Res.string.home)
+    // The workspace's gestures for this strip: carry along it, slide home, hand-over to another
+    // window or a new one once a tab leaves it (the platform drag session on native Wayland).
+    val tabDrag = rememberTabStripDrag()
+    TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
+    // The last look at the selected tab before a click may leave it (see rememberTabThumbnails).
+    val stripHovered by interactionSource.collectIsHoveredAsState()
+    LaunchedEffect(stripHovered) { openWindow.pointerOnStrip = stripHovered }
+    // Chrome-like: the tab being dragged is selected.
+    LaunchedEffect(tabDrag.held) { tabDrag.held?.let(workspace::select) }
     val skipAnimation by tabsViewModel.skipNextAnimation.collectAsState()
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
     val currentKeys = remember(tabs) { tabs.map { it.key } }
@@ -411,40 +456,15 @@ private fun RtlAwareTabStripContent(
         val computedTabWidthTarget = naturalTabWidth.coerceAtMost(maxTabWidth)
         val tabWidth = computedTabWidthTarget
 
-        // Register this strip as a cross-window drop target (logical screen-coordinate
-        // hit-testing, IntelliJ DockManager style, backend-agnostic through Nucleus).
-        // The geometry holder is read lazily at drag time.
-        val stripGeometry = remember { StripGeometry(openWindow) }
-        SideEffect {
-            stripGeometry.density = density.density
-            stripGeometry.tabWidthPx = with(density) { tabWidth.toPx() }
-            stripGeometry.tabCount = tabs.size
-            stripGeometry.isRtl = isRtl
+        // The whole strip is the drop target of a tab dragged from another window (Chrome accepts
+        // drops on the whole strip area). Published left to right: the tabs are laid out in their
+        // logical order from the left edge, whatever the app's direction.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(Modifier.matchParentSize().tabStripGeometry(workspace, group))
         }
-        DisposableEffect(openWindow.id) {
-            dockManager.registerStrip(
-                io.github.kdroidfilter.seforimapp.framework.desktop.TabDockManager.StripTarget(
-                    windowId = openWindow.id,
-                    boundsInWindowPx = stripGeometry::dropAreaBoundsInWindow,
-                    windowPxToScreen = stripGeometry::windowPxToScreen,
-                    boundsOnScreen = stripGeometry::dropAreaBoundsOnScreen,
-                    dropIndexFor = stripGeometry::dropIndexFor,
-                    dropAreaContainsWindowPx = stripGeometry::dropAreaContainsWindowPx,
-                    dropIndexForWindowPx = stripGeometry::dropIndexForWindowPx,
-                ),
-            )
-            onDispose {
-                dockManager.unregisterStrip(openWindow.id)
-                dockManager.cancelIfSource(openWindow.id)
-            }
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .onGloballyPositioned { stripGeometry.areaBoundsInWindow = it.boundsInWindow() },
+            modifier = Modifier.fillMaxWidth(),
         ) {
             // Use hysteresis around the threshold to avoid flicker/glitch when toggling modes
             var shrinkToFitActive by remember { mutableStateOf(false) }
@@ -484,40 +504,44 @@ private fun RtlAwareTabStripContent(
                 val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
                 val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
 
-                ReorderableRow(
-                    list = currentKeys,
-                    onSettle = { fromIdx, toIdx ->
-                        if (!reorderingEnabled) return@ReorderableRow
-                        onReorder(fromIdx, toIdx)
-                    },
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = rowModifier,
-                ) { index, key, isBeingDragged ->
-                    val tabEntry = tabEntriesByKey[key] ?: return@ReorderableRow
-                    key(key) {
-                        val isClosing = closingKeys.contains(tabEntry.key)
-                        val isNew = !knownKeys.contains(tabEntry.key)
+                ) {
+                    currentKeys.forEachIndexed { index, key ->
+                        val tabEntry = tabEntriesByKey[key] ?: return@forEachIndexed
+                        val workspaceTab = workspace.tab(key) ?: return@forEachIndexed
+                        key(key) {
+                            val isClosing = closingKeys.contains(tabEntry.key)
+                            val isNew = !knownKeys.contains(tabEntry.key)
 
-                        ReorderableItem {
                             Box(
                                 modifier =
-                                    Modifier.draggableHandle(
-                                        enabled = reorderingEnabled && !isClosing,
-                                        onDragStarted = {
-                                            // Chrome-like behavior: selecting a tab when starting to drag it
-                                            tabEntry.onClick()
-                                            // Hand the raw pointer to the dock manager: dragging past the
-                                            // strip detaches the tab (new window or drop on another strip).
-                                            dockManager.startTracking(tabEntry.key, openWindow.id, dragFallbackTitle)
-                                        },
-                                    ),
+                                    Modifier
+                                        // Carried or sliding home, it is drawn over its neighbours.
+                                        .zIndex(if (tabDrag.animating == key) 1f else 0f)
+                                        .then(
+                                            // A tab closing (or just moved away) is no longer in the group.
+                                            if (reorderingEnabled && !isClosing && key in group.ids) {
+                                                Modifier.tabStripGrip(
+                                                    this@RtlAwareTabStripContent,
+                                                    tabDrag,
+                                                    workspaceTab,
+                                                    group.ids.indexOf(key),
+                                                    // The strip keeps the plain arrow over its tabs.
+                                                    cursor = TabGripCursor.None,
+                                                )
+                                            } else {
+                                                Modifier
+                                            },
+                                        ),
                             ) {
                                 var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                 LaunchedEffect(isClosing) {
                                     visible = !isClosing
                                 }
-                                Row {
+                                Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
                                     AnimatedVisibility(
                                         visible = visible,
                                         exit =
@@ -552,10 +576,11 @@ private fun RtlAwareTabStripContent(
                                             onCloseRight = tabEntry.onCloseRight,
                                             onCopyLink = tabEntry.onCopyLink,
                                             onDetach = tabEntry.onDetach,
+                                            onMoveToDesktop = tabEntry.onMoveToDesktop,
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
-                                            isDragging = isBeingDragged,
+                                            isDragging = tabDrag.held == key,
                                         )
                                     }
                                 }
@@ -577,29 +602,7 @@ private fun RtlAwareTabStripContent(
                                 baseModifier
                             }
                         }.hoverable(interactionSource)
-                        .onGloballyPositioned { stripGeometry.tabsBoundsInWindow = it.boundsInWindow() }
-                        .pointerInput(openWindow.id) {
-                            // Observe (never consume) the pointer stream of an in-flight tab drag
-                            // and forward it to the dock manager: this is what turns an in-strip
-                            // reorder into a cross-window move / detach once the pointer leaves
-                            // the strip. Runs in the Initial pass so ReorderableRow is unaffected.
-                            awaitPointerEventScope {
-                                while (true) {
-                                    val event = awaitPointerEvent(PointerEventPass.Initial)
-                                    if (!dockManager.hasActiveSession(openWindow.id)) continue
-                                    val change = event.changes.firstOrNull() ?: continue
-                                    val origin = stripGeometry.tabsBoundsInWindow?.topLeft ?: Offset.Zero
-                                    val positionInWindow = origin + change.position
-                                    when (event.type) {
-                                        PointerEventType.Move ->
-                                            dockManager.onStripPointer(openWindow.id, positionInWindow, released = false)
-                                        PointerEventType.Release ->
-                                            dockManager.onStripPointer(openWindow.id, positionInWindow, released = true)
-                                        else -> Unit
-                                    }
-                                }
-                            }
-                        }.animateContentSize(animationSpec = tabsContainerAnimationSpec),
+                        .animateContentSize(animationSpec = tabsContainerAnimationSpec),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 tabsOnly()
@@ -659,6 +662,7 @@ private fun RtlAwareTab(
     modifier: Modifier = Modifier,
     onCopyLink: (() -> Unit)? = null,
     onDetach: (() -> Unit)? = null,
+    onMoveToDesktop: ((String) -> Unit)? = null,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
@@ -858,9 +862,11 @@ private fun RtlAwareTab(
         }
 
         val label = labelProvider()
+        // The hover card replaces the tooltip on every tab it is shown for (all but the selected one).
         val showTooltip =
             label.isNotBlank() &&
-                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
+                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold) &&
+                tabData.selected
 
         // Read theme colors outside remember so they act as a cache key.
         val tooltipColors = JewelTheme.tooltipStyle.colors
@@ -923,6 +929,11 @@ private fun RtlAwareTab(
             val closeRightLabel = stringResource(Res.string.close_tabs_right)
             val copyLinkLabel = stringResource(Res.string.copy_tab_link)
             val detachLabel = stringResource(Res.string.tab_open_in_new_window)
+            val moveToDesktopLabel = stringResource(Res.string.tab_move_to_desktop)
+            val desktops by LocalAppGraph.current.desktopManager.desktops
+                .collectAsState()
+            val currentDesktopId = LocalOpenWindow.current.session.desktopId
+            val otherDesktops = desktops.filter { it.id != currentDesktopId }
 
             TabContextMenu(
                 anchorOffset = anchorOffset,
@@ -938,6 +949,31 @@ private fun RtlAwareTab(
                             onDetach()
                         },
                     )
+                }
+                if (onMoveToDesktop != null && otherDesktops.isNotEmpty()) {
+                    submenu(
+                        submenu = {
+                            otherDesktops.forEach { desktop ->
+                                selectableItem(selected = false, onClick = {
+                                    contextMenuOpen = false
+                                    onMoveToDesktop(desktop.id)
+                                }) { Text(desktop.name) }
+                            }
+                        },
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                key = AllIconsKeys.Actions.MoveTo2,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = JewelTheme.globalColors.text.normal,
+                            )
+                            Text(moveToDesktopLabel)
+                        }
+                    }
                 }
                 if (onCopyLink != null) {
                     tabContextMenuItem(
@@ -992,6 +1028,34 @@ private fun RtlAwareTab(
         }
     }
 }
+
+/** The hover card of a tab: its full title over the picture of the window as the tab was left. */
+@Composable
+private fun TabHoverPreviewScope.TabPreviewCard() {
+    val colors = JewelTheme.tooltipStyle.colors
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        Modifier
+            .width(TabPreviewCardWidth)
+            .background(colors.background, shape)
+            .border(1.dp, colors.border, shape)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = tab.title,
+            color = colors.content,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (thumbnail != null) {
+            Spacer(Modifier.height(8.dp))
+            TabPreview(tab, Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)))
+        }
+    }
+}
+
+private val TabPreviewCardWidth = 280.dp
 
 // TabContentScopeContainer implementation (same as Jewel's internal)
 private class TabContentScopeContainer : TabContentScope {
@@ -1094,97 +1158,6 @@ private fun TabContextMenu(
 
 private fun copyToClipboard(text: String) {
     Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-}
-
-/**
- * Mutable geometry of one tab strip, read lazily by TabDockManager during a drag. Window px are
- * converted to logical (dp) screen coordinates through the window's [OpenWindow.boundsOnScreen]
- * and the strip's density — backend-agnostic (AWT and Tao).
- *
- * Two rectangles: [tabsBoundsInWindow] is the tabs-only row (used to compute the insertion
- * index), [areaBoundsInWindow] is the full-width strip area including the add button and empty
- * title-bar space (used as the drop/detach hit target — Chrome accepts drops on the whole strip
- * area, and with few tabs the tabs row alone is a tiny target).
- */
-private class StripGeometry(
-    private val openWindow: io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow,
-) {
-    @Volatile var tabsBoundsInWindow: Rect? = null
-
-    @Volatile var areaBoundsInWindow: Rect? = null
-
-    @Volatile var density: Float = 1f
-
-    @Volatile var tabWidthPx: Float = 0f
-
-    @Volatile var tabCount: Int = 0
-
-    @Volatile var isRtl: Boolean = false
-
-    private fun safeDensity(): Float = density.takeIf { it > 0f } ?: 1f
-
-    fun windowPxToScreen(positionInWindowPx: Offset): Offset? {
-        val windowBounds = openWindow.boundsOnScreen() ?: return null
-        val d = safeDensity()
-        return Offset(
-            windowBounds.x + positionInWindowPx.x / d,
-            windowBounds.y + positionInWindowPx.y / d,
-        )
-    }
-
-    fun dropAreaBoundsInWindow(): Rect? = areaBoundsInWindow ?: tabsBoundsInWindow
-
-    fun dropAreaBoundsOnScreen(): Rect? = toScreen(dropAreaBoundsInWindow())
-
-    private fun tabsBoundsOnScreen(): Rect? = toScreen(tabsBoundsInWindow)
-
-    private fun toScreen(bounds: Rect?): Rect? {
-        val windowBounds = openWindow.boundsOnScreen() ?: return null
-        if (bounds == null) return null
-        val d = safeDensity()
-        return Rect(
-            left = windowBounds.x + bounds.left / d,
-            top = windowBounds.y + bounds.top / d,
-            right = windowBounds.x + bounds.right / d,
-            bottom = windowBounds.y + bounds.bottom / d,
-        )
-    }
-
-    fun dropIndexFor(screenX: Float): Int {
-        val bounds = tabsBoundsOnScreen() ?: return tabCount
-        val tabWidth = tabWidthPx / safeDensity()
-        if (tabWidth <= 0f) return tabCount
-        val visualIndex = ((screenX - bounds.left) / tabWidth).roundToInt().coerceIn(0, tabCount)
-        return if (isRtl) tabCount - visualIndex else visualIndex
-    }
-
-    /**
-     * Window-px variants of the drop hit-test/index, for the Wayland pending-drop
-     * path where cross-window screen coordinates don't exist (the drop target is
-     * identified by the pointer-enter it receives right after the drag ends, with
-     * coordinates in ITS OWN window space).
-     */
-    fun dropAreaContainsWindowPx(p: Offset): Boolean {
-        val area = dropAreaBoundsInWindow() ?: return false
-        val d = safeDensity()
-        return p.x >= area.left &&
-            p.x <= area.right &&
-            p.y >= area.top - DROP_SLACK_TOP_DP * d &&
-            p.y <= area.bottom + DROP_SLACK_Y_DP * d
-    }
-
-    fun dropIndexForWindowPx(xPx: Float): Int {
-        val bounds = tabsBoundsInWindow ?: return tabCount
-        if (tabWidthPx <= 0f) return tabCount
-        val visualIndex = ((xPx - bounds.left) / tabWidthPx).roundToInt().coerceIn(0, tabCount)
-        return if (isRtl) tabCount - visualIndex else visualIndex
-    }
-
-    private companion object {
-        // Mirrors TabDockManager's screen-space drop slack (logical dp).
-        const val DROP_SLACK_TOP_DP = 40f
-        const val DROP_SLACK_Y_DP = 16f
-    }
 }
 
 private fun MenuScope.tabContextMenuItem(

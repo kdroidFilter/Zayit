@@ -3,8 +3,8 @@ package io.github.kdroidfilter.seforimapp.earthwidget
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -23,17 +23,15 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.Layout
@@ -42,13 +40,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.collectLatest
-import org.jetbrains.compose.resources.imageResource
-import seforimapp.earthwidget.generated.resources.Res
-import seforimapp.earthwidget.generated.resources.earthmap
-import seforimapp.earthwidget.generated.resources.moonmap
+import io.github.erkko68.filament.compose.rememberFilamentEngine
+import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -91,14 +84,8 @@ private const val MOON_RENDER_SIZE_RATIO = 0.5f
 /** Minimum moon render size in pixels. */
 private const val MIN_MOON_RENDER_SIZE_PX = 120
 
-/** Minimum render size to keep renderer stable. */
+/** Minimum scene size (geometry units). */
 private const val MIN_RENDER_SIZE_PX = 160
-
-/** Holds a rendered bitmap and the state that produced it. */
-private data class RenderedImage<T>(
-    val image: ImageBitmap,
-    val state: T,
-)
 
 // ============================================================================
 // SCENE COMPOSABLE
@@ -155,8 +142,37 @@ fun EarthWidgetScene(
     kiddushLevanaStartDegrees: Float? = null,
     kiddushLevanaEndDegrees: Float? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    viewYawDegrees: Float = 0f,
+    viewPitchDegrees: Float = 0f,
+    viewAnchorKey: Any? = null,
+    viewZoom: Float = 1f,
 ) {
+    // The camera follows the drag instantly, and eases back on recenter.
+    val viewSpec = if (animateEarthRotation) SmoothAngleSpringSpec else snap()
+    val animatedViewYaw by animateFloatAsState(viewYawDegrees, viewSpec, label = "viewYaw")
+    val animatedViewPitch by animateFloatAsState(viewPitchDegrees, viewSpec, label = "viewPitch")
+    val animatedViewZoom by animateFloatAsState(viewZoom, viewSpec, label = "viewZoom")
+    val skyJulianDay = julianDay ?: (System.currentTimeMillis() / 86_400_000.0 + 2_440_587.5)
+    val animatedSidereal =
+        rememberSmoothAnimatedAngle(
+            targetValue = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),
+            normalize = ::normalizeAngle360,
+        )
+    val sunLongitude = computeSunEclipticLongitude(skyJulianDay)
+    val animatedSunLongitude = rememberSmoothAnimatedAngle(targetValue = sunLongitude, normalize = ::normalizeAngle360)
+    // Camera anchored so the marker faces the viewer when shown, moved or recentred ([viewAnchorKey]); then time passes
+    // under a Sun-fixed camera: the Earth turns, the marker travels with it.
+    val viewAzimuthFromSun =
+        remember(viewAnchorKey, markerLatitudeDegrees, markerLongitudeDegrees) {
+            markerAzimuthFromSunDegrees(
+                siderealDegrees = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),
+                sunLongitudeDegrees = sunLongitude,
+                obliquityDegrees = earthTiltDegrees,
+                markerLatitudeDegrees = markerLatitudeDegrees,
+                markerLongitudeDegrees = markerLongitudeDegrees,
+            )
+        }
+    val animatedViewAzimuthFromSun = rememberSmoothAnimatedAngle(targetValue = viewAzimuthFromSun, normalize = ::normalizeAngle180)
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation =
         if (animateEarthRotation) {
@@ -216,13 +232,8 @@ fun EarthWidgetScene(
             rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360)
         }
 
-    val earthTexture = rememberEarthTexture()
-    val moonTexture = rememberMoonTexture()
-    val renderer = remember(renderDispatcher) { EarthWidgetRenderer(dispatcher = renderDispatcher) }
-    val textures =
-        remember(earthTexture, moonTexture, showMoonInOrbit) {
-            EarthWidgetTextures(earth = earthTexture, moon = if (showMoonInOrbit) moonTexture else null)
-        }
+    val engine = rememberFilamentEngine()
+    val textures = rememberWidgetTextures(engine)
 
     val moonViewSize = sphereSize * MOON_VIEW_SIZE_RATIO
     val resolvedEarthRenderSize = renderSizePx.coerceAtLeast(MIN_RENDER_SIZE_PX)
@@ -251,29 +262,31 @@ fun EarthWidgetScene(
             kiddushLevanaStartDegrees = kiddushLevanaStartDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-        )
-
-    val renderedScene =
-        rememberRenderedEarthMoonImage(
-            renderer = renderer,
-            textures = textures,
-            targetState = sceneState,
+            siderealDegrees = animatedSidereal,
+            sunLongitudeDegrees = animatedSunLongitude,
+            moonNodeDegrees = computeMoonAscendingNodeLongitude(skyJulianDay),
+            viewAzimuthFromSunDegrees = animatedViewAzimuthFromSun,
+            viewYawDegrees = animatedViewYaw,
+            viewPitchDegrees = animatedViewPitch,
+            viewZoom = animatedViewZoom,
         )
 
     val earthContent: @Composable () -> Unit = {
-        Box(modifier = Modifier.size(sphereSize)) {
-            Image(
-                bitmap = renderedScene.image,
-                contentDescription = null,
+        // Clipped: zoomed-in labels must not spill over the rest of the widget
+        Box(modifier = Modifier.size(sphereSize).clipToBounds()) {
+            EarthMoonSceneView(
+                state = sceneState,
+                engine = engine,
+                textures = textures,
+                showMoon = showMoonInOrbit,
                 modifier = Modifier.size(sphereSize),
             )
             if (showOrbitPath && orbitLabels.isNotEmpty()) {
                 OrbitDayLabelsOverlay(
-                    renderSizePx = renderedScene.state.renderSizePx,
+                    state = sceneState,
                     sphereSize = sphereSize,
                     labels = orbitLabels,
                     onLabelClick = onOrbitLabelClick,
-                    earthSizeFraction = earthSizeFraction,
                     modifier = Modifier.matchParentSize(),
                 )
             }
@@ -302,11 +315,11 @@ fun EarthWidgetScene(
             )
         // Moon-from-marker view uses the actual marker longitude (not the visual Earth rotation)
         // This ensures the moon phase is always calculated from the marker's real position
-        MoonFromMarkerWidgetView(
-            renderer = renderer,
-            moonTexture = moonTexture,
+        MoonFromMarkerSceneView(
             state = moonState,
-            sphereSize = moonViewSize,
+            engine = engine,
+            moonTexture = textures.moon,
+            modifier = Modifier.size(moonViewSize),
         )
     }
 
@@ -337,178 +350,6 @@ fun EarthWidgetScene(
             }
         }
     }
-}
-
-// ============================================================================
-// MOON FROM MARKER VIEW
-// ============================================================================
-
-/**
- * Displays the Moon as seen from the marker's position on Earth.
- *
- * @param renderer Background renderer used to draw the moon view.
- * @param moonTexture Moon texture, shared with the main scene when possible.
- * @param state Rendering parameters for the moon inset.
- * @param modifier Modifier for the view.
- * @param sphereSize Display size.
- */
-@Composable
-internal fun MoonFromMarkerWidgetView(
-    renderer: EarthWidgetRenderer,
-    moonTexture: EarthTexture?,
-    state: MoonFromMarkerRenderState,
-    modifier: Modifier = Modifier,
-    sphereSize: Dp = 220.dp,
-    animateTransitions: Boolean = false,
-) {
-    val resolvedMoonTexture = moonTexture ?: rememberMoonTexture()
-
-    val moonImage =
-        rememberMoonFromMarkerImage(
-            renderer = renderer,
-            moonTexture = resolvedMoonTexture,
-            state = state,
-        )
-
-    if (!animateTransitions) {
-        Image(
-            bitmap = moonImage,
-            contentDescription = null,
-            modifier = modifier.size(sphereSize),
-        )
-        return
-    }
-
-    var currentImage by remember { mutableStateOf<ImageBitmap?>(null) }
-    var previousImage by remember { mutableStateOf<ImageBitmap?>(null) }
-    val fade = remember { Animatable(1f) }
-
-    LaunchedEffect(moonImage) {
-        if (currentImage == null) {
-            currentImage = moonImage
-            previousImage = null
-            fade.snapTo(1f)
-        } else if (moonImage != currentImage) {
-            previousImage = currentImage
-            currentImage = moonImage
-            fade.snapTo(0f)
-            fade.animateTo(1f, animationSpec = spring())
-            previousImage = null
-        }
-    }
-
-    val frontImage = currentImage ?: moonImage
-    Box(modifier = modifier.size(sphereSize), contentAlignment = Alignment.Center) {
-        if (previousImage != null) {
-            Image(
-                bitmap = previousImage!!,
-                contentDescription = null,
-                modifier =
-                    Modifier
-                        .size(sphereSize)
-                        .alpha(1f - fade.value),
-            )
-        }
-        Image(
-            bitmap = frontImage,
-            contentDescription = null,
-            modifier =
-                Modifier
-                    .size(sphereSize)
-                    .alpha(if (previousImage != null) fade.value else 1f),
-        )
-    }
-}
-
-// ============================================================================
-// TEXTURE LOADING
-// ============================================================================
-
-/**
- * Loads and caches the Earth texture.
- */
-@Composable
-private fun rememberEarthTexture(): EarthTexture? {
-    val image = imageResource(Res.drawable.earthmap)
-    return remember(image) { earthTextureFromImageBitmap(image) }
-}
-
-/**
- * Loads and caches the Moon texture.
- */
-@Composable
-private fun rememberMoonTexture(): EarthTexture? {
-    val image = imageResource(Res.drawable.moonmap)
-    return remember(image) { earthTextureFromImageBitmap(image) }
-}
-
-// ============================================================================
-// IMAGE RENDERING CACHE
-// ============================================================================
-
-/**
- * Renders the Moon-from-marker view image off the UI thread.
- */
-@Composable
-private fun rememberMoonFromMarkerImage(
-    renderer: EarthWidgetRenderer,
-    moonTexture: EarthTexture?,
-    state: MoonFromMarkerRenderState,
-): ImageBitmap {
-    val placeholder = remember(state.renderSizePx) { ImageBitmap(state.renderSizePx, state.renderSizePx) }
-    var image by remember { mutableStateOf<ImageBitmap?>(null) }
-
-    LaunchedEffect(renderer, moonTexture, state) {
-        image = renderer.renderMoonFromMarker(state, moonTexture)
-    }
-
-    return image ?: placeholder
-}
-
-/**
- * Renders the Earth-Moon composite image off the UI thread.
- * Uses a MutableStateFlow with conflate to skip intermediate states during rapid updates,
- * preventing render queue buildup during drag operations.
- */
-@Composable
-private fun rememberRenderedEarthMoonImage(
-    renderer: EarthWidgetRenderer,
-    textures: EarthWidgetTextures,
-    targetState: EarthRenderState,
-): RenderedImage<EarthRenderState> {
-    var renderedState by remember { mutableStateOf(targetState) }
-    var image by remember { mutableStateOf<ImageBitmap?>(null) }
-    val placeholder =
-        remember(renderedState.renderSizePx) {
-            ImageBitmap(renderedState.renderSizePx, renderedState.renderSizePx)
-        }
-
-    // Use MutableStateFlow to emit state updates and conflate to drop intermediate values
-    val stateFlow = remember { kotlinx.coroutines.flow.MutableStateFlow(targetState) }
-
-    // Update the flow whenever targetState changes
-    LaunchedEffect(targetState) {
-        stateFlow.value = targetState
-    }
-
-    // Collect with collectLatest to cancel previous render when new state arrives
-    // StateFlow is already conflated, so intermediate values are automatically dropped
-    LaunchedEffect(renderer, textures) {
-        stateFlow.collectLatest { state ->
-            val renderedImage =
-                renderer.renderScene(
-                    state = state,
-                    textures = textures,
-                )
-            renderedState = state
-            image = renderedImage
-        }
-    }
-
-    return RenderedImage(
-        image = image ?: placeholder,
-        state = renderedState,
-    )
 }
 
 // ============================================================================
@@ -563,13 +404,13 @@ data class OrbitLabelData(
 
 @Composable
 private fun OrbitDayLabelsOverlay(
-    renderSizePx: Int,
+    state: EarthRenderState,
     sphereSize: Dp,
     labels: List<OrbitLabelData>,
     onLabelClick: ((OrbitLabelData) -> Unit)?,
     modifier: Modifier = Modifier,
-    earthSizeFraction: Float = EARTH_SIZE_FRACTION,
 ) {
+    val renderSizePx = state.renderSizePx
     if (labels.isEmpty() || renderSizePx <= 0) return
     val fontSize = (sphereSize.value * 0.032f).coerceIn(11f, 20f).sp
     val textStyle =
@@ -583,17 +424,12 @@ private fun OrbitDayLabelsOverlay(
         }
 
     val labelPositions =
-        remember(labels, renderSizePx) {
+        remember(labels, state) {
             val center = renderSizePx / 2f
             val outwardPx = 12f
 
             labels.map { label ->
-                val p =
-                    computeOrbitScreenPosition(
-                        outputSizePx = renderSizePx,
-                        orbitDegrees = label.orbitDegrees,
-                        earthSizeFraction = earthSizeFraction,
-                    )
+                val p = computeOrbitScreenPosition(state, label.orbitDegrees)
                 val dx = p.x - center
                 val dy = p.y - center
                 val len = sqrt(dx * dx + dy * dy)
@@ -601,7 +437,7 @@ private fun OrbitDayLabelsOverlay(
                 val ox = if (len > 1e-3f) dx / len * outwardPx else 0f
                 val oy = if (len > 1e-3f) dy / len * outwardPx else 0f
 
-                Offset(x = p.x + ox, y = p.y + oy)
+                PlacedOrbitLabel(Offset(x = p.x + ox, y = p.y + oy), if (p.hiddenByEarth) 0f else labelAlpha(p.depth))
             }
         }
 
@@ -622,6 +458,7 @@ private fun OrbitDayLabelsOverlay(
                 key(label.dayOfMonth) {
                     OrbitDayLabel(
                         label = label,
+                        alpha = labelPositions.getOrNull(labels.indexOf(label))?.alpha ?: 1f,
                         textStyle = textStyle,
                         hoveredTextStyle = hoveredTextStyle,
                         onClick = onLabelClick,
@@ -641,7 +478,7 @@ private fun OrbitDayLabelsOverlay(
 
         layout(width, height) {
             placeables.forEachIndexed { index, placeable ->
-                val p = labelPositions.getOrNull(index) ?: return@forEachIndexed
+                val p = labelPositions.getOrNull(index)?.offset ?: return@forEachIndexed
                 val x = (p.x * scaleX - placeable.width / 2f).roundToInt()
                 val y = (p.y * scaleY - placeable.height / 2f).roundToInt()
                 // Absolute pixel placement; do not mirror in RTL.
@@ -651,12 +488,21 @@ private fun OrbitDayLabelsOverlay(
     }
 }
 
+private class PlacedOrbitLabel(
+    val offset: Offset,
+    val alpha: Float,
+)
+
+/** Far-side labels fade like the orbit line, but stay readable. */
+private fun labelAlpha(depth: Float): Float = 0.35f + 0.65f * depth
+
 /**
  * Individual orbit day label with hover effect and expanded click area.
  */
 @Composable
 private fun OrbitDayLabel(
     label: OrbitLabelData,
+    alpha: Float,
     textStyle: TextStyle,
     hoveredTextStyle: TextStyle,
     onClick: ((OrbitLabelData) -> Unit)?,
@@ -669,6 +515,7 @@ private fun OrbitDayLabel(
     Box(
         modifier =
             Modifier
+                .graphicsLayer { this.alpha = alpha }
                 .padding(horizontal = 16.dp, vertical = 10.dp)
                 .then(
                     if (onClick != null) {

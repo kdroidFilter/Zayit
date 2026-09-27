@@ -5,9 +5,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -16,9 +14,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -27,9 +23,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -38,9 +32,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -49,9 +41,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -60,9 +50,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -71,9 +59,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -82,9 +68,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -93,9 +77,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -104,9 +86,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -115,9 +95,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -168,9 +146,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -188,9 +164,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -357,9 +331,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -368,9 +340,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -379,9 +349,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -390,9 +358,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -401,9 +367,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },
@@ -415,6 +379,954 @@
         },
         {
             "type": "dev.nucleusframework.window.tao.render.TaoSyntheticMouseWheelEvent$source$1"
+        },
+        {
+            "type": "android.os.Build$VERSION"
+        },
+        {
+            "type": "androidx.compose.ui.platform.GlobalSnapshotManager$Registration"
+        },
+        {
+            "type": "boolean[]",
+            "jniAccessible": true
+        },
+        {
+            "type": "byte[]",
+            "jniAccessible": true
+        },
+        {
+            "type": "byte[][]"
+        },
+        {
+            "type": "com.sun.crypto.provider.AESCipher$General",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "com.sun.crypto.provider.ARCFOURCipher",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "com.sun.crypto.provider.ChaCha20Cipher$ChaCha20Poly1305",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "com.sun.crypto.provider.DESCipher",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "com.sun.crypto.provider.DESedeCipher",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "com.sun.crypto.provider.GaloisCounterMode$AESGCM",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "io.github.erkko68.filament.ffm.FilaBufferCallback$Function",
+            "methods": [
+                {
+                    "name": "apply",
+                    "parameterTypes": [
+                        "java.lang.foreign.MemorySegment",
+                        "long",
+                        "java.lang.foreign.MemorySegment"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "io.sentry.opentelemetry.OtelContextScopesStorage"
+        },
+        {
+            "type": "io.sentry.opentelemetry.OtelSpanFactory"
+        },
+        {
+            "type": "io.sentry.opentelemetry.agent.AgentMarker"
+        },
+        {
+            "type": "io.sentry.opentelemetry.agent.AgentlessMarker"
+        },
+        {
+            "type": "io.sentry.opentelemetry.agent.AgentlessSpringMarker"
+        },
+        {
+            "type": "io.sentry.spotlight.SpotlightIntegration"
+        },
+        {
+            "type": "io.sentry.util.AutoClosableReentrantLock"
+        },
+        {
+            "type": "java.lang.Boolean",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "boolean"
+                    ]
+                },
+                {
+                    "name": "booleanValue",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "getBoolean",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Byte",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "byte"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Character",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "char"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Class",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "getComponentType",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Double",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "double"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Float",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "float"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Integer",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Long",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "long"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Object",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "toString",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Short",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "short"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "java.lang.String",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "byte[]"
+                    ]
+                },
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "byte[]",
+                        "java.lang.String"
+                    ]
+                },
+                {
+                    "name": "getBytes",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "getBytes",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                },
+                {
+                    "name": "toCharArray",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Throwable",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "printStackTrace",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "toString",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.lang.Void",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "TYPE"
+                }
+            ]
+        },
+        {
+            "type": "java.lang.invoke.MethodHandle"
+        },
+        {
+            "type": "java.lang.invoke.MethodHandles"
+        },
+        {
+            "type": "java.lang.invoke.MethodHandles$Lookup"
+        },
+        {
+            "type": "java.lang.invoke.MethodType"
+        },
+        {
+            "type": "java.lang.reflect.Method",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "getParameterTypes",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "getReturnType",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "isDefault",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.Buffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "position",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.ByteBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.CharBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.DoubleBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.FloatBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.IntBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.LongBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.nio.ShortBuffer",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "array",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "arrayOffset",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "java.security.AlgorithmParametersSpi"
+        },
+        {
+            "type": "java.security.KeyStoreSpi"
+        },
+        {
+            "type": "kotlin.SafePublicationLazyImpl"
+        },
+        {
+            "type": "kotlinx.coroutines.selects.SelectImplementation"
+        },
+        {
+            "type": "kotlinx.coroutines.swing.SwingDispatcherFactory",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "kotlinx.coroutines.sync.MutexImpl"
+        },
+        {
+            "type": "kotlinx.coroutines.sync.SemaphoreAndMutexImpl"
+        },
+        {
+            "type": "kotlinx.coroutines.test.internal.TestMainDispatcher$NonConcurrentlyModifiable"
+        },
+        {
+            "type": "kotlinx.coroutines.test.internal.TestMainDispatcherFactory",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.jetbrains.jewel.intui.standalone.window.macos.ID",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.jetbrains.jewel.intui.standalone.window.macos.MacPlatformServicesDefaultImpl$onPreferencesChanged$callback$1"
+        },
+        {
+            "type": "org.slf4j.Logger",
+            "methods": [
+                {
+                    "name": "debug",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.Throwable"
+                    ]
+                },
+                {
+                    "name": "trace",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.Throwable"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.slf4j.simple.SimpleServiceProvider"
+        },
+        {
+            "type": "org.sqlite.BusyHandler",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "callback",
+                    "parameterTypes": [
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.Collation",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "xCompare",
+                    "parameterTypes": [
+                        "java.lang.String",
+                        "java.lang.String"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.Function",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "args"
+                },
+                {
+                    "name": "context"
+                },
+                {
+                    "name": "value"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "xFunc",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.Function$Aggregate",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "clone",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "xFinal",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "xStep",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.Function$Window",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "xInverse",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "xValue",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.JDBC"
+        },
+        {
+            "type": "org.sqlite.ProgressHandler",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "progress",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.core.DB",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "onCommit",
+                    "parameterTypes": [
+                        "boolean"
+                    ]
+                },
+                {
+                    "name": "onUpdate",
+                    "parameterTypes": [
+                        "int",
+                        "java.lang.String",
+                        "java.lang.String",
+                        "long"
+                    ]
+                },
+                {
+                    "name": "throwex",
+                    "parameterTypes": []
+                },
+                {
+                    "name": "throwex",
+                    "parameterTypes": [
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.core.DB$ProgressObserver",
+            "jniAccessible": true,
+            "methods": [
+                {
+                    "name": "progress",
+                    "parameterTypes": [
+                        "int",
+                        "int"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "org.sqlite.core.NativeDB",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "busyHandler"
+                },
+                {
+                    "name": "commitListener"
+                },
+                {
+                    "name": "pointer"
+                },
+                {
+                    "name": "progressHandler"
+                },
+                {
+                    "name": "updateListener"
+                }
+            ],
+            "methods": [
+                {
+                    "name": "stringToUtf8ByteArray",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                },
+                {
+                    "name": "throwex",
+                    "parameterTypes": [
+                        "java.lang.String"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.net.www.protocol.http.Handler",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.net.www.protocol.https.Handler",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.pkcs12.PKCS12KeyStore",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.pkcs12.PKCS12KeyStore$DualFormatPKCS12",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.provider.X509Factory",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.rsa.RSAKeyFactory$Legacy",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.ssl.SSLContextImpl$TLSContext",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.ssl.TrustManagerFactoryImpl$PKIXFactory",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.AuthorityInfoAccessExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.AuthorityKeyIdentifierExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.BasicConstraintsExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.CRLDistributionPointsExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.CertificatePoliciesExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.ExtendedKeyUsageExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.KeyUsageExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.NetscapeCertTypeExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.PrivateKeyUsageExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.SubjectAlternativeNameExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.security.x509.SubjectKeyIdentifierExtension",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": [
+                        "java.lang.Boolean",
+                        "java.lang.Object"
+                    ]
+                }
+            ]
+        },
+        {
+            "type": "sun.text.resources.cldr.FormatData"
+        },
+        {
+            "type": "sun.text.resources.cldr.FormatData_en"
+        },
+        {
+            "type": "sun.text.resources.cldr.FormatData_en_US"
+        },
+        {
+            "type": "sun.util.resources.cldr.CalendarData"
         }
     ],
     "foreign": {
@@ -434,6 +1346,1501 @@
                     "long",
                     "long",
                     "int"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "bool",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "char",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "char",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "double",
+                "parameterTypes": [
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "double",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "double",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "float",
+                "parameterTypes": [
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "float",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "float",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "float",
+                "parameterTypes": [
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "float",
+                "parameterTypes": [
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "int",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "long",
+                "parameterTypes": [
+                    "int",
+                    "int",
+                    "long",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "long",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "long",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "long",
+                "parameterTypes": [
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "long",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "long",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "long long",
+                "parameterTypes": []
+            },
+            {
+                "returnType": "long long",
+                "parameterTypes": [
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "long long",
+                "parameterTypes": [
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "long long",
+                "parameterTypes": [
+                    "long long",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "long long",
+                "parameterTypes": [
+                    "long long",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "long long",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "short",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "struct(float,float,float,float,float,float)",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": []
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "float",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "int",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "char",
+                    "void*",
+                    "void*",
+                    "char",
+                    "char",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "double",
+                    "double",
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float",
+                    "char",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "float",
+                    "float",
+                    "float",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "char",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "char",
+                    "int",
+                    "int",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "char",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "void*",
+                    "long",
+                    "int",
+                    "int",
+                    "char",
+                    "int",
+                    "int",
+                    "int",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "int",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long",
+                    "int",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long",
+                    "int",
+                    "void*",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long",
+                    "int",
+                    "void*",
+                    "void*",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long",
+                    "short"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "void*",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "int",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "int",
+                    "void*",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "int",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "int",
+                    "void*",
+                    "void*",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "int",
+                    "void*",
+                    "void*",
+                    "long",
+                    "long",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "short"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "bool",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "bool",
+                    "bool",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "bool",
+                    "bool",
+                    "bool",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "char"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "char",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "char",
+                    "void*",
+                    "long",
+                    "int",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int",
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "void*",
+                    "long",
+                    "int",
+                    "int",
+                    "char",
+                    "int",
+                    "int",
+                    "int",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "int",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "int",
+                    "void*",
+                    "long",
+                    "int",
+                    "int",
+                    "char",
+                    "int",
+                    "int",
+                    "int",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long",
+                    "void*",
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "double",
+                    "double"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "long",
+                    "int",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "long",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": []
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "float",
+                    "float",
+                    "float",
+                    "float"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "int",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "int",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long",
+                    "bool"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long",
+                    "int"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long",
+                    "void*",
+                    "long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "long long"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void*",
+                "parameterTypes": [
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*",
+                    "void*"
+                ]
+            }
+        ],
+        "upcalls": [
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "long",
+                    "void*"
+                ]
+            },
+            {
+                "returnType": "void",
+                "parameterTypes": [
+                    "void*",
+                    "void*"
                 ]
             }
         ]
@@ -458,10 +2865,53 @@
             "glob": "tokenizers-engine.properties"
         },
         {
-            "glob": "META-INF/services/org.apache.lucene.codecs.KnnVectorsFormat"
+            "glob": "META-INF/MANIFEST.MF"
         },
         {
-            "glob": "META-INF/services/org.apache.lucene.codecs.hnsw.FlatVectorsFormat"
+            "glob": "META-INF/maven/org.xerial/sqlite-jdbc/pom.properties"
+        },
+        {
+            "glob": "com/sun/jna/darwin-aarch64/libjnidispatch.jnilib"
+        },
+        {
+            "glob": "libskiko-macos-arm64.dylib.sha256"
+        },
+        {
+            "glob": "natives/macos-arm64/libfilament-c.dylib"
+        },
+        {
+            "glob": "natives/macos-arm64/libfilament-c.dylib.sha256"
+        },
+        {
+            "glob": "org/sqlite/native/Mac/aarch64/libsqlitejdbc.dylib"
+        },
+        {
+            "glob": "sentry-debug-meta.properties"
+        },
+        {
+            "glob": "simplelogger.properties"
+        },
+        {
+            "module": "java.base",
+            "glob": "jdk/internal/icu/impl/data/icudt76b/nfc.nrm"
+        },
+        {
+            "module": "java.desktop",
+            "glob": "sun/awt/resources/awt_he.properties"
+        },
+        {
+            "module": "java.desktop",
+            "glob": "sun/awt/resources/awtosx_he.properties"
+        },
+        {
+            "module": "java.logging",
+            "glob": "sun/util/logging/resources/logging_he.properties"
+        },
+        {
+            "bundle": "sun.awt.resources.awt"
+        },
+        {
+            "bundle": "sun.util.logging.resources.logging"
         }
     ]
 }

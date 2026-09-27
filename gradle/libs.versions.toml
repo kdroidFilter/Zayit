@@ -7,11 +7,12 @@ filekitCore = "0.14.2"
 hebrewNumerals = "0.2.6"
 jsoup = "1.22.2"
 jvmToolchain = "25"
-nucleus = "2.6.0-dev-202609271512"
-nucleusPlugin = "2.6.0-dev-202609271512"
+nucleus = "2.6.0-dev-202609271939"
+nucleusPlugin = "2.6.0-dev-202609271939"
 koalaplotCore = "0.11.2"
 kotlin = "2.4.20"
 compose = "1.12.1"
+filamentKmp = "0.6.0"
 agp = "9.1.1"
 androidx-activityCompose = "1.13.0"
 androidx-uiTest = "1.11.4"
@@ -141,6 +142,7 @@ lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version.
 lucene-highlighter = { module = "org.apache.lucene:lucene-highlighter", version.ref = "lucene" }
 
 # Compose Multiplatform (direct dependencies, replacing deprecated plugin accessors)
+filament-compose = { module = "io.github.erkko68.filament:filament-compose", version.ref = "filamentKmp" }
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose" }
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "compose" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "compose" }

@@ -53,7 +53,7 @@ import com.kosherjava.zmanim.ComplexZmanimCalendar
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.util.GeoLocation
-import io.github.kdroidfilter.seforimapp.core.coroutines.EfficiencyCoreDispatcher
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetMoonSkyView
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
@@ -62,6 +62,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.ROZmanimCalendar
 import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
+import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
@@ -541,7 +542,7 @@ fun HomeCelestialWidgets(
                         onExitClick = shabbatExitTime?.let { { onZmanimClick(it) } },
                     ),
                 )
-                if (showExtraCards) {
+                if (showExtraCards && isEarthWidgetSupported) {
                     add(
                         ZmanimGridItem.MoonSky(
                             referenceTime = moonReferenceTime,
@@ -565,7 +566,7 @@ fun HomeCelestialWidgets(
             (ZMANIM_CARD_HEIGHT * rowCount) +
                 (verticalSpacing * (rowCount - 1).coerceAtLeast(0))
         val heightForSphere = leftColumnHeight
-        val showEarthWidget = rightColumnWidth >= MIN_EARTH_WIDGET_WIDTH
+        val showEarthWidget = isEarthWidgetSupported && rightColumnWidth >= MIN_EARTH_WIDGET_WIDTH
         val sphereBase = minOf(rightColumnWidth, heightForSphere)
         val rawSphereSize = sphereBase * 0.98f
         val sphereSize = if (sphereBase < 140.dp) sphereBase else rawSphereSize.coerceAtLeast(140.dp)
@@ -612,25 +613,27 @@ fun HomeCelestialWidgets(
                                     .then(rightColumnHeightModifier),
                             backgroundColor = Color.Black,
                         ) {
-                            EarthWidgetZmanimView(
-                                modifier = Modifier.fillMaxSize(),
-                                sphereSize = sphereSize,
-                                locationOverride = effectiveLocation,
-                                targetTimeMillis = earthWidgetTargetTime?.time,
-                                targetDateEpochDay = selectedDate.toEpochDay(),
-                                onDateSelect = onDateSelected,
-                                onLocationSelect = onLocationSelectedHandler,
-                                containerBackground = Color.Transparent,
-                                showOrbitLabels = true,
-                                showMoonInOrbit = true,
-                                earthSizeFraction = 0.6f,
-                                locationLabel = effectiveCityLabel,
-                                locationOptions = locationOptions,
-                                kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
-                                kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
-                                kiddushLevanaColorRgb = accentRgbInt,
-                                renderDispatcher = EfficiencyCoreDispatcher,
-                            )
+                            // Filament renders every vsync while composed; hidden tabs stay composed, so drop it there.
+                            if (LocalTabSelected.current) {
+                                EarthWidgetZmanimView(
+                                    modifier = Modifier.fillMaxSize(),
+                                    sphereSize = sphereSize,
+                                    locationOverride = effectiveLocation,
+                                    targetTimeMillis = earthWidgetTargetTime?.time,
+                                    targetDateEpochDay = selectedDate.toEpochDay(),
+                                    onDateSelect = onDateSelected,
+                                    onLocationSelect = onLocationSelectedHandler,
+                                    containerBackground = Color.Transparent,
+                                    showOrbitLabels = true,
+                                    showMoonInOrbit = true,
+                                    earthSizeFraction = 0.6f,
+                                    locationLabel = effectiveCityLabel,
+                                    locationOptions = locationOptions,
+                                    kiddushLevanaEarliestOpinion = kiddushLevanaEarliestOpinion,
+                                    kiddushLevanaLatestOpinion = kiddushLevanaLatestOpinion,
+                                    kiddushLevanaColorRgb = accentRgbInt,
+                                )
+                            }
                         }
                     }
                 }

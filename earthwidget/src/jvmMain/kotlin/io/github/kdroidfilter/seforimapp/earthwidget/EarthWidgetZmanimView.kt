@@ -1,25 +1,36 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateRotation
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.text.font.FontWeight
@@ -32,9 +43,10 @@ import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
 import com.kosherjava.zmanim.util.GeoLocation
+import io.github.erkko68.filament.compose.rememberFilamentEngine
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -48,6 +60,9 @@ import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
 import java.time.LocalDate
 import java.util.*
+import kotlin.math.PI
+import kotlin.math.hypot
+import kotlin.math.pow
 import kotlin.math.roundToInt
 
 // ============================================================================
@@ -65,9 +80,6 @@ private const val DEFAULT_MARKER_ELEVATION = 800.0
 
 /** Default Earth axial tilt in degrees. */
 private const val DEFAULT_EARTH_TILT_DEGREES = 23.44f
-
-/** Starting orbit angle for day labels (day 1). */
-private const val ORBIT_DAY_LABEL_START_DEGREES = 90f
 
 /**
  * Lunar synodic month in milliseconds.
@@ -207,7 +219,6 @@ fun EarthWidgetZmanimView(
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -222,8 +233,14 @@ fun EarthWidgetZmanimView(
     var showKiddushLevana by remember { mutableStateOf(initialShowKiddushLevana) }
     val showKiddushLevanaLegend = showKiddushLevana && showOrbitPath
 
-    // Earth rotation offset from user drag (added to marker longitude)
-    var earthRotationOffset by remember { mutableFloatStateOf(0f) }
+    // Camera moved by the user's drag: orbit around the ecliptic pole, elevation over the ecliptic
+    var viewYawOffset by remember { mutableFloatStateOf(0f) }
+    var viewPitchOffset by remember { mutableFloatStateOf(0f) }
+    var viewZoom by remember { mutableFloatStateOf(1f) }
+
+    // Instant the camera was last aimed at the marker (null = aim at the current one); after that it stays
+    // Sun-fixed while the time changes
+    var viewAnchorTime by remember { mutableStateOf<Date?>(null) }
     var isDraggingEarth by remember { mutableStateOf(false) }
 
     // Date/time selection - initialized once with the default timezone, then preserved across location changes
@@ -269,7 +286,10 @@ fun EarthWidgetZmanimView(
             markerLongitudeDegrees = override.longitude.toFloat()
             markerElevationMeters = override.elevationMeters
             timeZone = override.timeZone
-            earthRotationOffset = 0f
+            viewYawOffset = 0f
+            viewPitchOffset = 0f
+            viewZoom = 1f
+            viewAnchorTime = null
 
             if (targetTimeMillis == null) {
                 val now = Calendar.getInstance(override.timeZone)
@@ -431,15 +451,42 @@ fun EarthWidgetZmanimView(
     val backgroundColor = containerBackground ?: JewelTheme.globalColors.panelBackground
     val globalMenuStyle = JewelTheme.menuStyle
 
+    val currentReferenceTime by rememberUpdatedState(referenceTime)
+    LaunchedEffect(viewAnchorTime == null) {
+        if (viewAnchorTime == null) viewAnchorTime = currentReferenceTime
+    }
+
+    // Like Apple Maps' tilt (MKMapCamera pitch 0…~80° from vertical): from straight over the ecliptic pole down to
+    // MIN_VIEW_ELEVATION_DEGREES above the ecliptic, never under it. The offset is relative to the default elevation.
+    val pitchRangeDegrees by rememberUpdatedState(
+        remember(renderSizePx, earthSizeFraction) {
+            val base = computeSceneGeometry(renderSizePx, earthSizeFraction).viewPitchRad * 180f / PI.toFloat()
+            (MIN_VIEW_ELEVATION_DEGREES - base)..(90f - base)
+        },
+    )
+    val onViewDeltaCallback =
+        remember {
+            { yaw: Float, pitch: Float ->
+                viewYawOffset = (viewYawOffset + yaw + 180f).mod(360f) - 180f
+                viewPitchOffset = (viewPitchOffset + pitch).coerceIn(pitchRangeDegrees)
+            }
+        }
     // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
     // so they remain stable across recompositions while still accessing the latest state
-    val onEarthRotationDeltaCallback = remember { { delta: Float -> earthRotationOffset += delta } }
+    val onZoomCallback = remember { { factor: Float -> viewZoom = (viewZoom * factor).coerceIn(MIN_VIEW_ZOOM, MAX_VIEW_ZOOM) } }
     val onDragStateChangeCallback = remember { { dragging: Boolean -> isDraggingEarth = dragging } }
-    val onRecenterCallback = remember { { earthRotationOffset = 0f } }
+    val onRecenterCallback =
+        remember {
+            {
+                viewYawOffset = 0f
+                viewPitchOffset = 0f
+                viewZoom = 1f
+                viewAnchorTime = currentReferenceTime
+            }
+        }
 
     // Use rememberUpdatedState to keep the lambda stable while accessing latest values
     val currentTimeZone by rememberUpdatedState(timeZone)
-    val currentReferenceTime by rememberUpdatedState(referenceTime)
     val currentOnDateSelected by rememberUpdatedState(onDateSelect)
 
     val onResetDateTimeCallback: () -> Unit = {
@@ -480,7 +527,10 @@ fun EarthWidgetZmanimView(
         markerLongitudeDegrees = location.longitude.toFloat()
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
-        earthRotationOffset = 0f
+        viewYawOffset = 0f
+        viewPitchOffset = 0f
+        viewZoom = 1f
+        viewAnchorTime = null
         onLocationSelect?.invoke(country, city, location)
     }
 
@@ -497,8 +547,12 @@ fun EarthWidgetZmanimView(
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
             markerLongitudeDegrees = markerLongitudeDegrees,
-            earthRotationOffset = earthRotationOffset,
-            onEarthRotationDelta = onEarthRotationDeltaCallback,
+            viewYawOffset = viewYawOffset,
+            viewPitchOffset = viewPitchOffset,
+            viewZoom = viewZoom,
+            onZoom = onZoomCallback,
+            viewAnchorTime = viewAnchorTime,
+            onViewDelta = onViewDeltaCallback,
             onDragStateChange = onDragStateChangeCallback,
             model = model,
             markerLatitudeDegrees = markerLatitudeDegrees,
@@ -512,7 +566,6 @@ fun EarthWidgetZmanimView(
             isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-            renderDispatcher = renderDispatcher,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -523,7 +576,10 @@ fun EarthWidgetZmanimView(
                 legendColorRgb = kiddushLevanaColorRgb,
             )
         }
-        if (earthRotationOffset != 0f || isDateTimeModified) {
+        // Also after a time change: the marker has turned away with the Earth
+        val isViewMoved =
+            viewYawOffset != 0f || viewPitchOffset != 0f || viewZoom != 1f || viewAnchorTime.let { it != null && it != referenceTime }
+        if (isViewMoved || isDateTimeModified) {
             Column(
                 modifier =
                     Modifier
@@ -537,7 +593,7 @@ fun EarthWidgetZmanimView(
                     onResetDateTime = onResetDateTimeCallback,
                 )
                 RecenterButton(
-                    earthRotationOffset = earthRotationOffset,
+                    isViewMoved = isViewMoved,
                     onRecenter = onRecenterCallback,
                 )
             }
@@ -614,7 +670,6 @@ fun EarthWidgetMoonSkyView(
                 (with(density) { sphereSize.toPx() } * 1.35f).roundToInt().coerceAtLeast(160)
             }
         }
-    val renderer = remember { EarthWidgetRenderer() }
     val moonState =
         remember(
             resolvedRenderSizePx,
@@ -642,19 +697,30 @@ fun EarthWidgetMoonSkyView(
             )
         }
 
-    MoonFromMarkerWidgetView(
-        renderer = renderer,
-        moonTexture = null,
+    val engine = rememberFilamentEngine()
+    MoonFromMarkerSceneView(
         state = moonState,
-        modifier = modifier,
-        sphereSize = sphereSize,
-        animateTransitions = true,
+        engine = engine,
+        moonTexture = rememberWidgetTextures(engine).moon,
+        modifier = modifier.size(sphereSize),
     )
 }
 
 // ============================================================================
 // REUSABLE UI COMPONENTS
 // ============================================================================
+
+/** Higher = the Earth stops sooner after a fling. */
+private const val EARTH_FLING_FRICTION = 1.5f
+
+private const val MIN_VIEW_ZOOM = 0.6f
+private const val MAX_VIEW_ZOOM = 3f
+
+/** Zoom factor per Ctrl+wheel tick. */
+private const val ZOOM_PER_WHEEL_TICK = 1.1f
+
+/** Lowest camera elevation over the ecliptic (Apple Maps stops ~10° above the horizon). */
+private const val MIN_VIEW_ELEVATION_DEGREES = 10f
 
 /**
  * Earth scene with drag-to-rotate support.
@@ -665,8 +731,12 @@ private fun EarthSceneContent(
     sphereSize: Dp,
     renderSizePx: Int,
     markerLongitudeDegrees: Float,
-    earthRotationOffset: Float,
-    onEarthRotationDelta: (Float) -> Unit,
+    viewYawOffset: Float,
+    viewPitchOffset: Float,
+    viewZoom: Float,
+    onZoom: (factor: Float) -> Unit,
+    viewAnchorTime: Date?,
+    onViewDelta: (yaw: Float, pitch: Float) -> Unit,
     onDragStateChange: (Boolean) -> Unit,
     model: ZmanimModel,
     markerLatitudeDegrees: Float,
@@ -681,41 +751,128 @@ private fun EarthSceneContent(
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     val density = LocalDensity.current
     val degreesPerPx =
-        remember(sphereSize) {
+        remember(sphereSize, viewZoom) {
             // Calculate how many degrees of rotation per pixel of drag
-            // A full drag across the sphere width = 180 degrees
-            with(density) { 180f / sphereSize.toPx() }
+            // A full drag across the sphere width = 180 degrees (finer when zoomed in)
+            with(density) { 180f / sphereSize.toPx() } / viewZoom
         }
+    val currentDegreesPerPx by rememberUpdatedState(degreesPerPx)
+
+    val scope = rememberCoroutineScope()
+    var fling by remember { mutableStateOf<Job?>(null) }
 
     Box(
         modifier =
-            modifier.pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { onDragStateChange(true) },
-                    onDragEnd = { onDragStateChange(false) },
-                    onDragCancel = { onDragStateChange(false) },
-                ) { change, dragAmount ->
-                    change.consume()
-                    // Horizontal drag rotates the Earth (negative because dragging right
-                    // should rotate the Earth to show what's on the left)
-                    onEarthRotationDelta(-dragAmount.x * degreesPerPx)
-                }
-            },
+            modifier
+                .pointerInput(Unit) {
+                    // Nucleus 2.6 (Tao) delivers a trackpad pinch as Scale events, a two-finger scroll as Pan events
+                    // and a mouse wheel as Scroll (same handling as BookContentView).
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull() ?: continue
+                            when (event.type) {
+                                // Positive panOffset = "scroll down / right": the scene follows the fingers, like a drag.
+                                PointerEventType.PanMove -> {
+                                    val k = currentDegreesPerPx
+                                    onViewDelta(-change.panOffset.x * k, -change.panOffset.y * k)
+                                }
+                                // A gesture follows the fingers directly (like a drag): no spring chasing each step,
+                                // which trembled on fast swipes and spun the long way round at ±180°.
+                                PointerEventType.PanStart, PointerEventType.ScaleStart -> {
+                                    fling?.cancel()
+                                    onDragStateChange(true)
+                                }
+                                PointerEventType.PanEnd, PointerEventType.ScaleEnd -> onDragStateChange(false)
+                                // Each event carries its ratio to the previous one
+                                PointerEventType.ScaleChange -> onZoom(change.scaleFactor)
+                                // Ctrl+wheel zooms; a plain wheel is left to the page
+                                PointerEventType.Scroll ->
+                                    if (event.keyboardModifiers.isCtrlPressed) {
+                                        onZoom(ZOOM_PER_WHEEL_TICK.pow(-change.scrollDelta.y))
+                                    } else {
+                                        continue
+                                    }
+                                else -> continue
+                            }
+                            change.consume()
+                        }
+                    }
+                }.pointerInput(Unit) {
+                    // One pointer drags the camera (with inertia). Two pointers are a touchscreen pinch / rotate.
+                    val velocityTracker = VelocityTracker()
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        velocityTracker.resetTracking()
+                        var slop = Offset.Zero
+                        var dragging = false
+                        var transformed = false
+                        do {
+                            val event = awaitPointerEvent()
+                            val pressed = event.changes.filter { it.pressed }
+                            if (pressed.size >= 2) {
+                                if (!transformed && !dragging) {
+                                    fling?.cancel()
+                                    onDragStateChange(true)
+                                }
+                                transformed = true
+                                onZoom(event.calculateZoom())
+                                // A clockwise twist turns the scene clockwise as seen from above the pole
+                                onViewDelta(-event.calculateRotation(), 0f)
+                                event.changes.forEach { it.consume() }
+                            } else if (!transformed) {
+                                val change = pressed.firstOrNull() ?: break
+                                val delta = change.positionChange()
+                                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                                if (!dragging) {
+                                    slop += delta
+                                    if (slop.getDistance() > viewConfiguration.touchSlop) {
+                                        dragging = true
+                                        fling?.cancel()
+                                        onDragStateChange(true)
+                                    }
+                                }
+                                if (dragging) {
+                                    // Horizontal: turn around the ecliptic pole; vertical: tilt toward the pole.
+                                    onViewDelta(delta.x * currentDegreesPerPx, delta.y * currentDegreesPerPx)
+                                    change.consume()
+                                }
+                            }
+                        } while (event.changes.any { it.pressed })
+
+                        if (dragging && !transformed) {
+                            // Inertia: keep turning with the release velocity, decaying to a stop.
+                            // The drag state stays on meanwhile so the rotation isn't re-smoothed.
+                            val velocity = velocityTracker.calculateVelocity()
+                            val speed = hypot(velocity.x, velocity.y)
+                            fling =
+                                scope.launch {
+                                    // Decay the release speed along the release direction, split back into yaw/pitch.
+                                    if (speed > 0f) {
+                                        var previous = 0f
+                                        AnimationState(0f, speed).animateDecay(exponentialDecay(EARTH_FLING_FRICTION)) {
+                                            val px = (value - previous) * currentDegreesPerPx
+                                            onViewDelta(velocity.x / speed * px, velocity.y / speed * px)
+                                            previous = value
+                                        }
+                                    }
+                                    onDragStateChange(false)
+                                }
+                        } else if (dragging || transformed) {
+                            onDragStateChange(false)
+                        }
+                    }
+                },
         contentAlignment = Alignment.Center,
     ) {
         EarthWidgetScene(
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
-            earthRotationDegrees = markerLongitudeDegrees + earthRotationOffset,
-            // Compensate light direction for Earth rotation offset.
-            // Model computed lightDegrees for earthRotation = markerLongitude.
-            // Subtracting offset keeps the sun fixed relative to Earth's surface,
-            // so the marker always shows correct day/night for the selected time.
-            lightDegrees = model.lightDegrees - earthRotationOffset,
+            earthRotationDegrees = markerLongitudeDegrees,
+            lightDegrees = model.lightDegrees,
             sunElevationDegrees = model.sunElevationDegrees,
             earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
             moonOrbitDegrees = model.moonOrbitDegrees,
@@ -736,7 +893,10 @@ private fun EarthSceneContent(
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-            renderDispatcher = renderDispatcher,
+            viewYawDegrees = viewYawOffset,
+            viewPitchDegrees = viewPitchOffset,
+            viewAnchorKey = viewAnchorTime,
+            viewZoom = viewZoom,
         )
     }
 }
@@ -746,11 +906,11 @@ private fun EarthSceneContent(
  */
 @Composable
 private fun RecenterButton(
-    earthRotationOffset: Float,
+    isViewMoved: Boolean,
     onRecenter: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (earthRotationOffset != 0f) {
+    if (isViewMoved) {
         IntUiTheme(isDark = true) {
             OutlinedButton(
                 onClick = onRecenter,

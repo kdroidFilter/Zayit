@@ -8,10 +8,15 @@ import androidx.compose.animation.core.*
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -51,6 +56,11 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import dev.nucleusframework.window.ExperimentalNucleusApi
+import dev.nucleusframework.window.tao.TabGripCursor
+import dev.nucleusframework.window.tao.TabHoverPreview
+import dev.nucleusframework.window.tao.TabHoverPreviewPopup
+import dev.nucleusframework.window.tao.TabHoverPreviewScope
+import dev.nucleusframework.window.tao.TabPreview
 import dev.nucleusframework.window.tao.TabStripScope
 import dev.nucleusframework.window.tao.rememberTabStripDrag
 import dev.nucleusframework.window.tao.tabStripCarry
@@ -92,6 +102,7 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
+import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
 import java.awt.Toolkit
 import java.awt.datatransfer.StringSelection
 import kotlin.math.roundToInt
@@ -114,6 +125,8 @@ private data class TabEntry(
     val onCopyLink: (() -> Unit)?,
     // null when the tab is the window's only one (the window itself already is that tab)
     val onDetach: (() -> Unit)?,
+    // Moves the tab to the desktop of that id; null for the window's only tab
+    val onMoveToDesktop: ((String) -> Unit)?,
 )
 
 private val TabTooltipWidthThreshold = 140.dp
@@ -237,6 +250,12 @@ private fun TabStripScope.DefaultTabShowcase(
                                 } else {
                                     null
                                 },
+                            onMoveToDesktop =
+                                if (state.tabs.size > 1) {
+                                    { desktopId -> desktopManager.moveTabToDesktop(tabItem.destination.tabId, windowId, desktopId) }
+                                } else {
+                                    null
+                                },
                         )
                     }.toImmutableList()
             } else {
@@ -312,6 +331,12 @@ private fun TabStripScope.DefaultTabShowcase(
                                 } else {
                                     null
                                 },
+                            onMoveToDesktop =
+                                if (state.tabs.size > 1) {
+                                    { desktopId -> desktopManager.moveTabToDesktop(tabItem.destination.tabId, windowId, desktopId) }
+                                } else {
+                                    null
+                                },
                         )
                     }.toImmutableList()
             }
@@ -384,6 +409,11 @@ private fun TabStripScope.RtlAwareTabStripContent(
     // The workspace's gestures for this strip: carry along it, slide home, hand-over to another
     // window or a new one once a tab leaves it (the platform drag session on native Wayland).
     val tabDrag = rememberTabStripDrag()
+    val hoverPreview by AppSettings.tabHoverPreviewFlow.collectAsState()
+    if (hoverPreview) TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
+    // The last look at the selected tab before a click may leave it (see rememberTabThumbnails).
+    val stripHovered by interactionSource.collectIsHoveredAsState()
+    LaunchedEffect(stripHovered) { openWindow.pointerOnStrip = stripHovered }
     // Chrome-like: the tab being dragged is selected.
     LaunchedEffect(tabDrag.held) { tabDrag.held?.let(workspace::select) }
     val skipAnimation by tabsViewModel.skipNextAnimation.collectAsState()
@@ -500,6 +530,8 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                                     tabDrag,
                                                     workspaceTab,
                                                     group.ids.indexOf(key),
+                                                    // The strip keeps the plain arrow over its tabs.
+                                                    cursor = TabGripCursor.None,
                                                 )
                                             } else {
                                                 Modifier
@@ -545,6 +577,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                             onCloseRight = tabEntry.onCloseRight,
                                             onCopyLink = tabEntry.onCopyLink,
                                             onDetach = tabEntry.onDetach,
+                                            onMoveToDesktop = tabEntry.onMoveToDesktop,
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
@@ -630,6 +663,7 @@ private fun RtlAwareTab(
     modifier: Modifier = Modifier,
     onCopyLink: (() -> Unit)? = null,
     onDetach: (() -> Unit)? = null,
+    onMoveToDesktop: ((String) -> Unit)? = null,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
@@ -829,9 +863,12 @@ private fun RtlAwareTab(
         }
 
         val label = labelProvider()
+        val hoverPreview by AppSettings.tabHoverPreviewFlow.collectAsState()
+        // The hover card replaces the tooltip on every tab it is shown for (all but the selected one).
         val showTooltip =
             label.isNotBlank() &&
-                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
+                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold) &&
+                (!hoverPreview || tabData.selected)
 
         // Read theme colors outside remember so they act as a cache key.
         val tooltipColors = JewelTheme.tooltipStyle.colors
@@ -894,6 +931,11 @@ private fun RtlAwareTab(
             val closeRightLabel = stringResource(Res.string.close_tabs_right)
             val copyLinkLabel = stringResource(Res.string.copy_tab_link)
             val detachLabel = stringResource(Res.string.tab_open_in_new_window)
+            val moveToDesktopLabel = stringResource(Res.string.tab_move_to_desktop)
+            val desktops by LocalAppGraph.current.desktopManager.desktops
+                .collectAsState()
+            val currentDesktopId = LocalOpenWindow.current.session.desktopId
+            val otherDesktops = desktops.filter { it.id != currentDesktopId }
 
             TabContextMenu(
                 anchorOffset = anchorOffset,
@@ -909,6 +951,31 @@ private fun RtlAwareTab(
                             onDetach()
                         },
                     )
+                }
+                if (onMoveToDesktop != null && otherDesktops.isNotEmpty()) {
+                    submenu(
+                        submenu = {
+                            otherDesktops.forEach { desktop ->
+                                selectableItem(selected = false, onClick = {
+                                    contextMenuOpen = false
+                                    onMoveToDesktop(desktop.id)
+                                }) { Text(desktop.name) }
+                            }
+                        },
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                key = AllIconsKeys.Actions.MoveTo2,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = JewelTheme.globalColors.text.normal,
+                            )
+                            Text(moveToDesktopLabel)
+                        }
+                    }
                 }
                 if (onCopyLink != null) {
                     tabContextMenuItem(
@@ -963,6 +1030,34 @@ private fun RtlAwareTab(
         }
     }
 }
+
+/** The hover card of a tab: its full title over the picture of the window as the tab was left. */
+@Composable
+private fun TabHoverPreviewScope.TabPreviewCard() {
+    val colors = JewelTheme.tooltipStyle.colors
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        Modifier
+            .width(TabPreviewCardWidth)
+            .background(colors.background, shape)
+            .border(1.dp, colors.border, shape)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = tab.title,
+            color = colors.content,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (thumbnail != null) {
+            Spacer(Modifier.height(8.dp))
+            TabPreview(tab, Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)))
+        }
+    }
+}
+
+private val TabPreviewCardWidth = 280.dp
 
 // TabContentScopeContainer implementation (same as Jewel's internal)
 private class TabContentScopeContainer : TabContentScope {

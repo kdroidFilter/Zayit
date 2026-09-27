@@ -76,6 +76,9 @@ class OpenWindow internal constructor(
     /** The tab whose panes the docks have laid out as planned: its text may lay out (see PaneSync). */
     var panesReadyFor: String? by mutableStateOf(null)
 
+    /** Whether the pointer is over this window's tab strip (where a click may leave the tab). */
+    var pointerOnStrip: Boolean by mutableStateOf(false)
+
     /** Attached by the window composable once the native window exists; used for toFront/focus. */
     @Volatile
     var nucleusWindow: NucleusWindow? = null

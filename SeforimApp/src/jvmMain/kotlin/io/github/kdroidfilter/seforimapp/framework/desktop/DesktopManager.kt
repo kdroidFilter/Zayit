@@ -12,10 +12,12 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforim.tabs.withTabId
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
 import io.github.kdroidfilter.seforimapp.framework.session.SavedGeometry
+import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.WindowSnapshot
@@ -284,6 +286,53 @@ class DesktopManager(
         // In dp with a 1:1 scale: the workspace places windows in dp. The new group's window is
         // opened by the session watcher.
         return from.session.workspace.tearOff(tabId, rect, scaleFactor = 1f) != null
+    }
+
+    /**
+     * Moves a tab to the end of another desktop's first window, open or dormant, with its reading
+     * state. The window's last tab stays (as for [detachTabToNewWindow]: closing it would close
+     * the window, or quit the app).
+     */
+    fun moveTabToDesktop(
+        tabId: String,
+        fromWindowId: String,
+        desktopId: String,
+    ): Boolean {
+        val from = window(fromWindowId) ?: return false
+        val source = from.session
+        val group = from.group() ?: return false
+        val item = source.item(tabId) ?: return false
+        if (group.ids.size <= 1 || desktopId == source.desktopId || _desktops.value.none { it.id == desktopId }) return false
+        // A new id: the source's cleanup of the closed tab (its state, its ViewModels) must not
+        // reach the moved one.
+        val newId = UUID.randomUUID().toString()
+        val destination = item.destination.withTabId(newId)
+        val state = tabPersistedStateStore.get(tabId) ?: TabPersistedState()
+        val target = windowsOf(desktopId).firstOrNull()
+        if (target != null) {
+            tabPersistedStateStore.putAll(mapOf(newId to state))
+            val size = target.group()?.ids?.size ?: 0
+            // Added, not opened: the target window keeps its selection.
+            target.session.addTab(destination, target.groupId, size, title = item.title, tabType = item.tabType, select = false)
+        } else {
+            val snapshot = dormantSnapshots[desktopId] ?: DesktopTabsSnapshot()
+            val windows = snapshot.effectiveWindows().filter { it.destinations.isNotEmpty() }
+            val first = windows.firstOrNull() ?: WindowSnapshot()
+            val moved =
+                first.copy(
+                    destinations = first.destinations + destination,
+                    titles = first.titles + (newId to SerializableTabTitle(item.title, item.tabType)),
+                )
+            dormantSnapshots[desktopId] =
+                snapshot.copy(
+                    destinations = emptyList(),
+                    titles = emptyMap(),
+                    tabStates = snapshot.tabStates + (newId to state),
+                    windows = listOf(moved) + windows.drop(1),
+                )
+        }
+        source.workspace.close(tabId)
+        return true
     }
 
     // ---- Desktop CRUD ----

@@ -13,6 +13,10 @@ sealed interface DisplaySettingsEvents {
         val value: Boolean,
     ) : DisplaySettingsEvents
 
+    data class SetTabHoverPreview(
+        val value: Boolean,
+    ) : DisplaySettingsEvents
+
     data class SetMaxCommentatorsPerPage(
         val value: Int,
     ) : DisplaySettingsEvents

@@ -8,6 +8,7 @@ data class DisplaySettingsState(
     val showHomeWallpaper: Boolean = true,
     val compactMode: Boolean = false,
     val maxCommentatorsPerPage: Int = 0,
+    val tabHoverPreview: Boolean = true,
 ) {
     companion object {
         val preview =

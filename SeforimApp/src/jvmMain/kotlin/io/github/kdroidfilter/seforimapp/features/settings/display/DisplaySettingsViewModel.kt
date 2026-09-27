@@ -20,14 +20,22 @@ class DisplaySettingsViewModel : ViewModel() {
     private val showHomeWallpaper = MutableStateFlow(AppSettings.isShowHomeWallpaperEnabled())
     private val compactMode = MutableStateFlow(AppSettings.isCompactModeEnabled())
     private val maxCommentatorsPerPage = MutableStateFlow(AppSettings.getMaxCommentatorsPerPage())
+    private val tabHoverPreview = MutableStateFlow(AppSettings.isTabHoverPreviewEnabled())
 
     val state =
-        combine(showZmanim, showHomeWallpaper, compactMode, maxCommentatorsPerPage) { z, wallpaper, compact, maxCommentators ->
+        combine(showZmanim, showHomeWallpaper, compactMode, maxCommentatorsPerPage, tabHoverPreview) {
+            z,
+            wallpaper,
+            compact,
+            maxCommentators,
+            preview,
+            ->
             DisplaySettingsState(
                 showZmanimWidgets = z,
                 showHomeWallpaper = wallpaper,
                 compactMode = compact,
                 maxCommentatorsPerPage = maxCommentators,
+                tabHoverPreview = preview,
             )
         }.stateIn(
             viewModelScope,
@@ -37,6 +45,7 @@ class DisplaySettingsViewModel : ViewModel() {
                 showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
                 maxCommentatorsPerPage = maxCommentatorsPerPage.value,
+                tabHoverPreview = tabHoverPreview.value,
             ),
         )
 
@@ -53,6 +62,10 @@ class DisplaySettingsViewModel : ViewModel() {
             is DisplaySettingsEvents.SetCompactMode -> {
                 AppSettings.setCompactModeEnabled(event.value)
                 compactMode.value = event.value
+            }
+            is DisplaySettingsEvents.SetTabHoverPreview -> {
+                AppSettings.setTabHoverPreviewEnabled(event.value)
+                tabHoverPreview.value = event.value
             }
             is DisplaySettingsEvents.SetMaxCommentatorsPerPage -> {
                 AppSettings.setMaxCommentatorsPerPage(event.value)

@@ -58,6 +58,8 @@ class DesktopSession internal constructor(
         val groupId: String,
         val index: Int,
         val replacing: String?,
+        // The tab to keep selected instead of the new one; null selects the new one.
+        val keepSelected: String?,
     )
 
     fun item(tabId: String): TabItem? = tabs.firstOrNull { it.destination.tabId == tabId }
@@ -90,9 +92,10 @@ class DesktopSession internal constructor(
         replacing: String? = null,
         title: String = titleFor(destination),
         tabType: TabType = tabTypeFor(destination),
+        select: Boolean = true,
     ) {
         val target = groupId ?: activeGroupId() ?: newGroupId()
-        pending[destination.tabId] = Placement(target, index, replacing)
+        pending[destination.tabId] = Placement(target, index, replacing, if (select) null else group(target)?.selectedId)
         tabs += TabItem(id = nextItemId++, title = title, destination = destination, tabType = tabType)
     }
 
@@ -103,7 +106,7 @@ class DesktopSession internal constructor(
     fun onDeclared(tabId: String) {
         val placement = pending.remove(tabId) ?: return
         workspace.reorder(tabId, placement.index)
-        workspace.select(tabId)
+        workspace.select(placement.keepSelected ?: tabId)
         placement.replacing?.let(workspace::close)
     }
 

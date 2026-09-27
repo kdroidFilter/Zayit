@@ -65,7 +65,7 @@ object E2eTortureScenario {
     private suspend fun operation(op: Int): String {
         val w = anyWindow()
         val tabs = tabsOf(w)
-        return when (random.nextInt(14)) {
+        return when (random.nextInt(15)) {
             0 -> {
                 w.tabsViewModel.openTab(
                     TabsDestination.BookContent(bookId = if (random.nextBoolean()) bookId else -1, tabId = UUID.randomUUID().toString()),
@@ -155,6 +155,14 @@ object E2eTortureScenario {
             12 -> {
                 w.windowState.placement = WindowPlacement.Maximized
                 "maximize"
+            }
+            13 -> {
+                val target =
+                    dm.desktops.value
+                        .filter { it.id != w.session.desktopId }
+                        .randomOrNull(random)
+                if (target != null && tabs.size > 1) dm.moveTabToDesktop(tabs.random(random), w.id, target.id)
+                "move-to-desktop"
             }
             else -> {
                 w.clearSwitching()

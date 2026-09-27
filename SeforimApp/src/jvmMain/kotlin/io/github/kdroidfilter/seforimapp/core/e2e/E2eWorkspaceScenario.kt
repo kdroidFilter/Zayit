@@ -100,6 +100,55 @@ object E2eWorkspaceScenario {
         sc.step("28-commentaries-docked")
         check(lines.satellite(commentaries)?.isDocked == true) { "dock failed" }
 
+        // The hover card's picture: the window as the selected tab showed it.
+        delay(1500)
+        val shown = main.group()?.selectedId ?: error("no selection")
+        val picture =
+            main.session.workspace
+                .tab(shown)
+                ?.thumbnail
+        check(picture != null) { "no thumbnail for the selected tab" }
+        E2e.save("30-thumbnail", picture)
+        sc.note("thumbnail ${picture.width}x${picture.height}")
+
+        // Move a background tab to a dormant desktop: gone here, there on switching to it.
+        val others = dm.desktops.value.filter { it.id != main.session.desktopId && !dm.isDesktopOpen(it.id) }
+        val dormant = others.firstOrNull() ?: error("no dormant desktop")
+        val moving = main.group()!!.ids.first { it != shown }
+        val movingBook = (main.session.item(moving)?.destination as? TabsDestination.BookContent)?.bookId
+        check(dm.moveTabToDesktop(moving, main.id, dormant.id)) { "move to dormant refused" }
+        sc.step("31-moved-to-dormant")
+        check(moving !in main.group()!!.ids) { "moved tab still here" }
+        val landed =
+            dm
+                .snapshotOpenDesktop(dormant.id)
+                .effectiveWindows()
+                .first()
+                .destinations
+                .last()
+        check((landed as? TabsDestination.BookContent)?.bookId == movingBook) { "moved tab not in dormant snapshot" }
+        val home = main.session.desktopId
+        dm.switchTo(main.id, dormant.id)
+        sc.step("32-dormant-opened", waitMs = 2500)
+        check(main.group()!!.ids.any { it == landed.tabId }) { "moved tab not restored" }
+        dm.switchTo(main.id, home)
+        sc.step("33-back-home", waitMs = 2500)
+
+        // Move a tab to a desktop open in another window: added there, its selection kept.
+        repeat(2) { main.tabsViewModel.openTab(TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())) }
+        val target = dm.createDesktopInNewWindow("M")
+        sc.step("34-target-open")
+        val targetWindow = dm.windowsOf(target).single()
+        val targetSelected = targetWindow.group()?.selectedId
+        val moving2 = main.group()!!.ids.last()
+        check(dm.moveTabToDesktop(moving2, main.id, target)) { "move to open refused" }
+        sc.step("35-moved-to-open")
+        check(moving2 !in main.group()!!.ids) { "moved tab still in source" }
+        check(targetWindow.group()!!.ids.size == 2) { "target has ${targetWindow.group()!!.ids.size} tabs" }
+        check(targetWindow.group()?.selectedId == targetSelected) { "target selection changed" }
+        dm.closeWindow(targetWindow.id)
+        sc.step("36-target-closed")
+
         // Closing the other tabs with ×: the window stays with its last tab.
         val keep = main.tabsViewModel.state.value.selectedTabIndex
         main.tabsViewModel.onEvent(TabsEvents.CloseOthers(keep))

@@ -444,11 +444,15 @@ fun main(args: Array<String>) {
                         }
 
                         if (E2e.enabled) {
+                            // Its own scope: a theme switch may recompose this subtree from scratch,
+                            // and the run must outlive that.
                             LaunchedEffect(Unit) {
-                                E2eScenario.run(appGraph, extra = {
-                                    E2eWorkspaceScenario.run(it)
-                                    E2eTortureScenario.run(it)
-                                }) { exitApplication() }
+                                E2e.start {
+                                    E2eScenario.run(appGraph, extra = {
+                                        E2eWorkspaceScenario.run(it)
+                                        E2eTortureScenario.run(it)
+                                    }) { exitApplication() }
+                                }
                             }
                         }
 

@@ -87,6 +87,7 @@ fun WindowBody(openWindow: OpenWindow) {
     Row(
         Modifier
             .fillMaxSize()
+            .then(rememberTabThumbnails(openWindow))
             .background(canvasBackground())
             .onPreviewKeyEvent { event -> readerEvents?.let { handleBookShortcut(event, it) } ?: false },
     ) {

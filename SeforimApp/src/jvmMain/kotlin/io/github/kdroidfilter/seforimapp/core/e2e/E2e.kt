@@ -9,6 +9,11 @@ import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import java.io.File
@@ -37,6 +42,25 @@ object E2e {
         if (enabled) bookViewModels[tabId] = viewModel
     }
 
+    private var started = false
+
+    // The run's own scope, for the life of the process (the harness quits the app when it ends).
+    private val runScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    /** Runs [block] once per process, outside any composition. */
+    fun start(block: suspend () -> Unit) {
+        if (started) return
+        started = true
+        launchRun(runScope, block)
+    }
+
+    private fun launchRun(
+        @StructuredScope scope: CoroutineScope,
+        block: suspend () -> Unit,
+    ) {
+        scope.launch { block() }
+    }
+
     fun bookViewModel(tabId: String): BookContentViewModel? = bookViewModels[tabId]
 
     internal fun layer(windowId: String): GraphicsLayer? = layers[windowId]
@@ -46,6 +70,17 @@ object E2e {
         layer: GraphicsLayer?,
     ) {
         if (layer == null) layers.remove(windowId) else layers[windowId] = layer
+    }
+
+    /** Writes [bitmap] to `<out>/<name>.png`. */
+    fun save(
+        name: String,
+        bitmap: androidx.compose.ui.graphics.ImageBitmap,
+    ) {
+        val dir = outDir ?: return
+        val data = Image.makeFromBitmap(bitmap.asSkiaBitmap()).encodeToData(EncodedImageFormat.PNG) ?: return
+        dir.mkdirs()
+        File(dir, "$name.png").writeBytes(data.bytes)
     }
 
     /** Writes [windowId]'s last recorded frame to `<out>/<name>.png`. */

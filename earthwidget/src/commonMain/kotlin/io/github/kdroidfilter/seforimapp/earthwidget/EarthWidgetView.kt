@@ -50,7 +50,7 @@ import kotlin.math.sqrt
 // ============================================================================
 
 /** Shared spring spec for smooth angle animations. */
-private val SmoothAngleSpringSpec =
+internal val SmoothAngleSpringSpec =
     spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow,
@@ -356,19 +356,19 @@ fun EarthWidgetScene(
 // ANIMATION HELPERS
 // ============================================================================
 
-private fun normalizeAngle360(value: Float): Float {
+internal fun normalizeAngle360(value: Float): Float {
     val mod = value % 360f
     return if (mod < 0f) mod + 360f else mod
 }
 
-private fun normalizeAngle180(value: Float): Float {
+internal fun normalizeAngle180(value: Float): Float {
     var wrapped = normalizeAngle360(value)
     if (wrapped > 180f) wrapped -= 360f
     return wrapped
 }
 
 @Composable
-private fun rememberSmoothAnimatedAngle(
+internal fun rememberSmoothAnimatedAngle(
     targetValue: Float,
     normalize: (Float) -> Float,
 ): Float {

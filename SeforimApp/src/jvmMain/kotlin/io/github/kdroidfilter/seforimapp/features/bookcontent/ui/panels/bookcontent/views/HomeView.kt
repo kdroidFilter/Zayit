@@ -6,15 +6,25 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -50,6 +60,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
+import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
@@ -77,6 +89,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Cursor
+import java.time.LocalDate
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
@@ -250,6 +263,9 @@ private fun HomeBody(
 ) {
     // Whether to show zmanim widgets
     val showZmanimWidgets by AppSettings.showZmanimWidgetsFlow.collectAsState()
+
+    // Date picked in the zmanim / Earth widgets, followed by the solar system widget (null until reported)
+    var homeWidgetsDate by remember { mutableStateOf<LocalDate?>(null) }
 
     val celestialWidgetsState =
         if (homeCelestialWidgetsState != null) {
@@ -604,6 +620,7 @@ private fun HomeBody(
                                 modifier = Modifier.fillMaxWidth(),
                                 userCommunityCode = searchUi.userCommunityCode,
                                 locationState = celestialWidgetsState,
+                                onSelectedDateChange = { homeWidgetsDate = it },
                             )
                         }
                     }
@@ -616,12 +633,39 @@ private fun HomeBody(
                             contentAlignment = Alignment.Center,
                         ) {
                             val twoCardsWidth = (ZMANIM_CARD_HEIGHT * 2) + ZMANIM_HORIZONTAL_SPACING
-                            TempleDestructionCountdownCard(
-                                modifier =
-                                    Modifier
-                                        .width(twoCardsWidth)
-                                        .height(ZMANIM_CARD_HEIGHT * 1.5f),
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(ZMANIM_HORIZONTAL_SPACING),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                TempleDestructionCountdownCard(
+                                    modifier =
+                                        Modifier
+                                            .width(twoCardsWidth)
+                                            .height(ZMANIM_CARD_HEIGHT * 1.5f),
+                                )
+                                if (isEarthWidgetSupported) {
+                                    // Same height and frame as the Temple card beside it
+                                    val cardShape = RoundedCornerShape(18.dp)
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .width((ZMANIM_CARD_HEIGHT * 3) + (ZMANIM_HORIZONTAL_SPACING * 2))
+                                                .height(ZMANIM_CARD_HEIGHT * 1.5f)
+                                                .clip(cardShape)
+                                                .background(Color.Black)
+                                                .border(1.5.dp, JewelTheme.globalColors.borders.disabled, cardShape),
+                                    ) {
+                                        // Filament renders every vsync while composed; hidden tabs stay composed, so drop it there.
+                                        if (LocalTabSelected.current) {
+                                            SolarSystemWidgetView(
+                                                modifier = Modifier.fillMaxSize(),
+                                                date = homeWidgetsDate,
+                                                inIsrael = celestialWidgetsState.inIsrael,
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }

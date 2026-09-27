@@ -8,7 +8,10 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import dev.nucleusframework.window.ExperimentalNucleusApi
+import dev.nucleusframework.window.tao.TabDropTarget
+import dev.nucleusframework.window.tao.TabWorkspace
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
+import io.github.kdroidfilter.seforim.tabs.TabItem
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
@@ -105,6 +108,7 @@ class DesktopManager(
     init {
         if (bootState != null) restoreFromDesktopsState(bootState) else openDesktop(defaultDesktopId)
         collectTitles(scope, titleUpdateManager)
+        linkWorkspaces(scope)
     }
 
     private fun collectTitles(
@@ -310,10 +314,8 @@ class DesktopManager(
         val state = tabPersistedStateStore.get(tabId) ?: TabPersistedState()
         val target = windowsOf(desktopId).firstOrNull()
         if (target != null) {
-            tabPersistedStateStore.putAll(mapOf(newId to state))
-            val size = target.group()?.ids?.size ?: 0
             // Added, not opened: the target window keeps its selection.
-            target.session.addTab(destination, target.groupId, size, title = item.title, tabType = item.tabType, select = false)
+            addMovedTab(item, newId, state, target, index = target.group()?.ids?.size ?: 0, select = false)
         } else {
             val snapshot = dormantSnapshots[desktopId] ?: DesktopTabsSnapshot()
             val windows = snapshot.effectiveWindows().filter { it.destinations.isNotEmpty() }
@@ -333,6 +335,59 @@ class DesktopManager(
         }
         source.workspace.close(tabId)
         return true
+    }
+
+    private fun addMovedTab(
+        item: TabItem,
+        newId: String,
+        state: TabPersistedState,
+        target: OpenWindow,
+        index: Int,
+        select: Boolean,
+    ) {
+        tabPersistedStateStore.putAll(mapOf(newId to state))
+        target.session.addTab(
+            item.destination.withTabId(newId),
+            target.groupId,
+            index,
+            title = item.title,
+            tabType = item.tabType,
+            select = select,
+        )
+    }
+
+    /**
+     * A tab of [source] dragged onto the strip of another open desktop's window ([target] in
+     * [into]): it joins that window where it was dropped, selected, with its reading state — a
+     * window left empty closes, as after any drag.
+     */
+    private fun onForeignDrop(
+        source: DesktopSession,
+        tabId: String,
+        into: TabWorkspace,
+        target: TabDropTarget,
+    ) {
+        val item = source.item(tabId) ?: return
+        val window = _windows.value.firstOrNull { it.session.workspace === into && it.groupId == target.group.id } ?: return
+        val newId = UUID.randomUUID().toString()
+        addMovedTab(item, newId, tabPersistedStateStore.get(tabId) ?: TabPersistedState(), window, target.index, select = true)
+        source.workspace.close(tabId)
+        window.requestFocus()
+        onWindowFocused(window.id)
+    }
+
+    /** Every open desktop's strips take the others' tab drags (see [onForeignDrop]). */
+    private fun linkWorkspaces(
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        scope.launch {
+            _sessions.collect { open ->
+                for (session in open) {
+                    session.workspace.linkedWorkspaces = open.filter { it !== session }.map { it.workspace }
+                    session.workspace.onForeignDrop = { tab, into, target -> onForeignDrop(session, tab.id, into, target) }
+                }
+            }
+        }
     }
 
     // ---- Desktop CRUD ----

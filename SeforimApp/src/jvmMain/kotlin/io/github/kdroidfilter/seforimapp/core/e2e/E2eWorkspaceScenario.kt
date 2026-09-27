@@ -146,6 +146,22 @@ object E2eWorkspaceScenario {
         check(moving2 !in main.group()!!.ids) { "moved tab still in source" }
         check(targetWindow.group()!!.ids.size == 2) { "target has ${targetWindow.group()!!.ids.size} tabs" }
         check(targetWindow.group()?.selectedId == targetSelected) { "target selection changed" }
+        // Drag a tab onto the other desktop's strip: the ghost follows the pointer over it, and the
+        // tab joins that window where it is dropped — no window torn off.
+        val dragged = main.group()!!.ids.first { it != main.group()?.selectedId }
+        val draggedBook = (main.session.item(dragged)?.destination as? TabsDestination.BookContent)?.bookId
+        val windowsBefore = dm.windows.value.size
+        dragTab(main, dragged, to = stripPoint(targetWindow)) {
+            check(main.session.workspace.dragGhost != null) { "no ghost over the other desktop's window" }
+        }
+        sc.step("35b-dragged-to-other-desktop")
+        check(dragged !in main.group()!!.ids) { "dragged tab still in source" }
+        check(dm.windows.value.size == windowsBefore) { "a window was torn off: ${dm.windows.value.size}" }
+        val landedId = targetWindow.group()!!.selectedId!!
+        check((targetWindow.session.item(landedId)?.destination as? TabsDestination.BookContent)?.bookId == draggedBook) {
+            "dropped tab not selected in the target window"
+        }
+        check(targetWindow.group()!!.ids.size == 3) { "target has ${targetWindow.group()!!.ids.size} tabs" }
         dm.closeWindow(targetWindow.id)
         sc.step("36-target-closed")
 
@@ -181,6 +197,7 @@ object E2eWorkspaceScenario {
         from: OpenWindow,
         tabId: String,
         to: Offset,
+        beforeRelease: () -> Unit = {},
     ) {
         val window = from.nucleusWindow?.unsafe?.taoWindow ?: error("no native window")
         val start = stripPoint(from)
@@ -190,6 +207,7 @@ object E2eWorkspaceScenario {
             session.update(Offset(start.x + (to.x - start.x) * i / steps, start.y + (to.y - start.y) * i / steps))
             delay(16)
         }
+        beforeRelease()
         session.end(to)
     }
 

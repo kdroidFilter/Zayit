@@ -371,11 +371,13 @@ internal fun normalizeAngle180(value: Float): Float {
 internal fun rememberSmoothAnimatedAngle(
     targetValue: Float,
     normalize: (Float) -> Float,
+    /** Follow the target directly (a running clock): a spring would trail it, then catch up with a jolt. */
+    instant: Boolean = false,
 ): Float {
     val currentNormalize by rememberUpdatedState(normalize)
     val animatable = remember { Animatable(currentNormalize(targetValue)) }
 
-    LaunchedEffect(targetValue) {
+    LaunchedEffect(targetValue, instant) {
         val current = animatable.value
         val currentWrapped = currentNormalize(current)
         val targetWrapped = currentNormalize(targetValue)
@@ -385,6 +387,10 @@ internal fun rememberSmoothAnimatedAngle(
         if (delta < -180f) delta += 360f
 
         val newTarget = current + delta
+        if (instant) {
+            animatable.snapTo(newTarget)
+            return@LaunchedEffect
+        }
         animatable.animateTo(
             targetValue = newTarget,
             animationSpec = SmoothAngleSpringSpec,

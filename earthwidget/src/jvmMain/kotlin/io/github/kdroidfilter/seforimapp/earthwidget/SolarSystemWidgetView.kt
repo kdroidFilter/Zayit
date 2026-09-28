@@ -26,6 +26,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -93,6 +94,9 @@ private const val SOLAR_OBLIQUITY_DEGREES = 23.44f
 
 /** The Earth moves ~0.99° a day: event longitudes are taken at noon, so a day spans ±half of that. */
 private const val HALF_DAY_DEGREES = 0.49f
+
+/** Play speed of the full window: a lunar month in ~5 s, a year in ~1 min. */
+private const val PLAY_DAYS_PER_SECOND = 6f
 
 /**
  * Frames between a state and its 3D image on screen: filament-compose's desktop surface renders a frame with the
@@ -271,25 +275,44 @@ fun SolarSystemWidgetView(
     // Captured outside the dark theme below, like the Earth widget: the menu keeps the app's own style
     val appMenuStyle = JewelTheme.menuStyle
     val today = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
-    val displayedDate = date ?: today
+    val baseDate = date ?: today
+    // Full window play: time runs from baseDate at PLAY_DAYS_PER_SECOND; pausing reports the day reached, which
+    // comes back as the new baseDate (and resets the offset)
+    var playing by remember { mutableStateOf(false) }
+    var playOffsetDays by remember { mutableFloatStateOf(0f) }
+    // The day a pause reported: when it comes back as baseDate the offset keeps its fraction of a day (no jump);
+    // any other new baseDate (the date picker, the Home widgets) starts from it afresh
+    var pausedOn by remember { mutableStateOf<LocalDate?>(null) }
+    LaunchedEffect(baseDate) { if (baseDate != pausedOn) playOffsetDays = 0f }
+    LaunchedEffect(playing) {
+        if (!playing) return@LaunchedEffect
+        var last = 0L
+        while (true) {
+            withFrameNanos { now ->
+                if (last != 0L) playOffsetDays += (now - last) / 1e9f * PLAY_DAYS_PER_SECOND
+                last = now
+            }
+        }
+    }
+    val displayedDate = baseDate.plusDays(playOffsetDays.toLong())
+    val dayFraction = playOffsetDays - playOffsetDays.toLong()
     // Shows the holidays of the date's Hebrew year, until the user picks another one
     val dateHebrewYear = remember(displayedDate) { JewishCalendar(displayedDate).jewishYear }
     var hebrewYear by remember(dateHebrewYear) { mutableIntStateOf(dateHebrewYear) }
     val events = remember(hebrewYear, inIsrael) { computeHebrewYearEvents(hebrewYear, inIsrael) }
-    val julianDay = julianDayAt(displayedDate, timeZone)
+    // Noon of the displayed day, plus the running part of a day while playing (smooth orbits)
+    val julianDay = julianDayAt(displayedDate, timeZone) + dayFraction
 
-    val earthLongitude =
-        rememberSmoothAnimatedAngle(
-            targetValue = normalizeAngle360(computeSunEclipticLongitude(julianDay) + 180f),
-            normalize = ::normalizeAngle360,
-        )
-    val sidereal =
-        rememberSmoothAnimatedAngle(
-            targetValue = (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat(),
-            normalize = ::normalizeAngle360,
-        )
+    val earthLongitudeTarget = normalizeAngle360(computeSunEclipticLongitude(julianDay) + 180f)
+    // While playing, the Earth is shown at noon each day (solar-day frame): at real speed it would spin several turns
+    // a second. Sidereal time runs 360.9856°/day: dropping the 360° keeps the slow 0.9856°/day drift only.
+    val siderealTarget = (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() - 360f * dayFraction
     val moon = computeMoonEclipticPosition(julianDay)
-    val moonLongitude = rememberSmoothAnimatedAngle(targetValue = moon.longitude, normalize = ::normalizeAngle360)
+    // Eased on a date change; followed directly while playing (a spring would trail the running clock, and jolt
+    // back and forth on pause)
+    val earthLongitude = rememberSmoothAnimatedAngle(earthLongitudeTarget, ::normalizeAngle360, instant = playing)
+    val sidereal = rememberSmoothAnimatedAngle(normalizeAngle360(siderealTarget), ::normalizeAngle360, instant = playing)
+    val moonLongitude = rememberSmoothAnimatedAngle(moon.longitude, ::normalizeAngle360, instant = playing)
 
     val camera = rememberOrbitCameraState()
     // Aimed so the Earth of [anchorDate] is right in front of the viewer; kept when the date changes (the Earth then
@@ -381,41 +404,47 @@ fun SolarSystemWidgetView(
         CompositionLocalProvider(LocalDensity provides Density(density.density * chromeScale, density.fontScale)) {
             Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(11.dp)
-                                .background(Brush.radialGradient(listOf(Color(0xFFFFB347), Color(0xFFFFE08A))), CircleShape)
-                                .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
-                    )
-                    Text(
-                        text = stringResource(Res.string.earthwidget_solar_title),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        color = Color.White.copy(alpha = 0.85f),
-                        maxLines = 1,
-                        modifier = Modifier.padding(start = 8.dp).weight(1f),
-                    )
-                    onDateSelect?.let { select ->
-                        val dateLabel =
-                            remember(
-                                displayedDate,
-                            ) { HebrewDateFormatter().apply { isHebrewFormat = true }.format(JewishCalendar(displayedDate)) }
+                    // The full window's title bar already names it
+                    if (!fullWindow) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .size(11.dp)
+                                    .background(Brush.radialGradient(listOf(Color(0xFFFFB347), Color(0xFFFFE08A))), CircleShape)
+                                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                        )
+                        Text(
+                            text = stringResource(Res.string.earthwidget_solar_title),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 13.sp,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            modifier = Modifier.padding(start = 8.dp, end = 12.dp),
+                        )
+                    }
+                    // Full window: the date picker next to the title (the right in the app's RTL), as on the Earth
+                    // widget; its calendar picks the year too, so no separate year selector
+                    if (onDateSelect != null) {
                         IntUiTheme(isDark = true) {
                             DateSelectionSplitButton(
-                                label = dateLabel,
+                                label =
+                                    remember(
+                                        displayedDate,
+                                    ) { HebrewDateFormatter().apply { isHebrewFormat = true }.format(JewishCalendar(displayedDate)) },
                                 selectedDate = displayedDate,
-                                onDateSelect = select,
+                                onDateSelect = onDateSelect,
                                 initialMode = CalendarMode.HEBREW,
                                 menuStyle = appMenuStyle,
-                                modifier = Modifier.padding(end = 8.dp),
                             )
                         }
                     }
-                    YearSelector(
-                        hebrewYear = hebrewYear,
-                        onYearChange = { hebrewYear = it },
-                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    if (onDateSelect == null) {
+                        YearSelector(
+                            hebrewYear = hebrewYear,
+                            onYearChange = { hebrewYear = it },
+                        )
+                    }
                     onFullscreen?.let { ChromeIcon(AllIconsKeys.General.ExpandComponent, onClick = it) }
                     if (camera.isMoved || anchorDate != displayedDate) {
                         ChromeIcon(AllIconsKeys.General.Locate) {
@@ -425,10 +454,22 @@ fun SolarSystemWidgetView(
                     }
                 }
                 Spacer(modifier = Modifier.weight(1f))
-                DisplayedDateCaption(
-                    date = displayedDate,
-                    event = currentEvent,
-                )
+                // Caption on the start side (the right in the app's RTL), play on the end side
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    // The full window shows the date in its picker already
+                    DisplayedDateCaption(date = displayedDate, event = currentEvent, showDate = onDateSelect == null)
+                    Spacer(modifier = Modifier.weight(1f))
+                    onDateSelect?.let { select ->
+                        ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute) {
+                            if (playing) {
+                                pausedOn = displayedDate
+                                playOffsetDays = dayFraction
+                                select(displayedDate)
+                            }
+                            playing = !playing
+                        }
+                    }
+                }
             }
         }
     }
@@ -475,6 +516,7 @@ private fun YearSelector(
 private fun DisplayedDateCaption(
     date: LocalDate,
     event: SolarEvent?,
+    showDate: Boolean = true,
 ) {
     val formatter = remember { HebrewDateFormatter().apply { isHebrewFormat = true } }
     val hebrewDate = remember(date) { formatter.format(JewishCalendar(date)) }
@@ -482,7 +524,7 @@ private fun DisplayedDateCaption(
         event?.let {
             Text(it.name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF000000.toInt() or it.category.colorRgb))
         }
-        Text(hebrewDate, fontSize = 11.sp, color = Color.White.copy(alpha = 0.60f), maxLines = 1)
+        if (showDate) Text(hebrewDate, fontSize = 11.sp, color = Color.White.copy(alpha = 0.60f), maxLines = 1)
     }
 }
 

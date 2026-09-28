@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -274,6 +275,8 @@ private fun earthLongitudeOn(
 @Composable
 fun SolarSystemWidgetView(
     modifier: Modifier = Modifier,
+    /** Applied to the header row (e.g. a window drag area when the header sits in the title bar band). */
+    headerModifier: Modifier = Modifier,
     date: LocalDate? = null,
     inIsrael: Boolean = true,
     timeZone: TimeZone = TimeZone.getDefault(),
@@ -285,6 +288,8 @@ fun SolarSystemWidgetView(
     onDateSelect: ((LocalDate) -> Unit)? = null,
     kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
+    /** Keeps the header and caption clear of the window's own controls; the 3D scene still fills the view. */
+    chromePadding: PaddingValues = PaddingValues(0.dp),
 ) {
     // Captured outside the dark theme below, like the Earth widget: the menu keeps the app's own style
     val appMenuStyle = JewelTheme.menuStyle
@@ -444,77 +449,80 @@ fun SolarSystemWidgetView(
         // Chrome laid out like the Temple card: title row on top, one caption line at the bottom. Designed at the
         // card's size; a larger view (the full window) scales it all through the density.
         val chromeScale = textScaleFor(maxWidth.value)
-        CompositionLocalProvider(LocalDensity provides Density(density.density * chromeScale, density.fontScale)) {
-            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    // The full window's title bar already names it
-                    if (!fullWindow) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .size(11.dp)
-                                    .background(Brush.radialGradient(listOf(Color(0xFFFFB347), Color(0xFFFFE08A))), CircleShape)
-                                    .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
-                        )
-                        Text(
-                            text = stringResource(Res.string.earthwidget_solar_title),
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 13.sp,
-                            color = Color.White.copy(alpha = 0.85f),
-                            maxLines = 1,
-                            modifier = Modifier.padding(start = 8.dp, end = 12.dp),
-                        )
-                    }
-                    // Full window: the date picker next to the title (the right in the app's RTL), as on the Earth
-                    // widget; its calendar picks the year too, so no separate year selector
-                    if (onDateSelect != null) {
-                        IntUiTheme(isDark = true) {
-                            DateSelectionSplitButton(
-                                label =
-                                    remember(
-                                        displayedDate,
-                                    ) { HebrewDateFormatter().apply { isHebrewFormat = true }.format(JewishCalendar(displayedDate)) },
-                                selectedDate = displayedDate,
-                                onDateSelect = onDateSelect,
-                                initialMode = CalendarMode.HEBREW,
-                                menuStyle = appMenuStyle,
+        // Outside the scaled density: the title bar's height is in real dp
+        Box(modifier = Modifier.fillMaxSize().padding(chromePadding)) {
+            CompositionLocalProvider(LocalDensity provides Density(density.density * chromeScale, density.fontScale)) {
+                Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth().then(headerModifier), verticalAlignment = Alignment.CenterVertically) {
+                        // The full window's title bar already names it
+                        if (!fullWindow) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(11.dp)
+                                        .background(Brush.radialGradient(listOf(Color(0xFFFFB347), Color(0xFFFFE08A))), CircleShape)
+                                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                            )
+                            Text(
+                                text = stringResource(Res.string.earthwidget_solar_title),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 13.sp,
+                                color = Color.White.copy(alpha = 0.85f),
+                                maxLines = 1,
+                                modifier = Modifier.padding(start = 8.dp, end = 12.dp),
                             )
                         }
-                    }
-                    Spacer(modifier = Modifier.weight(1f))
-                    if (onDateSelect == null) {
-                        YearSelector(
-                            hebrewYear = hebrewYear,
-                            onYearChange = { hebrewYear = it },
-                        )
-                    }
-                    onFullscreen?.let { ChromeIcon(AllIconsKeys.General.ExpandComponent, onClick = it) }
-                    if (camera.isMoved || anchorDate != displayedDate) {
-                        ChromeIcon(AllIconsKeys.General.Locate) {
-                            camera.reset()
-                            anchorDate = displayedDate
+                        // Full window: the date picker next to the title (the right in the app's RTL), as on the Earth
+                        // widget; its calendar picks the year too, so no separate year selector
+                        if (onDateSelect != null) {
+                            IntUiTheme(isDark = true) {
+                                DateSelectionSplitButton(
+                                    label =
+                                        remember(
+                                            displayedDate,
+                                        ) { HebrewDateFormatter().apply { isHebrewFormat = true }.format(JewishCalendar(displayedDate)) },
+                                    selectedDate = displayedDate,
+                                    onDateSelect = onDateSelect,
+                                    initialMode = CalendarMode.HEBREW,
+                                    menuStyle = appMenuStyle,
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.weight(1f))
+                        if (onDateSelect == null) {
+                            YearSelector(
+                                hebrewYear = hebrewYear,
+                                onYearChange = { hebrewYear = it },
+                            )
+                        }
+                        onFullscreen?.let { ChromeIcon(AllIconsKeys.General.ExpandComponent, onClick = it) }
+                        if (camera.isMoved || anchorDate != displayedDate) {
+                            ChromeIcon(AllIconsKeys.General.Locate) {
+                                camera.reset()
+                                anchorDate = displayedDate
+                            }
                         }
                     }
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                // Caption on the start side (the right in the app's RTL), play on the end side
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    // The full window shows the date in its picker already
-                    DisplayedDateCaption(
-                        date = displayedDate,
-                        event = currentEvent,
-                        showDate = onDateSelect == null,
-                        kiddushLevanaNow = fullWindow && kiddushLevanaNow,
-                    )
                     Spacer(modifier = Modifier.weight(1f))
-                    onDateSelect?.let { select ->
-                        ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute) {
-                            if (playing) {
-                                pausedOn = displayedDate
-                                playOffsetDays = dayFraction
-                                select(displayedDate)
+                    // Caption on the start side (the right in the app's RTL), play on the end side
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        // The full window shows the date in its picker already
+                        DisplayedDateCaption(
+                            date = displayedDate,
+                            event = currentEvent,
+                            showDate = onDateSelect == null,
+                            kiddushLevanaNow = fullWindow && kiddushLevanaNow,
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        onDateSelect?.let { select ->
+                            ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute) {
+                                if (playing) {
+                                    pausedOn = displayedDate
+                                    playOffsetDays = dayFraction
+                                    select(displayedDate)
+                                }
+                                playing = !playing
                             }
-                            playing = !playing
                         }
                     }
                 }

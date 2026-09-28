@@ -59,6 +59,12 @@ private val GlareStops: Array<Pair<Float, Color>> =
         u to Color(0xFF000000.toInt() or GLARE_COLOR_RGB).copy(alpha = (0.65f * exp(-5.2f * u)).coerceIn(0f, 1f))
     }
 
+private const val MOON_RING_STEPS = 120
+private const val MOON_RING_RADIUS = 0.6f
+
+/** Moonlight silver-blue: the holidays already use gold. */
+internal const val KIDDUSH_LEVANA_SOLAR_RGB = 0xBFD4FF
+
 /** Holiday stroke: a little bolder than the orbit line (0.75 px), not a tube. */
 private const val ARC_STROKE_RADIUS = 2.4f
 
@@ -145,6 +151,9 @@ internal data class SolarRenderState(
     /** Full-window rendering: holidays as a plain colouring of the orbit line, vignette. */
     val detailed: Boolean = false,
     val markers: List<SolarOrbitMarker>,
+    /** Kiddush Levana window as the Moon's geocentric longitudes at its start and end, drawn on its orbit. */
+    val kiddushLevanaStartDegrees: Float? = null,
+    val kiddushLevanaEndDegrees: Float? = null,
 )
 
 internal fun SolarRenderState.view(): Rotation =
@@ -198,6 +207,22 @@ internal fun SolarSystemSceneView(
             OrbitMeshes.build(geometry.orbitRadius, null, null) { deg -> view * eclipticDirection(deg) * geometry.orbitRadius }
         }
     // Rosh Chodesh: a short graduation across the orbit, like the month ticks of a dial
+    // The Moon's orbit round the Earth (a thin ring) and the stretch of it the Moon crosses during Kiddush Levana
+    val moonRing =
+        run {
+            fun ringPoint(longitude: Float): MoonOrbitPosition {
+                val p = earthPos + view * eclipticDirection(longitude) * geometry.moonOrbitRadius
+                return MoonOrbitPosition(x = p.x, yCam = p.y, zCam = p.z)
+            }
+            val ring = tubeMesh((0..MOON_RING_STEPS).map { ringPoint(it * 360f / MOON_RING_STEPS) }, MOON_RING_RADIUS)
+            val kl =
+                state.kiddushLevanaStartDegrees?.let { start ->
+                    val span = ((state.kiddushLevanaEndDegrees ?: start) - start).mod(360f)
+                    val steps = (span / 2f).toInt().coerceAtLeast(2)
+                    tubeMesh((0..steps).map { ringPoint(start + span * it / steps) }, ARC_STROKE_RADIUS)
+                }
+            ring to kl
+        }
     val ticks =
         remember(view, geometry, state.markers) {
             val up = view * Direction.Up
@@ -331,6 +356,8 @@ internal fun SolarSystemSceneView(
                 )
             }
             Orbit(orbitMeshes, 0xFFFFFF)
+            moonRing.first?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(0xFFFFFF, 0x55)), it, 1f) }
+            moonRing.second?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(KIDDUSH_LEVANA_SOLAR_RGB, 0xFF)), it, 1f) }
             arcs.forEachIndexed { i, (mesh, color) ->
                 key(i) { mesh?.let { MeshNode(rememberUnlitColorMaterialInstance(color), it, 1f) } }
             }

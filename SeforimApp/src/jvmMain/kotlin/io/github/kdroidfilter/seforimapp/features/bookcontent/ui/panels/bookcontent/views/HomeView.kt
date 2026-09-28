@@ -60,10 +60,13 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
+import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
@@ -267,6 +270,10 @@ private fun HomeBody(
     // Date picked in the zmanim / Earth widgets, followed by the solar system widget (null until reported)
     var homeWidgetsDate by remember { mutableStateOf<LocalDate?>(null) }
     var showSolarSystemWindow by remember { mutableStateOf(false) }
+    // Kiddush Levana opinions by community, as the Earth widget (HomeCelestialWidgets) picks them
+    val sephardi = searchUi.userCommunityCode == Community.SEPHARADE.name
+    val kiddushLevanaEarliest = if (sephardi) KiddushLevanaEarliestOpinion.DAYS_7 else KiddushLevanaEarliestOpinion.DAYS_3
+    val kiddushLevanaLatest = if (sephardi) KiddushLevanaLatestOpinion.DAYS_15 else KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
 
     val celestialWidgetsState =
         if (homeCelestialWidgetsState != null) {
@@ -282,6 +289,8 @@ private fun HomeBody(
         SolarSystemWindow(
             date = homeWidgetsDate,
             inIsrael = celestialWidgetsState.inIsrael,
+            kiddushLevanaEarliest = kiddushLevanaEarliest,
+            kiddushLevanaLatest = kiddushLevanaLatest,
             onClose = { showSolarSystemWindow = false },
         )
     }
@@ -671,6 +680,8 @@ private fun HomeBody(
                                                 date = homeWidgetsDate,
                                                 onFullscreen = { showSolarSystemWindow = true },
                                                 inIsrael = celestialWidgetsState.inIsrael,
+                                                kiddushLevanaEarliestOpinion = kiddushLevanaEarliest,
+                                                kiddushLevanaLatestOpinion = kiddushLevanaLatest,
                                             )
                                         }
                                     }

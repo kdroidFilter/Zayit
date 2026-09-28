@@ -1284,7 +1284,7 @@ private fun computeHalakhicPhaseAngle(
  *
  * @param jewishCalendar Calendar to modify.
  */
-private fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
+internal fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
     val currentMonth = jewishCalendar.jewishMonth
     val currentYear = jewishCalendar.jewishYear
 

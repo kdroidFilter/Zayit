@@ -25,6 +25,8 @@ import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.LocalContentColor
@@ -38,6 +40,8 @@ import java.time.LocalDate
 internal fun SolarSystemWindow(
     date: LocalDate?,
     inIsrael: Boolean,
+    kiddushLevanaEarliest: KiddushLevanaEarliestOpinion,
+    kiddushLevanaLatest: KiddushLevanaLatestOpinion,
     onClose: () -> Unit,
 ) {
     val title = stringResource(Res.string.home_solar_system_title)
@@ -72,6 +76,8 @@ internal fun SolarSystemWindow(
                     inIsrael = inIsrael,
                     fullWindow = true,
                     onDateSelect = { windowDate = it },
+                    kiddushLevanaEarliestOpinion = kiddushLevanaEarliest,
+                    kiddushLevanaLatestOpinion = kiddushLevanaLatest,
                 )
             }
         }

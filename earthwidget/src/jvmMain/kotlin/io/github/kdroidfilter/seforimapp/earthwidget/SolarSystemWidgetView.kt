@@ -67,6 +67,7 @@ import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.earthwidget.generated.resources.Res
+import seforimapp.earthwidget.generated.resources.earthwidget_kiddush_levana_legend
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_title
 import java.time.LocalDate
 import java.util.Calendar
@@ -94,6 +95,41 @@ private const val SOLAR_OBLIQUITY_DEGREES = 23.44f
 
 /** The Earth moves ~0.99° a day: event longitudes are taken at noon, so a day spans ±half of that. */
 private const val HALF_DAY_DEGREES = 0.49f
+
+private const val UNIX_EPOCH_JD = 2_440_587.5
+private const val MILLIS_PER_DAY = 86_400_000.0
+
+/** Half a mean lunation, the "between moldos" limit: 14 d 18 h 22 min 1⅔ s. */
+private const val HALF_LUNATION_MILLIS = ((14L * 24 + 18) * 60 + 22) * 60_000L + 1_667L
+
+/**
+ * Kiddush Levana window (epoch millis) of the lunar month [date] falls in, counted from its molad as the Earth
+ * widget's opinions do: 3 or 7 days after it, until half a lunation or 15 days.
+ */
+internal fun kiddushLevanaWindow(
+    date: LocalDate,
+    earliest: KiddushLevanaEarliestOpinion,
+    latest: KiddushLevanaLatestOpinion,
+): Pair<Long, Long> {
+    val calendar = JewishCalendar(date)
+    // The molad that opened this lunar month: this Hebrew month's, or the previous one's if it isn't past yet
+    val noon =
+        date
+            .atTime(12, 0)
+            .atZone(java.time.ZoneOffset.UTC)
+            .toInstant()
+            .toEpochMilli()
+    var molad = calendar.moladAsDate.time
+    if (molad > noon) {
+        goToPreviousHebrewMonth(calendar)
+        molad = calendar.moladAsDate.time
+    }
+    val start = molad + if (earliest == KiddushLevanaEarliestOpinion.DAYS_7) 7 * DAY_MILLIS else 3 * DAY_MILLIS
+    val end = molad + if (latest == KiddushLevanaLatestOpinion.DAYS_15) 15 * DAY_MILLIS else HALF_LUNATION_MILLIS
+    return start to end
+}
+
+private const val DAY_MILLIS = 86_400_000L
 
 /** Play speed of the full window: a lunar month in ~5 s, a year in ~1 min. */
 private const val PLAY_DAYS_PER_SECOND = 6f
@@ -274,6 +310,8 @@ fun SolarSystemWidgetView(
     fullWindow: Boolean = false,
     /** Shows a date picker (as on the Earth widget) that reports the chosen day; null on the Home card. */
     onDateSelect: ((LocalDate) -> Unit)? = null,
+    kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
+    kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
 ) {
     // Captured outside the dark theme below, like the Earth widget: the menu keeps the app's own style
     val appMenuStyle = JewelTheme.menuStyle
@@ -324,6 +362,20 @@ fun SolarSystemWidgetView(
     val siderealTarget =
         (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() - 360f * dayFraction + playSpinDegrees
     val moon = computeMoonEclipticPosition(julianDay)
+    // Kiddush Levana of the lunar month at the displayed instant, as the Moon's longitudes at its start and end
+    val kiddushLevana =
+        remember(displayedDate, kiddushLevanaEarliestOpinion, kiddushLevanaLatestOpinion) {
+            kiddushLevanaWindow(displayedDate, kiddushLevanaEarliestOpinion, kiddushLevanaLatestOpinion)
+        }
+    val instantMillis = ((julianDay - UNIX_EPOCH_JD) * MILLIS_PER_DAY).toLong()
+    val kiddushLevanaNow = kiddushLevana.let { instantMillis in it.first..it.second }
+    val kiddushLevanaLongitudes =
+        remember(kiddushLevana) {
+            kiddushLevana.let { (start, end) ->
+                computeMoonEclipticPosition(start / MILLIS_PER_DAY + UNIX_EPOCH_JD).longitude to
+                    computeMoonEclipticPosition(end / MILLIS_PER_DAY + UNIX_EPOCH_JD).longitude
+            }
+        }
     // Eased on a date change; followed directly while playing (a spring would trail the running clock, and jolt
     // back and forth on pause)
     val earthLongitude = rememberSmoothAnimatedAngle(earthLongitudeTarget, ::normalizeAngle360, instant = playing)
@@ -389,6 +441,8 @@ fun SolarSystemWidgetView(
                 viewZoom = animatedZoom,
                 detailed = fullWindow,
                 markers = markers,
+                kiddushLevanaStartDegrees = kiddushLevanaLongitudes.first,
+                kiddushLevanaEndDegrees = kiddushLevanaLongitudes.second,
             )
         val engine = rememberFilamentEngine()
         val textures = rememberWidgetTextures(engine)
@@ -473,7 +527,12 @@ fun SolarSystemWidgetView(
                 // Caption on the start side (the right in the app's RTL), play on the end side
                 Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     // The full window shows the date in its picker already
-                    DisplayedDateCaption(date = displayedDate, event = currentEvent, showDate = onDateSelect == null)
+                    DisplayedDateCaption(
+                        date = displayedDate,
+                        event = currentEvent,
+                        showDate = onDateSelect == null,
+                        kiddushLevanaNow = kiddushLevanaNow,
+                    )
                     Spacer(modifier = Modifier.weight(1f))
                     onDateSelect?.let { select ->
                         ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute) {
@@ -533,6 +592,7 @@ private fun DisplayedDateCaption(
     date: LocalDate,
     event: SolarEvent?,
     showDate: Boolean = true,
+    kiddushLevanaNow: Boolean = false,
 ) {
     val formatter = remember { HebrewDateFormatter().apply { isHebrewFormat = true } }
     val hebrewDate = remember(date) { formatter.format(JewishCalendar(date)) }
@@ -541,6 +601,14 @@ private fun DisplayedDateCaption(
             Text(it.name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF000000.toInt() or it.category.colorRgb))
         }
         if (showDate) Text(hebrewDate, fontSize = 11.sp, color = Color.White.copy(alpha = 0.60f), maxLines = 1)
+        if (kiddushLevanaNow) {
+            Text(
+                stringResource(Res.string.earthwidget_kiddush_levana_legend),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF000000.toInt() or KIDDUSH_LEVANA_SOLAR_RGB),
+            )
+        }
     }
 }
 

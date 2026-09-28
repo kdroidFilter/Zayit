@@ -16,12 +16,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -91,6 +93,14 @@ fun HebrewCalendarPicker(
         mutableStateOf(hebrewYearMonthFromLocalDate(initialDate))
     }
     var selectedDate by remember(initialDate) { mutableStateOf(initialDate) }
+    // Clicking the month title switches to a year grid, as calendars usually do; picking a year comes back
+    var pickingYear by remember { mutableStateOf(false) }
+    var yearPageStart by remember { mutableIntStateOf(0) }
+    val displayedYear =
+        when (calendarMode) {
+            CalendarMode.GREGORIAN -> displayedMonth.year
+            CalendarMode.HEBREW -> displayedHebrewMonth.year
+        }
 
     val hebrewDateFormatter =
         remember {
@@ -163,9 +173,10 @@ fun HebrewCalendarPicker(
         ) {
             IconButton(
                 onClick = {
-                    when (calendarMode) {
-                        CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.minusMonths(1)
-                        CalendarMode.HEBREW -> displayedHebrewMonth = previousHebrewYearMonth(displayedHebrewMonth)
+                    when {
+                        pickingYear -> yearPageStart -= YEARS_PER_PAGE
+                        calendarMode == CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.minusMonths(1)
+                        else -> displayedHebrewMonth = previousHebrewYearMonth(displayedHebrewMonth)
                     }
                 },
             ) {
@@ -179,16 +190,23 @@ fun HebrewCalendarPicker(
                 modifier =
                     Modifier
                         .weight(1f)
+                        .clip(monthShape)
                         .background(JewelTheme.globalColors.toolwindowBackground, monthShape)
                         .border(1.dp, JewelTheme.globalColors.borders.disabled, monthShape)
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                        .clickable {
+                            if (!pickingYear) yearPageStart = displayedYear - YEARS_PER_PAGE / 2
+                            pickingYear = !pickingYear
+                        }.padding(horizontal = 10.dp, vertical = 6.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text =
-                        when (calendarMode) {
-                            CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
-                            CalendarMode.HEBREW -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
+                        when {
+                            pickingYear ->
+                                "${formatYear(yearPageStart, calendarMode, hebrewDateFormatter)} – " +
+                                    formatYear(yearPageStart + YEARS_PER_PAGE - 1, calendarMode, hebrewDateFormatter)
+                            calendarMode == CalendarMode.GREGORIAN -> displayedMonth.format(monthTitleFormatter)
+                            else -> formatHebrewMonthTitle(displayedHebrewMonth, hebrewDateFormatter)
                         },
                     textAlign = TextAlign.Center,
                     style = JewelTheme.defaultTextStyle.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
@@ -196,9 +214,10 @@ fun HebrewCalendarPicker(
             }
             IconButton(
                 onClick = {
-                    when (calendarMode) {
-                        CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.plusMonths(1)
-                        CalendarMode.HEBREW -> displayedHebrewMonth = nextHebrewYearMonth(displayedHebrewMonth)
+                    when {
+                        pickingYear -> yearPageStart += YEARS_PER_PAGE
+                        calendarMode == CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.plusMonths(1)
+                        else -> displayedHebrewMonth = nextHebrewYearMonth(displayedHebrewMonth)
                     }
                 },
             ) {
@@ -207,6 +226,22 @@ fun HebrewCalendarPicker(
                     contentDescription = stringResource(Res.string.hebrewcalendar_next_month),
                 )
             }
+        }
+
+        if (pickingYear) {
+            YearGrid(
+                firstYear = yearPageStart,
+                selectedYear = displayedYear,
+                label = { formatYear(it, calendarMode, hebrewDateFormatter) },
+                onYearSelect = { year ->
+                    when (calendarMode) {
+                        CalendarMode.GREGORIAN -> displayedMonth = displayedMonth.withYear(year)
+                        CalendarMode.HEBREW -> displayedHebrewMonth = displayedHebrewMonth.inYear(year)
+                    }
+                    pickingYear = false
+                },
+            )
+            return@Column
         }
 
         val weekHeaderShape = RoundedCornerShape(8.dp)
@@ -257,6 +292,59 @@ fun HebrewCalendarPicker(
                         cellSize = cellSize,
                         spacing = CALENDAR_GRID_SPACING,
                     )
+            }
+        }
+    }
+}
+
+private const val YEARS_PER_PAGE = 12
+private const val YEARS_PER_ROW = 4
+
+private fun formatYear(
+    year: Int,
+    mode: CalendarMode,
+    formatter: HebrewDateFormatter,
+): String = if (mode == CalendarMode.HEBREW) formatter.formatHebrewNumber(year) else year.toString()
+
+/** A page of [YEARS_PER_PAGE] years from [firstYear], the [selectedYear] highlighted. */
+@Composable
+private fun YearGrid(
+    firstYear: Int,
+    selectedYear: Int,
+    label: (Int) -> String,
+    onYearSelect: (Int) -> Unit,
+) {
+    val cellShape = RoundedCornerShape(6.dp)
+    val selectedBg = JewelTheme.segmentedControlButtonStyle.colors.backgroundSelected
+    Column(verticalArrangement = Arrangement.spacedBy(CALENDAR_GRID_SPACING)) {
+        for (row in 0 until YEARS_PER_PAGE / YEARS_PER_ROW) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(CALENDAR_GRID_SPACING),
+            ) {
+                for (column in 0 until YEARS_PER_ROW) {
+                    val year = firstYear + row * YEARS_PER_ROW + column
+                    val isSelected = year == selectedYear
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .clip(cellShape)
+                                .background(if (isSelected) selectedBg else SolidColor(Color.Transparent), cellShape)
+                                .border(
+                                    1.dp,
+                                    if (isSelected) JewelTheme.globalColors.borders.focused else Color.Transparent,
+                                    cellShape,
+                                ).clickable { onYearSelect(year) }
+                                .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = label(year),
+                            color = if (isSelected) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.normal,
+                        )
+                    }
+                }
             }
         }
     }

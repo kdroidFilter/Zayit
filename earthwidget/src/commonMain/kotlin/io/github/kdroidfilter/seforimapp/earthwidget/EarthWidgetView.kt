@@ -50,7 +50,7 @@ import kotlin.math.sqrt
 // ============================================================================
 
 /** Shared spring spec for smooth angle animations. */
-private val SmoothAngleSpringSpec =
+internal val SmoothAngleSpringSpec =
     spring<Float>(
         dampingRatio = Spring.DampingRatioNoBouncy,
         stiffness = Spring.StiffnessMediumLow,
@@ -282,8 +282,9 @@ fun EarthWidgetScene(
                 modifier = Modifier.size(sphereSize),
             )
             if (showOrbitPath && orbitLabels.isNotEmpty()) {
+                // Same state the 3D image was rendered with (see FrameSync.kt), so the labels don't slide on drag
                 OrbitDayLabelsOverlay(
-                    state = sceneState,
+                    state = rememberFrameDelayed(sceneState, RENDER_LATENCY_FRAMES),
                     sphereSize = sphereSize,
                     labels = orbitLabels,
                     onLabelClick = onOrbitLabelClick,
@@ -356,26 +357,28 @@ fun EarthWidgetScene(
 // ANIMATION HELPERS
 // ============================================================================
 
-private fun normalizeAngle360(value: Float): Float {
+internal fun normalizeAngle360(value: Float): Float {
     val mod = value % 360f
     return if (mod < 0f) mod + 360f else mod
 }
 
-private fun normalizeAngle180(value: Float): Float {
+internal fun normalizeAngle180(value: Float): Float {
     var wrapped = normalizeAngle360(value)
     if (wrapped > 180f) wrapped -= 360f
     return wrapped
 }
 
 @Composable
-private fun rememberSmoothAnimatedAngle(
+internal fun rememberSmoothAnimatedAngle(
     targetValue: Float,
     normalize: (Float) -> Float,
+    /** Follow the target directly (a running clock): a spring would trail it, then catch up with a jolt. */
+    instant: Boolean = false,
 ): Float {
     val currentNormalize by rememberUpdatedState(normalize)
     val animatable = remember { Animatable(currentNormalize(targetValue)) }
 
-    LaunchedEffect(targetValue) {
+    LaunchedEffect(targetValue, instant) {
         val current = animatable.value
         val currentWrapped = currentNormalize(current)
         val targetWrapped = currentNormalize(targetValue)
@@ -385,6 +388,10 @@ private fun rememberSmoothAnimatedAngle(
         if (delta < -180f) delta += 360f
 
         val newTarget = current + delta
+        if (instant) {
+            animatable.snapTo(newTarget)
+            return@LaunchedEffect
+        }
         animatable.animateTo(
             targetValue = newTarget,
             animationSpec = SmoothAngleSpringSpec,

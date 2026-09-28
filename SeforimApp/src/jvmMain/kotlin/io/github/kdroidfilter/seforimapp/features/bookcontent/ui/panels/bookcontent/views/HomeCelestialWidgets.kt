@@ -24,10 +24,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -248,6 +250,7 @@ fun HomeCelestialWidgets(
     locationState: HomeCelestialWidgetsState,
     modifier: Modifier = Modifier,
     userCommunityCode: String? = null,
+    onSelectedDateChange: (LocalDate) -> Unit = {},
 ) {
     val isDark = JewelTheme.isDark
     val accent = rememberAccentColor(isDark)
@@ -315,6 +318,9 @@ fun HomeCelestialWidgets(
     // Shared date state - controls both the Earth widget and zmanim cards
     val todayDate = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
     var selectedDate by remember(todayDate) { mutableStateOf(todayDate) }
+    // Shared with the Home widgets outside this group (the solar system)
+    val currentOnSelectedDateChange by rememberUpdatedState(onSelectedDateChange)
+    LaunchedEffect(selectedDate) { currentOnSelectedDateChange(selectedDate) }
 
     // Compute zmanim times based on selected date, effective location, and community opinion
     val zmanimTimes =

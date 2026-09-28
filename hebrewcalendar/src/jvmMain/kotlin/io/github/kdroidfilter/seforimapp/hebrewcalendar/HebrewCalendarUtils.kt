@@ -44,6 +44,14 @@ fun nextHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
 }
 
 /**
+ * The same month in Hebrew [year]; Adar II (13) becomes Adar in a year without it.
+ */
+fun HebrewYearMonth.inYear(year: Int): HebrewYearMonth {
+    val leap = JewishDate().apply { setJewishDate(year, JewishDate.TISHREI, 1) }.isJewishLeapYear
+    return HebrewYearMonth(year = year, month = if (month == JewishDate.ADAR_II && !leap) JewishDate.ADAR else month)
+}
+
+/**
  * Formats a [HebrewYearMonth] as a title string (e.g., "תשרי תשפ״ה").
  */
 fun formatHebrewMonthTitle(

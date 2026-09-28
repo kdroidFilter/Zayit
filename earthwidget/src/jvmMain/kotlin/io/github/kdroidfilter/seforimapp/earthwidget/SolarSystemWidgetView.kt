@@ -390,7 +390,14 @@ fun SolarSystemWidgetView(
             }
         }
 
-    BoxWithConstraints(modifier = modifier.clipToBounds()) {
+    // In use while the pointer is over it (or it plays): only then does the Sun's glare breathe
+    val pointerSource =
+        remember {
+            androidx.compose.foundation.interaction
+                .MutableInteractionSource()
+        }
+    val pointerOver by pointerSource.collectIsHoveredAsState()
+    BoxWithConstraints(modifier = modifier.clipToBounds().hoverable(pointerSource)) {
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.toPx() }.roundToInt().coerceAtLeast(1)
         val heightPx = with(density) { maxHeight.toPx() }.roundToInt().coerceAtLeast(1)
@@ -436,6 +443,7 @@ fun SolarSystemWidgetView(
                 textures = textures,
                 modifier = Modifier.matchParentSize(),
                 overlayState = overlayState,
+                animated = pointerOver || playing,
             )
             SolarEventMarkers(
                 state = overlayState,

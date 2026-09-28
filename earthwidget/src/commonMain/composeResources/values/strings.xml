@@ -42,4 +42,7 @@
     <string name="earthwidget_recenter_button">מרכוז על הסמן</string>
     <string name="earthwidget_reset_datetime_button">עכשיו</string>
     <string name="earthwidget_solar_title">מעגל השנה</string>
+    <string name="earthwidget_sky_sunrise">זריחה</string>
+    <string name="earthwidget_sky_sunset">שקיעה</string>
+    <string name="earthwidget_sky_chatzos">חצות</string>
 </resources>

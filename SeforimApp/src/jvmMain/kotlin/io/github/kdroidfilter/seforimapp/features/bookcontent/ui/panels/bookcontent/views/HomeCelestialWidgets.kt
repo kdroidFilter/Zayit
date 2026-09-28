@@ -245,12 +245,24 @@ private fun rememberAccentColor(isDark: Boolean): Color {
     return accentColor.resolveColor(isDark)
 }
 
+/**
+ * Where and when the Earth widget stands, for the Home sky to follow: the location picked on the globe (or the
+ * user's), and the moment picked on a zman card or the date picked on the orbit; null [timeMillis] means now.
+ */
+
+data class HomeSkyMoment(
+    val latitude: Double,
+    val longitude: Double,
+    val timeMillis: Long?,
+)
+
 @Composable
 fun HomeCelestialWidgets(
     locationState: HomeCelestialWidgetsState,
     modifier: Modifier = Modifier,
     userCommunityCode: String? = null,
     onSelectedDateChange: (LocalDate) -> Unit = {},
+    onSkyMomentChange: (HomeSkyMoment) -> Unit = {},
 ) {
     val isDark = JewelTheme.isDark
     val accent = rememberAccentColor(isDark)
@@ -353,6 +365,17 @@ fun HomeCelestialWidgets(
                 }.time
         }
     val moonReferenceTime = earthWidgetTargetTime ?: zmanimTimes.tzais ?: fallbackMoonTime
+    // The sky follows the Earth widget: its moment, else noon of another day it was moved to, else now
+    val skyMoment =
+        HomeSkyMoment(
+            latitude = effectiveLocation.latitude,
+            longitude = effectiveLocation.longitude,
+            timeMillis =
+                earthWidgetTargetTime?.time
+                    ?: if (selectedDate == todayDate) null else fallbackMoonTime.time - 10 * 3_600_000L,
+        )
+    val currentOnSkyMomentChange by rememberUpdatedState(onSkyMomentChange)
+    LaunchedEffect(skyMoment) { currentOnSkyMomentChange(skyMoment) }
     val selectedTimeMillis = earthWidgetTargetTime?.time
 
     // When clicking a zmanim card, update the Earth widget's target time

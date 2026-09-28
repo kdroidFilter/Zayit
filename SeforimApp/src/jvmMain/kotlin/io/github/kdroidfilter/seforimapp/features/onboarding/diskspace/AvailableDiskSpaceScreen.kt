@@ -92,19 +92,9 @@ fun AvailableDiskSpaceView(
                 PieChart(
                     values = slices,
                     modifier = Modifier.size(240.dp).weight(1f),
+                    // ponytail: koalaplot 0.12 dropped hoverElement; the legend shows the labels
                     slice = { i: Int ->
-                        val labelText =
-                            when (i) {
-                                0 -> stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
-                                1 -> stringResource(Res.string.disk_pie_permanent_space, formatBytes(permanentSpaceBytes))
-                                2 -> stringResource(Res.string.disk_pie_temporary_space, formatBytes(temporarySpaceBytes))
-                                else -> stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
-                            }
-                        DefaultSlice(
-                            color = colors[i],
-                            hoverExpandFactor = 1.05f,
-                            hoverElement = { Text(labelText) },
-                        )
+                        DefaultSlice(color = colors[i], hoverExpandFactor = 1.05f)
                     },
                     labelConnector = {},
                 )

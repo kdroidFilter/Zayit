@@ -62,6 +62,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.SkyWidgetView
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -270,6 +271,7 @@ private fun HomeBody(
     // Date picked in the zmanim / Earth widgets, followed by the solar system widget (null until reported)
     var homeWidgetsDate by remember { mutableStateOf<LocalDate?>(null) }
     var showSolarSystemWindow by remember { mutableStateOf(false) }
+    var skyMoment by remember { mutableStateOf<HomeSkyMoment?>(null) }
     // Kiddush Levana opinions by community, as the Earth widget (HomeCelestialWidgets) picks them
     val sephardi = searchUi.userCommunityCode == Community.SEPHARADE.name
     val kiddushLevanaEarliest = if (sephardi) KiddushLevanaEarliestOpinion.DAYS_7 else KiddushLevanaEarliestOpinion.DAYS_3
@@ -639,6 +641,7 @@ private fun HomeBody(
                                 userCommunityCode = searchUi.userCommunityCode,
                                 locationState = celestialWidgetsState,
                                 onSelectedDateChange = { homeWidgetsDate = it },
+                                onSkyMomentChange = { skyMoment = it },
                             )
                         }
                     }
@@ -651,7 +654,9 @@ private fun HomeBody(
                             contentAlignment = Alignment.Center,
                         ) {
                             val twoCardsWidth = (ZMANIM_CARD_HEIGHT * 2) + ZMANIM_HORIZONTAL_SPACING
+                            // As wide as the zmanim block above (HomeCelestialWidgets caps it at 1000dp)
                             Row(
+                                modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(ZMANIM_HORIZONTAL_SPACING),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -682,6 +687,26 @@ private fun HomeBody(
                                                 inIsrael = celestialWidgetsState.inIsrael,
                                                 kiddushLevanaEarliestOpinion = kiddushLevanaEarliest,
                                                 kiddushLevanaLatestOpinion = kiddushLevanaLatest,
+                                            )
+                                        }
+                                    }
+                                    // The sky fills what's left of the row, framed like the Temple card
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .weight(1f)
+                                                .height(ZMANIM_CARD_HEIGHT * 1.5f)
+                                                .clip(cardShape)
+                                                .background(Color.Black)
+                                                .border(1.5.dp, JewelTheme.globalColors.borders.disabled, cardShape),
+                                    ) {
+                                        if (LocalTabSelected.current) {
+                                            val place = celestialWidgetsState.userPlace
+                                            SkyWidgetView(
+                                                latitude = skyMoment?.latitude ?: place.lat,
+                                                longitude = skyMoment?.longitude ?: place.lng,
+                                                timeMillis = skyMoment?.timeMillis,
+                                                modifier = Modifier.fillMaxSize(),
                                             )
                                         }
                                     }

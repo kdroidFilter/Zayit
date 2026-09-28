@@ -26,15 +26,32 @@ internal fun <T> rememberFrameDelayed(
 ): T {
     val current by rememberUpdatedState(value)
     var delayed by remember { mutableStateOf(value) }
-    LaunchedEffect(frames) {
-        val history = ArrayDeque<T>()
-        while (true) {
+    val history = remember { ArrayDeque<T>() }
+    // Ticks only until caught up: an endless frame loop would keep the frame clock, and the whole app, awake.
+    LaunchedEffect(value, frames) {
+        do {
             withFrameNanos {
                 history.addLast(current)
                 while (history.size > frames + 1) history.removeFirst()
                 delayed = history.first()
             }
-        }
+        } while (history.size <= frames || history.any { it != current })
     }
     return delayed
+}
+
+/**
+ * Whether a FilamentSceneView showing [scene] (everything its image depends on) should render: while [scene]
+ * changes, and [RENDER_LATENCY_FRAMES] + 2 frames after so its last image reaches the screen. Paused otherwise,
+ * rather than re-rendering an unchanged picture every display frame.
+ */
+@Composable
+internal fun rememberRenderOnChange(scene: Any?): Boolean {
+    var rendering by remember { mutableStateOf(true) }
+    LaunchedEffect(scene) {
+        rendering = true
+        repeat(RENDER_LATENCY_FRAMES + 2) { withFrameNanos {} }
+        rendering = false
+    }
+    return rendering
 }

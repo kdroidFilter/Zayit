@@ -808,7 +808,7 @@ private fun KiddushLevanaLegend(
         val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
         val borderColor = JewelTheme.globalColors.borders.disabled
         val textColor = JewelTheme.globalColors.text.normal
-        val legendColor = Color(0xFF000000.toLong() + legendColorRgb)
+        val legendColor = Color(0xFF000000 + legendColorRgb)
 
         Row(
             modifier =

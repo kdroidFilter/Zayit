@@ -428,7 +428,8 @@ fun SolarSystemWidgetView(
         Box(modifier = Modifier.fillMaxSize().orbitCameraGestures(camera) { 180f / widthPx }) {
             // The 3D image reaches the screen RENDER_LATENCY_FRAMES late (filament-compose renders offscreen and reads
             // the pixels back asynchronously); the 2D layers follow the same state that late, or they slide against it
-            val overlayState = rememberFrameDelayed(state, RENDER_LATENCY_FRAMES)
+            // Events travel with it: a new year's list must not meet the previous year's markers
+            val (overlayState, overlayEvents) = rememberFrameDelayed(state to events, RENDER_LATENCY_FRAMES)
             SolarSystemSceneView(
                 state = state,
                 engine = engine,
@@ -438,7 +439,7 @@ fun SolarSystemWidgetView(
             )
             SolarEventMarkers(
                 state = overlayState,
-                events = events,
+                events = overlayEvents,
                 shown = hovered,
                 current = currentEvent,
                 onHover = { event, isHovered -> hovered = if (isHovered) event else hovered.takeIf { it != event } },

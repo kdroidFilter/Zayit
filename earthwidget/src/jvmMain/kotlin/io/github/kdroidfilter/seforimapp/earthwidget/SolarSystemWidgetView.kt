@@ -98,6 +98,9 @@ private const val HALF_DAY_DEGREES = 0.49f
 /** Play speed of the full window: a lunar month in ~5 s, a year in ~1 min. */
 private const val PLAY_DAYS_PER_SECOND = 6f
 
+/** The Earth's shown spin while playing — slowed down (the real one is a turn per day, 6 a second here). */
+private const val PLAY_SPIN_SECONDS_PER_TURN = 2f
+
 /**
  * Frames between a state and its 3D image on screen: filament-compose's desktop surface renders a frame with the
  * previous composition's state, reads it back asynchronously, and shows it the frame after.
@@ -283,13 +286,24 @@ fun SolarSystemWidgetView(
     // The day a pause reported: when it comes back as baseDate the offset keeps its fraction of a day (no jump);
     // any other new baseDate (the date picker, the Home widgets) starts from it afresh
     var pausedOn by remember { mutableStateOf<LocalDate?>(null) }
-    LaunchedEffect(baseDate) { if (baseDate != pausedOn) playOffsetDays = 0f }
+    // A visible spin of the Earth while playing (its real one, 6 turns a second, would only flicker); kept on pause
+    var playSpinDegrees by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(baseDate) {
+        if (baseDate != pausedOn) {
+            playOffsetDays = 0f
+            playSpinDegrees = 0f
+        }
+    }
     LaunchedEffect(playing) {
         if (!playing) return@LaunchedEffect
         var last = 0L
         while (true) {
             withFrameNanos { now ->
-                if (last != 0L) playOffsetDays += (now - last) / 1e9f * PLAY_DAYS_PER_SECOND
+                if (last != 0L) {
+                    val seconds = (now - last) / 1e9f
+                    playOffsetDays += seconds * PLAY_DAYS_PER_SECOND
+                    playSpinDegrees = (playSpinDegrees + seconds * 360f / PLAY_SPIN_SECONDS_PER_TURN).mod(360f)
+                }
                 last = now
             }
         }
@@ -304,9 +318,11 @@ fun SolarSystemWidgetView(
     val julianDay = julianDayAt(displayedDate, timeZone) + dayFraction
 
     val earthLongitudeTarget = normalizeAngle360(computeSunEclipticLongitude(julianDay) + 180f)
-    // While playing, the Earth is shown at noon each day (solar-day frame): at real speed it would spin several turns
-    // a second. Sidereal time runs 360.9856°/day: dropping the 360° keeps the slow 0.9856°/day drift only.
-    val siderealTarget = (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() - 360f * dayFraction
+    // While playing, the Earth is shown at noon each day (solar-day frame) plus a slowed-down visible spin: at real
+    // speed it would turn several times a second. Sidereal time runs 360.9856°/day: dropping the 360° keeps the slow
+    // 0.9856°/day drift only.
+    val siderealTarget =
+        (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() - 360f * dayFraction + playSpinDegrees
     val moon = computeMoonEclipticPosition(julianDay)
     // Eased on a date change; followed directly while playing (a spring would trail the running clock, and jolt
     // back and forth on pause)

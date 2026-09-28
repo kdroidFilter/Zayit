@@ -531,7 +531,7 @@ fun SolarSystemWidgetView(
                         date = displayedDate,
                         event = currentEvent,
                         showDate = onDateSelect == null,
-                        kiddushLevanaNow = kiddushLevanaNow,
+                        kiddushLevanaNow = fullWindow && kiddushLevanaNow,
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     onDateSelect?.let { select ->

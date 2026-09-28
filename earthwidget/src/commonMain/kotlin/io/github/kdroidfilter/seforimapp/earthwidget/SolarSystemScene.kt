@@ -356,8 +356,17 @@ internal fun SolarSystemSceneView(
                 )
             }
             Orbit(orbitMeshes, 0xFFFFFF)
-            moonRing.first?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(0xFFFFFF, 0x55)), it, 1f) }
-            moonRing.second?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(KIDDUSH_LEVANA_SOLAR_RGB, 0xFF)), it, 1f) }
+            // The full window only: on the Home card the ring and arc would crowd the small Earth
+            if (state.detailed) moonRing.first?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(0xFFFFFF, 0x55)), it, 1f) }
+            if (state.detailed) {
+                moonRing.second?.let {
+                    MeshNode(
+                        rememberUnlitColorMaterialInstance(dimmed(KIDDUSH_LEVANA_SOLAR_RGB, 0xFF)),
+                        it,
+                        1f,
+                    )
+                }
+            }
             arcs.forEachIndexed { i, (mesh, color) ->
                 key(i) { mesh?.let { MeshNode(rememberUnlitColorMaterialInstance(color), it, 1f) } }
             }

@@ -524,6 +524,7 @@ internal class OrbitMeshes(
 internal fun tubeMesh(
     path: List<MoonOrbitPosition?>,
     radius: Float,
+    sides: Int = TUBE_SIDES,
 ): MeshArrays? {
     val positions = ArrayList<Float>()
     val uvs = ArrayList<Float>()
@@ -541,18 +542,18 @@ internal fun tubeMesh(
         val n1 = Vec3f(p.x, p.yCam, p.zCam).normalized()
         val n2 = cross(t, n1)
         val base = positions.size / 3
-        for (k in 0 until TUBE_SIDES) {
-            val a = k * 2f * PI.toFloat() / TUBE_SIDES
+        for (k in 0 until sides) {
+            val a = k * 2f * PI.toFloat() / sides
             positions += p.x + radius * (cos(a) * n1.x + sin(a) * n2.x)
             positions += p.yCam + radius * (cos(a) * n1.y + sin(a) * n2.y)
             positions += p.zCam + radius * (cos(a) * n1.z + sin(a) * n2.z)
             uvs += i.toFloat() / path.size
-            uvs += k.toFloat() / TUBE_SIDES
+            uvs += k.toFloat() / sides
         }
         if (runStart >= 0) {
-            val prevBase = base - TUBE_SIDES
-            for (k in 0 until TUBE_SIDES) {
-                val k1 = (k + 1) % TUBE_SIDES
+            val prevBase = base - sides
+            for (k in 0 until sides) {
+                val k1 = (k + 1) % sides
                 indices += listOf(prevBase + k, prevBase + k1, base + k, prevBase + k1, base + k1, base + k)
             }
         }

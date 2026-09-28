@@ -266,6 +266,7 @@ private fun HomeBody(
 
     // Date picked in the zmanim / Earth widgets, followed by the solar system widget (null until reported)
     var homeWidgetsDate by remember { mutableStateOf<LocalDate?>(null) }
+    var showSolarSystemWindow by remember { mutableStateOf(false) }
 
     val celestialWidgetsState =
         if (homeCelestialWidgetsState != null) {
@@ -276,6 +277,14 @@ private fun HomeBody(
             val state by viewModel.state.collectAsState()
             state
         }
+    // Composed here, outside the LazyColumn, so scrolling the card away doesn't close it
+    if (showSolarSystemWindow) {
+        SolarSystemWindow(
+            date = homeWidgetsDate,
+            inIsrael = celestialWidgetsState.inIsrael,
+            onClose = { showSolarSystemWindow = false },
+        )
+    }
 
     val listState = rememberLazyListState()
 
@@ -660,6 +669,7 @@ private fun HomeBody(
                                             SolarSystemWidgetView(
                                                 modifier = Modifier.fillMaxSize(),
                                                 date = homeWidgetsDate,
+                                                onFullscreen = { showSolarSystemWindow = true },
                                                 inIsrael = celestialWidgetsState.inIsrael,
                                             )
                                         }

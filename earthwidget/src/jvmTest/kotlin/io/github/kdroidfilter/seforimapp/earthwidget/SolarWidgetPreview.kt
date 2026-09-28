@@ -31,18 +31,27 @@ class SolarWidgetPreview {
     @Test
     fun capture() {
         val out = System.getenv("SOLAR_PREVIEW_OUT") ?: return
+        // SOLAR_PREVIEW_SIZE=1200x700 previews the full-window layout
+        val (cardW, cardH) =
+            System
+                .getenv("SOLAR_PREVIEW_SIZE")
+                ?.split('x')
+                ?.map { it.toFloat() }
+                ?.let { it[0] to it[1] } ?: (429f to 202.5f)
         application(exitProcessOnExit = false) {
-            val state = rememberWindowState(size = DpSize(470.dp, 260.dp), position = WindowPosition(Alignment.Center))
+            val state = rememberWindowState(size = DpSize((cardW + 41).dp, (cardH + 58).dp), position = WindowPosition(Alignment.Center))
             Window(onCloseRequest = ::exitApplication, state = state, alwaysOnTop = true, title = "preview") {
                 IntUiTheme(isDark = true) {
                     Box(Modifier.fillMaxSize().background(Color(0xFF2B2D30)), contentAlignment = Alignment.Center) {
                         // Home card size: 3 cards (135 dp) + 2 gaps wide, 1.5 cards high
-                        Box(Modifier.size(429.dp, 202.5.dp).background(Color.Black)) {
+                        Box(Modifier.size(cardW.dp, cardH.dp).background(Color.Black)) {
                             SolarSystemWidgetView(
                                 modifier = Modifier.fillMaxSize(),
                                 // SOLAR_PREVIEW_DATE=2026-04-05 previews another day of the Home widgets
                                 date = System.getenv("SOLAR_PREVIEW_DATE")?.let(java.time.LocalDate::parse),
                                 inIsrael = true,
+                                fullWindow = System.getenv("SOLAR_PREVIEW_SIZE") != null,
+                                onDateSelect = if (System.getenv("SOLAR_PREVIEW_SIZE") != null) ({ _ -> }) else null,
                             )
                         }
                     }

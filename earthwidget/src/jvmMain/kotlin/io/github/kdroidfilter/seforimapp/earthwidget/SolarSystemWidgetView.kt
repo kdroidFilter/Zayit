@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -28,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,17 +48,23 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
 import io.github.erkko68.filament.compose.rememberFilamentEngine
+import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
+import io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_title
 import java.time.LocalDate
@@ -65,16 +75,54 @@ import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
-/** Default camera elevation over the ecliptic: low, so the orbit flattens into an ellipse that fills the wide card. */
+/**
+ * Default camera elevation over the ecliptic for the Home card's shape ([CARD_ASPECT] high per wide): low, so the
+ * orbit flattens into an ellipse that fills it. A taller area (the full window) looks from higher up.
+ */
 private const val DEFAULT_SOLAR_ELEVATION_DEGREES = 22f
+private const val CARD_ASPECT = 0.472f
+
+/** Width of the Home card, the size the labels are designed at; they grow with a larger view. */
+private const val CARD_WIDTH_DP = 429f
+
+/** Text grows much slower than the view: ×1.4 at most, reached around a 1700 dp wide window. */
+private fun textScaleFor(widthDp: Float): Float = sqrt(widthDp / CARD_WIDTH_DP).coerceIn(1f, 1.4f)
+
 private const val MIN_SOLAR_ELEVATION_DEGREES = 10f
 private const val SOLAR_OBLIQUITY_DEGREES = 23.44f
 
 /** The Earth moves ~0.99° a day: event longitudes are taken at noon, so a day spans ±half of that. */
 private const val HALF_DAY_DEGREES = 0.49f
 
+/**
+ * Frames between a state and its 3D image on screen: filament-compose's desktop surface renders a frame with the
+ * previous composition's state, reads it back asynchronously, and shows it the frame after.
+ */
+private const val RENDER_LATENCY_FRAMES = 2
+
+/** [value] as it was [frames] frames ago; catches up once it stops changing. */
+@Composable
+private fun <T> rememberFrameDelayed(
+    value: T,
+    frames: Int,
+): T {
+    val current by rememberUpdatedState(value)
+    var delayed by remember { mutableStateOf(value) }
+    LaunchedEffect(frames) {
+        val history = ArrayDeque<T>()
+        while (true) {
+            withFrameNanos {
+                history.addLast(current)
+                while (history.size > frames + 1) history.removeFirst()
+                delayed = history.first()
+            }
+        }
+    }
+    return delayed
+}
+
 /** Outward steps tried to fit a label before leaving it out. */
-private const val LABEL_PLACEMENT_TRIES = 5
+private const val LABEL_PLACEMENT_TRIES = 6
 
 /** Local time used to place a date on the orbit. */
 private const val EVENT_HOUR = 12
@@ -213,7 +261,15 @@ fun SolarSystemWidgetView(
     date: LocalDate? = null,
     inIsrael: Boolean = true,
     timeZone: TimeZone = TimeZone.getDefault(),
+    /** Shows a button opening the widget in its own window; null inside that window. */
+    onFullscreen: (() -> Unit)? = null,
+    /** Inside its own window: finer, more realistic rendering (see [SolarRenderState.detailed]). */
+    fullWindow: Boolean = false,
+    /** Shows a date picker (as on the Earth widget) that reports the chosen day; null on the Home card. */
+    onDateSelect: ((LocalDate) -> Unit)? = null,
 ) {
+    // Captured outside the dark theme below, like the Earth widget: the menu keeps the app's own style
+    val appMenuStyle = JewelTheme.menuStyle
     val today = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
     val displayedDate = date ?: today
     // Shows the holidays of the date's Hebrew year, until the user picks another one
@@ -236,15 +292,21 @@ fun SolarSystemWidgetView(
     val moonLongitude = rememberSmoothAnimatedAngle(targetValue = moon.longitude, normalize = ::normalizeAngle360)
 
     val camera = rememberOrbitCameraState()
-    camera.pitchRange =
-        (MIN_SOLAR_ELEVATION_DEGREES - DEFAULT_SOLAR_ELEVATION_DEGREES)..(90f - DEFAULT_SOLAR_ELEVATION_DEGREES)
-    // Aimed once so today's Earth sits at the left end of the orbit, its day side half turned to the viewer (from
-    // the front it shows its night side); then fixed, so changing the year or the holiday never swings it.
-    val defaultAzimuth = remember { azimuthFacingLongitude(earthLongitudeOn(today, timeZone)) - 90f }
+    // Aimed so the Earth of [anchorDate] is right in front of the viewer; kept when the date changes (the Earth then
+    // travels along its orbit), re-aimed by the recenter button.
+    var anchorDate by remember { mutableStateOf(displayedDate) }
+    val defaultAzimuth =
+        rememberSmoothAnimatedAngle(
+            targetValue = remember(anchorDate) { azimuthFacingLongitude(earthLongitudeOn(anchorDate, timeZone)) },
+            normalize = ::normalizeAngle360,
+        )
 
     val eventLongitudes =
         remember(events, timeZone) { events.map { earthLongitudeOn(it.start, timeZone) to earthLongitudeOn(it.end, timeZone) } }
-    // A holiday is its whole stretch of orbit, first day's start to last day's end; Rosh Chodesh stays a dot.
+    var hovered by remember { mutableStateOf<SolarEvent?>(null) }
+    // The holiday the Earth stands on: named in the caption, and its label placed first
+    val currentEvent = events.firstOrNull { it.category != SolarEventCategory.RoshChodesh && displayedDate in it.start..it.end }
+    // A holiday is its whole stretch of orbit, first day's start to last day's end; Rosh Chodesh is a tick.
     val markers =
         remember(events, eventLongitudes) {
             events.mapIndexed { i, e ->
@@ -258,14 +320,20 @@ fun SolarSystemWidgetView(
                 )
             }
         }
-    var hovered by remember { mutableStateOf<SolarEvent?>(null) }
-    // The holiday the Earth stands on, named in the caption
-    val currentEvent = events.firstOrNull { it.category != SolarEventCategory.RoshChodesh && displayedDate in it.start..it.end }
 
     BoxWithConstraints(modifier = modifier.clipToBounds()) {
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.toPx() }.roundToInt().coerceAtLeast(1)
         val heightPx = with(density) { maxHeight.toPx() }.roundToInt().coerceAtLeast(1)
+        val defaultElevation =
+            (DEFAULT_SOLAR_ELEVATION_DEGREES * (heightPx.toFloat() / widthPx) / CARD_ASPECT)
+                .coerceIn(DEFAULT_SOLAR_ELEVATION_DEGREES, 45f)
+        camera.pitchRange = (MIN_SOLAR_ELEVATION_DEGREES - defaultElevation)..(90f - defaultElevation)
+        // Gestures drive the camera directly; anything else (recenter) eases back
+        val viewSpec = if (camera.isGesturing) snap() else SmoothAngleSpringSpec
+        val animatedYaw by animateFloatAsState(camera.yaw, viewSpec, label = "solarYaw")
+        val animatedPitch by animateFloatAsState(camera.pitch, viewSpec, label = "solarPitch")
+        val animatedZoom by animateFloatAsState(camera.zoom, viewSpec, label = "solarZoom")
         val state =
             SolarRenderState(
                 widthPx = widthPx,
@@ -275,56 +343,93 @@ fun SolarSystemWidgetView(
                 obliquityDegrees = SOLAR_OBLIQUITY_DEGREES,
                 moonLongitudeDegrees = moonLongitude,
                 moonLatitudeDegrees = moon.latitude,
-                viewAzimuthDegrees = defaultAzimuth + camera.yaw,
-                viewElevationDegrees = DEFAULT_SOLAR_ELEVATION_DEGREES + camera.pitch,
-                viewZoom = camera.zoom,
+                // The Sun's own rotation on the date, not a spin on screen (Carrington: 25.38 d, epoch JD 2398140.227)
+                sunRotationDegrees = (((julianDay - 2398140.227) / 25.38).mod(1.0) * 360.0).toFloat(),
+                viewAzimuthDegrees = defaultAzimuth + animatedYaw,
+                viewElevationDegrees = defaultElevation + animatedPitch,
+                viewZoom = animatedZoom,
+                detailed = fullWindow,
                 markers = markers,
             )
         val engine = rememberFilamentEngine()
         val textures = rememberWidgetTextures(engine)
 
         Box(modifier = Modifier.fillMaxSize().orbitCameraGestures(camera) { 180f / widthPx }) {
-            SolarSystemSceneView(state = state, engine = engine, textures = textures, modifier = Modifier.matchParentSize())
-            SolarEventMarkers(
+            // The 3D image reaches the screen RENDER_LATENCY_FRAMES late (filament-compose renders offscreen and reads
+            // the pixels back asynchronously); the 2D layers follow the same state that late, or they slide against it
+            val overlayState = rememberFrameDelayed(state, RENDER_LATENCY_FRAMES)
+            SolarSystemSceneView(
                 state = state,
+                engine = engine,
+                textures = textures,
+                modifier = Modifier.matchParentSize(),
+                overlayState = overlayState,
+            )
+            SolarEventMarkers(
+                state = overlayState,
                 events = events,
                 shown = hovered,
+                current = currentEvent,
                 onHover = { event, isHovered -> hovered = if (isHovered) event else hovered.takeIf { it != event } },
                 modifier = Modifier.matchParentSize(),
             )
         }
 
-        // Chrome laid out like the Temple card: title row on top, one caption line at the bottom
-        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(11.dp)
-                            .background(Brush.radialGradient(listOf(Color(0xFFFFB347), Color(0xFFFFE08A))), CircleShape)
-                            .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
-                )
-                Text(
-                    text = stringResource(Res.string.earthwidget_solar_title),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 13.sp,
-                    color = Color.White.copy(alpha = 0.85f),
-                    maxLines = 1,
-                    modifier = Modifier.padding(start = 8.dp).weight(1f),
-                )
-                YearSelector(
-                    hebrewYear = hebrewYear,
-                    onYearChange = { hebrewYear = it },
-                )
-                if (camera.isMoved) {
-                    ChromeIcon(AllIconsKeys.General.Locate, onClick = camera::reset)
+        // Chrome laid out like the Temple card: title row on top, one caption line at the bottom. Designed at the
+        // card's size; a larger view (the full window) scales it all through the density.
+        val chromeScale = textScaleFor(maxWidth.value)
+        CompositionLocalProvider(LocalDensity provides Density(density.density * chromeScale, density.fontScale)) {
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(11.dp)
+                                .background(Brush.radialGradient(listOf(Color(0xFFFFB347), Color(0xFFFFE08A))), CircleShape)
+                                .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                    )
+                    Text(
+                        text = stringResource(Res.string.earthwidget_solar_title),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = Color.White.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        modifier = Modifier.padding(start = 8.dp).weight(1f),
+                    )
+                    onDateSelect?.let { select ->
+                        val dateLabel =
+                            remember(
+                                displayedDate,
+                            ) { HebrewDateFormatter().apply { isHebrewFormat = true }.format(JewishCalendar(displayedDate)) }
+                        IntUiTheme(isDark = true) {
+                            DateSelectionSplitButton(
+                                label = dateLabel,
+                                selectedDate = displayedDate,
+                                onDateSelect = select,
+                                initialMode = CalendarMode.HEBREW,
+                                menuStyle = appMenuStyle,
+                                modifier = Modifier.padding(end = 8.dp),
+                            )
+                        }
+                    }
+                    YearSelector(
+                        hebrewYear = hebrewYear,
+                        onYearChange = { hebrewYear = it },
+                    )
+                    onFullscreen?.let { ChromeIcon(AllIconsKeys.General.ExpandComponent, onClick = it) }
+                    if (camera.isMoved || anchorDate != displayedDate) {
+                        ChromeIcon(AllIconsKeys.General.Locate) {
+                            camera.reset()
+                            anchorDate = displayedDate
+                        }
+                    }
                 }
+                Spacer(modifier = Modifier.weight(1f))
+                DisplayedDateCaption(
+                    date = displayedDate,
+                    event = currentEvent,
+                )
             }
-            Spacer(modifier = Modifier.weight(1f))
-            DisplayedDateCaption(
-                date = displayedDate,
-                event = currentEvent,
-            )
         }
     }
 }
@@ -390,6 +495,7 @@ private fun SolarEventMarkers(
     state: SolarRenderState,
     events: List<SolarEvent>,
     shown: SolarEvent?,
+    current: SolarEvent?,
     onHover: (SolarEvent, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -398,20 +504,24 @@ private fun SolarEventMarkers(
     // Labels next to the Earth step out of its way
     val earth = solarOrbitScreenPosition(state, state.earthLongitudeDegrees)
     val earthClearance = SolarGeometry(state.widthPx, state.heightPx).earthRadius * state.viewZoom * 1.4f
-    // Placed in priority order (hovered, then Yamim Tovim), so the important ones win a crowded spot
+    // Placed in priority order (the Earth's holiday, hovered, Yamim Tovim), so the important ones win a crowded spot
     val labeled =
         events.indices
-            .filter { events[it].pinned || events[it] == shown }
+            // The full window has room for every name; the card names the landmarks, the rest on hover
+            .filter { state.detailed || events[it].pinned || events[it] == shown || events[it] == current }
             .sortedBy {
-                if (events[it] == shown) {
-                    0
-                } else if (events[it].category == SolarEventCategory.YomTov) {
-                    1
-                } else {
-                    2
+                when {
+                    events[it] == current -> 0
+                    events[it] == shown -> 1
+                    events[it].category == SolarEventCategory.YomTov -> 2
+                    else -> 3
                 }
             }
     val currentOnHover by rememberUpdatedState(onHover)
+    // Labels are designed for the Home card; a larger view (the full window) scales them
+    val density = LocalDensity.current
+    val uiScale = textScaleFor(state.widthPx / density.density)
+    val clearance = with(density) { 4.dp.toPx() }
     Layout(
         modifier = modifier,
         content = {
@@ -435,7 +545,7 @@ private fun SolarEventMarkers(
                     style =
                         TextStyle(
                             color = Color(0xFF000000.toInt() or event.category.colorRgb),
-                            fontSize = if (emphasized) 12.sp else 10.sp,
+                            fontSize = (if (emphasized) 12f else 10f).sp * uiScale,
                             fontWeight = if (emphasized) FontWeight.Bold else FontWeight.Medium,
                             shadow = Shadow(color = Color.Black, offset = Offset(1f, 1f), blurRadius = 3f),
                         ),
@@ -479,9 +589,12 @@ private fun SolarEventMarkers(
                     return Rect(x - halfW, y - halfH, x + halfW, y + halfH)
                 }
                 val directions = listOf(dx / len to dy / len, 0f to -1f, 0f to 1f)
+                // Steps grow with the Earth too: in a large window it's much taller than a label, and a label
+                // beside it must be able to step all the way past it
+                val stepPx = maxOf(placeable.height * 0.8f, earthClearance * 0.6f)
                 val rect =
                     (0 until LABEL_PLACEMENT_TRIES)
-                        .flatMap { step -> directions.map { (ux, uy) -> rectAt(ux, uy, 4f + step * placeable.height * 0.8f) } }
+                        .flatMap { step -> directions.map { (ux, uy) -> rectAt(ux, uy, clearance + step * stepPx) } }
                         .firstOrNull { candidate -> taken.none { it.overlaps(candidate) } }
                         ?: return@forEachIndexed // no room: better unnamed than on top of another
                 taken += rect

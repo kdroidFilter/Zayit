@@ -330,6 +330,7 @@
     <string name="home_lunar_next_full_moon_value">בעוד %1$s ימים</string>
 
     <!-- Temple Destruction Countdown -->
+    <string name="home_solar_system_title">מעגל השנה</string>
     <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>
     <string name="home_temple_subtitle">והראנו בבנינו ושמחנו בתיקונו, והשב שכינתך לתוכו.</string>
     <string name="home_temple_years">שנים</string>

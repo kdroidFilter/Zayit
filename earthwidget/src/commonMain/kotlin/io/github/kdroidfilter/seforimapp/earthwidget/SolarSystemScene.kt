@@ -284,6 +284,8 @@ internal fun SolarSystemSceneView(
                 blendMode = BlendMode.Plus,
             )
         }
+        // The glare above animates on its own Canvas; the 3D image only changes with the scene
+        val rendering = rememberRenderOnChange(listOf(state, sunModel, earthModel, textures.earth, textures.moon))
         FilamentSceneView(
             modifier = Modifier.matchParentSize(),
             engine = engine,
@@ -295,6 +297,7 @@ internal fun SolarSystemSceneView(
                 ),
             shadows = null,
             transparent = true,
+            renderingEnabled = rendering,
         ) {
             // Sunlight travels from the Sun (origin) out to the Earth; the Moon is close enough to share it.
             DirectionalLight(

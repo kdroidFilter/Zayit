@@ -214,6 +214,8 @@ internal fun EarthMoonSceneView(
             }
         }
 
+    val rendering = rememberRenderOnChange(listOf(state, showMoon, textures.earth, textures.moon))
+
     Box(modifier) {
         if (state.showBackgroundStars) Starfield(Modifier.matchParentSize())
         FilamentSceneView(
@@ -224,6 +226,7 @@ internal fun EarthMoonSceneView(
             postProcessing = WidgetPostProcessing,
             shadows = null,
             transparent = true,
+            renderingEnabled = rendering,
         ) {
             DirectionalLight(
                 direction = Direction(-sunDir.x, -sunDir.y, -sunDir.z),
@@ -282,6 +285,8 @@ internal fun MoonFromMarkerSceneView(
             initialIntensity = MOON_NIGHT_AMBIENT * IBL_PER_AMBIENT_UNIT,
         )
 
+    val rendering = rememberRenderOnChange(listOf(state, moonTexture))
+
     Box(modifier) {
         if (state.showBackgroundStars) Starfield(Modifier.matchParentSize())
         FilamentSceneView(
@@ -292,6 +297,7 @@ internal fun MoonFromMarkerSceneView(
             postProcessing = WidgetPostProcessing,
             shadows = null,
             transparent = true,
+            renderingEnabled = rendering,
         ) {
             DirectionalLight(
                 direction = Direction(-view.sunDir.x, -view.sunDir.y, -view.sunDir.z),

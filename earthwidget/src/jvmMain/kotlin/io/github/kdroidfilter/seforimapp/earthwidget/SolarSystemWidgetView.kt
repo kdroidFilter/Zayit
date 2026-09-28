@@ -137,33 +137,6 @@ private const val PLAY_DAYS_PER_SECOND = 6f
 /** The Earth's shown spin while playing — slowed down (the real one is a turn per day, 6 a second here). */
 private const val PLAY_SPIN_SECONDS_PER_TURN = 2f
 
-/**
- * Frames between a state and its 3D image on screen: filament-compose's desktop surface renders a frame with the
- * previous composition's state, reads it back asynchronously, and shows it the frame after.
- */
-private const val RENDER_LATENCY_FRAMES = 2
-
-/** [value] as it was [frames] frames ago; catches up once it stops changing. */
-@Composable
-private fun <T> rememberFrameDelayed(
-    value: T,
-    frames: Int,
-): T {
-    val current by rememberUpdatedState(value)
-    var delayed by remember { mutableStateOf(value) }
-    LaunchedEffect(frames) {
-        val history = ArrayDeque<T>()
-        while (true) {
-            withFrameNanos {
-                history.addLast(current)
-                while (history.size > frames + 1) history.removeFirst()
-                delayed = history.first()
-            }
-        }
-    }
-    return delayed
-}
-
 /** Outward steps tried to fit a label before leaving it out. */
 private const val LABEL_PLACEMENT_TRIES = 6
 

@@ -39,6 +39,7 @@ import io.github.erkko68.filament.compose.scene.rememberUnlitColorMaterialInstan
 import io.github.erkko68.filament.compose.scene.toLinearColor
 import seforimapp.earthwidget.generated.resources.Res
 import kotlin.math.PI
+import kotlin.math.asin
 import kotlin.math.atan
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -781,14 +782,8 @@ internal fun eclipticDirection(longitudeDegrees: Float): Direction {
     return Direction(cos(l), 0f, -sin(l))
 }
 
-/** Inverse of [earthToWorld]. */
-private fun worldToEarth(
-    siderealDegrees: Float,
-    obliquityDegrees: Float,
-): Rotation =
-    Rotation.axisAngle(Direction(1f, 1f, 1f), -120f) *
-        Rotation.axisAngle(AxisZ, -siderealDegrees) *
-        Rotation.axisAngle(AxisX, 90f + obliquityDegrees)
+/** Camera azimuth (about the ecliptic pole) that brings [d] in front of the viewer. */
+private fun azimuthOf(d: Direction): Float = atan2(-d.x, d.z) * RAD_TO_DEG_F
 
 /**
  * The Earth–Moon system as a real sky, plus the camera looking at it.
@@ -800,8 +795,8 @@ private fun worldToEarth(
  *
  * Nothing in the world depends on the user: dragging only moves the camera ([EarthRenderState.viewYawDegrees],
  * [EarthRenderState.viewPitchDegrees]).
- * The camera turns with the Earth (see [view]), so changing the time keeps the globe still and swings the Sun,
- * hence the day/night line, around it.
+ * The camera follows the marker (see [view]), so changing the time keeps it centred and moves the Sun, hence the
+ * day/night line, and the Moon along its orbit.
  */
 internal class SceneFrame(
     state: EarthRenderState,
@@ -817,14 +812,17 @@ internal class SceneFrame(
     val sun: Direction = eclipticDirection(sunLongitude)
 
     /**
-     * World → camera, bolted to the Earth: the marker faces the viewer, north up, whatever the time; only the Sun
-     * (the lighting), the Moon and its orbit move around it. The user's drag turns the globe ([viewYawDegrees],
-     * [viewPitchDegrees] from that default).
+     * World → camera, aimed at the marker from around the ecliptic pole (kept up): whatever the time the marker is
+     * dead centre and the Moon's orbit keeps its orientation, the Moon sliding along it. The price: the Earth's axis
+     * sways by up to the obliquity over a day, and the orbit flattens as the marker nears the ecliptic. The user's
+     * drag adds [EarthRenderState.viewYawDegrees] about the pole and [EarthRenderState.viewPitchDegrees] in elevation.
      */
     val view: Rotation =
-        Rotation.axisAngle(AxisX, state.viewPitchDegrees + state.markerLatitudeDegrees) *
-            Rotation.axisAngle(Direction.Up, state.viewYawDegrees - state.markerLongitudeDegrees) *
-            worldToEarth(state.siderealDegrees, state.earthTiltDegrees)
+        run {
+            val marker = earth * latLonToUnitVector(state.markerLatitudeDegrees, state.markerLongitudeDegrees).toDirection()
+            val elevation = asin(marker.y.coerceIn(-1f, 1f)) * RAD_TO_DEG_F + state.viewPitchDegrees
+            Rotation.axisAngle(AxisX, elevation) * Rotation.axisAngle(Direction.Up, azimuthOf(marker) + state.viewYawDegrees)
+        }
 
     /** World unit vector of the Moon's orbit at [orbitDegrees], the Hebrew-day angle of the orbit labels. */
     fun orbitPoint(orbitDegrees: Float): Direction =

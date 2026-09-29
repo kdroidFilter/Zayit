@@ -75,26 +75,20 @@ class SceneFrameTest {
     }
 
     @Test
-    fun globeStaysStillWhileTheLightMovesWithTheTime() {
+    fun markerStaysCentredAndTheOrbitUprightWhateverTheTime() {
         val anchor = Date(1_727_400_000_000L)
         val u = latLonToUnitVector(31.78f, 35.22f).let { Direction(it.x, it.y, it.z) }
-        val north = Direction(0f, 1f, 0f)
-        val sixHoursLater = Date(anchor.time + 6 * 3_600_000L)
+        val eclipticPole = Direction(0f, 1f, 0f)
 
-        listOf(anchor, sixHoursLater, Date(anchor.time + 40 * 86_400_000L)).forEach { date ->
+        (0..48).map { Date(anchor.time + it * 3_600_000L) }.forEach { date ->
             val frame = frameAt(date, 31.78f, 35.22f)
-            // Marker dead centre, facing the viewer
             val m = frame.view * frame.earth * u
             assertEquals(0f, m.x, 1e-4f, "at $date")
             assertEquals(0f, m.y, 1e-4f, "at $date")
-            // Pole where it was: the globe hasn't turned
-            val p = frame.view * frame.earth * north
+            // The orbit's pole stays straight up: seen from the same side, never mirrored
+            val p = frame.view * eclipticPole
             assertEquals(0f, p.x, 1e-4f, "at $date")
-            assertEquals(cos(31.78f * PI.toFloat() / 180f), p.y, 1e-4f, "at $date")
+            kotlin.test.assertTrue(p.y > 0f, "at $date")
         }
-        // The Sun has swung ~90° around the Earth in the view instead
-        val sunBefore = frameAt(anchor, 31.78f, 35.22f).let { it.view * it.sun }
-        val sunAfter = frameAt(sixHoursLater, 31.78f, 35.22f).let { it.view * it.sun }
-        kotlin.test.assertTrue(sunBefore.dot(sunAfter) < 0.5f)
     }
 }

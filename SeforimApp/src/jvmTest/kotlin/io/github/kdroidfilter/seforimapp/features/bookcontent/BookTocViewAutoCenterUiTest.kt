@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.runComposeUiTest
+import androidx.compose.ui.test.v2.runComposeUiTest
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocView
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.collections.immutable.toImmutableList

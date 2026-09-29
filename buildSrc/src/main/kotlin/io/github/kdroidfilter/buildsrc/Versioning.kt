@@ -2,7 +2,7 @@ package io.github.kdroidfilter.buildsrc
 
 import org.gradle.api.Project
 import java.net.HttpURLConnection
-import java.net.URL
+import java.net.URI
 
 object Versioning {
     @Suppress("UNUSED_PARAMETER")
@@ -33,7 +33,7 @@ object Versioning {
         val repository = System.getenv("GITHUB_REPOSITORY") ?: return null
 
         return try {
-            val url = URL("https://api.github.com/repos/$repository/tags?per_page=1")
+            val url = URI("https://api.github.com/repos/$repository/tags?per_page=1").toURL()
             val connection = (url.openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = 5000

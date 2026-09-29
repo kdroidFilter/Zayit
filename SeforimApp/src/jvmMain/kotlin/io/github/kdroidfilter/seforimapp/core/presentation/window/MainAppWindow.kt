@@ -291,9 +291,9 @@ fun NucleusApplicationScope.MainAppWindow(
                     selectedTab?.destination is TabsDestination.BookContent
             LaunchedEffect(shouldKeepScreenAwake) {
                 if (shouldKeepScreenAwake) {
-                    EnergyManager.keepScreenAwake()
+                    EnergyManager.keepAwake()
                 } else {
-                    EnergyManager.releaseScreenAwake()
+                    EnergyManager.releaseAwake()
                 }
             }
 

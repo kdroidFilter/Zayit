@@ -300,7 +300,7 @@ nucleus.application {
             dirChooser = false
             shortcut = true
             upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
-            perUserInstall = true
+            msi { perMachine = false }
 
             nsis {
                 oneClick = true // Default: true

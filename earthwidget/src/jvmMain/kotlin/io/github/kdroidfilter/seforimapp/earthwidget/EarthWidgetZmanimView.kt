@@ -45,7 +45,6 @@ import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
 import java.time.LocalDate
 import java.util.*
-import kotlin.math.PI
 import kotlin.math.roundToInt
 
 // ============================================================================
@@ -219,10 +218,6 @@ fun EarthWidgetZmanimView(
     // Camera moved by the user: orbit around the ecliptic pole, elevation over the ecliptic, zoom
     val camera = rememberOrbitCameraState()
 
-    // Instant the camera was last aimed at the marker (null = aim at the current one); after that it stays
-    // Sun-fixed while the time changes
-    var viewAnchorTime by remember { mutableStateOf<Date?>(null) }
-
     // Date/time selection - initialized once with the default timezone, then preserved across location changes
     val initialCalendar =
         remember {
@@ -267,7 +262,6 @@ fun EarthWidgetZmanimView(
             markerElevationMeters = override.elevationMeters
             timeZone = override.timeZone
             camera.reset()
-            viewAnchorTime = null
 
             if (targetTimeMillis == null) {
                 val now = Calendar.getInstance(override.timeZone)
@@ -430,25 +424,11 @@ fun EarthWidgetZmanimView(
     val globalMenuStyle = JewelTheme.menuStyle
 
     val currentReferenceTime by rememberUpdatedState(referenceTime)
-    LaunchedEffect(viewAnchorTime == null) {
-        if (viewAnchorTime == null) viewAnchorTime = currentReferenceTime
-    }
-
-    // Like Apple Maps' tilt (MKMapCamera pitch 0…~80° from vertical): from straight over the ecliptic pole down to
-    // MIN_VIEW_ELEVATION_DEGREES above the ecliptic, never under it. The offset is relative to the default elevation.
-    camera.pitchRange =
-        remember(renderSizePx, earthSizeFraction) {
-            val base = computeSceneGeometry(renderSizePx, earthSizeFraction).viewPitchRad * 180f / PI.toFloat()
-            (MIN_VIEW_ELEVATION_DEGREES - base)..(90f - base)
-        }
     // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
     // so they remain stable across recompositions while still accessing the latest state
     val onRecenterCallback =
         remember {
-            {
-                camera.reset()
-                viewAnchorTime = currentReferenceTime
-            }
+            { camera.reset() }
         }
 
     // Use rememberUpdatedState to keep the lambda stable while accessing latest values
@@ -494,7 +474,6 @@ fun EarthWidgetZmanimView(
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
         camera.reset()
-        viewAnchorTime = null
         onLocationSelect?.invoke(country, city, location)
     }
 
@@ -512,7 +491,6 @@ fun EarthWidgetZmanimView(
             renderSizePx = renderSizePx,
             markerLongitudeDegrees = markerLongitudeDegrees,
             camera = camera,
-            viewAnchorTime = viewAnchorTime,
             model = model,
             markerLatitudeDegrees = markerLatitudeDegrees,
             showBackground = showBackground,
@@ -534,9 +512,7 @@ fun EarthWidgetZmanimView(
                 legendColorRgb = kiddushLevanaColorRgb,
             )
         }
-        // Also after a time change: the marker has turned away with the Earth
-        val isViewMoved =
-            camera.isMoved || viewAnchorTime.let { it != null && it != referenceTime }
+        val isViewMoved = camera.isMoved
         if (isViewMoved || isDateTimeModified) {
             Column(
                 modifier =
@@ -668,9 +644,6 @@ fun EarthWidgetMoonSkyView(
 // REUSABLE UI COMPONENTS
 // ============================================================================
 
-/** Lowest camera elevation over the ecliptic (Apple Maps stops ~10° above the horizon). */
-private const val MIN_VIEW_ELEVATION_DEGREES = 10f
-
 /**
  * Earth scene with drag-to-rotate support.
  * Extracted as a separate composable to enable Compose's skipping optimization.
@@ -681,7 +654,6 @@ private fun EarthSceneContent(
     renderSizePx: Int,
     markerLongitudeDegrees: Float,
     camera: OrbitCameraState,
-    viewAnchorTime: Date?,
     model: ZmanimModel,
     markerLatitudeDegrees: Float,
     showBackground: Boolean,
@@ -730,7 +702,6 @@ private fun EarthSceneContent(
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
             viewYawDegrees = camera.yaw,
             viewPitchDegrees = camera.pitch,
-            viewAnchorKey = viewAnchorTime,
             viewZoom = camera.zoom,
         )
     }

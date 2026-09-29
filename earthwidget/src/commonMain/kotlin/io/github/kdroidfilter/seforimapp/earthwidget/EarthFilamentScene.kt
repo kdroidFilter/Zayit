@@ -94,11 +94,9 @@ internal data class EarthRenderState(
     val sunLongitudeDegrees: Float = 0f,
     /** Ecliptic longitude of the Moon's ascending node. */
     val moonNodeDegrees: Float = 0f,
-    /** Camera azimuth around the ecliptic pole, from the Sun's: the camera is Sun-fixed, so time only spins the Earth. */
-    val viewAzimuthFromSunDegrees: Float = 0f,
-    /** User camera orbit around the ecliptic pole, added to [viewAzimuthFromSunDegrees]. */
+    /** User turn of the globe about the view's vertical, from the marker-centred default. */
     val viewYawDegrees: Float = 0f,
-    /** Camera elevation over the ecliptic, from the default one. */
+    /** User tilt of the globe, from the marker-centred default. */
     val viewPitchDegrees: Float = 0f,
     /** Camera zoom (field of view narrowed by this factor); 1 = the whole orbit fits. */
     val viewZoom: Float = 1f,
@@ -783,21 +781,14 @@ internal fun eclipticDirection(longitudeDegrees: Float): Direction {
     return Direction(cos(l), 0f, -sin(l))
 }
 
-/** Camera azimuth (about the ecliptic pole) that brings [d] in front of the viewer. */
-private fun azimuthOf(d: Direction): Float = atan2(-d.x, d.z) * RAD_TO_DEG_F
-
-/** The Sun-relative camera azimuth that puts the marker in front at this instant: the anchor on open / recenter. */
-internal fun markerAzimuthFromSunDegrees(
+/** Inverse of [earthToWorld]. */
+private fun worldToEarth(
     siderealDegrees: Float,
-    sunLongitudeDegrees: Float,
     obliquityDegrees: Float,
-    markerLatitudeDegrees: Float,
-    markerLongitudeDegrees: Float,
-): Float {
-    val marker =
-        earthToWorld(siderealDegrees, obliquityDegrees) * latLonToUnitVector(markerLatitudeDegrees, markerLongitudeDegrees).toDirection()
-    return azimuthOf(marker) - azimuthOf(eclipticDirection(sunLongitudeDegrees))
-}
+): Rotation =
+    Rotation.axisAngle(Direction(1f, 1f, 1f), -120f) *
+        Rotation.axisAngle(AxisZ, -siderealDegrees) *
+        Rotation.axisAngle(AxisX, 90f + obliquityDegrees)
 
 /**
  * The Earth–Moon system as a real sky, plus the camera looking at it.
@@ -807,9 +798,10 @@ internal fun markerAzimuthFromSunDegrees(
  * about an axis tilted by the obliquity, the Sun sits at its ecliptic longitude, and the Moon's orbit is inclined
  * on its real node line, the Moon at its Hebrew-day elongation from the Sun (day 1 = conjunction).
  *
- * Nothing in the world depends on the user: dragging only moves the camera, around the ecliptic pole
- * ([EarthRenderState.viewYawDegrees]) and in elevation over the ecliptic ([EarthRenderState.viewPitchDegrees]).
- * The camera is Sun-fixed, so changing the time spins the Earth under its day/night line and nothing else jumps.
+ * Nothing in the world depends on the user: dragging only moves the camera ([EarthRenderState.viewYawDegrees],
+ * [EarthRenderState.viewPitchDegrees]).
+ * The camera turns with the Earth (see [view]), so changing the time keeps the globe still and swings the Sun,
+ * hence the day/night line, around it.
  */
 internal class SceneFrame(
     state: EarthRenderState,
@@ -824,13 +816,15 @@ internal class SceneFrame(
     /** Unit vector from the Earth to the Sun. */
     val sun: Direction = eclipticDirection(sunLongitude)
 
-    /** World → camera, fixed relative to the Sun (see [markerAzimuthFromSunDegrees] for the default). */
+    /**
+     * World → camera, bolted to the Earth: the marker faces the viewer, north up, whatever the time; only the Sun
+     * (the lighting), the Moon and its orbit move around it. The user's drag turns the globe ([viewYawDegrees],
+     * [viewPitchDegrees] from that default).
+     */
     val view: Rotation =
-        run {
-            val azimuth = azimuthOf(sun) + state.viewAzimuthFromSunDegrees + state.viewYawDegrees
-            val elevation = geometry.viewPitchRad * RAD_TO_DEG_F + state.viewPitchDegrees
-            Rotation.axisAngle(AxisX, elevation) * Rotation.axisAngle(Direction.Up, azimuth)
-        }
+        Rotation.axisAngle(AxisX, state.viewPitchDegrees + state.markerLatitudeDegrees) *
+            Rotation.axisAngle(Direction.Up, state.viewYawDegrees - state.markerLongitudeDegrees) *
+            worldToEarth(state.siderealDegrees, state.earthTiltDegrees)
 
     /** World unit vector of the Moon's orbit at [orbitDegrees], the Hebrew-day angle of the orbit labels. */
     fun orbitPoint(orbitDegrees: Float): Direction =

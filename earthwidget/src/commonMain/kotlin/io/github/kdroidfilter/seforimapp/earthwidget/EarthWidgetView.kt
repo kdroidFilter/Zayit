@@ -144,7 +144,6 @@ fun EarthWidgetScene(
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
     viewYawDegrees: Float = 0f,
     viewPitchDegrees: Float = 0f,
-    viewAnchorKey: Any? = null,
     viewZoom: Float = 1f,
 ) {
     // The camera follows the drag instantly, and eases back on recenter.
@@ -160,19 +159,6 @@ fun EarthWidgetScene(
         )
     val sunLongitude = computeSunEclipticLongitude(skyJulianDay)
     val animatedSunLongitude = rememberSmoothAnimatedAngle(targetValue = sunLongitude, normalize = ::normalizeAngle360)
-    // Camera anchored so the marker faces the viewer when shown, moved or recentred ([viewAnchorKey]); then time passes
-    // under a Sun-fixed camera: the Earth turns, the marker travels with it.
-    val viewAzimuthFromSun =
-        remember(viewAnchorKey, markerLatitudeDegrees, markerLongitudeDegrees) {
-            markerAzimuthFromSunDegrees(
-                siderealDegrees = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),
-                sunLongitudeDegrees = sunLongitude,
-                obliquityDegrees = earthTiltDegrees,
-                markerLatitudeDegrees = markerLatitudeDegrees,
-                markerLongitudeDegrees = markerLongitudeDegrees,
-            )
-        }
-    val animatedViewAzimuthFromSun = rememberSmoothAnimatedAngle(targetValue = viewAzimuthFromSun, normalize = ::normalizeAngle180)
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation =
         if (animateEarthRotation) {
@@ -265,7 +251,6 @@ fun EarthWidgetScene(
             siderealDegrees = animatedSidereal,
             sunLongitudeDegrees = animatedSunLongitude,
             moonNodeDegrees = computeMoonAscendingNodeLongitude(skyJulianDay),
-            viewAzimuthFromSunDegrees = animatedViewAzimuthFromSun,
             viewYawDegrees = animatedViewYaw,
             viewPitchDegrees = animatedViewPitch,
             viewZoom = animatedViewZoom,

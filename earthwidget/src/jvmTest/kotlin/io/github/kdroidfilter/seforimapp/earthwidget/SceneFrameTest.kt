@@ -13,7 +13,6 @@ class SceneFrameTest {
         date: Date,
         lat: Float,
         lon: Float,
-        anchorDate: Date = date,
     ): SceneFrame {
         val jd = computeJulianDayUtc(date)
         val state =
@@ -36,16 +35,6 @@ class SceneFrameTest {
                 siderealDegrees = (greenwichMeanSiderealTimeRad(jd) * 180.0 / PI).toFloat(),
                 sunLongitudeDegrees = computeSunEclipticLongitude(jd),
                 moonNodeDegrees = computeMoonAscendingNodeLongitude(jd),
-                viewAzimuthFromSunDegrees =
-                    computeJulianDayUtc(anchorDate).let { a ->
-                        markerAzimuthFromSunDegrees(
-                            (greenwichMeanSiderealTimeRad(a) * 180.0 / PI).toFloat(),
-                            computeSunEclipticLongitude(a),
-                            23.44f,
-                            lat,
-                            lon,
-                        )
-                    },
             )
         return SceneFrame(state, computeSceneGeometry(600, 0.6f))
     }
@@ -86,19 +75,26 @@ class SceneFrameTest {
     }
 
     @Test
-    fun anchoredCameraFacesTheMarkerThenStaysSunFixed() {
+    fun globeStaysStillWhileTheLightMovesWithTheTime() {
         val anchor = Date(1_727_400_000_000L)
         val u = latLonToUnitVector(31.78f, 35.22f).let { Direction(it.x, it.y, it.z) }
+        val north = Direction(0f, 1f, 0f)
+        val sixHoursLater = Date(anchor.time + 6 * 3_600_000L)
 
-        val atAnchor = frameAt(anchor, 31.78f, 35.22f).let { it.view * it.earth * u }
-        assertEquals(0f, atAnchor.x, 1e-4f)
-
-        // Six hours later the Earth has turned ~90° under the same (Sun-fixed) camera
-        val later = frameAt(Date(anchor.time + 6 * 3_600_000L), 31.78f, 35.22f, anchorDate = anchor).let { it.view * it.earth * u }
-        val sunLater = frameAt(Date(anchor.time + 6 * 3_600_000L), 31.78f, 35.22f, anchorDate = anchor).let { it.view * it.sun }
-        val sunAtAnchor = frameAt(anchor, 31.78f, 35.22f).let { it.view * it.sun }
-        assertEquals(sunAtAnchor.x, sunLater.x, 0.01f)
-        assertEquals(sunAtAnchor.z, sunLater.z, 0.01f)
-        kotlin.test.assertTrue(kotlin.math.abs(later.x) > 0.5f)
+        listOf(anchor, sixHoursLater, Date(anchor.time + 40 * 86_400_000L)).forEach { date ->
+            val frame = frameAt(date, 31.78f, 35.22f)
+            // Marker dead centre, facing the viewer
+            val m = frame.view * frame.earth * u
+            assertEquals(0f, m.x, 1e-4f, "at $date")
+            assertEquals(0f, m.y, 1e-4f, "at $date")
+            // Pole where it was: the globe hasn't turned
+            val p = frame.view * frame.earth * north
+            assertEquals(0f, p.x, 1e-4f, "at $date")
+            assertEquals(cos(31.78f * PI.toFloat() / 180f), p.y, 1e-4f, "at $date")
+        }
+        // The Sun has swung ~90° around the Earth in the view instead
+        val sunBefore = frameAt(anchor, 31.78f, 35.22f).let { it.view * it.sun }
+        val sunAfter = frameAt(sixHoursLater, 31.78f, 35.22f).let { it.view * it.sun }
+        kotlin.test.assertTrue(sunBefore.dot(sunAfter) < 0.5f)
     }
 }

@@ -1,19 +1,23 @@
 package io.github.kdroidfilter.seforimapp.hebrewcalendar
 
-import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
-import com.kosherjava.zmanim.hebrewcalendar.JewishDate
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import java.time.LocalDate
 import java.time.YearMonth
-import java.util.Calendar
 
 /**
  * Converts a Gregorian [LocalDate] to a [HebrewYearMonth].
  */
 fun hebrewYearMonthFromLocalDate(date: LocalDate): HebrewYearMonth {
-    val jewishDate = JewishDate(date)
+    val jewishDate = JewishDate(date.toKotlinLocalDate())
     return HebrewYearMonth(
-        year = jewishDate.jewishYear,
-        month = jewishDate.jewishMonth,
+        year = jewishDate.jewishYear.toInt(),
+        month = jewishDate.jewishMonth.value,
     )
 }
 
@@ -21,12 +25,11 @@ fun hebrewYearMonthFromLocalDate(date: LocalDate): HebrewYearMonth {
  * Returns the previous Hebrew month.
  */
 fun previousHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
-    val jewishDate = JewishDate()
-    jewishDate.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    val jewishDate = JewishDate(yearMonth.year, yearMonth.month, 1)
     jewishDate.back()
     return HebrewYearMonth(
-        year = jewishDate.jewishYear,
-        month = jewishDate.jewishMonth,
+        year = jewishDate.jewishYear.toInt(),
+        month = jewishDate.jewishMonth.value,
     )
 }
 
@@ -34,12 +37,11 @@ fun previousHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
  * Returns the next Hebrew month.
  */
 fun nextHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
-    val jewishDate = JewishDate()
-    jewishDate.setJewishDate(yearMonth.year, yearMonth.month, 1)
-    jewishDate.forward(Calendar.MONTH, 1)
+    val jewishDate = JewishDate(yearMonth.year, yearMonth.month, 1)
+    jewishDate.forward(DateTimeUnit.MONTH, 1)
     return HebrewYearMonth(
-        year = jewishDate.jewishYear,
-        month = jewishDate.jewishMonth,
+        year = jewishDate.jewishYear.toInt(),
+        month = jewishDate.jewishMonth.value,
     )
 }
 
@@ -47,8 +49,9 @@ fun nextHebrewYearMonth(yearMonth: HebrewYearMonth): HebrewYearMonth {
  * The same month in Hebrew [year]; Adar II (13) becomes Adar in a year without it.
  */
 fun HebrewYearMonth.inYear(year: Int): HebrewYearMonth {
-    val leap = JewishDate().apply { setJewishDate(year, JewishDate.TISHREI, 1) }.isJewishLeapYear
-    return HebrewYearMonth(year = year, month = if (month == JewishDate.ADAR_II && !leap) JewishDate.ADAR else month)
+    val leap = JewishDate(year, HebrewMonth.TISHREI, 1).isJewishLeapYear
+    val adarII = HebrewMonth.ADAR_II.value
+    return HebrewYearMonth(year = year, month = if (month == adarII && !leap) HebrewMonth.ADAR.value else month)
 }
 
 /**
@@ -58,8 +61,7 @@ fun formatHebrewMonthTitle(
     yearMonth: HebrewYearMonth,
     formatter: HebrewDateFormatter,
 ): String {
-    val jewishDate = JewishDate()
-    jewishDate.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    val jewishDate = JewishDate(yearMonth.year, yearMonth.month, 1)
     val monthName = formatter.formatMonth(jewishDate)
     val yearName = formatter.formatHebrewNumber(jewishDate.jewishYear)
     return "$monthName $yearName"
@@ -95,26 +97,24 @@ internal fun buildHebrewMonthGrid(
     yearMonth: HebrewYearMonth,
     formatter: HebrewDateFormatter,
 ): List<List<HebrewGridDay?>> {
-    val firstOfMonth = JewishDate()
-    firstOfMonth.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    val firstOfMonth = JewishDate(yearMonth.year, yearMonth.month, 1)
 
-    val startOffset = (firstOfMonth.dayOfWeek - 1).coerceIn(0, 6) // Sunday = 0
+    val startOffset = firstOfMonth.gregorianLocalDate.dayOfWeek.isoDayNumber % 7 // Sunday = 0
     val daysInMonth = firstOfMonth.daysInJewishMonth
 
     val cells = ArrayList<HebrewGridDay?>(startOffset + daysInMonth + 7)
     repeat(startOffset) { cells.add(null) }
 
-    val current = JewishDate()
-    current.setJewishDate(yearMonth.year, yearMonth.month, 1)
+    val current = JewishDate(yearMonth.year, yearMonth.month, 1)
     for (day in 1..daysInMonth) {
         cells.add(
             HebrewGridDay(
-                localDate = current.localDate,
+                localDate = current.gregorianLocalDate.toJavaLocalDate(),
                 label = formatter.formatHebrewNumber(day),
             ),
         )
         if (day != daysInMonth) {
-            current.forward(Calendar.DATE, 1)
+            current.forward(DateTimeUnit.DAY, 1)
         }
     }
 

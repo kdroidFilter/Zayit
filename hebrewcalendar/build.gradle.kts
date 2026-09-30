@@ -24,7 +24,7 @@ kotlin {
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
-            implementation(libs.zmanim)
+            implementation(libs.kosherkotlin)
         }
     }
 }

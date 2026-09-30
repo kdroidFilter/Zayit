@@ -51,20 +51,20 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kosherjava.zmanim.ComplexZmanimCalendar
-import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
-import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
-import com.kosherjava.zmanim.util.GeoLocation
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
-import io.github.kdroidfilter.seforimapp.earthwidget.ROZmanimCalendar
 import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
+import io.github.kdroidfilter.seforimapp.earthwidget.ohrHaChaimSunset
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.earthwidget.toDate
+import io.github.kdroidfilter.seforimapp.earthwidget.zmanimCalendar
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
@@ -72,6 +72,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -125,6 +126,7 @@ import java.time.temporal.TemporalAdjusters
 import java.util.Calendar
 import java.util.Date
 import kotlin.math.abs
+import kotlin.time.Duration.Companion.minutes
 
 private const val ZMANIM_LAYOUT_SCALE = 1.5f
 internal val ZMANIM_CARD_HEIGHT = 90.dp * ZMANIM_LAYOUT_SCALE
@@ -294,15 +296,6 @@ fun HomeCelestialWidgets(
                 KiddushLevanaEarliestOpinion.DAYS_3 to KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
             }
         }
-    // Use Sephardic zmanim calculations for SEPHARADE community
-    val zmanimOpinion =
-        remember(userCommunity) {
-            if (userCommunity == Community.SEPHARADE) {
-                ZmanimOpinion.SEPHARDIC
-            } else {
-                ZmanimOpinion.DEFAULT
-            }
-        }
     val locationOptions =
         remember {
             worldPlaces.mapValues { (_, cities) ->
@@ -346,8 +339,8 @@ fun HomeCelestialWidgets(
 
     // Compute zmanim times based on selected date, effective location, and community opinion
     val zmanimTimes =
-        remember(selectedDate, effectiveLocation, zmanimOpinion) {
-            computeZmanimTimes(selectedDate, effectiveLocation, zmanimOpinion)
+        remember(selectedDate, effectiveLocation, zmanimOpinion, effectiveInIsrael) {
+            computeZmanimTimes(selectedDate, effectiveLocation, zmanimOpinion, effectiveInIsrael)
         }
     val shabbatTimes =
         remember(selectedDate, effectiveLocation, zmanimOpinion, effectiveCityLabel, effectiveInIsrael) {
@@ -2099,105 +2092,39 @@ private fun GradientDot(
 private fun computeShabbatTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
-    opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
     cityLabel: String? = null,
     inIsrael: Boolean = false,
 ): ShabbatTimes {
     val shabbatDate = date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
     val fridayDate = shabbatDate.minusDays(1)
 
-    fun calendarForDate(localDate: LocalDate): Calendar =
-        Calendar.getInstance(location.timeZone).apply {
-            set(Calendar.YEAR, localDate.year)
-            set(Calendar.MONTH, localDate.monthValue - 1)
-            set(Calendar.DAY_OF_MONTH, localDate.dayOfMonth)
-            set(Calendar.HOUR_OF_DAY, 12)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-            set(Calendar.MILLISECOND, 0)
-        }
-
-    val geoLocation =
-        GeoLocation(
-            "shabbat",
-            location.latitude,
-            location.longitude,
-            location.elevationMeters,
-            location.timeZone,
-        )
-
     val parashaName =
         run {
-            val jewishCalendar =
-                JewishCalendar().apply {
-                    setInIsrael(inIsrael)
-                    setDate(calendarForDate(shabbatDate))
-                }
+            val jewishCalendar = JewishCalendar(shabbatDate.toKotlinLocalDate(), inIsrael)
             val formatter =
                 HebrewDateFormatter().apply {
                     isHebrewFormat = true
                     isUseGershGershayim = false
                 }
-            val parasha = formatter.formatParsha(jewishCalendar)
-            if (parasha.isBlank()) formatter.formatSpecialParsha(jewishCalendar) else parasha
+            formatter.formatParsha(jewishCalendar)?.takeIf { it.isNotBlank() }
+                ?: formatter.formatSpecialParsha(jewishCalendar).orEmpty()
         }
     val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
-    val isJerusalem = isJerusalemLocation(location, cityLabel)
 
-    // Calculate entry and exit times based on opinion
+    val entryCalendar = zmanimCalendar(fridayDate, location, opinion, inIsrael)
+    val exitCalendar = zmanimCalendar(shabbatDate, location, opinion, inIsrael)
     val (entryTime, exitTime) =
         when (opinion) {
-            ZmanimOpinion.SEPHARDIC -> {
-                val isInIsrael = location.timeZone.id == "Asia/Jerusalem"
-                val useAmudehHoraah = !isInIsrael
-                // Sephardic: Use ROZmanimCalendar with default Ohr HaChaim/Amudei Horaah rules
-                // Candle lighting: 20 minutes before sunset (Ohr HaChaim default)
-                // End of Shabbat: Ateret Torah in Israel, Amudei Horaah outside Israel
-                val entryCalendar =
-                    ROZmanimCalendar(geoLocation).apply {
-                        calendar = calendarForDate(fridayDate)
-                        isUseElevation = false
-                        isUseAmudehHoraah = useAmudehHoraah
-                    }
-                val exitCalendar =
-                    ROZmanimCalendar(geoLocation).apply {
-                        calendar = calendarForDate(shabbatDate)
-                        isUseElevation = false
-                        isUseAmudehHoraah = useAmudehHoraah
-                    }
-                val entry = entryCalendar.getCandleLightingWithElevation(20.0)
-                val exit =
-                    if (useAmudehHoraah) {
-                        exitCalendar.getTzeitShabbatAmudeiHoraah()
-                    } else {
-                        val offsetMinutes = if (isInIsrael) 30.0 else 40.0
-                        exitCalendar.getTzaisAteretTorah(offsetMinutes)
-                    }
-                entry to exit
+            // אור החיים: candles 20 minutes before sunset everywhere; Shabbat ends 30 minutes after it in Israel.
+            // ponytail: abroad the RO calendar defaults to Amudei Horaah (7.165°); we keep its fixed-minutes choice, 40
+            ZmanimOpinion.OHR_HACHAIM -> {
+                exitCalendar.ateretTorahSunsetOffset = if (inIsrael) 30.0 else 40.0
+                entryCalendar.ohrHaChaimSunset?.minus(20.minutes)?.toDate() to exitCalendar.tzaisAteretTorah.toDate()
             }
-            ZmanimOpinion.DEFAULT -> {
-                val entryCalendar =
-                    ComplexZmanimCalendar(geoLocation).apply {
-                        calendar = calendarForDate(fridayDate)
-                    }
-                val exitCalendar =
-                    ComplexZmanimCalendar(geoLocation).apply {
-                        calendar = calendarForDate(shabbatDate)
-                    }
-                val entry =
-                    if (isJerusalem) {
-                        entryCalendar.setCandleLightingOffset(40.0)
-                        entryCalendar.candleLighting
-                    } else {
-                        entryCalendar.candleLighting
-                    }
-                val exit =
-                    if (isJerusalem) {
-                        offsetDateByMinutes(exitCalendar.sunset, 40.0)
-                    } else {
-                        exitCalendar.tzais
-                    }
-                entry to exit
+
+                val candles =
+                val sunset = if (candles.fromHeight) entryCalendar.sunset else entryCalendar.seaLevelSunset
+                sunset?.minus(candles.minutes.minutes)?.toDate() to exitCalendar.tzais.toDate()
             }
         }
 
@@ -2221,14 +2148,6 @@ private fun isJerusalemLocation(
     val latDiff = abs(location.latitude - jerusalem.lat)
     val lonDiff = abs(location.longitude - jerusalem.lng)
     return latDiff < 0.1 && lonDiff < 0.1
-}
-
-private fun offsetDateByMinutes(
-    date: Date?,
-    minutes: Double,
-): Date? {
-    if (date == null) return null
-    return Date(date.time + (minutes * 60_000L).toLong())
 }
 
 private fun Color.blendTowards(

@@ -186,7 +186,7 @@ kotlin {
             // HTML sanitization for search snippets
             implementation(libs.jsoup)
 
-            implementation(libs.zmanim)
+            implementation(libs.kosherkotlin)
 
             implementation(libs.nucleus.notification.common)
 

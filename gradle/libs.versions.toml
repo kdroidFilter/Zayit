@@ -35,7 +35,7 @@ slf4j = "2.0.20"
 maven-publish = "0.36.0"
 sqlDelight = "2.3.2"
 adaptiveNavigation = "1.2.0"
-zmanim = "2.5.0"
+kosherkotlin = "3.0.0"
 zstdJni = "1.5.7-10"
 metro = "1.4.5"
 lucene = "10.4.0"
@@ -132,7 +132,7 @@ adaptive-layout = { module = "org.jetbrains.compose.material3.adaptive:adaptive-
 adaptive-navigation = { module = "org.jetbrains.compose.material3.adaptive:adaptive-navigation", version.ref = "adaptiveNavigation" }
 split-pane-desktop = { module = "org.jetbrains.compose.components:components-splitpane-desktop", version.ref = "compose"}
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
-zmanim = { module = "com.kosherjava:zmanim", version.ref = "zmanim" }
+kosherkotlin = { module = "io.github.kdroidfilter:kosherkotlin", version.ref = "kosherkotlin" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }

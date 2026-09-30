@@ -37,7 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -105,8 +105,8 @@ fun HebrewCalendarPicker(
     val hebrewDateFormatter =
         remember {
             HebrewDateFormatter().apply {
-                setHebrewFormat(true)
-                setUseGershGershayim(false)
+                isHebrewFormat = true
+                isUseGershGershayim = false
             }
         }
     val hebrewLocale = remember { Locale.forLanguageTag("he") }

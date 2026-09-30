@@ -30,10 +30,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kosherjava.zmanim.ComplexZmanimCalendar
-import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
-import com.kosherjava.zmanim.util.GeoLocation
+import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
+import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
 import kotlinx.coroutines.delay
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
+import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -45,8 +51,7 @@ import seforimapp.seforimapp.generated.resources.home_temple_subtitle
 import seforimapp.seforimapp.generated.resources.home_temple_title
 import seforimapp.seforimapp.generated.resources.home_temple_years
 import seforimapp.seforimapp.generated.resources.temple_jerusalem_in_fire_medium
-import java.util.Calendar
-import java.util.TimeZone
+import kotlin.time.Clock
 
 @Immutable
 private data class TempleCountdownData(
@@ -57,12 +62,12 @@ private data class TempleCountdownData(
 
 private const val DESTRUCTION_YEAR = 3830
 private const val DESTRUCTION_DAY = 9
-private val DESTRUCTION_MONTH = JewishCalendar.AV
+private val DESTRUCTION_MONTH = HebrewMonth.AV
 
 // Fallback if sunset is null (polar regions) or computation fails — keeps the loop alive.
 private const val FALLBACK_REFRESH_MS = 60L * 60 * 1000
 
-// Small buffer past sunset so JewishCalendar definitely resolves the new Hebrew day.
+// Small buffer past sunset so JewishDate definitely resolves the new Hebrew day.
 private const val POST_SUNSET_BUFFER_MS = 1_000L
 
 private val JERUSALEM =
@@ -71,42 +76,41 @@ private val JERUSALEM =
         31.7683,
         35.2137,
         800.0,
-        TimeZone.getTimeZone("Asia/Jerusalem"),
+        TimeZone.of("Asia/Jerusalem"),
     )
 
 private fun computeTempleCountdown(): TempleCountdownData {
     // After sunset in Jerusalem the Hebrew day rolls over — advance the Gregorian date by one day
-    // so JewishCalendar resolves to the new Hebrew day instead of yesterday's.
-    val now = Calendar.getInstance()
-    val sunset = ComplexZmanimCalendar(JERUSALEM).sunset
-    if (sunset != null && sunset.time <= now.timeInMillis) {
-        now.add(Calendar.DAY_OF_MONTH, 1)
+    // so JewishDate resolves to the new Hebrew day instead of yesterday's.
+    val calendar = ComplexZmanimCalendar(JERUSALEM)
+    var date = calendar.localDateTime.date
+    val sunset = calendar.sunset
+    if (sunset != null && sunset <= Clock.System.now()) {
+        date = date.plus(1, DateTimeUnit.DAY)
     }
-    val raw = JewishCalendar(now.time)
-    val today = JewishCalendar(raw.jewishYear, raw.jewishMonth, raw.jewishDayOfMonth)
+    val today = JewishDate(date)
 
     // Most recent Av-9 anniversary that is strictly before today. Using `>=` (rather than `>`)
     // means the anniversary day itself is reported as "almost a full year" instead of "X years
     // and 0 days", keeping the display free of 0-day artifacts.
-    var years = today.jewishYear - DESTRUCTION_YEAR
-    var anniversary = JewishCalendar(today.jewishYear, DESTRUCTION_MONTH, DESTRUCTION_DAY)
-    if (anniversary.absDate >= today.absDate) {
+    var years = (today.jewishYear - DESTRUCTION_YEAR).toInt()
+    var anniversary = JewishDate(today.jewishYear, DESTRUCTION_MONTH, DESTRUCTION_DAY)
+    if (anniversary >= today) {
         years -= 1
-        anniversary = JewishCalendar(today.jewishYear - 1, DESTRUCTION_MONTH, DESTRUCTION_DAY)
+        anniversary = JewishDate(today.jewishYear - 1, DESTRUCTION_MONTH, DESTRUCTION_DAY)
     }
 
     // Walk forward by full Hebrew months. Same `>=` rationale: stop just before reaching today.
     var months = 0
     var cursor = anniversary
     while (true) {
-        val next = cursor.clone() as JewishCalendar
-        next.forward(Calendar.MONTH, 1)
-        if (next.absDate >= today.absDate) break
+        val next = cursor.copy().forward(DateTimeUnit.MONTH, 1)
+        if (next >= today) break
         cursor = next
         months += 1
     }
 
-    val days = today.absDate - cursor.absDate
+    val days = cursor.gregorianLocalDate.daysUntil(today.gregorianLocalDate)
     return TempleCountdownData(years, months, days)
 }
 
@@ -114,11 +118,11 @@ private fun computeTempleCountdown(): TempleCountdownData {
 private fun millisUntilNextJerusalemSunset(nowMillis: Long): Long {
     val cal = ComplexZmanimCalendar(JERUSALEM)
     var sunset = cal.sunset
-    if (sunset == null || sunset.time <= nowMillis) {
-        cal.calendar.add(Calendar.DAY_OF_MONTH, 1)
+    if (sunset == null || sunset.toEpochMilliseconds() <= nowMillis) {
+        cal.localDateTime = LocalDateTime(cal.localDateTime.date.plus(1, DateTimeUnit.DAY), cal.localDateTime.time)
         sunset = cal.sunset
     }
-    val target = sunset?.time ?: return FALLBACK_REFRESH_MS
+    val target = sunset?.toEpochMilliseconds() ?: return FALLBACK_REFRESH_MS
     return (target - nowMillis + POST_SUNSET_BUFFER_MS).coerceAtLeast(POST_SUNSET_BUFFER_MS)
 }
 

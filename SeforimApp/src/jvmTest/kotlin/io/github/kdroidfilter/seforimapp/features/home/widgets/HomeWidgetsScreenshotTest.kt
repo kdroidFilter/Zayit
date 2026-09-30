@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.CompositionLocalProvider
@@ -74,15 +75,18 @@ class HomeWidgetsScreenshotTest {
                     LocalTabSelected provides false,
                     LocalLayoutDirection provides LayoutDirection.Rtl,
                 ) {
-                    Box(Modifier.background(JewelTheme.globalColors.panelBackground).padding(16.dp)) {
-                        HomeWidgetsHost(
-                            state =
-                                HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE).also {
-                                    it.editingWidgets = editing
-                                },
-                            modifier = Modifier.width(width.dp),
-                            widgets = widgets,
-                        )
+                    val state =
+                        HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE).also {
+                            it.editingWidgets = editing
+                        }
+                    Box(
+                        Modifier
+                            .background(JewelTheme.globalColors.panelBackground)
+                            .padding(16.dp)
+                            .then(if (editing) Modifier.height(760.dp) else Modifier),
+                    ) {
+                        HomeWidgetsHost(state = state, modifier = Modifier.width(width.dp), widgets = widgets)
+                        if (editing) HomeWidgetsOverlay(state, widgets)
                     }
                 }
             }

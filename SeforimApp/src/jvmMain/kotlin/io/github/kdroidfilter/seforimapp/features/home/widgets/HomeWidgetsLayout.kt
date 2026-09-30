@@ -24,12 +24,16 @@ internal object HomeWidgetsLayout {
 
     private fun save(layout: List<WidgetPlacement>) = AppSettings.setHomeWidgetsLayout(encodeLayout(layout))
 
+    /** At the end, or in [before]'s place when dropped on it. */
     fun add(
         widget: HomeWidget,
         size: WidgetSize = widget.defaultSize,
+        before: HomeWidget? = null,
     ) {
         val layout = current()
-        if (layout.none { it.widget.id == widget.id }) save(layout + WidgetPlacement(widget, size))
+        if (layout.any { it.widget.id == widget.id }) return
+        val index = layout.indexOfFirst { it.widget.id == before?.id }.takeIf { it >= 0 } ?: layout.size
+        save(layout.toMutableList().apply { add(index, WidgetPlacement(widget, size)) })
     }
 
     fun remove(widget: HomeWidget) = save(current().filterNot { it.widget.id == widget.id })

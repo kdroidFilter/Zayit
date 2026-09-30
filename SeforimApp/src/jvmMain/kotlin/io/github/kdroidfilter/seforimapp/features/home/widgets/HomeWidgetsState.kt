@@ -77,6 +77,9 @@ class HomeWidgetsState(
     /** The Home's edit mode, as on macOS: widgets can be moved and removed, and the gallery adds new ones. */
     var editingWidgets by mutableStateOf(false)
 
+    /** A widget being dragged, from the grid or the gallery. */
+    internal val drag = WidgetDrag()
+
     fun selectDate(date: LocalDate) {
         selectedDate = date
         targetTime = null

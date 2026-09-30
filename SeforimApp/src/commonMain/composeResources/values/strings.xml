@@ -324,7 +324,7 @@
     <string name="home_widgets_edit">עריכת ווידג'טים…</string>
     <string name="home_widgets_done">סיום</string>
     <string name="home_widgets_gallery_title">ווידג'טים</string>
-    <string name="home_widgets_gallery_hint">לחצו על ווידג'ט כדי להוסיף אותו, גררו ווידג'ט בדף כדי להזיז אותו</string>
+    <string name="home_widgets_gallery_hint">גררו ווידג'ט אל הדף או לחצו עליו כדי להוסיף אותו · גררו ווידג'ט בדף כדי להזיז אותו · Esc לסיום</string>
     <string name="home_widgets_add">הוספה</string>
     <string name="home_widgets_added">נוסף</string>
     <string name="home_widgets_remove">הסרת הווידג'ט</string>

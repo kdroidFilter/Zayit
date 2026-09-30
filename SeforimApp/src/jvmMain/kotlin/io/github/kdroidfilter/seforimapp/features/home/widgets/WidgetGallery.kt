@@ -1,22 +1,29 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.absoluteOffset
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -25,13 +32,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
@@ -39,10 +60,9 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Link
-import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.home_widgets_add
 import seforimapp.seforimapp.generated.resources.home_widgets_added
 import seforimapp.seforimapp.generated.resources.home_widgets_done
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_hint
@@ -51,22 +71,74 @@ import seforimapp.seforimapp.generated.resources.home_widgets_reset
 import kotlin.math.roundToInt
 
 private const val PREVIEW_SCALE = 0.42f
+private const val GHOST_SCALE = 0.6f
 
-/** The macOS widget gallery: every widget previewed at the size it would be added at, one click to add it. */
-@OptIn(ExperimentalLayoutApi::class)
+/** Room the gallery panel takes at the bottom of the Home, for the page to scroll its last widgets above it. */
+val WIDGET_GALLERY_HEIGHT = 320.dp
+
+/**
+ * The widget gallery floating over the bottom of the Home, as on macOS, and the widget dragged out of it: click a
+ * widget to add it at the end, or drag it onto the grid (onto a widget to take its place). Escape or "Done" closes.
+ */
 @Composable
-internal fun WidgetGallery(
+fun BoxScope.HomeWidgetsOverlay(
     state: HomeWidgetsState,
     placed: List<WidgetPlacement>,
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val drag = state.drag
+    var origin by remember { mutableStateOf(Offset.Zero) }
+    Box(Modifier.matchParentSize().onGloballyPositioned { origin = it.positionInRoot() })
+    if (state.editingWidgets) {
+        WidgetGallery(state, placed, Modifier.align(Alignment.BottomCenter))
+    }
+    // The dragged widget follows the pointer, above everything
+    drag.newWidget?.let { dragged ->
+        val grid = dragged.grid
+        Box(
+            Modifier
+                .absoluteOffset {
+                    val half = Offset(grid.width().toPx(), grid.height().toPx()) * (GHOST_SCALE / 2)
+                    val at = drag.pointer - origin - half
+                    IntOffset(at.x.roundToInt(), at.y.roundToInt())
+                }.alpha(0.9f)
+                .shadow(16.dp, RoundedCornerShape(18.dp * GHOST_SCALE)),
+        ) {
+            WidgetPreview(dragged.widget, grid, state, GHOST_SCALE)
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun WidgetGallery(
+    state: HomeWidgetsState,
+    placed: List<WidgetPlacement>,
+    modifier: Modifier = Modifier,
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val focus = remember { FocusRequester() }
+    LaunchedEffect(Unit) { focus.requestFocus() }
+    // Fades away while a widget is dragged out, to show the grid it goes to
+    val alpha by animateFloatAsState(if (state.drag.newWidget != null) 0.15f else 1f)
     Column(
-        Modifier
+        modifier
+            .padding(16.dp)
+            .widthIn(max = 960.dp)
             .fillMaxWidth()
+            .height(WIDGET_GALLERY_HEIGHT - 32.dp)
+            .alpha(alpha)
+            .onGloballyPositioned { state.drag.galleryBounds = it.boundsInRoot() }
+            .shadow(24.dp, shape)
             .clip(shape)
-            .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.92f))
+            .background(JewelTheme.globalColors.panelBackground)
             .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-            .padding(16.dp),
+            .focusRequester(focus)
+            .focusable()
+            .onPreviewKeyEvent {
+                (it.type == KeyEventType.KeyDown && it.key == Key.Escape).also { escape ->
+                    if (escape) state.editingWidgets = false
+                }
+            }.padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -83,12 +155,16 @@ internal fun WidgetGallery(
                 Text(stringResource(Res.string.home_widgets_done))
             }
         }
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            availableHomeWidgets.filter { it.isSupported }.forEach { widget ->
-                GalleryItem(widget, state, added = placed.any { it.widget.id == widget.id })
+        VerticallyScrollableContainer(Modifier.fillMaxSize()) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                itemVerticalAlignment = Alignment.Bottom,
+            ) {
+                availableHomeWidgets.filter { it.isSupported }.forEach { widget ->
+                    GalleryItem(widget, state, added = placed.any { it.widget.id == widget.id })
+                }
             }
         }
     }
@@ -100,62 +176,92 @@ private fun GalleryItem(
     state: HomeWidgetsState,
     added: Boolean,
 ) {
+    val drag = state.drag
     var size by remember(widget) { mutableStateOf(widget.defaultSize) }
     val grid = widget.sizes.getValue(size)
-    val add = { HomeWidgetsLayout.add(widget, size) }
+    var bounds by remember { mutableStateOf(Rect.Zero) }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.alpha(if (added) 0.45f else 1f)) {
-            WidgetPreview(widget, grid, state)
+        Box(
+            Modifier
+                .alpha(if (added) 0.4f else 1f)
+                .onGloballyPositioned { bounds = it.boundsInRoot() },
+        ) {
+            WidgetPreview(widget, grid, state, PREVIEW_SCALE)
             // On top of the preview, so its own buttons never get the click
             Box(
                 Modifier
                     .matchParentSize()
                     .then(if (added) Modifier else Modifier.pointerHoverIcon(PointerIcon.Hand))
-                    .pointerInput(added) { detectTapGestures { if (!added) add() } },
+                    .pointerInput(added) { detectTapGestures { if (!added) HomeWidgetsLayout.add(widget, size) } }
+                    .pointerInput(added, size) {
+                        if (added) return@pointerInput
+                        detectDragGestures(
+                            onDragStart = {
+                                drag.newWidget = WidgetPlacement(widget, size)
+                                drag.pointer = bounds.topLeft + it
+                            },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                drag.pointer += amount
+                                drag.targetId = drag.widgetAt(drag.pointer)
+                            },
+                            onDragEnd = {
+                                // Dropped back on the gallery: nothing; on a widget: in its place; elsewhere: at the end
+                                if (!drag.galleryBounds.contains(drag.pointer)) {
+                                    val target = availableHomeWidgets.firstOrNull { it.id == drag.targetId }
+                                    HomeWidgetsLayout.add(widget, size, before = target)
+                                }
+                                drag.newWidget = null
+                                drag.targetId = null
+                            },
+                            onDragCancel = {
+                                drag.newWidget = null
+                                drag.targetId = null
+                            },
+                        )
+                    },
             )
         }
         Text(stringResource(widget.title), fontWeight = FontWeight.SemiBold)
-        if (widget.sizes.size > 1) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                WidgetSize.entries.filter { it in widget.sizes }.forEach { option ->
-                    SizeChip(stringResource(option.label), selected = option == size, onClick = { size = option })
+        when {
+            added ->
+                Text(stringResource(Res.string.home_widgets_added), fontSize = 11.sp, color = JewelTheme.globalColors.text.info)
+            widget.sizes.size > 1 ->
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    WidgetSize.entries.filter { it in widget.sizes }.forEach { option ->
+                        SizeChip(stringResource(option.label), selected = option == size, onClick = { size = option })
+                    }
                 }
-            }
-        }
-        if (added) {
-            Text(stringResource(Res.string.home_widgets_added), fontSize = 12.sp, color = JewelTheme.globalColors.text.info)
-        } else {
-            OutlinedButton(onClick = add) { Text("+ " + stringResource(Res.string.home_widgets_add)) }
         }
     }
 }
 
-/** The widget itself at its real size, scaled down; its content stays inert (the frame above takes the clicks). */
+/** The widget itself at its real size, scaled down by [scale]; no live Filament scene in a thumbnail. */
 @Composable
-private fun WidgetPreview(
+internal fun WidgetPreview(
     widget: HomeWidget,
     grid: GridSize,
     state: HomeWidgetsState,
+    scale: Float,
 ) {
     Box(
         propagateMinConstraints = true,
         modifier =
             Modifier
-                .clip(RoundedCornerShape(18.dp * PREVIEW_SCALE))
+                .clip(RoundedCornerShape(18.dp * scale))
                 .layout { measurable, _ ->
                     val width = grid.width().roundToPx()
                     val height = grid.height().roundToPx()
                     val placeable = measurable.measure(Constraints.fixed(width, height))
-                    layout((width * PREVIEW_SCALE).roundToInt(), (height * PREVIEW_SCALE).roundToInt()) {
+                    layout((width * scale).roundToInt(), (height * scale).roundToInt()) {
                         placeable.placeWithLayer(0, 0) {
-                            scaleX = PREVIEW_SCALE
-                            scaleY = PREVIEW_SCALE
+                            scaleX = scale
+                            scaleY = scale
                             transformOrigin = TransformOrigin(0f, 0f)
                         }
                     }
                 },
     ) {
-        // No live Filament scene in a thumbnail: those cards show their frame only
         CompositionLocalProvider(LocalTabSelected provides false) {
             widget.Content(state, Modifier)
         }
@@ -172,7 +278,6 @@ private fun SizeChip(
     Text(
         text = label,
         fontSize = 11.sp,
-        color = if (selected) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.normal,
         modifier =
             Modifier
                 .clip(shape)

@@ -9,13 +9,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -86,8 +87,13 @@ fun HomeWidgetsHost(
     widgets: List<WidgetPlacement>,
     modifier: Modifier = Modifier,
 ) {
-    val drag = remember { WidgetDrag() }
-    BoxWithConstraints(modifier.widthIn(max = MAX_GRID_WIDTH).fillMaxWidth()) {
+    val drag = state.drag
+    BoxWithConstraints(
+        modifier
+            .widthIn(max = MAX_GRID_WIDTH)
+            .fillMaxWidth()
+            .onGloballyPositioned { drag.gridBounds = it.boundsInRoot() },
+    ) {
         val compact = maxWidth < COMPACT_GRID_WIDTH
         val rows = packRows(widgets.filter { it.widget.isSupported }, compact)
         Column(verticalArrangement = Arrangement.spacedBy(GRID_GAP)) {
@@ -98,9 +104,7 @@ fun HomeWidgetsHost(
                     WidgetRow(row, state, drag, Modifier.zIndex(if (lifted) 1f else 0f))
                 }
             }
-            if (state.editingWidgets) {
-                WidgetGallery(state, widgets)
-            } else {
+            if (!state.editingWidgets) {
                 OutlinedButton(
                     onClick = { state.editingWidgets = true },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
@@ -145,11 +149,18 @@ private fun WidgetRow(
     }
 }
 
-/** The widget being dragged in edit mode, and where every widget sits, to find the one it's dropped on. */
+/**
+ * The widget being dragged in edit mode (a placed one by [draggedId], or a new one from the gallery as [newWidget]
+ * at [pointer]), and where everything sits in root coordinates, to find what it's dropped on.
+ */
 internal class WidgetDrag {
     var draggedId by mutableStateOf<String?>(null)
     var targetId by mutableStateOf<String?>(null)
+    var newWidget by mutableStateOf<WidgetPlacement?>(null)
+    var pointer by mutableStateOf(Offset.Zero)
     val bounds = mutableMapOf<String, Rect>()
+    var gridBounds = Rect.Zero
+    var galleryBounds = Rect.Zero
 
     fun widgetAt(point: Offset): String? = bounds.entries.firstOrNull { (id, rect) -> id != draggedId && rect.contains(point) }?.key
 }

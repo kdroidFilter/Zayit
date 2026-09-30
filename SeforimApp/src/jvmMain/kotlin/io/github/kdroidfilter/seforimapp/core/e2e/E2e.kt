@@ -8,6 +8,9 @@ import androidx.compose.ui.graphics.asSkiaBitmap
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
+import dev.nucleusframework.window.tao.TaoGpuRenderContext
+import dev.nucleusframework.window.tao.rememberTaoGpuRenderContext
+import io.github.kdroidfilter.seforimapp.core.presentation.window.toImageBitmapOn
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
@@ -32,7 +35,8 @@ object E2e {
     /** Suffix of a window's title-bar layer, exported as `<name>-title`. */
     const val TITLE_BAR = "#title"
 
-    private val layers = ConcurrentHashMap<String, GraphicsLayer>()
+    /** Each window's recorded layer, with the GPU context it is rasterized under ([toImageBitmapOn]). */
+    private val layers = ConcurrentHashMap<String, Pair<GraphicsLayer, TaoGpuRenderContext?>>()
     private val bookViewModels = ConcurrentHashMap<String, BookContentViewModel>()
 
     fun registerBookViewModel(
@@ -63,13 +67,14 @@ object E2e {
 
     fun bookViewModel(tabId: String): BookContentViewModel? = bookViewModels[tabId]
 
-    internal fun layer(windowId: String): GraphicsLayer? = layers[windowId]
+    internal fun layer(windowId: String): GraphicsLayer? = layers[windowId]?.first
 
     internal fun registerLayer(
         windowId: String,
         layer: GraphicsLayer?,
+        gpu: TaoGpuRenderContext? = null,
     ) {
-        if (layer == null) layers.remove(windowId) else layers[windowId] = layer
+        if (layer == null) layers.remove(windowId) else layers[windowId] = layer to gpu
     }
 
     /** Writes [bitmap] to `<out>/<name>.png`. */
@@ -89,8 +94,8 @@ object E2e {
         name: String,
     ): Boolean {
         val dir = outDir ?: return false
-        val layer = layers[windowId] ?: return false
-        val bitmap = layer.toImageBitmap()
+        val (layer, gpu) = layers[windowId] ?: return false
+        val bitmap = layer.toImageBitmapOn(gpu)
         val data = Image.makeFromBitmap(bitmap.asSkiaBitmap()).encodeToData(EncodedImageFormat.PNG) ?: return false
         dir.mkdirs()
         File(dir, "$name.png").writeBytes(data.bytes)
@@ -103,8 +108,9 @@ object E2e {
 fun Modifier.e2eCapture(windowId: String): Modifier {
     if (!E2e.enabled) return this
     val layer = rememberGraphicsLayer()
-    DisposableEffect(windowId, layer) {
-        E2e.registerLayer(windowId, layer)
+    val gpu = rememberTaoGpuRenderContext()
+    DisposableEffect(windowId, layer, gpu) {
+        E2e.registerLayer(windowId, layer, gpu)
         onDispose { if (E2e.layer(windowId) === layer) E2e.registerLayer(windowId, null) }
     }
     return drawWithContent {

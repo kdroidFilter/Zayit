@@ -16,6 +16,7 @@ import io.github.kdroidfilter.seforimapp.core.favorites.FavoritesStore
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.selection.DefaultSelectionContext
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
@@ -48,7 +49,7 @@ import java.nio.file.Paths
 object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
-    fun provideMainAppState(): MainAppState = MainAppState()
+    fun provideMainAppState(appSettings: AppSettings): MainAppState = MainAppState(appSettings)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -224,7 +225,7 @@ object AppCoreBindings {
         titleUpdateManager: TabTitleUpdateManager,
         repository: SeforimRepository,
         lookup: LuceneLookupSearchService,
-        settings: Settings,
+        appSettings: AppSettings,
         sessionManager: SessionManager,
     ): DesktopManager =
         DesktopManager(
@@ -238,7 +239,7 @@ object AppCoreBindings {
                     persistedStore = tabPersistedStateStore,
                     repository = repository,
                     lookup = lookup,
-                    settings = settings,
+                    appSettings = appSettings,
                 )
             },
             bootState = sessionManager.loadBootState(repository),

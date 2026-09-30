@@ -49,6 +49,7 @@ class BookContentViewModel(
     private val desktopManager: DesktopManager,
     private val historyStore: HistoryStore,
     sessionManager: SessionManager,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(BookContentViewModel::class)
@@ -746,7 +747,7 @@ class BookContentViewModel(
      * Called when opening a book from search results, toolbar, or links.
      */
     private fun closeBookTreeIfEnabled() {
-        if (AppSettings.getCloseBookTreeOnNewBookSelected()) {
+        if (appSettings.getCloseBookTreeOnNewBookSelected()) {
             val isTreeVisible = stateManager.state.value.navigation.isVisible
             if (isTreeVisible) {
                 navigationUseCase.toggleBookTree()

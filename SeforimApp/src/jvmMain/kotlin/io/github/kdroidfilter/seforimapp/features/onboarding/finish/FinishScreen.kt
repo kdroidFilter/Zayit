@@ -34,14 +34,14 @@ import kotlin.time.Duration.Companion.seconds
 @Composable
 fun FinishScreen(progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState) {
     val mainAppState = LocalAppGraph.current.mainAppState
+    val appSettings = LocalAppGraph.current.appSettings
     LaunchedEffect(Unit) { progressBarState.setProgress(1f) }
     OnBoardingScaffold(
         title = stringResource(Res.string.onboarding_ready),
         bottomAction = {
             DefaultButton(onClick = {
                 // Persist that onboarding was completed and open the app
-                io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-                    .setOnboardingFinished(true)
+                appSettings.setOnboardingFinished(true)
                 mainAppState.setShowOnBoarding(false)
             }) {
                 Text(stringResource(Res.string.onboarding_open_app))

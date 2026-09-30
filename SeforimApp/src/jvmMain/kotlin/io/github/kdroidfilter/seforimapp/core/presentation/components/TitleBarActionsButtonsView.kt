@@ -7,7 +7,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
@@ -27,6 +26,7 @@ private val SystemTheme = PathIconKey("icons/system_theme.svg", SystemThemeIconA
 
 @Composable
 fun TitleBarActionsButtonsView() {
+    val appSettings = LocalAppGraph.current.appSettings
     val appGraph = LocalAppGraph.current
     val mainAppState = appGraph.mainAppState
     val theme = mainAppState.theme.collectAsState().value
@@ -129,8 +129,8 @@ fun TitleBarActionsButtonsView() {
             val selectedIndex = tabsViewModel.selectedTabIndex.value
             val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@TitleBarActionButton
             // Toggle the Find-in-Page bar for the current tab only
-            val isOpen = AppSettings.findBarOpenFlow(tabId).value
-            if (isOpen) AppSettings.closeFindBar(tabId) else AppSettings.openFindBar(tabId)
+            val isOpen = appSettings.findBarOpenFlow(tabId).value
+            if (isOpen) appSettings.closeFindBar(tabId) else appSettings.openFindBar(tabId)
         },
         tooltipText =
             if (findEnabled) {

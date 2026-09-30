@@ -31,7 +31,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
@@ -82,7 +81,7 @@ private data class StartupState(
 private fun computeStartupState(appGraph: AppGraph): StartupState =
     try {
         appGraph.databasePathProvider.get()
-        val onboardingFinished = AppSettings.isOnboardingFinished()
+        val onboardingFinished = appGraph.appSettings.isOnboardingFinished()
         if (!onboardingFinished) {
             StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
         } else {
@@ -94,7 +93,7 @@ private fun computeStartupState(appGraph: AppGraph): StartupState =
             }
         }
     } catch (_: Exception) {
-        val onboardingFinished = AppSettings.isOnboardingFinished()
+        val onboardingFinished = appGraph.appSettings.isOnboardingFinished()
         if (!onboardingFinished) {
             StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
         } else {
@@ -169,8 +168,6 @@ fun main(args: Array<String>) {
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
-        // Ensure AppSettings uses the DI-provided Settings immediately
-        AppSettings.initialize(appGraph.settings)
 
         // Register the AWT-level keyboard shortcuts here (instead of in main()) so they can read
         // from the DI-provided SelectionContext. The DisposableEffect re-runs only if the graph
@@ -251,7 +248,7 @@ fun main(args: Array<String>) {
             mainAppState.setShowOnBoarding(startupState.showOnboarding)
         }
 
-        val initialTheme = remember { AppSettings.getThemeMode() }
+        val initialTheme = remember { appGraph.appSettings.getThemeMode() }
         LaunchedEffect(initialTheme) {
             if (mainAppState.theme.value != initialTheme) {
                 mainAppState.setTheme(initialTheme)

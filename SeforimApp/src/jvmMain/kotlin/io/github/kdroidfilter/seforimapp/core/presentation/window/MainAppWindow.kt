@@ -46,7 +46,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMod
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
@@ -76,6 +75,7 @@ fun NucleusApplicationScope.MainAppWindow(
     windowViewModelOwner: ViewModelStoreOwner,
     onQuit: () -> Unit,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val appGraph = LocalAppGraph.current
     val desktopMgr = appGraph.desktopManager
     val tabsVm = openWindow.tabsViewModel
@@ -219,6 +219,7 @@ fun NucleusApplicationScope.MainAppWindow(
                 } else {
                     processKeyShortcuts(
                         keyEvent = keyEvent,
+                        appSettings = appSettings,
                         onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
                         tabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: "",
                     )
@@ -283,7 +284,7 @@ fun NucleusApplicationScope.MainAppWindow(
 
             // Keep the screen awake while a book is open in the current tab and this window is
             // focused — opt-out via the General settings (enabled by default).
-            val keepAwakeEnabled by AppSettings.keepScreenAwakeOnBookFlow.collectAsState()
+            val keepAwakeEnabled by appSettings.keepScreenAwakeOnBookFlow.collectAsState()
             val shouldKeepScreenAwake =
                 keepAwakeEnabled &&
                     state.isActive &&

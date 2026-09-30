@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.framework.di.modules
 
-import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
@@ -36,10 +35,7 @@ object OnboardingBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideExtractUseCase(settings: Settings): ExtractUseCase {
-        AppSettings.initialize(settings)
-        return ExtractUseCase()
-    }
+    fun provideExtractUseCase(appSettings: AppSettings): ExtractUseCase = ExtractUseCase(appSettings)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -63,8 +59,10 @@ object OnboardingBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideDatabaseCleanupUseCase(databasePathProvider: DatabasePathProvider): DatabaseCleanupUseCase =
-        DatabaseCleanupUseCase(databasePathProvider)
+    fun provideDatabaseCleanupUseCase(
+        databasePathProvider: DatabasePathProvider,
+        appSettings: AppSettings,
+    ): DatabaseCleanupUseCase = DatabaseCleanupUseCase(databasePathProvider, appSettings)
 
     @Provides
     @SingleIn(AppScope::class)

@@ -24,7 +24,6 @@ import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
@@ -40,13 +39,14 @@ fun AppNativeMenuBar(
     settingsWindowViewModel: SettingsWindowViewModel,
     onQuit: () -> Unit,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val theme by mainAppState.theme.collectAsState()
     val themeStyle by mainAppState.themeStyle.collectAsState()
     val accentColor by mainAppState.accentColor.collectAsState()
-    val showZmanim by AppSettings.showZmanimWidgetsFlow.collectAsState()
-    val compactMode by AppSettings.compactModeFlow.collectAsState()
-    val persistSession by AppSettings.persistSessionFlow.collectAsState()
-    val closeTreeOnNewBook by AppSettings.closeBookTreeOnNewBookSelectedFlow.collectAsState()
+    val showZmanim by appSettings.showZmanimWidgetsFlow.collectAsState()
+    val compactMode by appSettings.compactModeFlow.collectAsState()
+    val persistSession by appSettings.persistSessionFlow.collectAsState()
+    val closeTreeOnNewBook by appSettings.closeBookTreeOnNewBookSelectedFlow.collectAsState()
     val tabsState by tabsViewModel.state.collectAsState()
 
     // Chrome-like History menu data: recent visits, refreshed on every history write
@@ -212,7 +212,7 @@ fun AppNativeMenuBar(
                 val tabs = tabsViewModel.tabs.value
                 val selectedIndex = tabsViewModel.selectedTabIndex.value
                 val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@Item
-                AppSettings.toggleFindBar(tabId)
+                appSettings.toggleFindBar(tabId)
             }
         }
 
@@ -271,25 +271,25 @@ fun AppNativeMenuBar(
             CheckboxItem(
                 text = showZmanimLabel,
                 checked = showZmanim,
-                onCheckedChange = { AppSettings.setShowZmanimWidgetsEnabled(it) },
+                onCheckedChange = { appSettings.setShowZmanimWidgetsEnabled(it) },
             )
 
             CheckboxItem(
                 text = compactModeLabel,
                 checked = compactMode,
-                onCheckedChange = { AppSettings.setCompactModeEnabled(it) },
+                onCheckedChange = { appSettings.setCompactModeEnabled(it) },
             )
 
             CheckboxItem(
                 text = persistSessionLabel,
                 checked = persistSession,
-                onCheckedChange = { AppSettings.setPersistSessionEnabled(it) },
+                onCheckedChange = { appSettings.setPersistSessionEnabled(it) },
             )
 
             CheckboxItem(
                 text = closeTreeLabel,
                 checked = closeTreeOnNewBook,
-                onCheckedChange = { AppSettings.setCloseBookTreeOnNewBookSelected(it) },
+                onCheckedChange = { appSettings.setCloseBookTreeOnNewBookSelected(it) },
             )
 
             Separator()
@@ -299,13 +299,13 @@ fun AppNativeMenuBar(
                 text = menuZoomIn,
                 icon = NsMenuItemImage.SystemSymbol(SFSymbolTextFormatting.TEXTFORMAT_SIZE_LARGER),
             ) {
-                AppSettings.increaseTextSize()
+                appSettings.increaseTextSize()
             }
             Item(
                 text = menuZoomOut,
                 icon = NsMenuItemImage.SystemSymbol(SFSymbolTextFormatting.TEXTFORMAT_SIZE_SMALLER),
             ) {
-                AppSettings.decreaseTextSize()
+                appSettings.decreaseTextSize()
             }
 
             Separator()

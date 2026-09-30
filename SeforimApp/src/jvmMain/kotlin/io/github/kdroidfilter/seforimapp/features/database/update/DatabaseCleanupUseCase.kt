@@ -20,7 +20,7 @@ import kotlin.coroutines.cancellation.CancellationException
  * before a fresh install.
  *
  * Deletion is authoritative: it targets the directory of the *actual* configured
- * database ([AppSettings.getDatabasePath]) as well as the default databases
+ * database ([appSettings.getDatabasePath]) as well as the default databases
  * directory, so a database installed by an older build in a non-default location is
  * still removed. NIO [Files.deleteIfExists] is used so a locked file — common on
  * Windows when an antivirus, the Windows Search indexer, or a leftover handle holds
@@ -31,6 +31,7 @@ import kotlin.coroutines.cancellation.CancellationException
  */
 class DatabaseCleanupUseCase(
     private val databasePathProvider: DatabasePathProvider,
+    private val appSettings: AppSettings,
 ) {
     sealed interface CleanupResult {
         /** Every known artifact was removed (or was already absent). */
@@ -46,11 +47,11 @@ class DatabaseCleanupUseCase(
 
     suspend fun cleanupDatabaseFiles(): CleanupResult =
         withContext(Dispatchers.IO) {
-            val currentDbPath = AppSettings.getDatabasePath()
+            val currentDbPath = appSettings.getDatabasePath()
 
             // The old database is going away: forget the recorded path and the cached
             // resolution so the app re-resolves the freshly installed location later.
-            AppSettings.setDatabasePath(null)
+            appSettings.setDatabasePath(null)
             databasePathProvider.reset()
 
             // Candidate directories: the real DB directory (may be non-default for

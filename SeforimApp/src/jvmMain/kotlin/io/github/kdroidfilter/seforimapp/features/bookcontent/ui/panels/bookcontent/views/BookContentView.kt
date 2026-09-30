@@ -132,6 +132,7 @@ fun BookContentView(
     bookCharCounts: IntArray? = null,
     onPointerZoomInProgressChange: (Boolean) -> Unit = {},
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
     val listState =
@@ -148,7 +149,7 @@ fun BookContentView(
     var textLayoutWidthPx by remember(bookId) { mutableIntStateOf(0) }
 
     // Collect text size from settings
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
     val currentOnPointerZoomInProgressChange by rememberUpdatedState(onPointerZoomInProgressChange)
     val pointerZoomScope = rememberCoroutineScope()
@@ -168,7 +169,7 @@ fun BookContentView(
 
     fun beginPointerZoom() {
         if (!isPointerZooming) {
-            val currentTextSize = AppSettings.textSizeFlow.value
+            val currentTextSize = appSettings.textSizeFlow.value
             pointerZoomAccumulator.targetTextSize = currentTextSize
             pointerZoomRenderedTextSize = currentTextSize
             setPointerZooming(true)
@@ -219,8 +220,8 @@ fun BookContentView(
         if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
             pointerZoomRenderedTextSize = targetTextSize
         }
-        if (abs(targetTextSize - AppSettings.textSizeFlow.value) >= 0.01f) {
-            AppSettings.setTextSize(targetTextSize)
+        if (abs(targetTextSize - appSettings.textSizeFlow.value) >= 0.01f) {
+            appSettings.setTextSize(targetTextSize)
         }
         pointerZoomAccumulator.targetTextSize = targetTextSize
         finishPointerZoom()
@@ -276,7 +277,7 @@ fun BookContentView(
     )
 
     // Collect line height from settings
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
 
     // Animate line height changes only for the active tab
     val lineHeight by animateFloatAsState(
@@ -286,7 +287,7 @@ fun BookContentView(
     )
 
     // Selected font for main book content
-    val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
+    val bookFontCode by appSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
     // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
     val boldScaleForPlatform =
@@ -634,9 +635,9 @@ fun BookContentView(
     }
 
     // Find-in-page UI state (scoped per tab)
-    val showFind by AppSettings.findBarOpenFlow(tabId).collectAsState()
-    val persistedFindQuery by AppSettings.findQueryFlow(tabId).collectAsState("")
-    val smartModeEnabled by AppSettings.findSmartModeFlow(tabId).collectAsState()
+    val showFind by appSettings.findBarOpenFlow(tabId).collectAsState()
+    val persistedFindQuery by appSettings.findQueryFlow(tabId).collectAsState("")
+    val smartModeEnabled by appSettings.findSmartModeFlow(tabId).collectAsState()
     val findState = remember(tabId) { TextFieldState() }
     LaunchedEffect(persistedFindQuery) {
         val current = findState.text.toString()
@@ -850,7 +851,7 @@ fun BookContentView(
 
                         Key.Escape -> {
                             if (showFind) {
-                                AppSettings.closeFindBar(tabId)
+                                appSettings.closeFindBar(tabId)
                                 true
                             } else {
                                 false
@@ -1265,13 +1266,13 @@ fun BookContentView(
                     state = findState,
                     onEnterNext = { navigateToMatch(true, scope) },
                     onEnterPrev = { navigateToMatch(false, scope) },
-                    onClose = { AppSettings.closeFindBar(tabId) },
+                    onClose = { appSettings.closeFindBar(tabId) },
                     smartModeEnabled = smartModeEnabled,
-                    onToggleSmartMode = { AppSettings.toggleFindSmartMode(tabId) },
+                    onToggleSmartMode = { appSettings.toggleFindSmartMode(tabId) },
                 )
                 LaunchedEffect(findState.text, showFind) {
                     val q = findState.text.toString()
-                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
+                    appSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
                 }
             }
         }

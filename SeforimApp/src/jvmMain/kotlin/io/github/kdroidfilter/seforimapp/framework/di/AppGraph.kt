@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoritesStore
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
@@ -45,6 +46,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val tabThumbnailStore: TabThumbnailStore
     abstract val tabTitleUpdateManager: TabTitleUpdateManager
     abstract val settings: Settings
+    abstract val appSettings: AppSettings
     abstract val categoryDisplaySettingsStore: CategoryDisplaySettingsStore
     abstract val highlightStore: HighlightStore
     abstract val historyStore: HistoryStore

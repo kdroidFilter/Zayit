@@ -5,6 +5,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
+import io.github.kdroidfilter.seforimapp.testAppSettings
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
@@ -26,7 +27,7 @@ class SettingsWindowViewModelTest {
                 ),
             titleUpdateManager = TabTitleUpdateManager(),
             searchHomeViewModelFactory = {
-                SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+                SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), testAppSettings())
             },
             defaultDesktopName = "D1",
         )

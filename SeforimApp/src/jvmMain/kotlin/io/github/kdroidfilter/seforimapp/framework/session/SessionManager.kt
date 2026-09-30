@@ -42,6 +42,7 @@ import java.io.File
 class SessionManager(
     private val desktopManager: Lazy<DesktopManager>,
     private val tabThumbnailStore: TabThumbnailStore,
+    private val appSettings: AppSettings,
 ) {
     private val proto = ProtoBuf
 
@@ -59,12 +60,12 @@ class SessionManager(
     private fun desktopsFile(): File = File(sessionDir(), "desktops_v1.pb")
 
     private fun hasSavedSessionToRestore(): Boolean =
-        AppSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
+        appSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
 
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled() {
         // The end-to-end harness must never overwrite the user's session.
-        if (E2e.enabled || !AppSettings.isPersistSessionEnabled()) return
+        if (E2e.enabled || !appSettings.isPersistSessionEnabled()) return
 
         val desktopsState = desktopManager.value.buildDesktopsState()
         // The hover-card pictures of tabs no desktop holds any more.
@@ -98,7 +99,7 @@ class SessionManager(
      * an application composing no window at all is closed at once. Null when disabled or absent.
      */
     fun loadBootState(repository: SeforimRepository): DesktopsState? {
-        if (E2e.enabled || !AppSettings.isPersistSessionEnabled()) return null
+        if (E2e.enabled || !appSettings.isPersistSessionEnabled()) return null
         val state = loadDesktopsState()?.takeIf { it.desktops.isNotEmpty() } ?: return null
         // Tabs saved without a title (book names come from the DB) are named before they are shown.
         return runCatching { runBlocking { enrichMissingTabTitles(state, repository) } }.getOrDefault(state)
@@ -107,7 +108,7 @@ class SessionManager(
     /** Clears the restoring flag once the restored tabs' ViewModels have been created. */
     suspend fun restoreIfEnabled() {
         try {
-            if (!AppSettings.isPersistSessionEnabled()) return
+            if (!appSettings.isPersistSessionEnabled()) return
             // Give Compose one recomposition cycle to create the restored tabs' ViewModels (whose
             // initial state has isLoading=true); clearing the flag earlier flashes the Home page.
             withContext(NonCancellable) { delay(150) }

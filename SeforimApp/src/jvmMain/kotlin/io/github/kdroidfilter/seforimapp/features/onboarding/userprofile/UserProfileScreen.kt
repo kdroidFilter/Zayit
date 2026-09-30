@@ -23,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
@@ -57,6 +56,7 @@ fun UserProfileScreen(
     navController: NavController,
     progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val viewModel: UserProfileViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
@@ -73,9 +73,9 @@ fun UserProfileScreen(
             val firstName = state.firstName.trim()
             val lastName = state.lastName.trim()
             val community = state.communities.getOrNull(state.selectedCommunityIndex)
-            AppSettings.setUserFirstName(firstName)
-            AppSettings.setUserLastName(lastName)
-            AppSettings.setUserCommunityCode(community?.name)
+            appSettings.setUserFirstName(firstName)
+            appSettings.setUserLastName(lastName)
+            appSettings.setUserCommunityCode(community?.name)
             navController.navigate(OnBoardingDestination.RegionConfigScreen)
         },
         canProceed = canProceed,

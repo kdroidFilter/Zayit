@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
 import org.jetbrains.compose.resources.stringResource
@@ -66,8 +67,9 @@ fun EndVerticalBar(
     onEvent: (BookContentEvent) -> Unit,
     showDiacritics: Boolean,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     // Collect current text size from settings
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
 
     // Determine if zoom buttons should be selected based on text size
     // Also check if we've reached min/max limits to disable buttons appropriately
@@ -121,7 +123,7 @@ fun EndVerticalBar(
                     } else {
                         stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
                     },
-                onClick = { AppSettings.increaseTextSize() },
+                onClick = { appSettings.increaseTextSize() },
                 isSelected = false,
                 enabled = canZoomIn,
                 icon = ZoomIn,
@@ -136,7 +138,7 @@ fun EndVerticalBar(
                     } else {
                         stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
                     },
-                onClick = { AppSettings.decreaseTextSize() },
+                onClick = { appSettings.decreaseTextSize() },
                 isSelected = false,
                 enabled = canZoomOut,
                 icon = ZoomOut,

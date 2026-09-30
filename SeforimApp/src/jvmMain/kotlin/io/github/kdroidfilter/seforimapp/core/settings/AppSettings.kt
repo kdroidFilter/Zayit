@@ -3,9 +3,12 @@ package io.github.kdroidfilter.seforimapp.core.settings
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -13,109 +16,13 @@ import kotlinx.coroutines.flow.asStateFlow
 /**
  * Manages application settings and preferences that persist across app restarts.
  * Uses Multiplatform Settings library for cross-platform storage.
- * Single, global settings instance (no interface, no delegation).
+ * App-scoped in the Metro graph; read it from there (constructor or LocalAppGraph).
  */
-object AppSettings {
-    // Text size constants
-    const val DEFAULT_TEXT_SIZE = 16f
-    const val MIN_TEXT_SIZE = 14f
-    const val MAX_TEXT_SIZE = 50f
-    const val TEXT_SIZE_INCREMENT = 2f
-
-    // Line height constants
-    const val DEFAULT_LINE_HEIGHT = 1.5f
-    const val MIN_LINE_HEIGHT = 1.0f
-    const val MAX_LINE_HEIGHT = 2.5f
-    const val LINE_HEIGHT_INCREMENT = 0.1f
-
-    // Max commentators displayed per commentaries page.
-    // 0 = automatic (fit as many as the available space allows). A positive value acts as a
-    // ceiling: the grid never shows more than this per page, but still shows fewer when the
-    // pane only has room for fewer.
-    const val MAX_COMMENTATORS_PER_PAGE_AUTO = 0
-    const val MAX_COMMENTATORS_PER_PAGE_LIMIT = 6
-    const val DEFAULT_MAX_COMMENTATORS_PER_PAGE = MAX_COMMENTATORS_PER_PAGE_AUTO
-
-    // Default font codes
-    const val DEFAULT_BOOK_FONT = "notoserifhebrew"
-    const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
-    const val DEFAULT_TARGUM_FONT = "taameyashkenaz"
-    const val DEFAULT_SOURCE_FONT = "tinos"
-
-    // Tab display constants
-    const val MAX_TAB_TITLE_LENGTH = 20
-
-    // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
-    const val TAB_FIXED_WIDTH_DP = 180
-
-    // Settings keys
-    private const val KEY_TEXT_SIZE = "text_size"
-    private const val KEY_LINE_HEIGHT = "line_height"
-    private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"
-    private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
-    private const val KEY_DATABASE_PATH = "database_path"
-    private const val KEY_PERSIST_SESSION = "persist_session"
-    private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
-    private const val KEY_FONT_BOOK = "font_book"
-    private const val KEY_FONT_COMMENTARY = "font_commentary"
-    private const val KEY_FONT_TARGUM = "font_targum"
-    private const val KEY_FONT_SOURCE = "font_source"
-    private const val KEY_SAVED_SESSION = "saved_session_json"
-    private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
-    private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
-    private const val SESSION_CHUNK_SIZE = 4000
-
-    // Onboarding state
-    private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
-
-    // Region configuration keys
-    private const val KEY_REGION_COUNTRY = "region_country"
-    private const val KEY_REGION_CITY = "region_city"
-
-    // User profile keys
-    private const val KEY_USER_FIRST_NAME = "user_first_name"
-    private const val KEY_USER_LAST_NAME = "user_last_name"
-    private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
-
-    // Theme configuration
-    private const val KEY_THEME_MODE = "theme_mode"
-    private const val KEY_THEME_STYLE = "theme_style"
-    private const val KEY_ACCENT_COLOR = "accent_color"
-
-    // Zmanim widgets visibility
-    private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
-
-    // Homepage wallpaper visibility
-    private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
-
-    // Compact mode for vertical bars
-    private const val KEY_COMPACT_MODE = "compact_mode"
-
-    // Backing Settings storage (can be replaced at startup if needed)
-    @Volatile
-    private var settings: Settings = Settings()
-
-    // Allow optional initialization with an externally provided Settings instance
-    fun initialize(settings: Settings) {
-        this.settings = settings
-        // Refresh flows with current values from provided settings
-        _textSizeFlow.value = getTextSize()
-        _lineHeightFlow.value = getLineHeight()
-        _maxCommentatorsPerPageFlow.value = getMaxCommentatorsPerPage()
-        _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
-        _databasePathFlow.value = getDatabasePath()
-        _persistSessionFlow.value = isPersistSessionEnabled()
-        _keepScreenAwakeOnBookFlow.value = isKeepScreenAwakeOnBookEnabled()
-        _bookFontCodeFlow.value = getBookFontCode()
-        _commentaryFontCodeFlow.value = getCommentaryFontCode()
-        _targumFontCodeFlow.value = getTargumFontCode()
-        _sourceFontCodeFlow.value = getSourceFontCode()
-        // User profile reactive values
-        _userFirstNameFlow.value = getUserFirstName() ?: ""
-        _userLastNameFlow.value = getUserLastName() ?: ""
-        _userCommunityCodeFlow.value = getUserCommunityCode()
-    }
-
+@Inject
+@SingleIn(AppScope::class)
+class AppSettings(
+    private val settings: Settings,
+) {
     // StateFlow to observe text size changes
     private val _textSizeFlow = MutableStateFlow(getTextSize())
     val textSizeFlow: StateFlow<Float> = _textSizeFlow.asStateFlow()
@@ -543,5 +450,82 @@ object AppSettings {
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
         _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT
         _sourceFontCodeFlow.value = DEFAULT_SOURCE_FONT
+    }
+
+    companion object {
+        // Text size constants
+        const val DEFAULT_TEXT_SIZE = 16f
+        const val MIN_TEXT_SIZE = 14f
+        const val MAX_TEXT_SIZE = 50f
+        const val TEXT_SIZE_INCREMENT = 2f
+
+        // Line height constants
+        const val DEFAULT_LINE_HEIGHT = 1.5f
+        const val MIN_LINE_HEIGHT = 1.0f
+        const val MAX_LINE_HEIGHT = 2.5f
+        const val LINE_HEIGHT_INCREMENT = 0.1f
+
+        // Max commentators displayed per commentaries page.
+        // 0 = automatic (fit as many as the available space allows). A positive value acts as a
+        // ceiling: the grid never shows more than this per page, but still shows fewer when the
+        // pane only has room for fewer.
+        const val MAX_COMMENTATORS_PER_PAGE_AUTO = 0
+        const val MAX_COMMENTATORS_PER_PAGE_LIMIT = 6
+        const val DEFAULT_MAX_COMMENTATORS_PER_PAGE = MAX_COMMENTATORS_PER_PAGE_AUTO
+
+        // Default font codes
+        const val DEFAULT_BOOK_FONT = "notoserifhebrew"
+        const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
+        const val DEFAULT_TARGUM_FONT = "taameyashkenaz"
+        const val DEFAULT_SOURCE_FONT = "tinos"
+
+        // Tab display constants
+        const val MAX_TAB_TITLE_LENGTH = 20
+
+        // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
+        const val TAB_FIXED_WIDTH_DP = 180
+
+        // Settings keys
+        private const val KEY_TEXT_SIZE = "text_size"
+        private const val KEY_LINE_HEIGHT = "line_height"
+        private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"
+        private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
+        private const val KEY_DATABASE_PATH = "database_path"
+        private const val KEY_PERSIST_SESSION = "persist_session"
+        private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
+        private const val KEY_FONT_BOOK = "font_book"
+        private const val KEY_FONT_COMMENTARY = "font_commentary"
+        private const val KEY_FONT_TARGUM = "font_targum"
+        private const val KEY_FONT_SOURCE = "font_source"
+        private const val KEY_SAVED_SESSION = "saved_session_json"
+        private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
+        private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
+        private const val SESSION_CHUNK_SIZE = 4000
+
+        // Onboarding state
+        private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
+
+        // Region configuration keys
+        private const val KEY_REGION_COUNTRY = "region_country"
+        private const val KEY_REGION_CITY = "region_city"
+
+        // User profile keys
+        private const val KEY_USER_FIRST_NAME = "user_first_name"
+        private const val KEY_USER_LAST_NAME = "user_last_name"
+        private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
+
+        // Theme configuration
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_THEME_STYLE = "theme_style"
+        private const val KEY_ACCENT_COLOR = "accent_color"
+
+        // Zmanim widgets visibility
+        private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
+
+        // Homepage wallpaper visibility
+        private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
+
+        // Compact mode for vertical bars
+        private const val KEY_COMPACT_MODE = "compact_mode"
     }
 }

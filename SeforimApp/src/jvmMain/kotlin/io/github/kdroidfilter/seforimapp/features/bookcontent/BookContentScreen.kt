@@ -46,7 +46,6 @@ import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRanges
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
@@ -476,6 +475,7 @@ fun BookTextMenus(
                     state: ContextMenuState,
                     content: @Composable () -> Unit,
                 ) {
+                    val appSettings = LocalAppGraph.current.appSettings
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
                     LaunchedEffect(textManager.selectedText.text) {
@@ -582,9 +582,9 @@ fun BookTextMenus(
                                         label = findInPageLabel,
                                     ) {
                                         if (query.isNotBlank()) {
-                                            AppSettings.setFindQuery(tabId, query)
+                                            appSettings.setFindQuery(tabId, query)
                                         }
-                                        AppSettings.openFindBar(tabId)
+                                        appSettings.openFindBar(tabId)
                                     },
                                 )
                                 // Add note (main pane only): anchors a note to the selected text,

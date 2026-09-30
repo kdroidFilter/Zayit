@@ -5,7 +5,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
@@ -38,9 +37,9 @@ object E2eScenario {
         val state = appGraph.mainAppState
         val theme = state.theme.value
         val style = state.themeStyle.value
-        val textSize = AppSettings.getTextSize()
+        val textSize = graph.appSettings.getTextSize()
         // Every run starts from the same reading settings, whatever the machine was left at.
-        AppSettings.setTextSize(E2E_TEXT_SIZE)
+        graph.appSettings.setTextSize(E2E_TEXT_SIZE)
         try {
             runCommon()
             extra(this)
@@ -49,7 +48,7 @@ object E2eScenario {
         } finally {
             state.setTheme(theme)
             state.setThemeStyle(style)
-            AppSettings.setTextSize(textSize)
+            graph.appSettings.setTextSize(textSize)
             E2e.outDir?.let { File(it, "log.txt").writeText(log.toString()) }
             quit()
         }
@@ -95,7 +94,7 @@ object E2eScenario {
                 }
             }.getOrNull()
         val tabs = dm.windows.value.map { it.tabsViewModel.state.value.tabs.size }
-        note("$name: text=${AppSettings.textSizeFlow.value} ${dm.windows.value.size} window(s), tabs=$tabs $scroll")
+        note("$name: text=${graph.appSettings.textSizeFlow.value} ${dm.windows.value.size} window(s), tabs=$tabs $scroll")
     }
 
     private suspend fun runCommon() {

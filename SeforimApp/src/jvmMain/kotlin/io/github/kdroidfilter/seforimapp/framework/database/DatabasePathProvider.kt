@@ -22,7 +22,9 @@ private const val DEFAULT_DB_NAME = "seforim.db"
  */
 @Inject
 @SingleIn(AppScope::class)
-class DatabasePathProvider {
+class DatabasePathProvider(
+    private val appSettings: AppSettings,
+) {
     @Volatile
     private var cached: String? = null
 
@@ -44,11 +46,11 @@ class DatabasePathProvider {
         val envDbPath = System.getenv("SEFORIMAPP_DATABASE_PATH")?.takeIf { it.isNotBlank() }
 
         // 2) Try AppSettings (but fix if it points to lexical.db which is wrong)
-        val rawSettingsPath = AppSettings.getDatabasePath()
+        val rawSettingsPath = appSettings.getDatabasePath()
         val settingsPath =
             if (rawSettingsPath?.endsWith("lexical.db", ignoreCase = true) == true) {
                 // Fix incorrect path by clearing it
-                AppSettings.setDatabasePath(null)
+                appSettings.setDatabasePath(null)
                 null
             } else {
                 rawSettingsPath

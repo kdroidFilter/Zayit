@@ -59,13 +59,13 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomTogg
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
-import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
-import io.github.kdroidfilter.seforimapp.earthwidget.SkyWidgetView
-import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
-import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocation
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocationViewModel
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsHost
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.homeWidgets
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
@@ -93,7 +93,6 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Cursor
-import java.time.LocalDate
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
@@ -157,7 +156,7 @@ fun HomeView(
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
     modifier: Modifier = Modifier,
-    homeCelestialWidgetsState: HomeCelestialWidgetsState? = null,
+    homeUserLocation: HomeUserLocation? = null,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     CatalogRow(onEvent = onEvent)
@@ -246,7 +245,7 @@ fun HomeView(
         HomeBody(
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
-            homeCelestialWidgetsState = homeCelestialWidgetsState,
+            homeUserLocation = homeUserLocation,
         )
     }
 }
@@ -264,40 +263,26 @@ fun HomeView(
 private fun HomeBody(
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
-    homeCelestialWidgetsState: HomeCelestialWidgetsState?,
+    homeUserLocation: HomeUserLocation?,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     // Whether to show zmanim widgets
     val showZmanimWidgets by appSettings.showZmanimWidgetsFlow.collectAsState()
 
-    // Date picked in the zmanim / Earth widgets, followed by the solar system widget (null until reported)
-    var homeWidgetsDate by remember { mutableStateOf<LocalDate?>(null) }
-    var showSolarSystemWindow by remember { mutableStateOf(false) }
-    var skyMoment by remember { mutableStateOf<HomeSkyMoment?>(null) }
-    // Kiddush Levana opinions by community, as the Earth widget (HomeCelestialWidgets) picks them
-    val sephardi = searchUi.userCommunityCode == Community.SEPHARADE.name
-    val kiddushLevanaEarliest = if (sephardi) KiddushLevanaEarliestOpinion.DAYS_7 else KiddushLevanaEarliestOpinion.DAYS_3
-    val kiddushLevanaLatest = if (sephardi) KiddushLevanaLatestOpinion.DAYS_15 else KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
-
-    val celestialWidgetsState =
-        if (homeCelestialWidgetsState != null) {
-            homeCelestialWidgetsState
-        } else {
-            val viewModel: HomeCelestialWidgetsViewModel =
+    val userLocation =
+        homeUserLocation ?: run {
+            val viewModel: HomeUserLocationViewModel =
                 metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
             val state by viewModel.state.collectAsState()
             state
         }
-    // Composed here, outside the LazyColumn, so scrolling the card away doesn't close it
-    if (showSolarSystemWindow) {
-        SolarSystemWindow(
-            date = homeWidgetsDate,
-            inIsrael = celestialWidgetsState.inIsrael,
-            kiddushLevanaEarliest = kiddushLevanaEarliest,
-            kiddushLevanaLatest = kiddushLevanaLatest,
-            onClose = { showSolarSystemWindow = false },
-        )
-    }
+    val community =
+        remember(searchUi.userCommunityCode) {
+            searchUi.userCommunityCode?.let { code -> runCatching { Community.valueOf(code) }.getOrNull() }
+        }
+    val widgetsState = remember(userLocation, community) { HomeWidgetsState(userLocation, community) }
+    // Composed here, outside the LazyColumn, so scrolling a card away doesn't close its window
+    homeWidgets.forEach { it.Detached(widgetsState) }
 
     val listState = rememberLazyListState()
 
@@ -632,89 +617,10 @@ private fun HomeBody(
                 if (showZmanimWidgets) {
                     item {
                         Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 16.dp, bottom = 8.dp),
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            HomeCelestialWidgets(
-                                modifier = Modifier.fillMaxWidth(),
-                                userCommunityCode = searchUi.userCommunityCode,
-                                locationState = celestialWidgetsState,
-                                onSelectedDateChange = { homeWidgetsDate = it },
-                                onSkyMomentChange = { skyMoment = it },
-                            )
-                        }
-                    }
-                    item {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 16.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val twoCardsWidth = (ZMANIM_CARD_HEIGHT * 2) + ZMANIM_HORIZONTAL_SPACING
-                            // As wide as the zmanim block above (HomeCelestialWidgets caps it at 1000dp)
-                            Row(
-                                modifier = Modifier.widthIn(max = 1000.dp).fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(ZMANIM_HORIZONTAL_SPACING),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                TempleDestructionCountdownCard(
-                                    modifier =
-                                        Modifier
-                                            .width(twoCardsWidth)
-                                            .height(ZMANIM_CARD_HEIGHT * 1.5f),
-                                )
-                                if (isEarthWidgetSupported) {
-                                    // Same height and frame as the Temple card beside it
-                                    val cardShape = RoundedCornerShape(18.dp)
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .width((ZMANIM_CARD_HEIGHT * 3) + (ZMANIM_HORIZONTAL_SPACING * 2))
-                                                .height(ZMANIM_CARD_HEIGHT * 1.5f)
-                                                .clip(cardShape)
-                                                .background(Color.Black)
-                                                .border(1.5.dp, JewelTheme.globalColors.borders.disabled, cardShape),
-                                    ) {
-                                        // Filament renders every vsync while composed; hidden tabs stay composed, so drop it there.
-                                        if (LocalTabSelected.current) {
-                                            SolarSystemWidgetView(
-                                                modifier = Modifier.fillMaxSize(),
-                                                date = homeWidgetsDate,
-                                                timeMillis = skyMoment?.timeMillis,
-                                                onFullscreen = { showSolarSystemWindow = true },
-                                                inIsrael = celestialWidgetsState.inIsrael,
-                                                kiddushLevanaEarliestOpinion = kiddushLevanaEarliest,
-                                                kiddushLevanaLatestOpinion = kiddushLevanaLatest,
-                                            )
-                                        }
-                                    }
-                                    // The sky fills what's left of the row, framed like the Temple card
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .weight(1f)
-                                                .height(ZMANIM_CARD_HEIGHT * 1.5f)
-                                                .clip(cardShape)
-                                                .background(Color.Black)
-                                                .border(1.5.dp, JewelTheme.globalColors.borders.disabled, cardShape),
-                                    ) {
-                                        if (LocalTabSelected.current) {
-                                            val place = celestialWidgetsState.userPlace
-                                            SkyWidgetView(
-                                                latitude = skyMoment?.latitude ?: place.lat,
-                                                longitude = skyMoment?.longitude ?: place.lng,
-                                                timeMillis = skyMoment?.timeMillis,
-                                                modifier = Modifier.fillMaxSize(),
-                                            )
-                                        }
-                                    }
-                                }
-                            }
+                            HomeWidgetsHost(widgetsState)
                         }
                     }
                 }
@@ -1959,7 +1865,7 @@ private fun HomeViewPreview() {
             onEvent = {},
             searchUi = stubSearchUi,
             searchCallbacks = stubCallbacks,
-            homeCelestialWidgetsState = HomeCelestialWidgetsState.preview,
+            homeUserLocation = HomeUserLocation.preview,
             modifier = Modifier,
         )
     }

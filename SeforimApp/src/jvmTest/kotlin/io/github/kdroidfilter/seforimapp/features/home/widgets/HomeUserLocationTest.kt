@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
+package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.Place
 import kotlin.test.Test
@@ -7,13 +7,13 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class HomeCelestialWidgetsStateTest {
+class HomeUserLocationTest {
     private val testPlace = Place(lat = 48.8566, lng = 2.3522, elevation = 35.0)
 
     @Test
     fun `state stores userPlace`() {
         val state =
-            HomeCelestialWidgetsState(
+            HomeUserLocation(
                 userPlace = testPlace,
                 userCityLabel = null,
                 inIsrael = false,
@@ -24,7 +24,7 @@ class HomeCelestialWidgetsStateTest {
     @Test
     fun `state stores userCityLabel`() {
         val state =
-            HomeCelestialWidgetsState(
+            HomeUserLocation(
                 userPlace = testPlace,
                 userCityLabel = "Paris",
                 inIsrael = false,
@@ -35,7 +35,7 @@ class HomeCelestialWidgetsStateTest {
     @Test
     fun `state can have null userCityLabel`() {
         val state =
-            HomeCelestialWidgetsState(
+            HomeUserLocation(
                 userPlace = testPlace,
                 userCityLabel = null,
                 inIsrael = false,
@@ -45,21 +45,21 @@ class HomeCelestialWidgetsStateTest {
 
     @Test
     fun `preview companion object is available`() {
-        val preview = HomeCelestialWidgetsState.preview
+        val preview = HomeUserLocation.preview
         assertNotNull(preview)
         assertNull(preview.userCityLabel)
     }
 
     @Test
     fun `preview has valid place`() {
-        val preview = HomeCelestialWidgetsState.preview
+        val preview = HomeUserLocation.preview
         assertNotNull(preview.userPlace)
     }
 
     @Test
     fun `copy works correctly`() {
         val original =
-            HomeCelestialWidgetsState(
+            HomeUserLocation(
                 userPlace = testPlace,
                 userCityLabel = "Original",
                 inIsrael = false,
@@ -72,9 +72,9 @@ class HomeCelestialWidgetsStateTest {
 
     @Test
     fun `equals works correctly`() {
-        val state1 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "A", inIsrael = false)
-        val state2 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "A", inIsrael = false)
-        val state3 = HomeCelestialWidgetsState(userPlace = testPlace, userCityLabel = "B", inIsrael = false)
+        val state1 = HomeUserLocation(userPlace = testPlace, userCityLabel = "A", inIsrael = false)
+        val state2 = HomeUserLocation(userPlace = testPlace, userCityLabel = "A", inIsrael = false)
+        val state3 = HomeUserLocation(userPlace = testPlace, userCityLabel = "B", inIsrael = false)
 
         assertEquals(state1, state2)
         assertTrue(state1 != state3)

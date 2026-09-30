@@ -1,0 +1,98 @@
+package io.github.kdroidfilter.seforimapp.features.home.widgets
+
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
+import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
+import java.time.LocalDate
+import java.util.Date
+
+/**
+ * What the Home widgets share: the day and moment they show, and where. A zman card sets [targetTime], the Earth
+ * widget [selectDate] / [selectLocation], and every widget follows.
+ */
+@Stable
+class HomeWidgetsState(
+    private val user: HomeUserLocation,
+    community: Community?,
+) {
+    private val sephardi = community == Community.SEPHARADE
+
+    val kiddushLevanaEarliest = if (sephardi) KiddushLevanaEarliestOpinion.DAYS_7 else KiddushLevanaEarliestOpinion.DAYS_3
+    val kiddushLevanaLatest = if (sephardi) KiddushLevanaLatestOpinion.DAYS_15 else KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
+
+    /** The user's own region, whatever location is picked on the globe. */
+    val userInIsrael get() = user.inIsrael
+
+    private val userLocation =
+        EarthWidgetLocation(
+            latitude = user.userPlace.lat,
+            longitude = user.userPlace.lng,
+            elevationMeters = user.userPlace.elevation,
+            timeZone = timeZoneForLocation(user.userPlace.lat, user.userPlace.lng),
+        )
+
+    private class PickedLocation(
+        val location: EarthWidgetLocation,
+        val city: String,
+        val inIsrael: Boolean,
+    )
+
+    // Picked on the globe for a look around; never written to the user settings
+    private var picked by mutableStateOf<PickedLocation?>(null)
+
+    val location: EarthWidgetLocation get() = picked?.location ?: userLocation
+    val cityLabel: String? get() = picked?.city ?: user.userCityLabel
+    val inIsrael: Boolean get() = picked?.inIsrael ?: user.inIsrael
+
+    private var today by mutableStateOf(todayAt(userLocation))
+    var selectedDate by mutableStateOf(today)
+        private set
+
+    /** The moment picked on a zman card; null shows [selectedDate] at noon (or now, today). */
+    var targetTime by mutableStateOf<Date?>(null)
+
+    /** The moment the sky and the solar system show; null means now. */
+    val skyTimeMillis: Long?
+        get() =
+            targetTime?.time ?: if (selectedDate == today) {
+                null
+            } else {
+                selectedDate
+                    .atTime(12, 0)
+                    .atZone(location.timeZone.toZoneId())
+                    .toInstant()
+                    .toEpochMilli()
+            }
+
+    var solarSystemFullscreen by mutableStateOf(false)
+
+    fun selectDate(date: LocalDate) {
+        selectedDate = date
+        targetTime = null
+    }
+
+    fun selectLocation(
+        country: String,
+        city: String,
+        location: EarthWidgetLocation,
+    ) {
+        picked = PickedLocation(location, city, country == ISRAEL_COUNTRY_NAME)
+        targetTime = null
+        // Another time zone may already be on another day
+        val newToday = todayAt(location)
+        if (newToday != today) {
+            today = newToday
+            selectedDate = newToday
+        }
+    }
+
+    private fun todayAt(location: EarthWidgetLocation) = LocalDate.now(location.timeZone.toZoneId())
+}

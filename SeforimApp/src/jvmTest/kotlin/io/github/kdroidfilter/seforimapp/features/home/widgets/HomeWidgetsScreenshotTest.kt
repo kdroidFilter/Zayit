@@ -95,7 +95,7 @@ class HomeWidgetsScreenshotTest {
                             .height(if (editing) 760.dp else 900.dp),
                     ) {
                         HomeWidgetsGrid(state = state, widgets = widgets, gridState = rememberLazyGridState())
-                        if (editing) HomeWidgetsOverlay(state, widgets)
+                        HomeWidgetsOverlay(state, widgets)
                     }
                 }
             }

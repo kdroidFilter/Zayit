@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
@@ -34,12 +33,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.OutlinedButton
-import org.jetbrains.jewel.ui.component.Text
-import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.home_widgets_edit
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyGridState
 
@@ -191,18 +185,8 @@ fun HomeWidgetsGrid(
                         )
                     }
                 }
-                fullWidthItem {
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        if (state.editingWidgets) {
-                            // Lets the last widgets scroll above the gallery panel
-                            Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT))
-                        } else {
-                            OutlinedButton(onClick = { state.editingWidgets = true }) {
-                                Text(stringResource(Res.string.home_widgets_edit))
-                            }
-                        }
-                    }
-                }
+                // Lets the last widgets scroll above the gallery panel
+                if (state.editingWidgets) fullWidthItem { Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT)) }
             }
         }
     }

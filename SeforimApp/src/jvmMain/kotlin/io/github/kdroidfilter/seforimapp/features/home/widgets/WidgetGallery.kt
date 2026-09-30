@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -56,6 +58,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
@@ -67,12 +71,17 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widgets_added
 import seforimapp.seforimapp.generated.resources.home_widgets_done
+import seforimapp.seforimapp.generated.resources.home_widgets_edit
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_hint
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_title
 import seforimapp.seforimapp.generated.resources.home_widgets_removed
@@ -103,6 +112,9 @@ fun BoxScope.HomeWidgetsOverlay(
     Box(Modifier.matchParentSize().onGloballyPositioned { origin = it.positionInRoot() })
     if (state.editingWidgets) {
         WidgetGallery(state, placed, Modifier.align(Alignment.BottomCenter))
+    }
+    if (!state.editingWidgets && drag.movingId == null && drag.newWidget == null) {
+        EditWidgetsButton(state, Modifier.align(Alignment.BottomEnd).padding(20.dp))
     }
     // Only while a placed widget is moved, above the page's auto-scroll band so aiming at it doesn't scroll
     if (drag.movingId != null) {
@@ -315,6 +327,32 @@ private fun SizeChip(
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     )
+}
+
+/** A pencil floating in the Home's corner, always at hand, that opens the edit mode and its gallery. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun EditWidgetsButton(
+    state: HomeWidgetsState,
+    modifier: Modifier = Modifier,
+) {
+    val label = stringResource(Res.string.home_widgets_edit)
+    Tooltip(tooltip = { Text(label) }, modifier = modifier) {
+        val shape = CircleShape
+        IconButton(
+            onClick = { state.editingWidgets = true },
+            modifier =
+                Modifier
+                    .size(40.dp)
+                    .shadow(8.dp, shape)
+                    .clip(shape)
+                    .background(JewelTheme.globalColors.panelBackground)
+                    .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                    .semantics { contentDescription = label },
+        ) {
+            Icon(AllIconsKeys.Actions.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+    }
 }
 
 /** The drop zone a moved widget is removed in: red and larger once the pointer is over it. */

@@ -16,6 +16,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidget
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -34,14 +37,28 @@ class HomeWidgetsScreenshotTest {
     fun `render home widgets`() {
         for (width in listOf(1100, 800)) {
             for (dark in listOf(false, true)) {
-                shot(width, dark)
+                shot("widgets", width, dark, homeWidgets)
             }
         }
     }
 
+    @Test
+    fun `render calendar widget`() {
+        val layout =
+            listOf(
+                WidgetPlacement(CalendarWidget),
+                WidgetPlacement(ZmanimWidget),
+                WidgetPlacement(TempleCountdownWidget),
+                WidgetPlacement(CalendarWidget, WidgetSize.LARGE),
+            )
+        for (dark in listOf(false, true)) shot("calendar", 1100, dark, layout)
+    }
+
     private fun shot(
+        name: String,
         width: Int,
         dark: Boolean,
+        widgets: List<WidgetPlacement>,
     ) = runComposeUiTest {
         setContent {
             IntUiTheme(isDark = dark) {
@@ -55,13 +72,14 @@ class HomeWidgetsScreenshotTest {
                         HomeWidgetsHost(
                             state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE),
                             modifier = Modifier.width(width.dp),
+                            widgets = widgets,
                         )
                     }
                 }
             }
         }
         waitForIdle()
-        val out = File("build/screenshots/widgets-$width-${if (dark) "dark" else "light"}.png")
+        val out = File("build/screenshots/$name-$width-${if (dark) "dark" else "light"}.png")
         out.parentFile.mkdirs()
         ImageIO.write(onRoot().captureToImage().toAwtImage(), "png", out)
     }

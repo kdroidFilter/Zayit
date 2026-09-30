@@ -321,6 +321,8 @@
 
     <!-- Temple Destruction Countdown -->
     <string name="home_solar_system_title">מעגל השנה</string>
+    <string name="home_calendar_previous_month">החודש הקודם</string>
+    <string name="home_calendar_next_month">החודש הבא</string>
     <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>
     <string name="home_temple_subtitle">והראנו בבנינו ושמחנו בתיקונו, והשב שכינתך לתוכו.</string>
     <string name="home_temple_years">שנים</string>

@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
@@ -57,6 +58,10 @@ data class WidgetPlacement(
 
     val grid: GridSize get() = widget.sizes.getValue(size)
 }
+
+/** Every widget the user can place, shown by default or not. */
+val availableHomeWidgets: List<HomeWidget> =
+    listOf(ZmanimWidget, EarthWidget, TempleCountdownWidget, SolarSystemWidget, SkyWidget, CalendarWidget)
 
 /** The default Home layout. */
 val homeWidgets: List<WidgetPlacement> =

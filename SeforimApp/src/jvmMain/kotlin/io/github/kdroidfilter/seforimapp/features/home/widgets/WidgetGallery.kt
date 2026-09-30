@@ -70,13 +70,13 @@ import io.github.kdroidfilter.seforimapp.icons.Trash
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.DefaultButton
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widgets_added
@@ -189,10 +189,17 @@ private fun WidgetGallery(
                     color = JewelTheme.globalColors.text.info,
                 )
             }
-            Link(stringResource(Res.string.home_widgets_reset), onClick = { HomeWidgetsLayout.reset() })
-            DefaultButton(onClick = { state.editingWidgets = false }) {
-                Text(stringResource(Res.string.home_widgets_done))
-            }
+            RoundIconButton(
+                icon = AllIconsKeys.Actions.Rollback,
+                label = stringResource(Res.string.home_widgets_reset),
+                onClick = { HomeWidgetsLayout.reset() },
+            )
+            RoundIconButton(
+                icon = AllIconsKeys.Actions.Checked,
+                label = stringResource(Res.string.home_widgets_done),
+                onClick = { state.editingWidgets = false },
+                primary = true,
+            )
         }
         VerticallyScrollableContainer(Modifier.fillMaxSize()) {
             FlowRow(
@@ -330,27 +337,47 @@ private fun SizeChip(
 }
 
 /** A pencil floating in the Home's corner, always at hand, that opens the edit mode and its gallery. */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EditWidgetsButton(
     state: HomeWidgetsState,
     modifier: Modifier = Modifier,
 ) {
-    val label = stringResource(Res.string.home_widgets_edit)
+    RoundIconButton(
+        icon = AllIconsKeys.Actions.Edit,
+        label = stringResource(Res.string.home_widgets_edit),
+        onClick = { state.editingWidgets = true },
+        modifier = modifier.shadow(8.dp, CircleShape),
+    )
+}
+
+/** A round icon button whose [label] shows as a tooltip; [primary] fills it with the accent, for the main action. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun RoundIconButton(
+    icon: IconKey,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    primary: Boolean = false,
+) {
+    val accent = JewelTheme.globalColors.outlines.focused
     Tooltip(tooltip = { Text(label) }, modifier = modifier) {
-        val shape = CircleShape
         IconButton(
-            onClick = { state.editingWidgets = true },
+            onClick = onClick,
             modifier =
                 Modifier
-                    .size(40.dp)
-                    .shadow(8.dp, shape)
-                    .clip(shape)
-                    .background(JewelTheme.globalColors.panelBackground)
-                    .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(if (primary) accent else JewelTheme.globalColors.panelBackground)
+                    .border(1.dp, if (primary) accent else JewelTheme.globalColors.borders.normal, CircleShape)
                     .semantics { contentDescription = label },
         ) {
-            Icon(AllIconsKeys.Actions.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = if (primary) Color.White else JewelTheme.globalColors.text.normal,
+                modifier = Modifier.size(18.dp),
+            )
         }
     }
 }

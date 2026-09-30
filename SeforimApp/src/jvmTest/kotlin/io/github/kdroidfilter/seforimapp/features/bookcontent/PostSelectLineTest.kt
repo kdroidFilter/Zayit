@@ -28,6 +28,7 @@ import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -143,6 +144,7 @@ class PostSelectLineTest {
             titleUpdateManager = titleUpdateManager,
             desktopManager = desktopManager,
             historyStore = mockk<HistoryStore>(relaxed = true),
+            sessionManager = mockk { every { isRestoringSession } returns MutableStateFlow(false) },
         )
     }
 

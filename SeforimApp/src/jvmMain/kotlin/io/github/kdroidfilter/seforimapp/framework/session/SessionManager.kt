@@ -2,13 +2,15 @@
 
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
-import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.vinceglb.filekit.FileKit
@@ -32,8 +34,15 @@ import java.io.File
  *
  * Now supports multiple virtual desktops via [DesktopsState].
  * Migrates transparently from the legacy single-desktop [SavedSessionV2] format.
+ *
+ * [desktopManager] is lazy: [DesktopManager] itself is built from [loadBootState].
  */
-object SessionManager {
+@Inject
+@SingleIn(AppScope::class)
+class SessionManager(
+    private val desktopManager: Lazy<DesktopManager>,
+    private val tabThumbnailStore: TabThumbnailStore,
+) {
     private val proto = ProtoBuf
 
     // Guarded: outside the app (unit tests) FileKit and the settings are not initialized.
@@ -53,14 +62,13 @@ object SessionManager {
         AppSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
 
     /** Saves the current session snapshot if the user enabled persistence in settings. */
-    fun saveIfEnabled(appGraph: AppGraph) {
+    fun saveIfEnabled() {
         // The end-to-end harness must never overwrite the user's session.
         if (E2e.enabled || !AppSettings.isPersistSessionEnabled()) return
 
-        val desktopManager: DesktopManager = appGraph.desktopManager
-        val desktopsState = desktopManager.buildDesktopsState()
+        val desktopsState = desktopManager.value.buildDesktopsState()
         // The hover-card pictures of tabs no desktop holds any more.
-        appGraph.tabThumbnailStore.prune(
+        tabThumbnailStore.prune(
             desktopsState.snapshots.values
                 .flatMap { snapshot -> snapshot.effectiveWindows().flatMap { it.destinations } }
                 .mapTo(HashSet()) { it.tabId },
@@ -97,9 +105,7 @@ object SessionManager {
     }
 
     /** Clears the restoring flag once the restored tabs' ViewModels have been created. */
-    suspend fun restoreIfEnabled(
-        @Suppress("UNUSED_PARAMETER") appGraph: AppGraph,
-    ) {
+    suspend fun restoreIfEnabled() {
         try {
             if (!AppSettings.isPersistSessionEnabled()) return
             // Give Compose one recomposition cycle to create the restored tabs' ViewModels (whose

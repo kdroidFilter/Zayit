@@ -48,6 +48,7 @@ class BookContentViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     private val desktopManager: DesktopManager,
     private val historyStore: HistoryStore,
+    sessionManager: SessionManager,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(BookContentViewModel::class)
@@ -64,7 +65,7 @@ class BookContentViewModel(
 
     // True when this ViewModel was created by the boot session restore: its book was already
     // recorded when originally opened, so the first load must not re-enter the history.
-    private val createdDuringSessionRestore = SessionManager.isRestoringSession.value
+    private val createdDuringSessionRestore = sessionManager.isRestoringSession.value
 
     // Pre-set loading before uiState is initialized to avoid a single-frame Home flash.
     private val hasBookToLoad: Boolean =

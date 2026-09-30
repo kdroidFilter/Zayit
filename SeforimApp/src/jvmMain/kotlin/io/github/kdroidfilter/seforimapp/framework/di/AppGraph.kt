@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProc
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
@@ -48,6 +49,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val repository: SeforimRepository
     abstract val searchEngine: SearchEngine
     abstract val desktopManager: DesktopManager
+    abstract val sessionManager: SessionManager
 
     abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase

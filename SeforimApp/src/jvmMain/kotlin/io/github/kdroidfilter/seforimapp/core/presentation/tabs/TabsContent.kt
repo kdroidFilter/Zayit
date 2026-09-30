@@ -53,7 +53,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShell
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
-import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -101,7 +101,8 @@ fun TabsContent() {
     val group = openWindow.group()
     val tabIds = group?.ids.orEmpty()
     val currentTabId = group?.selectedId
-    val isRestoringSession by SessionManager.isRestoringSession.collectAsState()
+    val sessionManager = LocalAppGraph.current.sessionManager
+    val isRestoringSession by sessionManager.isRestoringSession.collectAsState()
     val isSwitchingDesktop by openWindow.isSwitching.collectAsState()
     val isTransitioning = isRestoringSession || isSwitchingDesktop
 

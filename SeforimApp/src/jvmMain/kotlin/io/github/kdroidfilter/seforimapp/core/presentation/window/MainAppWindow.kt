@@ -54,7 +54,6 @@ import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
-import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.AppIcon
@@ -147,7 +146,7 @@ fun NucleusApplicationScope.MainAppWindow(
                 onQuit()
             } else {
                 desktopMgr.closeWindow(openWindow.id)
-                SessionManager.saveIfEnabled(appGraph)
+                appGraph.sessionManager.saveIfEnabled()
             }
         },
         title = windowTitle,

@@ -44,7 +44,6 @@ import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
-import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.cli.runCli
@@ -308,7 +307,7 @@ fun main(args: Array<String>) {
                             // Persist session if enabled, apply any pending silent update, then exit.
                             // installPendingOnClose() launches the installer and exits the process
                             // itself when a silent (Win/Mac PATCH) update is ready.
-                            SessionManager.saveIfEnabled(appGraph)
+                            appGraph.sessionManager.saveIfEnabled()
                             appGraph.appUpdateService.installPendingOnClose()
                             exitApplication()
                         }
@@ -365,7 +364,7 @@ fun main(args: Array<String>) {
                         var sessionRestored by remember { mutableStateOf(false) }
                         LaunchedEffect(Unit) {
                             if (!sessionRestored) {
-                                SessionManager.restoreIfEnabled(appGraph)
+                                appGraph.sessionManager.restoreIfEnabled()
                                 sessionRestored = true
                             }
                         }
@@ -389,8 +388,8 @@ fun main(args: Array<String>) {
                                 }.drop(1)
                                 .debounce(2.seconds)
                                 .collect {
-                                    if (!SessionManager.isRestoringSession.value) {
-                                        SessionManager.saveIfEnabled(appGraph)
+                                    if (!appGraph.sessionManager.isRestoringSession.value) {
+                                        appGraph.sessionManager.saveIfEnabled()
                                     }
                                 }
                         }
@@ -461,7 +460,7 @@ fun main(args: Array<String>) {
                         // A system quit (Dock → Quit) ends the app without asking the tab windows,
                         // which leave the session to their workspace: persist it on the way out.
                         DisposableEffect(Unit) {
-                            onDispose { SessionManager.saveIfEnabled(appGraph) }
+                            onDispose { appGraph.sessionManager.saveIfEnabled() }
                         }
                     }
                 }

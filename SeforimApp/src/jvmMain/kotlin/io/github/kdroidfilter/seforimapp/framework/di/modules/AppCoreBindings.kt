@@ -216,6 +216,7 @@ object AppCoreBindings {
         repository: SeforimRepository,
         lookup: LuceneLookupSearchService,
         settings: Settings,
+        sessionManager: SessionManager,
     ): DesktopManager =
         DesktopManager(
             tabPersistedStateStore = tabPersistedStateStore,
@@ -231,7 +232,7 @@ object AppCoreBindings {
                     settings = settings,
                 )
             },
-            bootState = SessionManager.loadBootState(repository),
+            bootState = sessionManager.loadBootState(repository),
             defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
 }

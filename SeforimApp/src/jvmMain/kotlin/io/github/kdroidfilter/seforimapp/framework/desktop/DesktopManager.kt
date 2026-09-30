@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
@@ -594,6 +595,10 @@ class DesktopManager(
      * Follows [session]'s groups: a group the user tore off gets a window where the workspace put
      * it; a window whose group lost its last tab closes (Chrome-like: the last window of a desktop
      * puts it to sleep, the last window of the app quits).
+     *
+     * Reconciles on window changes too, reading the groups live: a window closed while a tab was
+     * being opened in it sees its group go and come back under the same id, which the group ids
+     * alone (conflated, equal before and after) never report — that group then had no window.
      */
     private fun watch(session: DesktopSession) {
         watchers[session]?.cancel()
@@ -605,7 +610,8 @@ class DesktopManager(
         session: DesktopSession,
     ): Job =
         scope.launch {
-            snapshotFlow { session.workspace.groups.map { it.id } }.collect { groupIds ->
+            combine(snapshotFlow { session.workspace.groups.map { it.id } }, _windows) { _, _ -> }.collect {
+                val groupIds = session.workspace.groups.map { it.id }
                 groupIds.forEach(session::onGroupPlaced)
                 val shown = windowsOf(session.desktopId).map { it.groupId }.toSet()
                 for (groupId in groupIds) {

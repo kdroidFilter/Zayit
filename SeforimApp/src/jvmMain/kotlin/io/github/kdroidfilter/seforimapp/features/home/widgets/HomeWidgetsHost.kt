@@ -159,6 +159,9 @@ internal class WidgetDrag {
     var newWidget by mutableStateOf<WidgetPlacement?>(null)
     var pointer by mutableStateOf(Offset.Zero)
     val bounds = mutableMapOf<String, Rect>()
+
+    /** Where each widget's drag grip sits in it, so a drag from the grip still tracks the widget's own corner. */
+    val handleOffset = mutableMapOf<String, Offset>()
     var gridBounds = Rect.Zero
     var galleryBounds = Rect.Zero
 

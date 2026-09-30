@@ -4,9 +4,16 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,10 +49,12 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widgets_edit
 import seforimapp.seforimapp.generated.resources.home_widgets_remove
+import java.awt.Cursor
 
 /**
- * A widget on the grid with its macOS-style handles: a right click opens its menu (size, remove, edit widgets); in
- * edit mode a "−" badge removes it, and a drag drops it in another widget's place while its content stays inert.
+ * A widget on the grid with its macOS-style handles: a right click opens its menu (size, remove, edit widgets), and a
+ * grip shown on hover drags it to another widget's place at any time, its content staying usable. In edit mode the
+ * whole widget drags (its content inert) and a "−" badge removes it.
  */
 @Composable
 internal fun WidgetFrame(
@@ -59,6 +68,39 @@ internal fun WidgetFrame(
     val dragging = drag.draggedId == widget.id
     val editing = state.editingWidgets
     val shape = RoundedCornerShape(18.dp)
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+
+    // Drags from wherever it's applied (the grip, or the whole widget in edit mode) and drops on the widget under it
+    fun dragToMove(fromGrip: Boolean) =
+        Modifier.pointerInput(widget.id, fromGrip) {
+            var press = Offset.Zero
+
+            fun end() {
+                drag.draggedId = null
+                drag.targetId = null
+                dragOffset = Offset.Zero
+            }
+            detectDragGestures(
+                onDragStart = {
+                    // From the widget's own corner, wherever the grip sits in it
+                    press = if (fromGrip) it + (drag.handleOffset[widget.id] ?: Offset.Zero) else it
+                    drag.draggedId = widget.id
+                },
+                onDrag = { change, amount ->
+                    change.consume()
+                    dragOffset += amount
+                    val origin = drag.bounds[widget.id]?.topLeft ?: Offset.Zero
+                    drag.targetId = drag.widgetAt(origin + press + dragOffset)
+                },
+                onDragEnd = {
+                    val target = availableHomeWidgets.firstOrNull { it.id == drag.targetId }
+                    if (target != null) HomeWidgetsLayout.move(widget, target)
+                    end()
+                },
+                onDragCancel = { end() },
+            )
+        }
 
     // Min constraints reach the widget, so it fills its cell (or grows past it when it wraps its content)
     Box(
@@ -66,6 +108,7 @@ internal fun WidgetFrame(
         modifier =
             Modifier
                 .onGloballyPositioned { drag.bounds[widget.id] = it.boundsInRoot() }
+                .hoverable(hover)
                 // Initial pass: seen before the widget's own handlers, which may consume the press
                 .pointerInput(Unit) {
                     awaitPointerEventScope {
@@ -86,56 +129,53 @@ internal fun WidgetFrame(
                 }.then(if (dragging) Modifier.shadow(16.dp, shape) else Modifier),
     ) {
         widget.Content(state, Modifier)
-        if (editing) {
-            // matchParentSize: the handles take the widget's size instead of passing it their min constraints
-            Box(Modifier.matchParentSize()) {
+        // matchParentSize: the handles take the widget's size instead of passing it their min constraints
+        Box(Modifier.matchParentSize()) {
+            if (drag.targetId == widget.id) {
+                Box(Modifier.fillMaxSize().border(2.5.dp, JewelTheme.globalColors.borders.focused, shape))
+            }
+            if (editing) {
                 // Swallows clicks meant for the widget and turns a press into a drag
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .then(
-                            if (drag.targetId == widget.id) {
-                                Modifier.border(2.5.dp, JewelTheme.globalColors.borders.focused, shape)
-                            } else {
-                                Modifier
-                            },
-                        ).pointerHoverIcon(PointerIcon.Hand)
-                        .pointerInput(widget.id) {
-                            var press = Offset.Zero
-                            detectDragGestures(
-                                onDragStart = {
-                                    press = it
-                                    drag.draggedId = widget.id
-                                },
-                                onDrag = { change, amount ->
-                                    change.consume()
-                                    dragOffset += amount
-                                    val origin = drag.bounds[widget.id]?.topLeft ?: Offset.Zero
-                                    drag.targetId = drag.widgetAt(origin + press + dragOffset)
-                                },
-                                onDragEnd = {
-                                    val target = availableHomeWidgets.firstOrNull { it.id == drag.targetId }
-                                    if (target != null) HomeWidgetsLayout.move(widget, target)
-                                    drag.draggedId = null
-                                    drag.targetId = null
-                                    dragOffset = Offset.Zero
-                                },
-                                onDragCancel = {
-                                    drag.draggedId = null
-                                    drag.targetId = null
-                                    dragOffset = Offset.Zero
-                                },
-                            )
-                        },
-                )
+                Box(Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Hand).then(dragToMove(fromGrip = false)))
                 RemoveBadge(
                     onClick = { HomeWidgetsLayout.remove(widget) },
                     modifier = Modifier.align(Alignment.TopStart).offset((-8).dp, (-8).dp),
+                )
+            } else if (hovered || dragging) {
+                DragGrip(
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .onGloballyPositioned { grip ->
+                            val frame = drag.bounds[widget.id] ?: return@onGloballyPositioned
+                            drag.handleOffset[widget.id] = grip.boundsInRoot().topLeft - frame.topLeft
+                        }.then(dragToMove(fromGrip = true)),
                 )
             }
         }
         if (menuOpen) {
             WidgetMenu(placement, state, onDismiss = { menuOpen = false })
+        }
+    }
+}
+
+/** The ⠿ pill a widget is dragged by outside edit mode, dark enough to read over the black 3D cards and light ones. */
+@Composable
+private fun DragGrip(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .padding(top = 4.dp)
+            .size(width = 44.dp, height = 18.dp)
+            .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
+            .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(50))
+            .pointerHoverIcon(PointerIcon(Cursor(Cursor.MOVE_CURSOR))),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            repeat(3) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    repeat(2) { Box(Modifier.size(3.dp).background(Color.White.copy(alpha = 0.9f), CircleShape)) }
+                }
+            }
         }
     }
 }

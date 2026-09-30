@@ -53,7 +53,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
-import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Ink_pen
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
@@ -679,6 +678,7 @@ fun BookContentScreen(
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
     val selectionContext = LocalAppGraph.current.selectionContext
+    val catalogCache = LocalAppGraph.current.catalogCache
 
     // Selecting a different line drops the unsaved explicit note draft so the editor reflects the
     // newly selected line instead of the stale anchor.
@@ -694,7 +694,7 @@ fun BookContentScreen(
     // tab's published book — even when both tabs happen to reference the same book.
     LaunchedEffect(selectedBook, isSelected, tabId, selectionContext) {
         if (isSelected) {
-            val rootTitle = selectedBook?.let { CatalogCache.getRootForBook(it)?.title }
+            val rootTitle = selectedBook?.let { catalogCache.getRootForBook(it)?.title }
             selectionContext.setActiveBook(tabId, selectedBook, rootTitle)
         } else {
             selectionContext.clearActiveBookIfOwnedBy(tabId)

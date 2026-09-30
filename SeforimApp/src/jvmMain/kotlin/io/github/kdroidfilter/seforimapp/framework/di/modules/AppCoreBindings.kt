@@ -52,7 +52,7 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideCatalogAccess(): CatalogAccess = CatalogAccess { CatalogCache.getCatalog() }
+    fun provideCatalogAccess(catalogCache: CatalogCache): CatalogAccess = CatalogAccess { catalogCache.getCatalog() }
 
     @Provides
     @SingleIn(AppScope::class)

@@ -21,6 +21,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 class NavigationUseCase(
     private val repository: SeforimRepository,
     private val stateManager: BookContentStateManager,
+    private val catalogCache: CatalogCache,
 ) {
     /**
      * Load the root categories and the full tree from the precomputed catalog.
@@ -28,9 +29,9 @@ class NavigationUseCase(
      * Data is retrieved from CatalogCache which caches the extracted structures in memory.
      */
     suspend fun loadRootCategories() {
-        val rootCategories = CatalogCache.getRootCategories()
-        val categoryChildren = CatalogCache.getCategoryChildren()
-        val booksWithFlags = CatalogCache.getAllBooksWithAltFlags(repository)
+        val rootCategories = catalogCache.getRootCategories()
+        val categoryChildren = catalogCache.getCategoryChildren()
+        val booksWithFlags = catalogCache.getAllBooksWithAltFlags(repository)
 
         if (rootCategories == null || categoryChildren == null || booksWithFlags == null) {
             errorln { "ERROR: Precomputed catalog not available!" }

@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePrepar
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
+import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
@@ -33,6 +34,7 @@ abstract class AppGraph : ViewModelGraph {
     // Expose strongly-typed graph entries as abstract vals for generated implementation
     abstract val mainAppState: MainAppState
     abstract val catalogAccess: CatalogAccess
+    abstract val catalogCache: CatalogCache
     abstract val selectionContext: SelectionContext
     abstract val tabPersistedStateStore: TabPersistedStateStore
     abstract val tabThumbnailStore: TabThumbnailStore

@@ -40,6 +40,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.rememberCursorPositionProvider
+import dev.nucleusframework.window.tao.TaoPointerIcons
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.PopupMenu
@@ -49,7 +50,6 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widgets_edit
 import seforimapp.seforimapp.generated.resources.home_widgets_remove
-import java.awt.Cursor
 
 /**
  * A widget on the grid with its macOS-style handles: a right click opens its menu (size, remove, edit widgets), and a
@@ -136,19 +136,27 @@ internal fun WidgetFrame(
             }
             if (editing) {
                 // Swallows clicks meant for the widget and turns a press into a drag
-                Box(Modifier.fillMaxSize().pointerHoverIcon(PointerIcon.Hand).then(dragToMove(fromGrip = false)))
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .pointerHoverIcon(
+                            if (dragging) TaoPointerIcons.Grabbing else TaoPointerIcons.Grab,
+                        ).then(dragToMove(fromGrip = false)),
+                )
                 RemoveBadge(
                     onClick = { HomeWidgetsLayout.remove(widget) },
                     modifier = Modifier.align(Alignment.TopStart).offset((-8).dp, (-8).dp),
                 )
             } else if (hovered || dragging) {
                 DragGrip(
-                    Modifier
-                        .align(Alignment.TopCenter)
-                        .onGloballyPositioned { grip ->
-                            val frame = drag.bounds[widget.id] ?: return@onGloballyPositioned
-                            drag.handleOffset[widget.id] = grip.boundsInRoot().topLeft - frame.topLeft
-                        }.then(dragToMove(fromGrip = true)),
+                    dragging = dragging,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .onGloballyPositioned { grip ->
+                                val frame = drag.bounds[widget.id] ?: return@onGloballyPositioned
+                                drag.handleOffset[widget.id] = grip.boundsInRoot().topLeft - frame.topLeft
+                            }.then(dragToMove(fromGrip = true)),
                 )
             }
         }
@@ -160,14 +168,17 @@ internal fun WidgetFrame(
 
 /** The ⠿ pill a widget is dragged by outside edit mode, dark enough to read over the black 3D cards and light ones. */
 @Composable
-private fun DragGrip(modifier: Modifier = Modifier) {
+private fun DragGrip(
+    dragging: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier
             .padding(top = 4.dp)
             .size(width = 44.dp, height = 18.dp)
             .background(Color.Black.copy(alpha = 0.45f), RoundedCornerShape(50))
             .border(1.dp, Color.White.copy(alpha = 0.35f), RoundedCornerShape(50))
-            .pointerHoverIcon(PointerIcon(Cursor(Cursor.MOVE_CURSOR))),
+            .pointerHoverIcon(if (dragging) TaoPointerIcons.Grabbing else TaoPointerIcons.Grab),
         contentAlignment = Alignment.Center,
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {

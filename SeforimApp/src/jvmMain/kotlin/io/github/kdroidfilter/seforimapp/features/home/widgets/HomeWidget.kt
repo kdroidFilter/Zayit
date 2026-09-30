@@ -8,6 +8,11 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidget
+import org.jetbrains.compose.resources.StringResource
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.home_widget_size_large
+import seforimapp.seforimapp.generated.resources.home_widget_size_medium
+import seforimapp.seforimapp.generated.resources.home_widget_size_small
 
 /**
  * A Home widget, placed by [HomeWidgetsHost] on a grid of [HOME_GRID_COLUMNS] columns. Widgets never talk to each
@@ -16,6 +21,9 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidg
 interface HomeWidget {
     /** Stable key, for persisting the user's widget order. */
     val id: String
+
+    /** Its name in the widget gallery. */
+    val title: StringResource
 
     /** The sizes it can be given, as on iOS: a few fixed ones rather than a free resize. */
     val sizes: Map<WidgetSize, GridSize>
@@ -39,7 +47,13 @@ interface HomeWidget {
     fun Detached(state: HomeWidgetsState) {}
 }
 
-enum class WidgetSize { SMALL, MEDIUM, LARGE }
+enum class WidgetSize(
+    val label: StringResource,
+) {
+    SMALL(Res.string.home_widget_size_small),
+    MEDIUM(Res.string.home_widget_size_medium),
+    LARGE(Res.string.home_widget_size_large),
+}
 
 /** [columns] out of [HOME_GRID_COLUMNS], [rows] in cells of [HOME_GRID_CELL_HEIGHT]. */
 data class GridSize(

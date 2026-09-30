@@ -6,22 +6,38 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.ui.component.OutlinedButton
+import org.jetbrains.jewel.ui.component.Text
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.home_widgets_edit
 
 const val HOME_GRID_COLUMNS = 20
 val HOME_GRID_CELL_HEIGHT = 135.dp
-private val GRID_GAP = 12.dp
-private val MAX_GRID_WIDTH = 1000.dp
+internal val GRID_GAP = 12.dp
+internal val MAX_GRID_WIDTH = 1000.dp
 
 /** Below this width every widget takes a whole row. */
 private val COMPACT_GRID_WIDTH = 670.dp
 
-private fun GridSize.height(): Dp = HOME_GRID_CELL_HEIGHT * rows + GRID_GAP * (rows - 1).coerceAtLeast(0f)
+internal fun GridSize.height(): Dp = HOME_GRID_CELL_HEIGHT * rows + GRID_GAP * (rows - 1).coerceAtLeast(0f)
+
+/** Its width on a full-width grid, as the gallery previews it. */
+internal fun GridSize.width(): Dp = (MAX_GRID_WIDTH + GRID_GAP) * columns / HOME_GRID_COLUMNS - GRID_GAP
 
 /** Fills rows of [HOME_GRID_COLUMNS] columns with [widgets] in order, a widget that doesn't fit starting a new row. */
 internal fun packRows(
@@ -60,17 +76,36 @@ internal fun rowWidths(
     }
 }
 
+/**
+ * The Home widgets on their grid, with the macOS way of editing them: a right click on a widget changes its size or
+ * removes it, and the edit mode (from that menu or the button below) moves them by drag and adds from a gallery.
+ */
 @Composable
 fun HomeWidgetsHost(
     state: HomeWidgetsState,
+    widgets: List<WidgetPlacement>,
     modifier: Modifier = Modifier,
-    widgets: List<WidgetPlacement> = homeWidgets,
 ) {
+    val drag = remember { WidgetDrag() }
     BoxWithConstraints(modifier.widthIn(max = MAX_GRID_WIDTH).fillMaxWidth()) {
         val compact = maxWidth < COMPACT_GRID_WIDTH
         val rows = packRows(widgets.filter { it.widget.isSupported }, compact)
         Column(verticalArrangement = Arrangement.spacedBy(GRID_GAP)) {
-            rows.forEach { row -> key(row.first().widget.id) { WidgetRow(row, state) } }
+            rows.forEach { row ->
+                key(row.first().widget.id) {
+                    // The dragged widget passes over the rows below it
+                    val lifted = row.any { it.widget.id == drag.draggedId }
+                    WidgetRow(row, state, drag, Modifier.zIndex(if (lifted) 1f else 0f))
+                }
+            }
+            if (state.editingWidgets) {
+                WidgetGallery(state, widgets)
+            } else {
+                OutlinedButton(
+                    onClick = { state.editingWidgets = true },
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                ) { Text(stringResource(Res.string.home_widgets_edit)) }
+            }
         }
     }
 }
@@ -83,10 +118,12 @@ fun HomeWidgetsHost(
 private fun WidgetRow(
     row: List<WidgetPlacement>,
     state: HomeWidgetsState,
+    drag: WidgetDrag,
+    modifier: Modifier = Modifier,
 ) {
     Layout(
-        content = { row.forEach { key(it.widget.id) { it.widget.Content(state, Modifier) } } },
-        modifier = Modifier.fillMaxWidth(),
+        content = { row.forEach { key(it.widget.id) { WidgetFrame(it, state, drag) } } },
+        modifier = modifier.fillMaxWidth(),
     ) { measurables, constraints ->
         val gap = GRID_GAP.roundToPx()
         val widths = rowWidths(row.map { it.grid.columns }, constraints.maxWidth - gap * (row.size - 1))
@@ -106,4 +143,13 @@ private fun WidgetRow(
             }
         }
     }
+}
+
+/** The widget being dragged in edit mode, and where every widget sits, to find the one it's dropped on. */
+internal class WidgetDrag {
+    var draggedId by mutableStateOf<String?>(null)
+    var targetId by mutableStateOf<String?>(null)
+    val bounds = mutableMapOf<String, Rect>()
+
+    fun widgetAt(point: Offset): String? = bounds.entries.firstOrNull { (id, rect) -> id != draggedId && rect.contains(point) }?.key
 }

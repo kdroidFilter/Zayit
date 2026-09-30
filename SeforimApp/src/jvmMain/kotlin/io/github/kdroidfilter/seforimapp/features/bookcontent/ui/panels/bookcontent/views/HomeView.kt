@@ -65,7 +65,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocation
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocationViewModel
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsHost
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.homeWidgets
+import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
@@ -282,7 +282,9 @@ private fun HomeBody(
         }
     val widgetsState = remember(userLocation, community) { HomeWidgetsState(userLocation, community) }
     // Composed here, outside the LazyColumn, so scrolling a card away doesn't close its window
-    homeWidgets.forEach { it.widget.Detached(widgetsState) }
+    val widgetsLayoutRaw by AppSettings.homeWidgetsLayoutFlow.collectAsState()
+    val widgetsLayout = remember(widgetsLayoutRaw) { decodeLayout(widgetsLayoutRaw) }
+    widgetsLayout.forEach { it.widget.Detached(widgetsState) }
 
     val listState = rememberLazyListState()
 
@@ -620,7 +622,7 @@ private fun HomeBody(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
                             contentAlignment = Alignment.Center,
                         ) {
-                            HomeWidgetsHost(widgetsState)
+                            HomeWidgetsHost(widgetsState, widgetsLayout)
                         }
                     }
                 }

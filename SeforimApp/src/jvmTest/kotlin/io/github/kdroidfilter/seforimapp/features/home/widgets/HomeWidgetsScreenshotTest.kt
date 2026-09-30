@@ -54,11 +54,17 @@ class HomeWidgetsScreenshotTest {
         for (dark in listOf(false, true)) shot("calendar", 1100, dark, layout)
     }
 
+    @Test
+    fun `render edit mode`() {
+        for (dark in listOf(false, true)) shot("edit", 1100, dark, homeWidgets.take(3), editing = true)
+    }
+
     private fun shot(
         name: String,
         width: Int,
         dark: Boolean,
         widgets: List<WidgetPlacement>,
+        editing: Boolean = false,
     ) = runComposeUiTest {
         setContent {
             IntUiTheme(isDark = dark) {
@@ -70,7 +76,10 @@ class HomeWidgetsScreenshotTest {
                 ) {
                     Box(Modifier.background(JewelTheme.globalColors.panelBackground).padding(16.dp)) {
                         HomeWidgetsHost(
-                            state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE),
+                            state =
+                                HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE).also {
+                                    it.editingWidgets = editing
+                                },
                             modifier = Modifier.width(width.dp),
                             widgets = widgets,
                         )

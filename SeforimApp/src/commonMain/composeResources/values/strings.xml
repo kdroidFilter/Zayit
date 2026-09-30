@@ -321,6 +321,22 @@
 
     <!-- Temple Destruction Countdown -->
     <string name="home_solar_system_title">מעגל השנה</string>
+    <string name="home_widgets_edit">עריכת ווידג'טים…</string>
+    <string name="home_widgets_done">סיום</string>
+    <string name="home_widgets_gallery_title">ווידג'טים</string>
+    <string name="home_widgets_gallery_hint">לחצו על ווידג'ט כדי להוסיף אותו, גררו ווידג'ט בדף כדי להזיז אותו</string>
+    <string name="home_widgets_add">הוספה</string>
+    <string name="home_widgets_added">נוסף</string>
+    <string name="home_widgets_remove">הסרת הווידג'ט</string>
+    <string name="home_widgets_reset">שחזור ברירת המחדל</string>
+    <string name="home_widget_size_small">קטן</string>
+    <string name="home_widget_size_medium">בינוני</string>
+    <string name="home_widget_size_large">גדול</string>
+    <string name="home_widget_name_zmanim">זמני היום</string>
+    <string name="home_widget_name_earth">כדור הארץ</string>
+    <string name="home_widget_name_temple">חורבן הבית</string>
+    <string name="home_widget_name_sky">השמיים</string>
+    <string name="home_widget_name_calendar">לוח עברי</string>
     <string name="home_calendar_previous_month">החודש הקודם</string>
     <string name="home_calendar_next_month">החודש הבא</string>
     <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>

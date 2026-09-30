@@ -11,10 +11,13 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.home_solar_system_title
 
 /** The solar system on the selected day, openable in its own window. */
 internal object SolarSystemWidget : HomeWidget {
     override val id = "solar_system"
+    override val title = Res.string.home_solar_system_title
     override val sizes = mapOf(WidgetSize.SMALL to GridSize(6, 1.5f), WidgetSize.MEDIUM to GridSize(9, 1.5f))
     override val defaultSize = WidgetSize.MEDIUM
     override val isSupported get() = isEarthWidgetSupported

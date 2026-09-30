@@ -81,6 +81,7 @@ import seforimapp.seforimapp.generated.resources.home_widget_mincha_gedola_label
 import seforimapp.seforimapp.generated.resources.home_widget_mincha_ketana_label
 import seforimapp.seforimapp.generated.resources.home_widget_mincha_plag_label
 import seforimapp.seforimapp.generated.resources.home_widget_mincha_title
+import seforimapp.seforimapp.generated.resources.home_widget_name_zmanim
 import seforimapp.seforimapp.generated.resources.home_widget_shabbat_entry_label
 import seforimapp.seforimapp.generated.resources.home_widget_shabbat_exit_label
 import seforimapp.seforimapp.generated.resources.home_widget_shema_gra_label
@@ -209,6 +210,7 @@ private sealed class ZmanimGridItem {
 /** The zmanim cards of the selected day; clicking one points the Earth, the sky and the solar system at that zman. */
 internal object ZmanimWidget : HomeWidget {
     override val id = "zmanim"
+    override val title = Res.string.home_widget_name_zmanim
     override val sizes = mapOf(WidgetSize.MEDIUM to GridSize(8, 2f), WidgetSize.LARGE to GridSize(13, 2f))
     override val defaultSize = WidgetSize.LARGE
     override val wrapContentHeight = true

@@ -58,6 +58,7 @@ import seforimapp.seforimapp.generated.resources.home_temple_months
 import seforimapp.seforimapp.generated.resources.home_temple_subtitle
 import seforimapp.seforimapp.generated.resources.home_temple_title
 import seforimapp.seforimapp.generated.resources.home_temple_years
+import seforimapp.seforimapp.generated.resources.home_widget_name_temple
 import kotlin.time.Clock
 
 @Immutable
@@ -176,6 +177,7 @@ private fun AnimatedTempleBackground(modifier: Modifier = Modifier) {
 /** Years, months and days since the Temple's destruction, over the burning Temple. */
 internal object TempleCountdownWidget : HomeWidget {
     override val id = "temple_countdown"
+    override val title = Res.string.home_widget_name_temple
     override val sizes = mapOf(WidgetSize.SMALL to GridSize(4, 1.5f), WidgetSize.MEDIUM to GridSize(6, 1.5f))
     override val defaultSize = WidgetSize.MEDIUM
 

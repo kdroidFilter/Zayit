@@ -20,10 +20,13 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.home_widget_name_earth
 
 /** The globe at the selected moment; its orbit labels pick the date, its city list the location. */
 internal object EarthWidget : HomeWidget {
     override val id = "earth"
+    override val title = Res.string.home_widget_name_earth
     override val sizes = mapOf(WidgetSize.SMALL to GridSize(5, 2f), WidgetSize.MEDIUM to GridSize(7, 2f))
     override val defaultSize = WidgetSize.MEDIUM
     override val isSupported get() = isEarthWidgetSupported

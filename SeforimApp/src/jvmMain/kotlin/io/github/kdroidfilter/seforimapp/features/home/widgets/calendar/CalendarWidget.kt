@@ -58,11 +58,13 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_calendar_next_month
 import seforimapp.seforimapp.generated.resources.home_calendar_previous_month
+import seforimapp.seforimapp.generated.resources.home_widget_name_calendar
 import java.time.LocalDate
 
 /** The Hebrew month, as in the KosherKotlin demo's luach; clicking a day moves every widget to it. */
 internal object CalendarWidget : HomeWidget {
     override val id = "calendar"
+    override val title = Res.string.home_widget_name_calendar
     override val sizes =
         mapOf(WidgetSize.MEDIUM to GridSize(7, 2.5f), WidgetSize.LARGE to GridSize(10, 3f))
     override val defaultSize = WidgetSize.MEDIUM

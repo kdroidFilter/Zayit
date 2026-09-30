@@ -12,6 +12,7 @@ import dev.nucleusframework.window.tao.TaoGpuRenderContext
 import dev.nucleusframework.window.tao.rememberTaoGpuRenderContext
 import io.github.kdroidfilter.seforimapp.core.presentation.window.toImageBitmapOn
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +67,10 @@ object E2e {
     }
 
     fun bookViewModel(tabId: String): BookContentViewModel? = bookViewModels[tabId]
+
+    /** The widgets of the Home on screen, for [E2eWidgetsScenario] to open and close their gallery. */
+    @Volatile
+    var homeWidgets: HomeWidgetsState? = null
 
     internal fun layer(windowId: String): GraphicsLayer? = layers[windowId]?.first
 

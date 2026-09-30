@@ -683,6 +683,7 @@ private fun HomeBody(
                                             SolarSystemWidgetView(
                                                 modifier = Modifier.fillMaxSize(),
                                                 date = homeWidgetsDate,
+                                                timeMillis = skyMoment?.timeMillis,
                                                 onFullscreen = { showSolarSystemWindow = true },
                                                 inIsrael = celestialWidgetsState.inIsrael,
                                                 kiddushLevanaEarliestOpinion = kiddushLevanaEarliest,

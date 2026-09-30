@@ -39,6 +39,7 @@ import io.github.erkko68.filament.compose.scene.rememberUnlitColorMaterialInstan
 import io.github.erkko68.filament.compose.scene.toLinearColor
 import seforimapp.earthwidget.generated.resources.Res
 import kotlin.math.PI
+import kotlin.math.asin
 import kotlin.math.atan
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -94,11 +95,9 @@ internal data class EarthRenderState(
     val sunLongitudeDegrees: Float = 0f,
     /** Ecliptic longitude of the Moon's ascending node. */
     val moonNodeDegrees: Float = 0f,
-    /** Camera azimuth around the ecliptic pole, from the Sun's: the camera is Sun-fixed, so time only spins the Earth. */
-    val viewAzimuthFromSunDegrees: Float = 0f,
-    /** User camera orbit around the ecliptic pole, added to [viewAzimuthFromSunDegrees]. */
+    /** User turn of the globe about the view's vertical, from the marker-centred default. */
     val viewYawDegrees: Float = 0f,
-    /** Camera elevation over the ecliptic, from the default one. */
+    /** User tilt of the globe, from the marker-centred default. */
     val viewPitchDegrees: Float = 0f,
     /** Camera zoom (field of view narrowed by this factor); 1 = the whole orbit fits. */
     val viewZoom: Float = 1f,
@@ -786,19 +785,6 @@ internal fun eclipticDirection(longitudeDegrees: Float): Direction {
 /** Camera azimuth (about the ecliptic pole) that brings [d] in front of the viewer. */
 private fun azimuthOf(d: Direction): Float = atan2(-d.x, d.z) * RAD_TO_DEG_F
 
-/** The Sun-relative camera azimuth that puts the marker in front at this instant: the anchor on open / recenter. */
-internal fun markerAzimuthFromSunDegrees(
-    siderealDegrees: Float,
-    sunLongitudeDegrees: Float,
-    obliquityDegrees: Float,
-    markerLatitudeDegrees: Float,
-    markerLongitudeDegrees: Float,
-): Float {
-    val marker =
-        earthToWorld(siderealDegrees, obliquityDegrees) * latLonToUnitVector(markerLatitudeDegrees, markerLongitudeDegrees).toDirection()
-    return azimuthOf(marker) - azimuthOf(eclipticDirection(sunLongitudeDegrees))
-}
-
 /**
  * The Earth–Moon system as a real sky, plus the camera looking at it.
  *
@@ -807,9 +793,10 @@ internal fun markerAzimuthFromSunDegrees(
  * about an axis tilted by the obliquity, the Sun sits at its ecliptic longitude, and the Moon's orbit is inclined
  * on its real node line, the Moon at its Hebrew-day elongation from the Sun (day 1 = conjunction).
  *
- * Nothing in the world depends on the user: dragging only moves the camera, around the ecliptic pole
- * ([EarthRenderState.viewYawDegrees]) and in elevation over the ecliptic ([EarthRenderState.viewPitchDegrees]).
- * The camera is Sun-fixed, so changing the time spins the Earth under its day/night line and nothing else jumps.
+ * Nothing in the world depends on the user: dragging only moves the camera ([EarthRenderState.viewYawDegrees],
+ * [EarthRenderState.viewPitchDegrees]).
+ * The camera follows the marker (see [view]), so changing the time keeps it centred and moves the Sun, hence the
+ * day/night line, and the Moon along its orbit.
  */
 internal class SceneFrame(
     state: EarthRenderState,
@@ -824,12 +811,17 @@ internal class SceneFrame(
     /** Unit vector from the Earth to the Sun. */
     val sun: Direction = eclipticDirection(sunLongitude)
 
-    /** World → camera, fixed relative to the Sun (see [markerAzimuthFromSunDegrees] for the default). */
+    /**
+     * World → camera, aimed at the marker from around the ecliptic pole (kept up): whatever the time the marker is
+     * dead centre and the Moon's orbit keeps its orientation, the Moon sliding along it. The price: the Earth's axis
+     * sways by up to the obliquity over a day, and the orbit flattens as the marker nears the ecliptic. The user's
+     * drag adds [EarthRenderState.viewYawDegrees] about the pole and [EarthRenderState.viewPitchDegrees] in elevation.
+     */
     val view: Rotation =
         run {
-            val azimuth = azimuthOf(sun) + state.viewAzimuthFromSunDegrees + state.viewYawDegrees
-            val elevation = geometry.viewPitchRad * RAD_TO_DEG_F + state.viewPitchDegrees
-            Rotation.axisAngle(AxisX, elevation) * Rotation.axisAngle(Direction.Up, azimuth)
+            val marker = earth * latLonToUnitVector(state.markerLatitudeDegrees, state.markerLongitudeDegrees).toDirection()
+            val elevation = asin(marker.y.coerceIn(-1f, 1f)) * RAD_TO_DEG_F + state.viewPitchDegrees
+            Rotation.axisAngle(AxisX, elevation) * Rotation.axisAngle(Direction.Up, azimuthOf(marker) + state.viewYawDegrees)
         }
 
     /** World unit vector of the Moon's orbit at [orbitDegrees], the Hebrew-day angle of the orbit labels. */

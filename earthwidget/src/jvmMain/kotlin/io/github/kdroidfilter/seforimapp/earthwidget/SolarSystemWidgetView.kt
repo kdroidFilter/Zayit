@@ -278,6 +278,8 @@ fun SolarSystemWidgetView(
     /** Applied to the header row (e.g. a window drag area when the header sits in the title bar band). */
     headerModifier: Modifier = Modifier,
     date: LocalDate? = null,
+    /** An instant of [date] to show (e.g. a zman picked on the Home cards) instead of its noon. */
+    timeMillis: Long? = null,
     inIsrael: Boolean = true,
     timeZone: TimeZone = TimeZone.getDefault(),
     /** Shows a button opening the widget in its own window; null inside that window. */
@@ -330,8 +332,10 @@ fun SolarSystemWidgetView(
     val dateHebrewYear = remember(displayedDate) { JewishCalendar(displayedDate).jewishYear }
     var hebrewYear by remember(dateHebrewYear) { mutableIntStateOf(dateHebrewYear) }
     val events = remember(hebrewYear, inIsrael) { computeHebrewYearEvents(hebrewYear, inIsrael) }
-    // Noon of the displayed day, plus the running part of a day while playing (smooth orbits)
-    val julianDay = julianDayAt(displayedDate, timeZone) + dayFraction
+    // Noon of the displayed day (or the given instant), plus the running part of a day while playing (smooth orbits)
+    val julianDay =
+        timeMillis?.takeIf { playOffsetDays == 0f }?.let { it / MILLIS_PER_DAY + UNIX_EPOCH_JD }
+            ?: (julianDayAt(displayedDate, timeZone) + dayFraction)
 
     val earthLongitudeTarget = normalizeAngle360(computeSunEclipticLongitude(julianDay) + 180f)
     // While playing, the Earth is shown at noon each day (solar-day frame) plus a slowed-down visible spin: at real

@@ -71,4 +71,55 @@ class WidgetDragUiTest {
             AppSettings.setHomeWidgetsLayout(saved)
         }
     }
+
+    @Test
+    fun `a widget dropped on the trash is removed, with an undo`() {
+        val saved = AppSettings.homeWidgetsLayoutFlow.value
+        try {
+            AppSettings.setHomeWidgetsLayout("temple_countdown:MEDIUM,zmanim:LARGE")
+            val state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE)
+            runComposeUiTest {
+                setContent {
+                    IntUiTheme {
+                        CompositionLocalProvider(LocalAppGraph provides graph, LocalTabSelected provides false) {
+                            val raw by AppSettings.homeWidgetsLayoutFlow.collectAsState()
+                            Box(Modifier.testTag("grid").width(1000.dp).height(700.dp)) {
+                                HomeWidgetsGrid(state = state, widgets = decodeLayout(raw), gridState = rememberLazyGridState())
+                                HomeWidgetsOverlay(state, decodeLayout(raw))
+                            }
+                        }
+                    }
+                }
+                onNodeWithTag("grid").performMouseInput { moveTo(Offset(150f, 100f)) }
+                waitForIdle()
+                val grip = onNodeWithTag("widget-grip-temple_countdown")
+                val gripCentre = grip.fetchSemanticsNode().boundsInRoot.center
+                grip.performMouseInput {
+                    moveTo(center)
+                    press()
+                    repeat(3) { moveBy(Offset(0f, 10f)) }
+                }
+                waitForIdle()
+                // The trash shows once the move starts: aim at it
+                val trash = onNodeWithTag("widget-trash").fetchSemanticsNode().boundsInRoot.center
+                grip.performMouseInput {
+                    val steps = 10
+                    val step = (trash - gripCentre - Offset(0f, 30f)) / steps.toFloat()
+                    repeat(steps) { moveBy(step) }
+                    release()
+                }
+                waitForIdle()
+            }
+            assertEquals("zmanim:LARGE", AppSettings.homeWidgetsLayoutFlow.value)
+            assertEquals(
+                "temple_countdown",
+                state.lastRemoved
+                    ?.placement
+                    ?.widget
+                    ?.id,
+            )
+        } finally {
+            AppSettings.setHomeWidgetsLayout(saved)
+        }
+    }
 }

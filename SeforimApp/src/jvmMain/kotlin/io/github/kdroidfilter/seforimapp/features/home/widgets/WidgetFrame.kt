@@ -33,6 +33,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.testTag
@@ -73,6 +74,29 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
     val grabIcon = if (dragging) TaoPointerIcons.Grabbing else TaoPointerIcons.Grab
+    val overTrash = dragging && drag.overTrash
+    var handleCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+
+    // Reorderable moves the widget; this follows the pointer for the trash, and drops there instead of saving
+    fun Modifier.moveHandle() =
+        onGloballyPositioned { handleCoordinates = it }
+            .pointerInput(widget.id) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                        val coordinates = handleCoordinates
+                        if (drag.movingId == widget.id && coordinates != null && coordinates.isAttached) {
+                            drag.movePointer = coordinates.localToRoot(event.changes.first().position)
+                        }
+                    }
+                }
+            }.draggableHandle(
+                onDragStarted = { drag.movingId = widget.id },
+                onDragStopped = {
+                    if (drag.overTrash) state.removeWidget(widget) else onDrop()
+                    drag.movingId = null
+                },
+            )
     // A removed widget must not stay a drop target where it used to be
     DisposableEffect(widget.id) { onDispose { drag.bounds.remove(widget.id) } }
 
@@ -94,10 +118,16 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
                         }
                     }
                 }.graphicsLayer {
-                    if (dragging) {
-                        scaleX = 1.03f
-                        scaleY = 1.03f
-                    }
+                    // Lifted while moved; shrunk and faded over the trash, about to go
+                    val scale =
+                        when {
+                            overTrash -> 0.85f
+                            dragging -> 1.03f
+                            else -> 1f
+                        }
+                    scaleX = scale
+                    scaleY = scale
+                    alpha = if (overTrash) 0.6f else 1f
                 }.then(if (dragging) Modifier.shadow(16.dp, shape) else Modifier),
     ) {
         widget.Content(state, Modifier)
@@ -108,7 +138,7 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
             }
             if (editing) {
                 // Swallows clicks meant for the widget and turns a press into a drag
-                Box(Modifier.fillMaxSize().pointerHoverIcon(grabIcon).draggableHandle(onDragStopped = onDrop))
+                Box(Modifier.fillMaxSize().pointerHoverIcon(grabIcon).moveHandle())
                 RemoveBadge(
                     onClick = { state.removeWidget(widget) },
                     modifier = Modifier.align(Alignment.TopStart).offset((-8).dp, (-8).dp),
@@ -120,7 +150,7 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
                             .align(Alignment.TopCenter)
                             .testTag("widget-grip-${widget.id}")
                             .pointerHoverIcon(grabIcon)
-                            .draggableHandle(onDragStopped = onDrop),
+                            .moveHandle(),
                 )
             }
         }

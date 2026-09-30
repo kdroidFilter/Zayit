@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -37,7 +39,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -50,12 +55,14 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.icons.Trash
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -70,6 +77,8 @@ import seforimapp.seforimapp.generated.resources.home_widgets_gallery_hint
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_title
 import seforimapp.seforimapp.generated.resources.home_widgets_removed
 import seforimapp.seforimapp.generated.resources.home_widgets_reset
+import seforimapp.seforimapp.generated.resources.home_widgets_trash_hint
+import seforimapp.seforimapp.generated.resources.home_widgets_trash_release
 import seforimapp.seforimapp.generated.resources.home_widgets_undo
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
@@ -94,6 +103,10 @@ fun BoxScope.HomeWidgetsOverlay(
     Box(Modifier.matchParentSize().onGloballyPositioned { origin = it.positionInRoot() })
     if (state.editingWidgets) {
         WidgetGallery(state, placed, Modifier.align(Alignment.BottomCenter))
+    }
+    // Only while a placed widget is moved, above the page's auto-scroll band so aiming at it doesn't scroll
+    if (drag.movingId != null) {
+        TrashZone(drag, Modifier.align(Alignment.BottomCenter).padding(bottom = 88.dp))
     }
     state.lastRemoved?.let { removed ->
         UndoBar(
@@ -133,7 +146,7 @@ private fun WidgetGallery(
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
     // Fades away while a widget is dragged out, to show the grid it goes to
-    val alpha by animateFloatAsState(if (state.drag.newWidget != null) 0.15f else 1f)
+    val alpha by animateFloatAsState(if (state.drag.newWidget != null || state.drag.movingId != null) 0.15f else 1f)
     Column(
         modifier
             .padding(16.dp)
@@ -302,6 +315,41 @@ private fun SizeChip(
                 .clickable(onClick = onClick)
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     )
+}
+
+/** The drop zone a moved widget is removed in: red and larger once the pointer is over it. */
+@Composable
+private fun TrashZone(
+    drag: WidgetDrag,
+    modifier: Modifier = Modifier,
+) {
+    val over = drag.overTrash
+    val scale by animateFloatAsState(if (over) 1.12f else 1f)
+    val danger = Color(0xFFE5484D)
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier
+            .onGloballyPositioned { drag.trashBounds = it.boundsInRoot() }
+            .testTag("widget-trash")
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }.shadow(16.dp, shape)
+            .clip(shape)
+            .background(if (over) danger else JewelTheme.globalColors.panelBackground)
+            .border(1.5.dp, danger.copy(alpha = if (over) 1f else 0.6f), shape)
+            .padding(horizontal = 24.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        val tint = if (over) Color.White else danger
+        Image(Trash, contentDescription = null, colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(22.dp))
+        Text(
+            stringResource(if (over) Res.string.home_widgets_trash_release else Res.string.home_widgets_trash_hint),
+            color = tint,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
 }
 
 /** "X removed · Undo", for a few seconds after a widget is removed. */

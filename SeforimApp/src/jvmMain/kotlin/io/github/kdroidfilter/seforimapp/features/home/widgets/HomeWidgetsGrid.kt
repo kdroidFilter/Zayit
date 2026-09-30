@@ -249,6 +249,12 @@ internal class WidgetDrag {
     var galleryBounds = Rect.Zero
     var placeholderBounds = Rect.Zero
 
+    /** A placed widget being moved (by Reorderable), and the pointer moving it: the trash shows, to drop it in. */
+    var movingId by mutableStateOf<String?>(null)
+    var movePointer by mutableStateOf(Offset.Zero)
+    var trashBounds by mutableStateOf(Rect.Zero)
+    val overTrash: Boolean get() = movingId != null && trashBounds.contains(movePointer)
+
     fun widgetAt(point: Offset): String? = bounds.entries.firstOrNull { (_, rect) -> rect.contains(point) }?.key
 
     /**

@@ -5,9 +5,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.serialization.Serializable
 
+/** Serializable search-result snapshots persisted with the session (no in-memory state). */
 object SearchTabCache {
-    private const val MAX_TABS = 8
-
     @Serializable
     data class CategoryAggSnapshot(
         val categoryCounts: Map<Long, Int>,
@@ -47,22 +46,4 @@ object SearchTabCache {
         val totalHits: Long = 0L,
         val hasMore: Boolean = false,
     )
-
-    private val cache =
-        object : LinkedHashMap<String, Snapshot>(16, 0.75f, true) {
-            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, Snapshot>?): Boolean = size > MAX_TABS
-        }
-
-    fun put(
-        tabId: String,
-        snapshot: Snapshot,
-    ) {
-        cache[tabId] = snapshot
-    }
-
-    fun get(tabId: String): Snapshot? = cache[tabId]
-
-    fun clear(tabId: String) {
-        cache.remove(tabId)
-    }
 }

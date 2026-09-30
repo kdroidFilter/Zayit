@@ -595,10 +595,6 @@ class SearchHomeViewModel(
             current.copy(search = nextSearch)
         }
 
-        // Clear any previous cached search snapshot for this tab to avoid
-        // reusing stale results when a new search is submitted.
-        SearchTabCache.clear(currentTabId)
-
         // Emit navigation event - UI layer handles actual navigation
         _navigationEvents.send(SearchHomeNavigationEvent.NavigateToSearch(query, currentTabId))
     }

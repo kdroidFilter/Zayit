@@ -49,15 +49,16 @@ object E2eScenario {
             state.setTheme(theme)
             state.setThemeStyle(style)
             graph.appSettings.setTextSize(textSize)
-            E2e.outDir?.let { File(it, "log.txt").writeText(log.toString()) }
+            E2e.outDir?.let { File(it, "log.txt").writeText(synchronized(log) { log.toString() }) }
             quit()
         }
     }
 
     fun graph(): AppGraph = graph
 
+    /** Thread-safe: the torture's watchdog notes from its own thread. */
     fun note(line: String) {
-        log.appendLine(line)
+        synchronized(log) { log.appendLine(line) }
         println("E2E $line")
     }
 
@@ -135,6 +136,8 @@ object E2eScenario {
             ),
         )
         step("01-home", LOAD_MS)
+        // Only the setup, for runs (a torture over many seeds) that start from a clean desktop and need nothing else
+        if (System.getenv("ZAYIT_E2E_QUICK") == "1") return
 
         window().tabsViewModel.replaceCurrentTabDestination(TabsDestination.BookContent(bookId = bereshit, tabId = currentTabId()))
         step("02-book", LOAD_MS)

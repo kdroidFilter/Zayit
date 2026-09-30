@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -40,17 +42,18 @@ import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.Codec
+import org.jetbrains.skia.Data
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_temple_days
 import seforimapp.seforimapp.generated.resources.home_temple_months
 import seforimapp.seforimapp.generated.resources.home_temple_subtitle
 import seforimapp.seforimapp.generated.resources.home_temple_title
 import seforimapp.seforimapp.generated.resources.home_temple_years
-import seforimapp.seforimapp.generated.resources.temple_jerusalem_in_fire_medium
 import kotlin.time.Clock
 
 @Immutable
@@ -129,6 +132,43 @@ private fun millisUntilNextJerusalemSunset(nowMillis: Long): Long {
 private val ACCENT_START = Color(0xFFFF6B35)
 private val ACCENT_END = Color(0xFFFFAA70)
 
+private const val TEMPLE_ANIMATION = "files/temple_jerusalem_in_fire.webp"
+private const val MIN_FRAME_MS = 20L
+
+/**
+ * Plays the animated WebP frame by frame with Skia's [Codec]: only one decoded frame is alive at a time
+ * (plus the one still on screen), instead of the whole animation in RAM. Stops when the card leaves composition.
+ */
+@Composable
+private fun AnimatedTempleBackground(modifier: Modifier) {
+    val frame by produceState<ImageBitmap?>(null) {
+        val codec = Codec.makeFromData(Data.makeFromBytes(Res.readBytes(TEMPLE_ANIMATION)))
+        val durations = codec.framesInfo.map { it.duration.toLong().coerceAtLeast(MIN_FRAME_MS) }
+        val work = Bitmap().apply { allocPixels(codec.imageInfo) }
+        var shown: Bitmap? = null
+        var previous: Bitmap? = null
+        try {
+            var index = 0
+            while (true) {
+                // Frames are deltas on top of the previous one, which `work` still holds.
+                codec.readPixels(work, index, if (index == 0) -1 else index - 1)
+                val next = work.makeClone()
+                value = next.asComposeImageBitmap()
+                // The one before the current frame has been off screen for a whole frame duration: safe to free.
+                previous?.close()
+                previous = shown
+                shown = next
+                delay(durations[index])
+                index = (index + 1) % codec.frameCount
+            }
+        } finally {
+            work.close()
+            codec.close()
+        }
+    }
+    frame?.let { Image(it, contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop) }
+}
+
 @Composable
 fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(18.dp)
@@ -156,12 +196,7 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
                 .border(1.5.dp, borderColor, shape),
     ) {
         // Background image
-        Image(
-            painter = painterResource(Res.drawable.temple_jerusalem_in_fire_medium),
-            contentDescription = null,
-            modifier = Modifier.matchParentSize(),
-            contentScale = ContentScale.Crop,
-        )
+        AnimatedTempleBackground(Modifier.matchParentSize())
 
         // Dark overlay
         Box(

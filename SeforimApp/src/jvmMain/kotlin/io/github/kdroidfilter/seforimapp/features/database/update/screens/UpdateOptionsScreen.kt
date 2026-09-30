@@ -9,8 +9,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
-import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import io.github.kdroidfilter.seforimapp.icons.Unarchive
 import org.jetbrains.compose.resources.stringResource
@@ -22,8 +22,9 @@ import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun UpdateOptionsScreen(navController: NavController) {
+    val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
     LaunchedEffect(Unit) {
-        DatabaseUpdateProgressBarState.setVersionCheckComplete()
+        progressBarState.setVersionCheckComplete()
     }
 
     OnBoardingScaffold(title = stringResource(Res.string.db_update_options_title)) {
@@ -34,7 +35,7 @@ fun UpdateOptionsScreen(navController: NavController) {
                 icon = Unarchive,
                 description = stringResource(Res.string.db_update_local_file_desc),
                 buttonAction = {
-                    DatabaseUpdateProgressBarState.setOptionsSelected()
+                    progressBarState.setOptionsSelected()
                     navController.navigate(DatabaseUpdateDestination.OfflineUpdateScreen)
                 },
                 buttonText = stringResource(Res.string.db_update_local_file_button),
@@ -46,7 +47,7 @@ fun UpdateOptionsScreen(navController: NavController) {
                 icon = Download_for_offline,
                 description = stringResource(Res.string.db_update_download_desc),
                 buttonAction = {
-                    DatabaseUpdateProgressBarState.setOptionsSelected()
+                    progressBarState.setOptionsSelected()
                     navController.navigate(DatabaseUpdateDestination.OnlineUpdateScreen)
                 },
                 buttonText = stringResource(Res.string.db_update_download_button),

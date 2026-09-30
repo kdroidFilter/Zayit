@@ -11,7 +11,6 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
-import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
@@ -32,6 +31,7 @@ fun OfflineUpdateScreen(
     navController: NavController,
     onUpdateComplete: () -> Unit,
 ) {
+    val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
     val extractViewModel: ExtractViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val extractState by extractViewModel.state.collectAsState()
@@ -45,10 +45,10 @@ fun OfflineUpdateScreen(
 
     LaunchedEffect(extractState) {
         if (extractState.inProgress) {
-            DatabaseUpdateProgressBarState.setDownloadProgress(extractState.progress)
+            progressBarState.setDownloadProgress(extractState.progress)
         }
         if (extractState.completed && hasStartedExtraction) {
-            DatabaseUpdateProgressBarState.setUpdateComplete()
+            progressBarState.setUpdateComplete()
             navController.navigate(DatabaseUpdateDestination.CompletionScreen) {
                 popUpTo<DatabaseUpdateDestination.OfflineUpdateScreen> { inclusive = true }
             }
@@ -65,7 +65,7 @@ fun OfflineUpdateScreen(
             when (prepUseCase.prepareForInstall()) {
                 DatabasePreparationUseCase.Result.Ready -> {
                     // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-                    DatabaseUpdateProgressBarState.setDownloadStarted()
+                    progressBarState.setDownloadStarted()
                     processRepository.setPendingZstPath(p1)
                     extractViewModel.onEvent(ExtractEvents.StartIfPending)
                     hasStartedExtraction = true

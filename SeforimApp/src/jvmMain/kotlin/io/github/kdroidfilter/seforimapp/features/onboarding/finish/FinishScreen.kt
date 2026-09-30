@@ -32,7 +32,7 @@ import seforimapp.seforimapp.generated.resources.onboarding_ready
 import kotlin.time.Duration.Companion.seconds
 
 @Composable
-fun FinishScreen(progressBarState: ProgressBarState = ProgressBarState) {
+fun FinishScreen(progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState) {
     val mainAppState = LocalAppGraph.current.mainAppState
     LaunchedEffect(Unit) { progressBarState.setProgress(1f) }
     OnBoardingScaffold(

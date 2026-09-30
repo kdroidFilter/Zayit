@@ -8,11 +8,13 @@ import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
@@ -49,6 +51,14 @@ object OnboardingBindings {
     @Provides
     @SingleIn(AppScope::class)
     fun provideUserProfileUseCase(): UserProfileUseCase = UserProfileUseCase()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideOnboardingProgressBarState(): ProgressBarState = ProgressBarState()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDatabaseUpdateProgressBarState(): DatabaseUpdateProgressBarState = DatabaseUpdateProgressBarState()
 
     @Provides
     @SingleIn(AppScope::class)

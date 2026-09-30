@@ -14,7 +14,9 @@ import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
+import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
@@ -48,6 +50,8 @@ abstract class AppGraph : ViewModelGraph {
     abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase
     abstract val databasePreparationUseCase: DatabasePreparationUseCase
+    abstract val onboardingProgressBarState: ProgressBarState
+    abstract val databaseUpdateProgressBarState: DatabaseUpdateProgressBarState
 
     /** Seforim.db delta-update facade (recoverIfNeeded + checkAndApply). */
     abstract val dbDeltaUpdateService: io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService

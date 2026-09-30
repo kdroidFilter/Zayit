@@ -29,7 +29,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun OfflineFileSelectionScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState,
+    progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.5f)

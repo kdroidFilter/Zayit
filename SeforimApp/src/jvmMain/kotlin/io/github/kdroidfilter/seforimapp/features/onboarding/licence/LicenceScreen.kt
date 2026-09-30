@@ -23,6 +23,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.Progress
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.Checkbox
@@ -36,7 +37,7 @@ import seforimapp.seforimapp.generated.resources.next_button
 @Composable
 fun LicenceScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState,
+    progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.1f)

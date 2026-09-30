@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardi
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.CheckCircle
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -21,7 +22,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun VersionVerificationScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState,
+    progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
     var isVersionCompatible by remember { mutableStateOf<Boolean?>(null) }
 

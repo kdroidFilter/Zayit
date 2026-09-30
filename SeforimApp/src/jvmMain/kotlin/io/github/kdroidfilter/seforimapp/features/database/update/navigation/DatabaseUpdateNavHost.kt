@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.features.database.update.screens.Offlin
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.OnlineUpdateScreen
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.UpdateOptionsScreen
 import io.github.kdroidfilter.seforimapp.features.database.update.screens.VersionCheckScreen
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 
 @Composable
 fun DatabaseUpdateNavHost(
@@ -26,7 +27,7 @@ fun DatabaseUpdateNavHost(
     isDatabaseMissing: Boolean = false,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
-        val progressBarState = DatabaseUpdateProgressBarState
+        val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
         val progress by progressBarState.progress.collectAsState()
         AnimatedHorizontalProgressBar(progress, Modifier.fillMaxWidth())
 

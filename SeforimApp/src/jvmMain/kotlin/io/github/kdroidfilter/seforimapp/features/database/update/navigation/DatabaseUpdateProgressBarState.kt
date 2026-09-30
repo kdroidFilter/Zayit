@@ -2,14 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.database.update.navigation
 
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ProgressBarController
 
-object DatabaseUpdateProgressBarState : ProgressBarController() {
-    // Progress steps for database update
-    private const val VERSION_CHECK_STEP = 0.1f // 10% - Version check completed
-    private const val OPTIONS_SELECTED_STEP = 0.2f // 20% - Update option selected
-    private const val DOWNLOAD_START_STEP = 0.3f // 30% - Download/file selection started
-    private const val DOWNLOAD_COMPLETE_STEP = 0.8f // 80% - Download/extraction completed
-    private const val UPDATE_COMPLETE_STEP = 1.0f // 100% - Update finished
-
+class DatabaseUpdateProgressBarState : ProgressBarController() {
     // Helper methods for specific steps
     fun setVersionCheckComplete() {
         setProgress(VERSION_CHECK_STEP)
@@ -31,5 +24,14 @@ object DatabaseUpdateProgressBarState : ProgressBarController() {
 
     fun setUpdateComplete() {
         setProgress(UPDATE_COMPLETE_STEP)
+    }
+
+    private companion object {
+        // Progress steps for database update
+        const val VERSION_CHECK_STEP = 0.1f // 10% - Version check completed
+        const val OPTIONS_SELECTED_STEP = 0.2f // 20% - Update option selected
+        const val DOWNLOAD_START_STEP = 0.3f // 30% - Download/file selection started
+        const val DOWNLOAD_COMPLETE_STEP = 0.8f // 80% - Download/extraction completed
+        const val UPDATE_COMPLETE_STEP = 1.0f // 100% - Update finished
     }
 }

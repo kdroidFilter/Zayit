@@ -12,9 +12,11 @@ import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -22,8 +24,8 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 /** The globe at the selected moment; its orbit labels pick the date, its city list the location. */
 internal object EarthWidget : HomeWidget {
     override val id = "earth"
-    override val columns = 7
-    override val rows = 2f
+    override val sizes = mapOf(WidgetSize.SMALL to GridSize(5, 2f), WidgetSize.MEDIUM to GridSize(7, 2f))
+    override val defaultSize = WidgetSize.MEDIUM
     override val isSupported get() = isEarthWidgetSupported
 
     @Composable

@@ -52,8 +52,10 @@ import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.ohrHaChaimSunset
 import io.github.kdroidfilter.seforimapp.earthwidget.toDate
 import io.github.kdroidfilter.seforimapp.earthwidget.zmanimCalendar
+import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import kotlinx.collections.immutable.ImmutableList
@@ -207,8 +209,8 @@ private sealed class ZmanimGridItem {
 /** The zmanim cards of the selected day; clicking one points the Earth, the sky and the solar system at that zman. */
 internal object ZmanimWidget : HomeWidget {
     override val id = "zmanim"
-    override val columns = 13
-    override val rows = 2f
+    override val sizes = mapOf(WidgetSize.MEDIUM to GridSize(8, 2f), WidgetSize.LARGE to GridSize(13, 2f))
+    override val defaultSize = WidgetSize.LARGE
     override val wrapContentHeight = true
 
     @Composable

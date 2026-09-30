@@ -282,7 +282,7 @@ private fun HomeBody(
         }
     val widgetsState = remember(userLocation, community) { HomeWidgetsState(userLocation, community) }
     // Composed here, outside the LazyColumn, so scrolling a card away doesn't close its window
-    homeWidgets.forEach { it.Detached(widgetsState) }
+    homeWidgets.forEach { it.widget.Detached(widgetsState) }
 
     val listState = rememberLazyListState()
 

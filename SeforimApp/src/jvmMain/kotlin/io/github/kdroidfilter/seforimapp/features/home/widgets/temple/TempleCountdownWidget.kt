@@ -36,9 +36,11 @@ import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
 import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
+import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import kotlinx.coroutines.delay
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
@@ -174,8 +176,8 @@ private fun AnimatedTempleBackground(modifier: Modifier = Modifier) {
 /** Years, months and days since the Temple's destruction, over the burning Temple. */
 internal object TempleCountdownWidget : HomeWidget {
     override val id = "temple_countdown"
-    override val columns = 6
-    override val rows = 1.5f
+    override val sizes = mapOf(WidgetSize.SMALL to GridSize(4, 1.5f), WidgetSize.MEDIUM to GridSize(6, 1.5f))
+    override val defaultSize = WidgetSize.MEDIUM
 
     @Composable
     override fun Content(

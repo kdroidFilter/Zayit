@@ -21,18 +21,18 @@ private val MAX_GRID_WIDTH = 1000.dp
 /** Below this width every widget takes a whole row. */
 private val COMPACT_GRID_WIDTH = 670.dp
 
-private fun HomeWidget.height(): Dp = HOME_GRID_CELL_HEIGHT * rows + GRID_GAP * (rows - 1).coerceAtLeast(0f)
+private fun GridSize.height(): Dp = HOME_GRID_CELL_HEIGHT * rows + GRID_GAP * (rows - 1).coerceAtLeast(0f)
 
 /** Fills rows of [HOME_GRID_COLUMNS] columns with [widgets] in order, a widget that doesn't fit starting a new row. */
 internal fun packRows(
-    widgets: List<HomeWidget>,
+    widgets: List<WidgetPlacement>,
     compact: Boolean,
-): List<List<HomeWidget>> {
+): List<List<WidgetPlacement>> {
     if (compact) return widgets.map { listOf(it) }
-    val rows = mutableListOf<MutableList<HomeWidget>>()
+    val rows = mutableListOf<MutableList<WidgetPlacement>>()
     for (widget in widgets) {
         val last = rows.lastOrNull()
-        if (last != null && last.sumOf { it.columns } + widget.columns <= HOME_GRID_COLUMNS) {
+        if (last != null && last.sumOf { it.grid.columns } + widget.grid.columns <= HOME_GRID_COLUMNS) {
             last += widget
         } else {
             rows += mutableListOf(widget)
@@ -41,41 +41,58 @@ internal fun packRows(
     return rows
 }
 
+/**
+ * Splits [width] px (gaps already taken out) between widgets of these [columns], in proportion: a row that isn't
+ * full stretches its widgets, so the grid never shows a hole whatever the user adds or removes.
+ */
+internal fun rowWidths(
+    columns: List<Int>,
+    width: Int,
+): List<Int> {
+    val total = columns.sum()
+    var start = 0
+    var used = 0
+    return columns.map { c ->
+        used += c
+        // Cumulative rounding: the widths always add up to [width] exactly
+        val end = width * used / total
+        (end - start).also { start = end }
+    }
+}
+
 @Composable
 fun HomeWidgetsHost(
     state: HomeWidgetsState,
     modifier: Modifier = Modifier,
-    widgets: List<HomeWidget> = homeWidgets,
+    widgets: List<WidgetPlacement> = homeWidgets,
 ) {
     BoxWithConstraints(modifier.widthIn(max = MAX_GRID_WIDTH).fillMaxWidth()) {
         val compact = maxWidth < COMPACT_GRID_WIDTH
-        val rows = packRows(widgets.filter { it.isSupported }, compact)
+        val rows = packRows(widgets.filter { it.widget.isSupported }, compact)
         Column(verticalArrangement = Arrangement.spacedBy(GRID_GAP)) {
-            rows.forEach { row -> key(row.first().id) { WidgetRow(row, state, compact) } }
+            rows.forEach { row -> key(row.first().widget.id) { WidgetRow(row, state) } }
         }
     }
 }
 
 /**
- * One grid row: widgets are as wide as their columns, the row as tall as its tallest widget (a
+ * One grid row: widgets share its width in proportion to their columns, the row is as tall as its tallest widget (a
  * [HomeWidget.wrapContentHeight] one may grow), and every other widget stretches to that height.
  */
 @Composable
 private fun WidgetRow(
-    row: List<HomeWidget>,
+    row: List<WidgetPlacement>,
     state: HomeWidgetsState,
-    compact: Boolean,
 ) {
     Layout(
-        content = { row.forEach { key(it.id) { it.Content(state, Modifier) } } },
+        content = { row.forEach { key(it.widget.id) { it.widget.Content(state, Modifier) } } },
         modifier = Modifier.fillMaxWidth(),
     ) { measurables, constraints ->
         val gap = GRID_GAP.roundToPx()
-        val pitch = (constraints.maxWidth + gap) / HOME_GRID_COLUMNS.toFloat()
-        val widths = row.map { if (compact) constraints.maxWidth else (it.columns * pitch - gap).toInt() }
-        val baseHeight = row.maxOf { it.height().roundToPx() }
+        val widths = rowWidths(row.map { it.grid.columns }, constraints.maxWidth - gap * (row.size - 1))
+        val baseHeight = row.maxOf { it.grid.height().roundToPx() }
         val wrapped =
-            row.indices.filter { row[it].wrapContentHeight }.associateWith {
+            row.indices.filter { row[it].widget.wrapContentHeight }.associateWith {
                 measurables[it].measure(Constraints(widths[it], widths[it], baseHeight, Constraints.Infinity))
             }
         val height = maxOf(baseHeight, wrapped.values.maxOfOrNull { it.height } ?: 0)

@@ -16,13 +16,12 @@ interface HomeWidget {
     /** Stable key, for persisting the user's widget order. */
     val id: String
 
-    /** Width in grid columns, out of [HOME_GRID_COLUMNS]. */
-    val columns: Int
+    /** The sizes it can be given, as on iOS: a few fixed ones rather than a free resize. */
+    val sizes: Map<WidgetSize, GridSize>
 
-    /** Height in grid cells ([HOME_GRID_CELL_HEIGHT] each). */
-    val rows: Float
+    val defaultSize: WidgetSize
 
-    /** Grows past [rows] to fit its content; the other widgets of its row then stretch to match. */
+    /** Grows past its [GridSize.rows] to fit its content; the other widgets of its row then stretch to match. */
     val wrapContentHeight: Boolean get() = false
 
     val isSupported: Boolean get() = true
@@ -39,6 +38,26 @@ interface HomeWidget {
     fun Detached(state: HomeWidgetsState) {}
 }
 
-/** Every widget, in the default Home order. */
-val homeWidgets: List<HomeWidget> =
-    listOf(ZmanimWidget, EarthWidget, TempleCountdownWidget, SolarSystemWidget, SkyWidget)
+enum class WidgetSize { SMALL, MEDIUM, LARGE }
+
+/** [columns] out of [HOME_GRID_COLUMNS], [rows] in cells of [HOME_GRID_CELL_HEIGHT]. */
+data class GridSize(
+    val columns: Int,
+    val rows: Float,
+)
+
+/** A widget on the Home grid, at one of its [HomeWidget.sizes]. */
+data class WidgetPlacement(
+    val widget: HomeWidget,
+    val size: WidgetSize = widget.defaultSize,
+) {
+    init {
+        require(size in widget.sizes) { "${widget.id} has no $size size" }
+    }
+
+    val grid: GridSize get() = widget.sizes.getValue(size)
+}
+
+/** The default Home layout. */
+val homeWidgets: List<WidgetPlacement> =
+    listOf(ZmanimWidget, EarthWidget, TempleCountdownWidget, SolarSystemWidget, SkyWidget).map(::WidgetPlacement)

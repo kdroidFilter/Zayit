@@ -6,15 +6,17 @@ import androidx.compose.ui.Modifier
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.SkyWidgetView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
+import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 
 /** The sky seen from the selected location at the selected moment. */
 internal object SkyWidget : HomeWidget {
     override val id = "sky"
-    override val columns = 5
-    override val rows = 1.5f
+    override val sizes = mapOf(WidgetSize.SMALL to GridSize(5, 1.5f), WidgetSize.MEDIUM to GridSize(8, 1.5f))
+    override val defaultSize = WidgetSize.SMALL
     override val isSupported get() = isEarthWidgetSupported
 
     @Composable

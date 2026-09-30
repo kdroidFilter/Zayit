@@ -91,6 +91,8 @@ internal object CalendarWidget : HomeWidget {
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     // Holiday names only where a cell can hold a word
                     val showTags = maxWidth / 7 >= 64.dp
+                    // Too narrow for both dates side by side: the Gregorian one goes under the Hebrew one
+                    val stacked = maxWidth / 7 < 56.dp
                     Column(Modifier.fillMaxSize()) {
                         Row(Modifier.fillMaxWidth()) {
                             WEEKDAY_INITIALS.forEach { name ->
@@ -111,6 +113,7 @@ internal object CalendarWidget : HomeWidget {
                                         isToday = day?.date == today,
                                         isSelected = day?.date == selected,
                                         showTag = showTags,
+                                        stacked = stacked,
                                         accent = accent,
                                         onClick = { day?.let { state.selectDate(it.date) } },
                                         modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -261,6 +264,7 @@ private fun DayCell(
     isToday: Boolean,
     isSelected: Boolean,
     showTag: Boolean,
+    stacked: Boolean,
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -292,8 +296,11 @@ private fun DayCell(
             ),
     ) {
         if (day == null) return@Box
-        Column(Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp)) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+        Column(
+            Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp),
+            horizontalAlignment = if (stacked) Alignment.CenterHorizontally else Alignment.Start,
+        ) {
+            val hebrew = @Composable { rowModifier: Modifier ->
                 Text(
                     text = day.hebrewDay,
                     fontSize = 14.sp,
@@ -301,8 +308,10 @@ private fun DayCell(
                     color = if (isToday) accent else textColor,
                     maxLines = 1,
                     softWrap = false,
-                    modifier = Modifier.weight(1f),
+                    modifier = rowModifier,
                 )
+            }
+            val gregorian = @Composable {
                 Text(
                     text = day.gregorianDay.toString(),
                     fontSize = 9.sp,
@@ -310,6 +319,15 @@ private fun DayCell(
                     maxLines = 1,
                     softWrap = false,
                 )
+            }
+            if (stacked) {
+                hebrew(Modifier)
+                gregorian()
+            } else {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+                    hebrew(Modifier.weight(1f))
+                    gregorian()
+                }
             }
             if (showTag && day.tag.isNotBlank()) {
                 Text(

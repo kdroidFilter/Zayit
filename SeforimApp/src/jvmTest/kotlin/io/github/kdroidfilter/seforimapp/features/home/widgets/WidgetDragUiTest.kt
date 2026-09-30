@@ -57,10 +57,8 @@ class WidgetDragUiTest {
                     moveTo(Offset(150f, 100f))
                 }
                 waitForIdle()
-                grid.performMouseInput {
-                    // The Temple is 6 of the 20 columns (its 6 of 19 stretched): ~292 px wide, grip at its top centre
-                    val templeCentre = 146f
-                    moveTo(Offset(templeCentre, 14f))
+                onNodeWithTag("widget-grip-temple_countdown").performMouseInput {
+                    moveTo(center)
                     press()
                     // Onto the zmanim widget, in steps so the drag passes its slop
                     repeat(10) { moveBy(Offset(50f, 5f)) }

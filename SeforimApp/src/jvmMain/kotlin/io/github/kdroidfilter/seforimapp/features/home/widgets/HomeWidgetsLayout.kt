@@ -36,7 +36,20 @@ internal object HomeWidgetsLayout {
         save(layout.toMutableList().apply { add(index, WidgetPlacement(widget, size)) })
     }
 
-    fun remove(widget: HomeWidget) = save(current().filterNot { it.widget.id == widget.id })
+    /** Returns what was removed and where, for an undo to [restore] it. */
+    fun remove(widget: HomeWidget): RemovedWidget? {
+        val layout = current()
+        val index = layout.indexOfFirst { it.widget.id == widget.id }
+        if (index < 0) return null
+        save(layout.filterIndexed { i, _ -> i != index })
+        return RemovedWidget(layout[index], index)
+    }
+
+    fun restore(removed: RemovedWidget) {
+        val layout = current()
+        if (layout.any { it.widget.id == removed.placement.widget.id }) return
+        save(layout.toMutableList().apply { add(removed.index.coerceAtMost(size), removed.placement) })
+    }
 
     fun resize(
         widget: HomeWidget,
@@ -45,3 +58,8 @@ internal object HomeWidgetsLayout {
 
     fun reset() = AppSettings.setHomeWidgetsLayout(null)
 }
+
+internal data class RemovedWidget(
+    val placement: WidgetPlacement,
+    val index: Int,
+)

@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.DefaultButton
@@ -67,8 +68,11 @@ import seforimapp.seforimapp.generated.resources.home_widgets_added
 import seforimapp.seforimapp.generated.resources.home_widgets_done
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_hint
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_title
+import seforimapp.seforimapp.generated.resources.home_widgets_removed
 import seforimapp.seforimapp.generated.resources.home_widgets_reset
+import seforimapp.seforimapp.generated.resources.home_widgets_undo
 import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.seconds
 
 private const val PREVIEW_SCALE = 0.42f
 private const val GHOST_SCALE = 0.6f
@@ -90,6 +94,16 @@ fun BoxScope.HomeWidgetsOverlay(
     Box(Modifier.matchParentSize().onGloballyPositioned { origin = it.positionInRoot() })
     if (state.editingWidgets) {
         WidgetGallery(state, placed, Modifier.align(Alignment.BottomCenter))
+    }
+    state.lastRemoved?.let { removed ->
+        UndoBar(
+            removed = removed,
+            state = state,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = if (state.editingWidgets) WIDGET_GALLERY_HEIGHT else 24.dp),
+        )
     }
     // The dragged widget follows the pointer, above everything
     drag.newWidget?.let { dragged ->
@@ -198,26 +212,21 @@ private fun GalleryItem(
                         detectDragGestures(
                             onDragStart = {
                                 drag.newWidget = WidgetPlacement(widget, size)
-                                drag.pointer = bounds.topLeft + it
+                                drag.moveTo(bounds.topLeft + it)
                             },
                             onDrag = { change, amount ->
                                 change.consume()
-                                drag.pointer += amount
-                                drag.targetId = drag.widgetAt(drag.pointer)
+                                drag.moveTo(drag.pointer + amount)
                             },
                             onDragEnd = {
-                                // Dropped back on the gallery: nothing; on a widget: in its place; elsewhere: at the end
-                                if (!drag.galleryBounds.contains(drag.pointer)) {
+                                // Dropped back on the gallery: nothing; else where its placeholder shows
+                                if (drag.overGrid) {
                                     val target = availableHomeWidgets.firstOrNull { it.id == drag.targetId }
                                     HomeWidgetsLayout.add(widget, size, before = target)
                                 }
-                                drag.newWidget = null
-                                drag.targetId = null
+                                drag.end()
                             },
-                            onDragCancel = {
-                                drag.newWidget = null
-                                drag.targetId = null
-                            },
+                            onDragCancel = { drag.end() },
                         )
                     },
             )
@@ -236,7 +245,7 @@ private fun GalleryItem(
     }
 }
 
-/** The widget itself at its real size, scaled down by [scale]; no live Filament scene in a thumbnail. */
+/** The widget's [HomeWidget.Preview] at its real size, scaled down by [scale]. */
 @Composable
 internal fun WidgetPreview(
     widget: HomeWidget,
@@ -262,8 +271,9 @@ internal fun WidgetPreview(
                     }
                 },
     ) {
+        // No live Filament scene in a thumbnail, should a Preview fall back to its content
         CompositionLocalProvider(LocalTabSelected provides false) {
-            widget.Content(state, Modifier)
+            widget.Preview(state, Modifier)
         }
     }
 }
@@ -293,3 +303,32 @@ private fun SizeChip(
                 .padding(horizontal = 10.dp, vertical = 3.dp),
     )
 }
+
+/** "X removed · Undo", for a few seconds after a widget is removed. */
+@Composable
+private fun UndoBar(
+    removed: RemovedWidget,
+    state: HomeWidgetsState,
+    modifier: Modifier = Modifier,
+) {
+    LaunchedEffect(removed) {
+        delay(UNDO_DELAY)
+        state.forgetRemoved(removed)
+    }
+    val shape = RoundedCornerShape(50)
+    Row(
+        modifier
+            .shadow(12.dp, shape)
+            .clip(shape)
+            .background(JewelTheme.globalColors.panelBackground)
+            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+            .padding(start = 18.dp, end = 8.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(stringResource(Res.string.home_widgets_removed, stringResource(removed.placement.widget.title)))
+        Link(stringResource(Res.string.home_widgets_undo), onClick = state::undoRemove)
+    }
+}
+
+private val UNDO_DELAY = 6.seconds

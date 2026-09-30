@@ -379,7 +379,7 @@ private fun HomeBody(
                     modifier = Modifier.fillMaxWidth(),
                     showWidgets = showZmanimWidgets,
                 ) {
-                    fullWidthItem {
+                    fullWidthItem(gapAfter = 4.dp) {
                         BoxWithConstraints(
                             Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
@@ -389,7 +389,7 @@ private fun HomeBody(
                             LogoImage(modifier = Modifier.width(logoWidth))
                         }
                     }
-                    fullWidthItem {
+                    fullWidthItem(gapAfter = 4.dp) {
                         Box(
                             Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
@@ -538,7 +538,7 @@ private fun HomeBody(
                             }
                         }
                     }
-                    fullWidthItem {
+                    fullWidthItem(gapAfter = 4.dp) {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Box(homeContentModifier) {
                                 if (searchUi.selectedFilter == SearchFilter.REFERENCE) {

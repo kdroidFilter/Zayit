@@ -12,6 +12,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.features.home.widgets.EarthPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
@@ -30,6 +31,12 @@ internal object EarthWidget : HomeWidget {
     override val sizes = mapOf(WidgetSize.SMALL to GridSize(5, 2f), WidgetSize.MEDIUM to GridSize(7, 2f))
     override val defaultSize = WidgetSize.MEDIUM
     override val isSupported get() = isEarthWidgetSupported
+
+    @Composable
+    override fun Preview(
+        state: HomeWidgetsState,
+        modifier: Modifier,
+    ) = EarthPreview(modifier)
 
     @Composable
     override fun Content(

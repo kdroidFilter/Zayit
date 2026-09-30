@@ -46,6 +46,13 @@ interface HomeWidget {
         modifier: Modifier,
     )
 
+    /** Its picture in the gallery; the live content by default, a drawing for the ones a thumbnail can't run. */
+    @Composable
+    fun Preview(
+        state: HomeWidgetsState,
+        modifier: Modifier,
+    ) = Content(state, modifier)
+
     /** Composed outside the scrolling Home list, for windows that must outlive the card scrolling away. */
     @Composable
     fun Detached(state: HomeWidgetsState) {}

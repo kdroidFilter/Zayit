@@ -328,6 +328,8 @@
     <string name="home_widgets_add">הוספה</string>
     <string name="home_widgets_added">נוסף</string>
     <string name="home_widgets_remove">הסרת הווידג'ט</string>
+    <string name="home_widgets_removed">%1$s הוסר</string>
+    <string name="home_widgets_undo">ביטול</string>
     <string name="home_widgets_reset">שחזור ברירת המחדל</string>
     <string name="home_widget_size_small">קטן</string>
     <string name="home_widget_size_medium">בינוני</string>

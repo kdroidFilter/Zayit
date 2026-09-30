@@ -9,6 +9,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.SolarSystemPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import seforimapp.seforimapp.generated.resources.Res
@@ -21,6 +22,12 @@ internal object SolarSystemWidget : HomeWidget {
     override val sizes = mapOf(WidgetSize.SMALL to GridSize(6, 1.5f), WidgetSize.MEDIUM to GridSize(9, 1.5f))
     override val defaultSize = WidgetSize.MEDIUM
     override val isSupported get() = isEarthWidgetSupported
+
+    @Composable
+    override fun Preview(
+        state: HomeWidgetsState,
+        modifier: Modifier,
+    ) = SolarSystemPreview(modifier)
 
     @Composable
     override fun Content(

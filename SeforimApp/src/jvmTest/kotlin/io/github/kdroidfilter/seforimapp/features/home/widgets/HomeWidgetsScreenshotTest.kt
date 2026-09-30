@@ -58,6 +58,12 @@ class HomeWidgetsScreenshotTest {
     @Test
     fun `render edit mode`() {
         for (dark in listOf(false, true)) shot("edit", 1100, dark, homeWidgets.take(3), editing = true)
+        // The calendar held over the Temple, from the gallery: its placeholder pushes the Temple on
+        shot("edit-drop", 1100, false, homeWidgets.take(3), editing = true) {
+            it.drag.newWidget = WidgetPlacement(CalendarWidget)
+            it.drag.overGrid = true
+            it.drag.targetId = "temple_countdown"
+        }
     }
 
     private fun shot(
@@ -66,6 +72,7 @@ class HomeWidgetsScreenshotTest {
         dark: Boolean,
         widgets: List<WidgetPlacement>,
         editing: Boolean = false,
+        setUp: (HomeWidgetsState) -> Unit = {},
     ) = runComposeUiTest {
         setContent {
             IntUiTheme(isDark = dark) {
@@ -78,6 +85,7 @@ class HomeWidgetsScreenshotTest {
                     val state =
                         HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE).also {
                             it.editingWidgets = editing
+                            setUp(it)
                         }
                     Box(
                         Modifier

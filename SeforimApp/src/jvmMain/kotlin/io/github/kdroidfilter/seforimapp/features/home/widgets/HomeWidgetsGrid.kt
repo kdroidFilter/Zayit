@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -7,12 +8,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -21,11 +24,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.OutlinedButton
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
@@ -135,9 +145,19 @@ fun HomeWidgetsGrid(
     // Widgets this platform can't show keep their place in the save
     val save = { HomeWidgetsLayout.save(live + widgets.filterNot { it.widget.isSupported }) }
 
+    // A widget dragged in from the gallery gets its place in the grid while it's held there, the others making room
+    val incoming = state.drag.newWidget?.takeIf { state.drag.overGrid }
+    val shown =
+        if (incoming == null) {
+            live
+        } else {
+            val at = live.indexOfFirst { it.widget.id == state.drag.targetId }.takeIf { it >= 0 } ?: live.size
+            live.toMutableList().apply { add(at, incoming) }
+        }
+
     BoxWithConstraints(modifier) {
         val side = ((maxWidth - MAX_GRID_WIDTH) / 2).coerceAtLeast(0.dp)
-        val cells = gridCells(live, maxWidth - side * 2)
+        val cells = gridCells(shown, maxWidth - side * 2)
         LazyVerticalGrid(
             columns = GridCells.Fixed(HOME_GRID_COLUMNS),
             state = gridState,
@@ -148,7 +168,19 @@ fun HomeWidgetsGrid(
         ) {
             header()
             if (showWidgets) {
+                // The search sections were 16 dp apart and 32 dp above the widgets: keep that rhythm on the grid's gaps
+                fullWidthItem { Spacer(Modifier.height(4.dp)) }
                 items(cells, key = { it.placement.widget.id }, span = { GridItemSpan(it.span) }) { cell ->
+                    if (cell.placement == incoming) {
+                        DropPlaceholder(
+                            Modifier
+                                .animateItem()
+                                .fillMaxWidth()
+                                .height(cell.height)
+                                .onGloballyPositioned { state.drag.placeholderBounds = it.boundsInRoot() },
+                        )
+                        return@items
+                    }
                     ReorderableItem(reorderState, key = cell.placement.widget.id) { dragging ->
                         WidgetFrame(
                             placement = cell.placement,
@@ -176,8 +208,31 @@ fun HomeWidgetsGrid(
     }
 }
 
-/** An item across the whole grid, as the Home's search sections are. */
-fun LazyGridScope.fullWidthItem(content: @Composable () -> Unit) = item(span = { GridItemSpan(maxLineSpan) }) { content() }
+/** An item across the whole grid, as the Home's search sections are ([gapAfter] adds to the grid's own gap). */
+fun LazyGridScope.fullWidthItem(
+    gapAfter: Dp = 0.dp,
+    content: @Composable () -> Unit,
+) = item(span = { GridItemSpan(maxLineSpan) }) {
+    Box(Modifier.padding(bottom = gapAfter)) { content() }
+}
+
+/** Where a widget dragged in from the gallery will land: a dashed, empty card of its size. */
+@Composable
+private fun DropPlaceholder(modifier: Modifier = Modifier) {
+    val color = JewelTheme.globalColors.borders.focused
+    Box(
+        modifier
+            .background(color.copy(alpha = 0.08f), RoundedCornerShape(18.dp))
+            .drawBehind {
+                val radius = CornerRadius(18.dp.toPx())
+                drawRoundRect(
+                    color = color,
+                    cornerRadius = radius,
+                    style = Stroke(width = 2.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 8f))),
+                )
+            },
+    )
+}
 
 /**
  * A widget dragged from the gallery ([newWidget] at [pointer]) and where the placed widgets sit, in root coordinates,
@@ -187,8 +242,30 @@ internal class WidgetDrag {
     var targetId by mutableStateOf<String?>(null)
     var newWidget by mutableStateOf<WidgetPlacement?>(null)
     var pointer by mutableStateOf(Offset.Zero)
+
+    /** Off the gallery: the grid shows where the widget would land. */
+    var overGrid by mutableStateOf(false)
     val bounds = mutableMapOf<String, Rect>()
     var galleryBounds = Rect.Zero
+    var placeholderBounds = Rect.Zero
 
     fun widgetAt(point: Offset): String? = bounds.entries.firstOrNull { (_, rect) -> rect.contains(point) }?.key
+
+    /**
+     * Follows the pointer of a gallery drag. Over its own placeholder the target holds: the placeholder took that
+     * widget's place, and letting go of it would send the placeholder away and back under the pointer.
+     */
+    fun moveTo(point: Offset) {
+        pointer = point
+        overGrid = !galleryBounds.contains(point)
+        // Off every widget (the search above, a gap): the end of the grid
+        if (!placeholderBounds.contains(point)) targetId = widgetAt(point)
+    }
+
+    fun end() {
+        newWidget = null
+        targetId = null
+        overGrid = false
+        placeholderBounds = Rect.Zero
+    }
 }

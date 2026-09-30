@@ -80,6 +80,23 @@ class HomeWidgetsState(
     /** A widget being dragged, from the grid or the gallery. */
     internal val drag = WidgetDrag()
 
+    /** The widget just removed, while its undo is offered. */
+    internal var lastRemoved by mutableStateOf<RemovedWidget?>(null)
+        private set
+
+    internal fun removeWidget(widget: HomeWidget) {
+        lastRemoved = HomeWidgetsLayout.remove(widget)
+    }
+
+    internal fun undoRemove() {
+        lastRemoved?.let(HomeWidgetsLayout::restore)
+        lastRemoved = null
+    }
+
+    internal fun forgetRemoved(removed: RemovedWidget) {
+        if (lastRemoved === removed) lastRemoved = null
+    }
+
     fun selectDate(date: LocalDate) {
         selectedDate = date
         targetTime = null

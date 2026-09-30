@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,6 +35,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -71,6 +73,8 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
     val grabIcon = if (dragging) TaoPointerIcons.Grabbing else TaoPointerIcons.Grab
+    // A removed widget must not stay a drop target where it used to be
+    DisposableEffect(widget.id) { onDispose { drag.bounds.remove(widget.id) } }
 
     // Min constraints reach the widget, so it fills its cell
     Box(
@@ -106,7 +110,7 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
                 // Swallows clicks meant for the widget and turns a press into a drag
                 Box(Modifier.fillMaxSize().pointerHoverIcon(grabIcon).draggableHandle(onDragStopped = onDrop))
                 RemoveBadge(
-                    onClick = { HomeWidgetsLayout.remove(widget) },
+                    onClick = { state.removeWidget(widget) },
                     modifier = Modifier.align(Alignment.TopStart).offset((-8).dp, (-8).dp),
                 )
             } else if (hovered || dragging) {
@@ -114,6 +118,7 @@ internal fun ReorderableCollectionItemScope.WidgetFrame(
                     modifier =
                         Modifier
                             .align(Alignment.TopCenter)
+                            .testTag("widget-grip-${widget.id}")
                             .pointerHoverIcon(grabIcon)
                             .draggableHandle(onDragStopped = onDrop),
                 )
@@ -204,7 +209,7 @@ private fun WidgetMenu(
             iconKey = AllIconsKeys.General.Remove,
             onClick = {
                 onDismiss()
-                HomeWidgetsLayout.remove(widget)
+                state.removeWidget(widget)
             },
         ) { Text(removeLabel) }
         if (!state.editingWidgets) {

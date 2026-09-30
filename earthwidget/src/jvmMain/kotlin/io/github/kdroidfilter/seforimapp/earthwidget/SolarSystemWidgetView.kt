@@ -61,12 +61,15 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupPositionProvider
-import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
-import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
-import com.kosherjava.zmanim.hebrewcalendar.JewishDate
 import io.github.erkko68.filament.compose.rememberFilamentEngine
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
 import io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton
+import kotlinx.datetime.DateTimeUnit
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -84,7 +87,6 @@ import seforimapp.earthwidget.generated.resources.earthwidget_kiddush_levana_leg
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_real_spin_tooltip
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_title
 import java.time.LocalDate
-import java.util.Calendar
 import java.util.Date
 import java.util.TimeZone
 import kotlin.math.PI
@@ -125,7 +127,7 @@ internal fun kiddushLevanaWindow(
     earliest: KiddushLevanaEarliestOpinion,
     latest: KiddushLevanaLatestOpinion,
 ): Pair<Long, Long> {
-    val calendar = JewishCalendar(date)
+    val calendar = JewishCalendar(date.toKotlinLocalDate())
     // The molad that opened this lunar month: this Hebrew month's, or the previous one's if it isn't past yet
     val noon =
         date
@@ -133,10 +135,10 @@ internal fun kiddushLevanaWindow(
             .atZone(java.time.ZoneOffset.UTC)
             .toInstant()
             .toEpochMilli()
-    var molad = calendar.moladAsDate.time
+    var molad = calendar.moladAsInstant.toEpochMilliseconds()
     if (molad > noon) {
         goToPreviousHebrewMonth(calendar)
-        molad = calendar.moladAsDate.time
+        molad = calendar.moladAsInstant.toEpochMilliseconds()
     }
     val start = molad + if (earliest == KiddushLevanaEarliestOpinion.DAYS_7) 7 * DAY_MILLIS else 3 * DAY_MILLIS
     val end = molad + if (latest == KiddushLevanaLatestOpinion.DAYS_15) 15 * DAY_MILLIS else HALF_LUNATION_MILLIS
@@ -189,7 +191,7 @@ private val PinnedFamilies =
         JewishCalendar.TISHA_BEAV,
     )
 
-/** Groups kosherjava's per-day indices into one event per holiday (Sukkot with its Chol HaMoed, etc.). */
+/** Groups KosherKotlin's per-day indices into one event per holiday (Sukkot with its Chol HaMoed, etc.). */
 private fun holidayFamily(yomTovIndex: Int): Pair<Int, SolarEventCategory>? =
     when (yomTovIndex) {
         JewishCalendar.ROSH_HASHANA -> JewishCalendar.ROSH_HASHANA to SolarEventCategory.YomTov
@@ -217,7 +219,7 @@ internal fun computeHebrewYearEvents(
     inIsrael: Boolean,
 ): List<SolarEvent> {
     val formatter = HebrewDateFormatter().apply { isHebrewFormat = true }
-    val calendar = JewishCalendar(hebrewYear, JewishDate.TISHREI, 1).apply { this.inIsrael = inIsrael }
+    val calendar = JewishCalendar(hebrewYear, HebrewMonth.TISHREI, 1).apply { this.inIsrael = inIsrael }
     val events = ArrayList<SolarEvent>()
 
     // Holidays and Rosh Chodesh are tracked apart: Rosh Chodesh Tevet falls inside Chanukah.
@@ -244,7 +246,7 @@ internal fun computeHebrewYearEvents(
     }
 
     repeat(calendar.daysInJewishYear) {
-        val date = calendar.localDate
+        val date = calendar.gregorianLocalDate.toJavaLocalDate()
         val family = holidayFamily(calendar.yomTovIndex)
         holiday.step(family, date) {
             // "א׳ חנוכה" → "חנוכה": one label for the eight days
@@ -253,7 +255,7 @@ internal fun computeHebrewYearEvents(
         roshChodesh.step(if (calendar.isRoshChodesh) 0 to SolarEventCategory.RoshChodesh else null, date) { "" }
         // Rosh Chodesh is named after the month it opens: its last day
         if (calendar.isRoshChodesh) roshChodesh.event = roshChodesh.event?.copy(name = formatter.formatMonth(calendar))
-        calendar.forward(Calendar.DATE, 1)
+        calendar.forward(DateTimeUnit.DAY, 1)
     }
     listOf(holiday, roshChodesh).forEach { run -> run.event?.let { events += it } }
     return events.sortedBy { it.start }
@@ -344,7 +346,7 @@ fun SolarSystemWidgetView(
     val displayedDate = baseDate.plusDays(playOffsetDays.toLong())
     val dayFraction = playOffsetDays - playOffsetDays.toLong()
     // Shows the holidays of the date's Hebrew year, until the user picks another one
-    val dateHebrewYear = remember(displayedDate) { JewishCalendar(displayedDate).jewishYear }
+    val dateHebrewYear = remember(displayedDate) { JewishCalendar(displayedDate.toKotlinLocalDate()).jewishYear.toInt() }
     var hebrewYear by remember(dateHebrewYear) { mutableIntStateOf(dateHebrewYear) }
     val events = remember(hebrewYear, inIsrael) { computeHebrewYearEvents(hebrewYear, inIsrael) }
     // Noon of the displayed day (or the given instant), plus the running part of a day while playing (smooth orbits)
@@ -509,7 +511,11 @@ fun SolarSystemWidgetView(
                                     label =
                                         remember(
                                             displayedDate,
-                                        ) { HebrewDateFormatter().apply { isHebrewFormat = true }.format(JewishCalendar(displayedDate)) },
+                                        ) {
+                                            HebrewDateFormatter().apply { isHebrewFormat = true }.format(
+                                                JewishCalendar(displayedDate.toKotlinLocalDate()),
+                                            )
+                                        },
                                     selectedDate = displayedDate,
                                     onDateSelect = onDateSelect,
                                     initialMode = CalendarMode.HEBREW,
@@ -670,7 +676,7 @@ private fun DisplayedDateCaption(
     kiddushLevanaNow: Boolean = false,
 ) {
     val formatter = remember { HebrewDateFormatter().apply { isHebrewFormat = true } }
-    val hebrewDate = remember(date) { formatter.format(JewishCalendar(date)) }
+    val hebrewDate = remember(date) { formatter.format(JewishCalendar(date.toKotlinLocalDate())) }
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         event?.let {
             Text(it.name, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFF000000.toInt() or it.category.colorRgb))

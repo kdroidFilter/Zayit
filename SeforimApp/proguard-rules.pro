@@ -212,9 +212,9 @@
 # Zmanim's HebrewDateFormatter builds EnumMap<JewishCalendar.Parsha, String> at runtime.
 # If R8/ProGuard rewrites or unboxes these enums, EnumMap will crash with:
 # "Cannot read the array length because this.keyUniverse is null".
--keep class com.kosherjava.zmanim.** { *; }
--keep enum com.kosherjava.zmanim.** { *; }
--dontwarn com.kosherjava.zmanim.**
+-keep class io.github.kdroidfilter.kosherkotlin.** { *; }
+-keep enum io.github.kdroidfilter.kosherkotlin.** { *; }
+-dontwarn io.github.kdroidfilter.kosherkotlin.**
 
 # --- Fix: Community enum used with valueOf() for Kiddush Levana opinion selection ---
 # The Community enum is resolved at runtime via Enum.valueOf(code) where code is stored

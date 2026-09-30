@@ -2,6 +2,8 @@ package io.github.kdroidfilter.seforimapp.earthwidget
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -51,8 +54,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.PopupPositionProvider
 import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
 import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
 import com.kosherjava.zmanim.hebrewcalendar.JewishDate
@@ -64,11 +72,16 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
+import org.jetbrains.jewel.ui.component.styling.TooltipColors
+import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
+import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthwidget_kiddush_levana_legend
+import seforimapp.earthwidget.generated.resources.earthwidget_solar_real_spin_tooltip
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_title
 import java.time.LocalDate
 import java.util.Calendar
@@ -306,6 +319,8 @@ fun SolarSystemWidgetView(
     var pausedOn by remember { mutableStateOf<LocalDate?>(null) }
     // A visible spin of the Earth while playing (its real one, 6 turns a second, would only flicker); kept on pause
     var playSpinDegrees by remember { mutableFloatStateOf(0f) }
+    // Full window switch: the Earth's real spin (a turn per simulated day) instead of the slowed-down one
+    var realSpin by remember { mutableStateOf(false) }
     LaunchedEffect(baseDate) {
         if (baseDate != pausedOn) {
             playOffsetDays = 0f
@@ -342,7 +357,8 @@ fun SolarSystemWidgetView(
     // speed it would turn several times a second. Sidereal time runs 360.9856°/day: dropping the 360° keeps the slow
     // 0.9856°/day drift only.
     val siderealTarget =
-        (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() - 360f * dayFraction + playSpinDegrees
+        (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() +
+            if (realSpin) 0f else -360f * dayFraction + playSpinDegrees
     val moon = computeMoonEclipticPosition(julianDay)
     // Kiddush Levana of the lunar month at the displayed instant, as the Moon's longitudes at its start and end
     val kiddushLevana =
@@ -528,6 +544,11 @@ fun SolarSystemWidgetView(
                         )
                         Spacer(modifier = Modifier.weight(1f))
                         onDateSelect?.let { select ->
+                            ChromeIcon(
+                                AllIconsKeys.Actions.Refresh,
+                                active = realSpin,
+                                tooltip = stringResource(Res.string.earthwidget_solar_real_spin_tooltip),
+                            ) { realSpin = !realSpin }
                             ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute) {
                                 if (playing) {
                                     pausedOn = displayedDate
@@ -544,22 +565,82 @@ fun SolarSystemWidgetView(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ChromeIcon(
     key: IconKey,
+    active: Boolean = true,
+    tooltip: String? = null,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier =
-            Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(key, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White.copy(alpha = 0.8f))
+    val icon =
+        @Composable {
+            Box(
+                modifier =
+                    Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .pointerHoverIcon(PointerIcon.Hand)
+                        .clickable(onClick = onClick),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    key,
+                    contentDescription = tooltip,
+                    modifier = Modifier.size(14.dp),
+                    tint = Color.White.copy(alpha = if (active) 0.8f else 0.35f),
+                )
+            }
+        }
+    if (tooltip == null) {
+        icon()
+    } else {
+        Tooltip(
+            tooltip = { Text(tooltip, fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f)) },
+            style = ChromeTooltipStyle,
+        ) { icon() }
     }
+}
+
+// Dark and translucent like the widget's own chrome, instead of the app theme's tooltip over the starfield
+@OptIn(ExperimentalFoundationApi::class)
+private val ChromeTooltipStyle =
+    TooltipStyle(
+        colors =
+            TooltipColors(
+                background = Color(0xE6101520),
+                content = Color.White,
+                border = Color.White.copy(alpha = 0.15f),
+                shadow = Color.Black.copy(alpha = 0.4f),
+            ),
+        metrics =
+            TooltipMetrics.defaults(
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                cornerSize = CornerSize(8.dp),
+                placement = AboveAnchor,
+            ),
+    )
+
+// Centred just above the icon (the chrome sits at the bottom), not at the cursor. A raw provider: Jewel's
+// ComponentRect needs a LayoutBoundsHolder its TooltipArea doesn't wire (see the tabs' tooltip).
+@OptIn(ExperimentalFoundationApi::class)
+private object AboveAnchor : TooltipPlacement {
+    @Composable
+    override fun positionProvider(cursorPosition: Offset): PopupPositionProvider =
+        object : PopupPositionProvider {
+            override fun calculatePosition(
+                anchorBounds: IntRect,
+                windowSize: IntSize,
+                layoutDirection: LayoutDirection,
+                popupContentSize: IntSize,
+            ): IntOffset =
+                IntOffset(
+                    x =
+                        (anchorBounds.left + (anchorBounds.width - popupContentSize.width) / 2)
+                            .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0)),
+                    y = (anchorBounds.top - popupContentSize.height - 6).coerceAtLeast(0),
+                )
+        }
 }
 
 @Composable

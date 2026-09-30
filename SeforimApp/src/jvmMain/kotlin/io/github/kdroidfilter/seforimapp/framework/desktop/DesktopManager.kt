@@ -283,7 +283,23 @@ class DesktopManager(
         if (group.ids.size <= 1 || tabId !in group.ids) return false
         // Chrome-like: the detached window floats noticeably smaller than the (often maximized)
         // source window and cascades from it.
-        val geometry = cascadedFloatingGeometry(null)
+        val cascaded = cascadedFloatingGeometry(null)
+        // Nothing to cascade from on screen yet (the focused window closing, or not shown): the
+        // source window's place, else the main screen's centre. Never the UNSPECIFIED sentinel,
+        // Int.MIN_VALUE: AppKit refuses it as a window frame and the exception aborts the app.
+        val geometry =
+            if (cascaded.x != SavedGeometry.UNSPECIFIED) {
+                cascaded
+            } else {
+                val (x, y) =
+                    from.boundsOnScreen()?.let { it.x.roundToInt() + CASCADE_OFFSET to it.y.roundToInt() + CASCADE_OFFSET }
+                        ?: from.windowState
+                            .toSavedGeometry()
+                            .takeIf { it.x != SavedGeometry.UNSPECIFIED }
+                            ?.let { it.x + CASCADE_OFFSET to it.y + CASCADE_OFFSET }
+                        ?: centeredOnMainScreen(cascaded.width, cascaded.height)
+                cascaded.copy(x = x, y = y)
+            }
         val rect =
             Rect(
                 left = geometry.x.toFloat(),

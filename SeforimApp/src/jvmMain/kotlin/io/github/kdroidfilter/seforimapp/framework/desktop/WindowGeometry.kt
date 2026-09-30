@@ -59,6 +59,21 @@ internal fun applyGeometry(
     state.placement = restored.placement
 }
 
+/** The top-left corner that centres a [width] × [height] window on the main screen. */
+internal fun centeredOnMainScreen(
+    width: Int,
+    height: Int,
+): Pair<Int, Int> =
+    runCatching {
+        val b =
+            GraphicsEnvironment
+                .getLocalGraphicsEnvironment()
+                .defaultScreenDevice.defaultConfiguration.bounds
+        b.x + (b.width - width).coerceAtLeast(0) / 2 to b.y + (b.height - height).coerceAtLeast(0) / 2
+    }.getOrDefault(FALLBACK_ORIGIN to FALLBACK_ORIGIN)
+
+private const val FALLBACK_ORIGIN = 80
+
 /**
  * A monitor may have been unplugged since the session was saved; a window restored to its old
  * bounds would then be invisible and undraggable. Require a minimal visible strip on some screen.

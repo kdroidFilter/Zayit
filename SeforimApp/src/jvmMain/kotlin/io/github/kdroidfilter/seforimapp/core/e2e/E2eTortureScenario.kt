@@ -108,6 +108,7 @@ object E2eTortureScenario {
                 var op = 1
                 while (op <= ops) {
                     val batch = (op until minOf(op + burst, ops + 1)).toList()
+                    removalTaken = false
                     // A burst: launched together, they interleave wherever an operation suspends
                     val names =
                         batch
@@ -216,6 +217,12 @@ object E2eTortureScenario {
 
     private fun anyWindow(): OpenWindow = dm.windows.value.random(random)
 
+    // One operation taking tabs away per burst: their guards (enough tabs left) read counts a burst doesn't refresh
+    // until it recomposes, so several of them together could empty the last window, and the app rightly quits
+    private var removalTaken = false
+
+    private fun takeRemoval(): Boolean = !removalTaken.also { removalTaken = true }
+
     private fun tabsOf(w: OpenWindow): List<String> = w.group()?.ids.orEmpty()
 
     @Suppress("CyclomaticComplexMethod", "LongMethod")
@@ -232,7 +239,7 @@ object E2eTortureScenario {
                 "open-tab"
             }
             1 -> {
-                if (dm.windows.value.sumOf { tabsOf(it).size } > 2 && tabs.size > 1) {
+                if (dm.windows.value.sumOf { tabsOf(it).size } > 2 && tabs.size > 1 && takeRemoval()) {
                     w.tabsViewModel.onEvent(TabsEvents.OnClose(random.nextInt(tabs.size)))
                 }
                 "close-tab"
@@ -254,7 +261,7 @@ object E2eTortureScenario {
                     dm.windows.value
                         .filter { it !== w && it.session === w.session }
                         .randomOrNull(random)
-                if (other != null && tabs.isNotEmpty()) drag(w, tabs.random(random), stripPoint(other))
+                if (other != null && tabs.isNotEmpty() && takeRemoval()) drag(w, tabs.random(random), stripPoint(other))
                 "merge"
             }
             5 -> {
@@ -270,7 +277,7 @@ object E2eTortureScenario {
                 "detach"
             }
             7 -> {
-                if (dm.windows.value.size > 1) dm.closeWindow(w.id)
+                if (dm.windows.value.size > 1 && takeRemoval()) dm.closeWindow(w.id)
                 "close-window"
             }
             8 -> {
@@ -320,7 +327,7 @@ object E2eTortureScenario {
                     dm.desktops.value
                         .filter { it.id != w.session.desktopId }
                         .randomOrNull(random)
-                if (target != null && tabs.size > 1) dm.moveTabToDesktop(tabs.random(random), w.id, target.id)
+                if (target != null && tabs.size > 1 && takeRemoval()) dm.moveTabToDesktop(tabs.random(random), w.id, target.id)
                 "move-to-desktop"
             }
             14 -> {

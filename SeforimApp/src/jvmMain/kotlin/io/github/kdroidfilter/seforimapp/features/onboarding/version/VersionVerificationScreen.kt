@@ -10,7 +10,6 @@ import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.CheckCircle
 import org.jetbrains.compose.resources.stringResource
@@ -26,11 +25,12 @@ fun VersionVerificationScreen(
 ) {
     var isVersionCompatible by remember { mutableStateOf<Boolean?>(null) }
 
+    val databaseVersionManager = LocalAppGraph.current.databaseVersionManager
     LaunchedEffect(Unit) {
         // Anchor progress at the end of extraction
         progressBarState.setProgress(0.85f)
         // Vérifier si la version de la base de données est compatible
-        isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+        isVersionCompatible = databaseVersionManager.isDatabaseVersionCompatible()
     }
 
     when (isVersionCompatible) {

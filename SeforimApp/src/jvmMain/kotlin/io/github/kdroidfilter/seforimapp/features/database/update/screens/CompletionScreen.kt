@@ -9,7 +9,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.CheckCircle
 import org.jetbrains.compose.resources.stringResource
@@ -26,10 +25,11 @@ fun CompletionScreen(
     val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
     var isVersionCompatible by remember { mutableStateOf<Boolean?>(null) }
 
+    val databaseVersionManager = LocalAppGraph.current.databaseVersionManager
     LaunchedEffect(Unit) {
         progressBarState.setUpdateComplete()
         // Vérifier si la version de la base de données est maintenant compatible
-        isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+        isVersionCompatible = databaseVersionManager.isDatabaseVersionCompatible()
     }
 
     when (isVersionCompatible) {

@@ -20,8 +20,8 @@ import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsSt
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
+import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriver
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
@@ -104,8 +104,8 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideRepository(): SeforimRepository {
-        val dbPath = getDatabasePath()
+    fun provideRepository(databasePathProvider: DatabasePathProvider): SeforimRepository {
+        val dbPath = databasePathProvider.get()
         // Persistent single-connection driver with prepared-statement cache +
         // read-tuning PRAGMAs. Replaces `JdbcSqliteDriver` whose ThreadedConnectionManager
         // closes the SQLite connection after every non-transactional query (confirmed by
@@ -126,8 +126,11 @@ object AppCoreBindings {
      */
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSearchEngine(repository: SeforimRepository): SearchEngine {
-        val dbPath = getDatabasePath()
+    fun provideSearchEngine(
+        repository: SeforimRepository,
+        databasePathProvider: DatabasePathProvider,
+    ): SearchEngine {
+        val dbPath = databasePathProvider.get()
         val indexPath = Paths.get(if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex")
         val dictionaryPath = indexPath.resolveSibling("lexical.db")
         val snippetProvider = RepositorySnippetSourceProvider(repository)
@@ -158,20 +161,26 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideAcronymFrequencyCache(): AcronymFrequencyCache = AcronymFrequencyCache()
+    fun provideAcronymFrequencyCache(databasePathProvider: DatabasePathProvider): AcronymFrequencyCache =
+        AcronymFrequencyCache(databasePathProvider)
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideLuceneLookupSearchService(acronymCache: AcronymFrequencyCache): LuceneLookupSearchService {
-        val dbPath = getDatabasePath()
+    fun provideLuceneLookupSearchService(
+        acronymCache: AcronymFrequencyCache,
+        databasePathProvider: DatabasePathProvider,
+    ): LuceneLookupSearchService {
+        val dbPath = databasePathProvider.get()
         val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lookup.lucene" else "$dbPath.lookupindex"
         return LuceneLookupSearchService(Paths.get(indexPath), acronymCache = acronymCache)
     }
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideDbDeltaUpdateService(): io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService {
-        val dbPath = getDatabasePath()
+    fun provideDbDeltaUpdateService(
+        databasePathProvider: DatabasePathProvider,
+    ): io.github.kdroidfilter.seforimapp.framework.update.DbDeltaUpdateService {
+        val dbPath = databasePathProvider.get()
         val seforimDb = Paths.get(dbPath)
         val catalogPb = Paths.get(seforimDb.parent.toString(), "catalog.pb")
         val workDir = Paths.get(seforimDb.parent.toString(), "delta-cache")

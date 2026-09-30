@@ -22,7 +22,9 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
  */
 @Inject
 @SingleIn(AppScope::class)
-class CatalogCache {
+class CatalogCache(
+    private val databasePathProvider: DatabasePathProvider,
+) {
     private var _catalog: PrecomputedCatalog? = null
 
     // Cached extracted data - computed once from the catalog
@@ -146,7 +148,7 @@ class CatalogCache {
      */
     private fun loadCatalog(): PrecomputedCatalog? =
         try {
-            val dbPath = getDatabasePath()
+            val dbPath = databasePathProvider.get()
             val catalog = CatalogLoader.loadCatalog(dbPath)
 
             if (catalog != null) {

@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseC
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
+import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 
 @ContributesTo(AppScope::class)
@@ -62,7 +63,8 @@ object OnboardingBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideDatabaseCleanupUseCase(): DatabaseCleanupUseCase = DatabaseCleanupUseCase()
+    fun provideDatabaseCleanupUseCase(databasePathProvider: DatabasePathProvider): DatabaseCleanupUseCase =
+        DatabaseCleanupUseCase(databasePathProvider)
 
     @Provides
     @SingleIn(AppScope::class)

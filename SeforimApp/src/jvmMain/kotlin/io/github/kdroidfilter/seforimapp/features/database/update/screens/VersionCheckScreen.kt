@@ -22,7 +22,8 @@ fun VersionCheckScreen(
     isDatabaseMissing: Boolean = false,
 ) {
     val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
-    val currentVersion = remember { DatabaseVersionManager.getCurrentDatabaseVersion() }
+    val databaseVersionManager = LocalAppGraph.current.databaseVersionManager
+    val currentVersion = remember(databaseVersionManager) { databaseVersionManager.getCurrentDatabaseVersion() }
     val minRequiredVersion = remember { DatabaseVersionManager.getMinimumRequiredVersion() }
 
     LaunchedEffect(Unit) {

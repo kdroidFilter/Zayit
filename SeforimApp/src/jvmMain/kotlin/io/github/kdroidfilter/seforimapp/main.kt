@@ -38,9 +38,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
-import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
@@ -81,14 +79,14 @@ private data class StartupState(
  * Determines the initial routing state synchronously. All operations are fast local I/O (read settings, check file existence, read version
  * file).
  */
-private fun computeStartupState(): StartupState =
+private fun computeStartupState(appGraph: AppGraph): StartupState =
     try {
-        getDatabasePath()
+        appGraph.databasePathProvider.get()
         val onboardingFinished = AppSettings.isOnboardingFinished()
         if (!onboardingFinished) {
             StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
         } else {
-            val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+            val isVersionCompatible = appGraph.databaseVersionManager.isDatabaseVersionCompatible()
             if (!isVersionCompatible) {
                 StartupState(showOnboarding = false, showDatabaseUpdate = true, isDatabaseMissing = false)
             } else {
@@ -242,7 +240,7 @@ fun main(args: Array<String>) {
         // existence, read version file) are fast local I/O with no network involved.
         // Using remember { } instead of LaunchedEffect avoids a blank first frame while
         // waiting for the coroutine scheduler to run the routing logic.
-        val startupState = remember { computeStartupState() }
+        val startupState = remember { computeStartupState(appGraph) }
         val showOnboardingFromState by mainAppState.showOnBoarding.collectAsState()
         val showOnboarding = showOnboardingFromState ?: startupState.showOnboarding
         var showDatabaseUpdate by remember { mutableStateOf(startupState.showDatabaseUpdate) }

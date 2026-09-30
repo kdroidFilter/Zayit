@@ -1,8 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.database.update
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
-import io.github.kdroidfilter.seforimapp.framework.database.resetDatabasePathCache
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.vinceglb.filekit.FileKit
@@ -29,7 +29,9 @@ import kotlin.coroutines.cancellation.CancellationException
  * and recorded for a retry at the next launch via [PendingDbCleanup], so the caller
  * can refuse to start a multi-GB download that would otherwise fill the disk.
  */
-class DatabaseCleanupUseCase {
+class DatabaseCleanupUseCase(
+    private val databasePathProvider: DatabasePathProvider,
+) {
     sealed interface CleanupResult {
         /** Every known artifact was removed (or was already absent). */
         data class Success(
@@ -49,7 +51,7 @@ class DatabaseCleanupUseCase {
             // The old database is going away: forget the recorded path and the cached
             // resolution so the app re-resolves the freshly installed location later.
             AppSettings.setDatabasePath(null)
-            resetDatabasePathCache()
+            databasePathProvider.reset()
 
             // Candidate directories: the real DB directory (may be non-default for
             // legacy installs) plus the current default databases directory.

@@ -21,8 +21,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AccentMark
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
-import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
@@ -42,13 +40,14 @@ fun LicenceScreen(
     LaunchedEffect(Unit) {
         progressBarState.setProgress(0.1f)
     }
+    val appGraph = LocalAppGraph.current
     LicenceView(
         onNext = {
             // Check if DB exists and has compatible version
-            val dbExists = runCatching { getDatabasePath() }.isSuccess
+            val dbExists = runCatching { appGraph.databasePathProvider.get() }.isSuccess
             val dbVersionCompatible =
                 if (dbExists) {
-                    DatabaseVersionManager.isDatabaseVersionCompatible()
+                    appGraph.databaseVersionManager.isDatabaseVersionCompatible()
                 } else {
                     false
                 }

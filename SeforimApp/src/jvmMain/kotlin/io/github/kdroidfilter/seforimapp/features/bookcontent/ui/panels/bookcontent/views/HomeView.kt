@@ -8,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
@@ -63,11 +63,11 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocation
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocationViewModel
-import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsHost
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsGrid
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsOverlay
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.WIDGET_GALLERY_HEIGHT
 import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
+import io.github.kdroidfilter.seforimapp.features.home.widgets.fullWidthItem
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
@@ -288,11 +288,11 @@ private fun HomeBody(
     val widgetsLayout = remember(widgetsLayoutRaw) { decodeLayout(widgetsLayoutRaw) }
     widgetsLayout.forEach { it.widget.Detached(widgetsState) }
 
-    val listState = rememberLazyListState()
+    val listState = rememberLazyGridState()
 
     Box(Modifier.fillMaxSize()) {
         VerticallyScrollableContainer(
-            scrollState = listState as ScrollableState,
+            scrollState = listState,
         ) {
             Box(
                 modifier = Modifier.padding(top = 56.dp).fillMaxSize().padding(8.dp),
@@ -372,12 +372,14 @@ private fun HomeBody(
                 val homeContentModifier =
                     Modifier.widthIn(max = 600.dp).fillMaxWidth()
 
-                LazyColumn(
-                    state = listState,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                HomeWidgetsGrid(
+                    state = widgetsState,
+                    widgets = widgetsLayout,
+                    gridState = listState,
                     modifier = Modifier.fillMaxWidth(),
+                    showWidgets = showZmanimWidgets,
                 ) {
-                    item {
+                    fullWidthItem {
                         BoxWithConstraints(
                             Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
@@ -387,7 +389,7 @@ private fun HomeBody(
                             LogoImage(modifier = Modifier.width(logoWidth))
                         }
                     }
-                    item {
+                    fullWidthItem {
                         Box(
                             Modifier.fillMaxWidth(),
                             contentAlignment = Alignment.Center,
@@ -536,7 +538,7 @@ private fun HomeBody(
                             }
                         }
                     }
-                    item {
+                    fullWidthItem {
                         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                             Box(homeContentModifier) {
                                 if (searchUi.selectedFilter == SearchFilter.REFERENCE) {
@@ -617,20 +619,6 @@ private fun HomeBody(
                                     }
                                 }
                             }
-                        }
-                    }
-                    if (showZmanimWidgets) {
-                        item {
-                            Box(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                HomeWidgetsHost(widgetsState, widgetsLayout)
-                            }
-                        }
-                        // Lets the last widgets scroll above the gallery panel
-                        if (widgetsState.editingWidgets) {
-                            item { Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT)) }
                         }
                     }
                 }

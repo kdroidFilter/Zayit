@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
@@ -55,5 +57,27 @@ class HomeWidgetsGridTest {
     @Test
     fun `a widget can't be placed at a size it doesn't offer`() {
         assertFailsWith<IllegalArgumentException> { WidgetPlacement(ZmanimWidget, WidgetSize.SMALL) }
+    }
+
+    @Test
+    fun `every row of the lazy grid spans all its columns, its widgets one height`() {
+        val cells = gridCells(homeWidgets, 1000.dp)
+        assertEquals(listOf(13, 7, 6, 9, 5), cells.map { it.span })
+        assertEquals(cells[0].height, cells[1].height) // earth matches the zmanim cards
+        // Without the Earth, the Temple joins the zmanim and stretches to fill their row
+        val noEarth = gridCells(homeWidgets.filterNot { it.widget.id == "earth" }, 1000.dp)
+        assertEquals(20, noEarth[0].span + noEarth[1].span)
+    }
+
+    @Test
+    fun `a widget taller than its cells makes its whole row taller`() {
+        val tall =
+            object : HomeWidget by TempleCountdownWidget {
+                override val id = "tall"
+
+                override fun heightAt(width: Dp) = 500.dp
+            }
+        val cells = gridCells(listOf(WidgetPlacement(tall), WidgetPlacement(SkyWidget)), 1000.dp)
+        assertEquals(listOf(500.dp, 500.dp), cells.map { it.height })
     }
 }

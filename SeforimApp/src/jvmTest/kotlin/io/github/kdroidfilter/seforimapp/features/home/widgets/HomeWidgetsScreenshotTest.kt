@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toAwtImage
@@ -45,14 +46,13 @@ class HomeWidgetsScreenshotTest {
 
     @Test
     fun `render calendar widget`() {
-        val layout =
-            listOf(
-                WidgetPlacement(CalendarWidget),
-                WidgetPlacement(ZmanimWidget),
-                WidgetPlacement(TempleCountdownWidget),
-                WidgetPlacement(CalendarWidget, WidgetSize.LARGE),
-            )
-        for (dark in listOf(false, true)) shot("calendar", 1100, dark, layout)
+        // One placement per widget: the grid keys them by id
+        val medium = listOf(WidgetPlacement(CalendarWidget), WidgetPlacement(ZmanimWidget))
+        val large = listOf(WidgetPlacement(CalendarWidget, WidgetSize.LARGE), WidgetPlacement(TempleCountdownWidget))
+        for (dark in listOf(false, true)) {
+            shot("calendar-medium", 1100, dark, medium)
+            shot("calendar-large", 1100, dark, large)
+        }
     }
 
     @Test
@@ -83,9 +83,10 @@ class HomeWidgetsScreenshotTest {
                         Modifier
                             .background(JewelTheme.globalColors.panelBackground)
                             .padding(16.dp)
-                            .then(if (editing) Modifier.height(760.dp) else Modifier),
+                            .width(width.dp)
+                            .height(if (editing) 760.dp else 900.dp),
                     ) {
-                        HomeWidgetsHost(state = state, modifier = Modifier.width(width.dp), widgets = widgets)
+                        HomeWidgetsGrid(state = state, widgets = widgets, gridState = rememberLazyGridState())
                         if (editing) HomeWidgetsOverlay(state, widgets)
                     }
                 }

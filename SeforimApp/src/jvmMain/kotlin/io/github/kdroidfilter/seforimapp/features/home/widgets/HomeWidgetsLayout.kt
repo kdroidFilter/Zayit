@@ -22,7 +22,7 @@ internal fun encodeLayout(layout: List<WidgetPlacement>): String = layout.joinTo
 internal object HomeWidgetsLayout {
     fun current(): List<WidgetPlacement> = decodeLayout(AppSettings.homeWidgetsLayoutFlow.value)
 
-    private fun save(layout: List<WidgetPlacement>) = AppSettings.setHomeWidgetsLayout(encodeLayout(layout))
+    fun save(layout: List<WidgetPlacement>) = AppSettings.setHomeWidgetsLayout(encodeLayout(layout))
 
     /** At the end, or in [before]'s place when dropped on it. */
     fun add(
@@ -43,26 +43,5 @@ internal object HomeWidgetsLayout {
         size: WidgetSize,
     ) = save(current().map { if (it.widget.id == widget.id) WidgetPlacement(widget, size) else it })
 
-    /** Moves [widget] to the place [target] holds, pushing [target] and what follows one step on. */
-    fun move(
-        widget: HomeWidget,
-        target: HomeWidget,
-    ) = save(moveBefore(current(), widget.id, target.id))
-
     fun reset() = AppSettings.setHomeWidgetsLayout(null)
-}
-
-internal fun moveBefore(
-    layout: List<WidgetPlacement>,
-    id: String,
-    targetId: String,
-): List<WidgetPlacement> {
-    val moving = layout.firstOrNull { it.widget.id == id } ?: return layout
-    val from = layout.indexOf(moving)
-    val to = layout.indexOfFirst { it.widget.id == targetId }
-    if (to < 0 || from == to) return layout
-    val rest = layout - moving
-    // Dropped on a later widget: land after it, the way the others make room
-    val index = if (to > from) rest.indexOfFirst { it.widget.id == targetId } + 1 else rest.indexOfFirst { it.widget.id == targetId }
-    return rest.toMutableList().apply { add(index, moving) }
 }

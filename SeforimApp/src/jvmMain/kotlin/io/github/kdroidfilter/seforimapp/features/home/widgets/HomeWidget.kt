@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
@@ -15,7 +16,7 @@ import seforimapp.seforimapp.generated.resources.home_widget_size_medium
 import seforimapp.seforimapp.generated.resources.home_widget_size_small
 
 /**
- * A Home widget, placed by [HomeWidgetsHost] on a grid of [HOME_GRID_COLUMNS] columns. Widgets never talk to each
+ * A Home widget, placed by [HomeWidgetsGrid] on a grid of [HOME_GRID_COLUMNS] columns. Widgets never talk to each
  * other: they read and write the shared [HomeWidgetsState], so any of them can be moved or removed.
  */
 interface HomeWidget {
@@ -30,8 +31,11 @@ interface HomeWidget {
 
     val defaultSize: WidgetSize
 
-    /** Grows past its [GridSize.rows] to fit its content; the other widgets of its row then stretch to match. */
-    val wrapContentHeight: Boolean get() = false
+    /**
+     * Its height at [width] when its content decides it (null: its [GridSize.rows]); a taller widget makes its whole
+     * row taller, known before composing so every widget of the row can match it.
+     */
+    fun heightAt(width: Dp): Dp? = null
 
     val isSupported: Boolean get() = true
 

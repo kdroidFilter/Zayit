@@ -213,7 +213,8 @@ internal object ZmanimWidget : HomeWidget {
     override val title = Res.string.home_widget_name_zmanim
     override val sizes = mapOf(WidgetSize.MEDIUM to GridSize(8, 2f), WidgetSize.LARGE to GridSize(13, 2f))
     override val defaultSize = WidgetSize.LARGE
-    override val wrapContentHeight = true
+
+    override fun heightAt(width: Dp): Dp = zmanimGridHeight(width)
 
     @Composable
     override fun Content(
@@ -273,7 +274,6 @@ internal object ZmanimWidget : HomeWidget {
         BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
             val horizontalSpacing = ZMANIM_HORIZONTAL_SPACING
             val verticalSpacing = ZMANIM_VERTICAL_SPACING
-            val maxColumnsLimit = 5
             val showExtraCards = maxWidth >= MIN_WIDTH_FOR_EXTRA_CARDS
             val zmanimItems =
                 buildList {
@@ -387,20 +387,8 @@ internal object ZmanimWidget : HomeWidget {
                         ),
                     )
                 }.toImmutableList()
-            val zmanimItemCount = zmanimItems.size
-            val baseColumns = maxColumnsLimit.coerceAtMost(zmanimItemCount).coerceAtLeast(1)
-            val columns =
-                if (baseColumns == 5) {
-                    val totalSpacing = horizontalSpacing * (baseColumns - 1)
-                    val cardWidth = (maxWidth - totalSpacing) / baseColumns
-                    if (cardWidth < MIN_ZMANIM_CARD_WIDTH) 4 else baseColumns
-                } else {
-                    baseColumns
-                }
-            val rowCount = zmanimItems.toZmanimRows(zmanimItems.rowCapacity(columns)).size.coerceAtLeast(1)
-            val gridHeight =
-                (ZMANIM_CARD_HEIGHT * rowCount) +
-                    (verticalSpacing * (rowCount - 1).coerceAtLeast(0))
+            val columns = zmanimColumns(maxWidth, zmanimItems.size)
+            val gridHeight = zmanimGridHeight(maxWidth)
 
             ZmanimCardsGrid(
                 items = zmanimItems,
@@ -427,26 +415,58 @@ private val ZmanimGridItem.span: Float
  * Row width in slots: the first row takes items until it reaches [columns], so it is always full,
  * and every row gets that width (5.5 when the Mincha card overflows 5 columns). Leftover space ends the last row.
  */
-private fun List<ZmanimGridItem>.rowCapacity(columns: Int): Float {
+private fun <T> List<T>.rowCapacity(
+    columns: Int,
+    span: (T) -> Float,
+): Float {
     var filled = 0f
     for (item in this) {
-        filled += item.span
+        filled += span(item)
         if (filled >= columns) return filled
     }
     return columns.toFloat()
 }
 
 /** Greedily fills rows of [capacity] slots, each item taking its [span]. */
-private fun List<ZmanimGridItem>.toZmanimRows(capacity: Float): List<List<ZmanimGridItem>> =
-    fold(mutableListOf<MutableList<ZmanimGridItem>>()) { rows, item ->
+private fun <T> List<T>.toZmanimRows(
+    capacity: Float,
+    span: (T) -> Float,
+): List<List<T>> =
+    fold(mutableListOf<MutableList<T>>()) { rows, item ->
         val last = rows.lastOrNull()
-        if (last != null && last.sumOf { it.span.toDouble() } + item.span <= capacity) {
+        if (last != null && last.sumOf { span(it).toDouble() } + span(item) <= capacity) {
             last += item
         } else {
             rows += mutableListOf(item)
         }
         rows
     }
+
+/** Five columns while a card keeps [MIN_ZMANIM_CARD_WIDTH], else four. */
+private fun zmanimColumns(
+    width: Dp,
+    itemCount: Int,
+): Int {
+    val baseColumns = 5.coerceAtMost(itemCount).coerceAtLeast(1)
+    if (baseColumns != 5) return baseColumns
+    val cardWidth = (width - ZMANIM_HORIZONTAL_SPACING * (baseColumns - 1)) / baseColumns
+    return if (cardWidth < MIN_ZMANIM_CARD_WIDTH) 4 else baseColumns
+}
+
+/**
+ * The spans of the cards [ZmanimWidget] lays out at [width], in order: first light, sunrise, Shema, Tefila, Chatzot,
+ * Mincha (only where it fits), sunset, stars, Shabbat. Only the spans count for the height.
+ */
+internal fun zmanimCardSpans(width: Dp): List<Float> =
+    listOfNotNull(0.5f, 0.5f, 1f, 1f, 1f, 1.5f.takeIf { width >= MIN_WIDTH_FOR_EXTRA_CARDS }, 0.5f, 1f, 1f)
+
+/** The height of the zmanim cards at [width], known before composing them so the widgets beside can match it. */
+internal fun zmanimGridHeight(width: Dp): Dp {
+    val spans = zmanimCardSpans(width)
+    val columns = zmanimColumns(width, spans.size)
+    val rows = spans.toZmanimRows(spans.rowCapacity(columns) { it }) { it }.size.coerceAtLeast(1)
+    return ZMANIM_CARD_HEIGHT * rows + ZMANIM_VERTICAL_SPACING * (rows - 1)
+}
 
 @Composable
 private fun ZmanimCardsGrid(
@@ -458,8 +478,8 @@ private fun ZmanimCardsGrid(
     modifier: Modifier = Modifier,
     compactMode: Boolean = false,
 ) {
-    val capacity = items.rowCapacity(columns.coerceAtLeast(1))
-    val rows = items.toZmanimRows(capacity)
+    val capacity = items.rowCapacity(columns.coerceAtLeast(1)) { it.span }
+    val rows = items.toZmanimRows(capacity) { it.span }
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         // Width of one slot plus its gap: an item of span n spans n pitches minus one gap, so every full row has the same
         // width whatever its item count (two half cards and their gap make exactly one card)

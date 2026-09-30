@@ -1,7 +1,9 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,11 +41,11 @@ class WidgetDragUiTest {
                     IntUiTheme {
                         CompositionLocalProvider(LocalAppGraph provides graph, LocalTabSelected provides false) {
                             val raw by AppSettings.homeWidgetsLayoutFlow.collectAsState()
-                            Box(Modifier.testTag("grid")) {
-                                HomeWidgetsHost(
+                            Box(Modifier.testTag("grid").width(1000.dp).height(700.dp)) {
+                                HomeWidgetsGrid(
                                     state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE),
                                     widgets = decodeLayout(raw),
-                                    modifier = Modifier.width(1000.dp),
+                                    gridState = rememberLazyGridState(),
                                 )
                             }
                         }
@@ -56,7 +58,8 @@ class WidgetDragUiTest {
                 }
                 waitForIdle()
                 grid.performMouseInput {
-                    val templeCentre = 1000f * 6 / 19 / 2
+                    // The Temple is 6 of the 20 columns (its 6 of 19 stretched): ~292 px wide, grip at its top centre
+                    val templeCentre = 146f
                     moveTo(Offset(templeCentre, 14f))
                     press()
                     // Onto the zmanim widget, in steps so the drag passes its slop

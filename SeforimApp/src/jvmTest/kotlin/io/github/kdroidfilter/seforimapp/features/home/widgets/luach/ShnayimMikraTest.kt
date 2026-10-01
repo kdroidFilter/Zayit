@@ -33,6 +33,9 @@ class ShnayimMikraTest {
         assertEquals(Parsha.VZOS_HABERACHA, parsha("2026-10-01", inIsrael = true))
         assertEquals(Parsha.VZOS_HABERACHA, parsha("2026-10-04"))
         assertEquals(Parsha.BERESHIS, parsha("2026-10-04", inIsrael = true))
+        // Yom Kippur on Shabbat (5785): האזינו on Shabbat Shuva, then וזאת הברכה from 4 Tishrei
+        assertEquals(Parsha.HAAZINU, parsha("2024-10-03"))
+        assertEquals(Parsha.VZOS_HABERACHA, parsha("2024-10-06"))
         // The year it is read in: וזאת הברכה on Sukkot is the new year's, as is the בראשית after it
         assertEquals(5787, mikraWeek(LocalDate.parse("2026-10-01"), true).year)
         assertEquals(5787, mikraWeek(LocalDate.parse("2026-10-05"), true).year)

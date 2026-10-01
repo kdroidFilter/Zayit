@@ -1136,6 +1136,8 @@ fun BookContentView(
                                         LineItem(
                                             lineId = line.id,
                                             lineContent = line.content,
+                                            userHighlights = highlightsByLine[line.id] ?: emptyList(),
+                                            userNotes = notesByLine[line.id] ?: emptyList(),
                                             fontFamily = hebrewFontFamily,
                                             onClick = { isModifier -> onLineSelect(line, isModifier) },
                                             isSelected = isCurrentSelected,
@@ -1145,6 +1147,11 @@ fun BookContentView(
                                             boldScale = boldScaleForPlatform,
                                             annotatedCache = stableAnnotatedCache,
                                             showDiacritics = showDiacritics,
+                                            // The context menu acts on this verse, as from its first reading
+                                            onContextClick = {
+                                                selectionContext.setCurrentLineId(line.id)
+                                                selectionContext.setActiveCommentaryColumn(emptyList())
+                                            },
                                         )
                                     }
                                     shnayimMikraTargum.targumOf(line.heRef)?.let {

@@ -815,6 +815,10 @@ class BookContentViewModel(
             if (stateManager.state.value.content.showTargum) {
                 contentUseCase.toggleTargum()
             }
+            // Shnayim mikra is the Chumash's, and its toggle shows there only
+            if (stateManager.state.value.content.shnayimMikra) {
+                stateManager.updateContent { copy(shnayimMikra = false) }
+            }
 
             // Automatically close the book tree panel if the setting is enabled
             closeBookTreeIfEnabled()

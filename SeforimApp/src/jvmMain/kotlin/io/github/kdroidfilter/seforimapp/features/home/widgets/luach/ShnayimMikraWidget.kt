@@ -64,7 +64,8 @@ internal data class MikraWeek(
 
 /**
  * The parsha to read by the coming Shabbat, in Israel or abroad: past Shabbatot of Yom Tov, which read none, to the
- * next one read (a double one as one); וזאת הברכה from Yom Kippur to Simchat Torah, which reads it on no Shabbat.
+ * next one read (a double one as one); וזאת הברכה once האזינו is read (on Shabbat Shuva when Yom Kippur is on Shabbat)
+ * until Simchat Torah, which reads it on no Shabbat.
  */
 internal fun mikraWeek(
     date: LocalDate,
@@ -79,7 +80,7 @@ internal fun mikraWeek(
     if (day.parshah == Parsha.BERESHIS) {
         val today = JewishCalendar(date.toKotlinLocalDate(), inIsrael)
         val simchatTorah = if (inIsrael) 22 else 23
-        if (today.jewishMonth == HebrewMonth.TISHREI && today.jewishDayOfMonth in 10..simchatTorah) {
+        if (today.jewishMonth == HebrewMonth.TISHREI && today.jewishDayOfMonth <= simchatTorah) {
             return MikraWeek(Parsha.VZOS_HABERACHA, "וזאת הברכה", shabbat, today.jewishYear)
         }
     }

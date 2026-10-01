@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
+package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.lifecycle.ViewModel
 import dev.zacsweers.metro.ContributesIntoMap
@@ -13,14 +13,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-data class HomeCelestialWidgetsState(
+data class HomeUserLocation(
     val userPlace: Place,
     val userCityLabel: String?,
     val inIsrael: Boolean,
 ) {
     companion object {
         val preview =
-            HomeCelestialWidgetsState(
+            HomeUserLocation(
                 userPlace = DEFAULT_PLACE,
                 userCityLabel = null,
                 inIsrael = true,
@@ -33,13 +33,13 @@ private val DEFAULT_PLACE = Place(31.7683, 35.2137, 800.0)
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey
 @Inject
-class HomeCelestialWidgetsViewModel(
+class HomeUserLocationViewModel(
     private val appSettings: AppSettings,
 ) : ViewModel() {
     private val _state = MutableStateFlow(resolveState())
-    val state: StateFlow<HomeCelestialWidgetsState> = _state.asStateFlow()
+    val state: StateFlow<HomeUserLocation> = _state.asStateFlow()
 
-    private fun resolveState(): HomeCelestialWidgetsState {
+    private fun resolveState(): HomeUserLocation {
         val country = appSettings.getRegionCountry()
         val city = appSettings.getRegionCity()
         val place =
@@ -49,7 +49,7 @@ class HomeCelestialWidgetsViewModel(
                 null
             }
 
-        return HomeCelestialWidgetsState(
+        return HomeUserLocation(
             userPlace = place ?: DEFAULT_PLACE,
             userCityLabel = city?.takeIf { it.isNotBlank() },
             inIsrael = country == ISRAEL_COUNTRY_NAME,

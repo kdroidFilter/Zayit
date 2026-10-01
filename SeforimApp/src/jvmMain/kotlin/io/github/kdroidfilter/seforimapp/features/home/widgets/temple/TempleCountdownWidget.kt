@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
+package io.github.kdroidfilter.seforimapp.features.home.widgets.temple
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -36,6 +36,10 @@ import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
 import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
+import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import kotlinx.coroutines.delay
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
@@ -43,7 +47,6 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Codec
@@ -54,6 +57,7 @@ import seforimapp.seforimapp.generated.resources.home_temple_months
 import seforimapp.seforimapp.generated.resources.home_temple_subtitle
 import seforimapp.seforimapp.generated.resources.home_temple_title
 import seforimapp.seforimapp.generated.resources.home_temple_years
+import seforimapp.seforimapp.generated.resources.home_widget_name_temple
 import kotlin.time.Clock
 
 @Immutable
@@ -140,7 +144,7 @@ private const val MIN_FRAME_MS = 20L
  * (plus the one still on screen), instead of the whole animation in RAM. Stops when the card leaves composition.
  */
 @Composable
-private fun AnimatedTempleBackground(modifier: Modifier) {
+private fun AnimatedTempleBackground(modifier: Modifier = Modifier) {
     val frame by produceState<ImageBitmap?>(null) {
         val codec = Codec.makeFromData(Data.makeFromBytes(Res.readBytes(TEMPLE_ANIMATION)))
         val durations = codec.framesInfo.map { it.duration.toLong().coerceAtLeast(MIN_FRAME_MS) }
@@ -169,12 +173,23 @@ private fun AnimatedTempleBackground(modifier: Modifier) {
     frame?.let { Image(it, contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop) }
 }
 
-@Composable
-fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(18.dp)
-    // Always use dark border — the image background is always dark
-    val borderColor = JewelTheme.globalColors.borders.disabled
+/** Years, months and days since the Temple's destruction, over the burning Temple. */
+internal object TempleCountdownWidget : HomeWidget {
+    override val id = "temple_countdown"
+    override val title = Res.string.home_widget_name_temple
+    override val defaultSpan = CellSpan(6, 3)
+    override val minSpan = CellSpan(4, 3)
+    override val maxSpan = CellSpan(12, 6)
 
+    @Composable
+    override fun Content(
+        state: HomeWidgetsState,
+        modifier: Modifier,
+    ) = TempleDestructionCountdownCard(modifier)
+}
+
+@Composable
+private fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
     val countdownData by produceState(initialValue = computeTempleCountdown()) {
         while (true) {
             delay(millisUntilNextJerusalemSunset(System.currentTimeMillis()))
@@ -189,12 +204,7 @@ fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
             countdownData.days to stringResource(Res.string.home_temple_days),
         )
 
-    Box(
-        modifier =
-            modifier
-                .clip(shape)
-                .border(1.5.dp, borderColor, shape),
-    ) {
+    WidgetCard(modifier) {
         // Background image
         AnimatedTempleBackground(Modifier.matchParentSize())
 

@@ -169,8 +169,6 @@ internal fun SolarSystemSceneView(
     engine: Engine,
     textures: WidgetTextures,
     modifier: Modifier = Modifier,
-    /** State the 2D layers (glare) draw with: [state] a few frames late, matching the 3D image (see caller). */
-    overlayState: SolarRenderState = state,
     /**
      * Whether the Sun's glare breathes: only while the widget is in use, or its endless animation keeps the window
      * redrawing (and the GPU busy) on an idle page.
@@ -266,7 +264,7 @@ internal fun SolarSystemSceneView(
         val sunModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/sun.glb") }
         // NASA's Earth (Blue Marble cube map + normal map), textures re-encoded as JPEG to keep the app light
         val earthModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/earth.glb") }
-        val sunCenter = Offset(geometry.halfWidth, geometry.halfHeight - geometry.liftY * overlayState.viewZoom)
+        val sunCenter = Offset(geometry.halfWidth, geometry.halfHeight - geometry.liftY * state.viewZoom)
         // Sun animation clock (0..1 over SUN_ANIMATION_MS), read only while drawing: no recomposition per frame.
         // Not composed at all while idle: an infinite transition ticks the frame clock as long as it exists.
         val sunClock: androidx.compose.runtime.State<Float> =
@@ -280,7 +278,7 @@ internal fun SolarSystemSceneView(
             } else {
                 remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
             }
-        val sunScreenRadius = geometry.sunRadius * overlayState.viewZoom
+        val sunScreenRadius = geometry.sunRadius * state.viewZoom
         // Behind the 3D view (Celestia's approach, render.cpp / pointstarrenderer): an additive glare sprite,
         // exponential 0.65·exp(−5.2·u) out to ~7.5 disc radii, tinted by the star colour
         Canvas(Modifier.matchParentSize()) {

@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
@@ -282,7 +283,23 @@ class DesktopManager(
         if (group.ids.size <= 1 || tabId !in group.ids) return false
         // Chrome-like: the detached window floats noticeably smaller than the (often maximized)
         // source window and cascades from it.
-        val geometry = cascadedFloatingGeometry(null)
+        val cascaded = cascadedFloatingGeometry(null)
+        // Nothing to cascade from on screen yet (the focused window closing, or not shown): the
+        // source window's place, else the main screen's centre. Never the UNSPECIFIED sentinel,
+        // Int.MIN_VALUE: AppKit refuses it as a window frame and the exception aborts the app.
+        val geometry =
+            if (cascaded.x != SavedGeometry.UNSPECIFIED) {
+                cascaded
+            } else {
+                val (x, y) =
+                    from.boundsOnScreen()?.let { it.x.roundToInt() + CASCADE_OFFSET to it.y.roundToInt() + CASCADE_OFFSET }
+                        ?: from.windowState
+                            .toSavedGeometry()
+                            .takeIf { it.x != SavedGeometry.UNSPECIFIED }
+                            ?.let { it.x + CASCADE_OFFSET to it.y + CASCADE_OFFSET }
+                        ?: centeredOnMainScreen(cascaded.width, cascaded.height)
+                cascaded.copy(x = x, y = y)
+            }
         val rect =
             Rect(
                 left = geometry.x.toFloat(),
@@ -594,6 +611,10 @@ class DesktopManager(
      * Follows [session]'s groups: a group the user tore off gets a window where the workspace put
      * it; a window whose group lost its last tab closes (Chrome-like: the last window of a desktop
      * puts it to sleep, the last window of the app quits).
+     *
+     * Reconciles on window changes too, reading the groups live: a window closed while a tab was
+     * being opened in it sees its group go and come back under the same id, which the group ids
+     * alone (conflated, equal before and after) never report — that group then had no window.
      */
     private fun watch(session: DesktopSession) {
         watchers[session]?.cancel()
@@ -605,7 +626,8 @@ class DesktopManager(
         session: DesktopSession,
     ): Job =
         scope.launch {
-            snapshotFlow { session.workspace.groups.map { it.id } }.collect { groupIds ->
+            combine(snapshotFlow { session.workspace.groups.map { it.id } }, _windows) { _, _ -> }.collect {
+                val groupIds = session.workspace.groups.map { it.id }
                 groupIds.forEach(session::onGroupPlaced)
                 val shown = windowsOf(session.desktopId).map { it.groupId }.toSet()
                 for (groupId in groupIds) {

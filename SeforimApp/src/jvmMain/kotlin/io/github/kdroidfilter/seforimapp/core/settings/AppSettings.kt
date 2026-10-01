@@ -51,9 +51,8 @@ class AppSettings(
     private val _keepScreenAwakeOnBookFlow = MutableStateFlow(isKeepScreenAwakeOnBookEnabled())
     val keepScreenAwakeOnBookFlow: StateFlow<Boolean> = _keepScreenAwakeOnBookFlow.asStateFlow()
 
-    // StateFlow for zmanim widgets visibility
-    private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
-    val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
+    private val _homeWidgetsLayoutFlow = MutableStateFlow(settings.getStringOrNull(KEY_HOME_WIDGETS_LAYOUT))
+    val homeWidgetsLayoutFlow: StateFlow<String?> = _homeWidgetsLayoutFlow.asStateFlow()
 
     // StateFlow for homepage wallpaper visibility
     private val _showHomeWallpaperFlow = MutableStateFlow(isShowHomeWallpaperEnabled())
@@ -253,12 +252,10 @@ class AppSettings(
         _keepScreenAwakeOnBookFlow.value = enabled
     }
 
-    // Zmanim widgets visibility
-    fun isShowZmanimWidgetsEnabled(): Boolean = settings[KEY_SHOW_ZMANIM_WIDGETS, true]
-
-    fun setShowZmanimWidgetsEnabled(enabled: Boolean) {
-        settings[KEY_SHOW_ZMANIM_WIDGETS] = enabled
-        _showZmanimWidgetsFlow.value = enabled
+    /** Null goes back to the default layout. */
+    fun setHomeWidgetsLayout(layout: String?) {
+        if (layout == null) settings.remove(KEY_HOME_WIDGETS_LAYOUT) else settings[KEY_HOME_WIDGETS_LAYOUT] = layout
+        _homeWidgetsLayoutFlow.value = layout
     }
 
     // Homepage wallpaper visibility
@@ -443,7 +440,7 @@ class AppSettings(
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
-        _showZmanimWidgetsFlow.value = true
+        _homeWidgetsLayoutFlow.value = null
         _showHomeWallpaperFlow.value = true
         _compactModeFlow.value = false
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
@@ -520,7 +517,9 @@ class AppSettings(
         private const val KEY_ACCENT_COLOR = "accent_color"
 
         // Zmanim widgets visibility
-        private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
+
+        // Home widgets the user placed, in order ("id:SIZE,…"); unset means the default layout
+        private const val KEY_HOME_WIDGETS_LAYOUT = "home_widgets_layout"
 
         // Homepage wallpaper visibility
         private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"

@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
+package io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box

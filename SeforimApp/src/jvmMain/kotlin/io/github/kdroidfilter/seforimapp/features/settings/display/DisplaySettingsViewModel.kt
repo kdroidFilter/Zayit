@@ -18,15 +18,13 @@ import kotlinx.coroutines.flow.stateIn
 class DisplaySettingsViewModel(
     private val appSettings: AppSettings,
 ) : ViewModel() {
-    private val showZmanim = MutableStateFlow(appSettings.isShowZmanimWidgetsEnabled())
     private val showHomeWallpaper = MutableStateFlow(appSettings.isShowHomeWallpaperEnabled())
     private val compactMode = MutableStateFlow(appSettings.isCompactModeEnabled())
     private val maxCommentatorsPerPage = MutableStateFlow(appSettings.getMaxCommentatorsPerPage())
 
     val state =
-        combine(showZmanim, showHomeWallpaper, compactMode, maxCommentatorsPerPage) { z, wallpaper, compact, maxCommentators ->
+        combine(showHomeWallpaper, compactMode, maxCommentatorsPerPage) { wallpaper, compact, maxCommentators ->
             DisplaySettingsState(
-                showZmanimWidgets = z,
                 showHomeWallpaper = wallpaper,
                 compactMode = compact,
                 maxCommentatorsPerPage = maxCommentators,
@@ -35,7 +33,6 @@ class DisplaySettingsViewModel(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             DisplaySettingsState(
-                showZmanimWidgets = showZmanim.value,
                 showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
                 maxCommentatorsPerPage = maxCommentatorsPerPage.value,
@@ -44,10 +41,6 @@ class DisplaySettingsViewModel(
 
     fun onEvent(event: DisplaySettingsEvents) {
         when (event) {
-            is DisplaySettingsEvents.SetShowZmanimWidgets -> {
-                appSettings.setShowZmanimWidgetsEnabled(event.value)
-                showZmanim.value = event.value
-            }
             is DisplaySettingsEvents.SetShowHomeWallpaper -> {
                 appSettings.setShowHomeWallpaperEnabled(event.value)
                 showHomeWallpaper.value = event.value

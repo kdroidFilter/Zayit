@@ -54,7 +54,7 @@ object E2eTortureScenario {
     private const val OPS = 400
     private const val SETTLE_MS = 350L
     private const val CAPTURE_EVERY = 50
-    private const val OPERATION_COUNT = 27
+    private const val OPERATION_COUNT = 26
     private const val STALL_MS = 2000L
     private const val MAX_STALL_MS = 120_000L
     private const val BOOK_POOL = 300
@@ -104,7 +104,6 @@ object E2eTortureScenario {
             .forEach { dm.closeWindow(it.id) }
         delay(1000)
         val widgetsLayout = appSettings.homeWidgetsLayoutFlow.value
-        val showWidgets = appSettings.isShowZmanimWidgetsEnabled()
         sc.note("TORTURE seed=$seed ops=$ops settle=${settleMs}ms burst=$burst books=${books.size}")
         coroutineScope {
             val watchers = watch(this)
@@ -145,7 +144,6 @@ object E2eTortureScenario {
             } finally {
                 watchers.cancel()
                 appSettings.setHomeWidgetsLayout(widgetsLayout)
-                appSettings.setShowZmanimWidgetsEnabled(showWidgets)
             }
         }
         sc.note(
@@ -421,17 +419,13 @@ object E2eTortureScenario {
                 }
                 "widgets-reorder"
             }
-            25 -> {
+            else -> {
                 when (random.nextInt(3)) {
                     0 -> home?.selectDate(LocalDate.now().plusDays(random.nextLong(-400, 400)))
                     1 -> home?.targetTime = Date(System.currentTimeMillis() + random.nextLong(-86_400_000L, 86_400_000L))
                     else -> home?.undoRemove()
                 }
                 "widgets-date"
-            }
-            else -> {
-                appSettings.setShowZmanimWidgetsEnabled(!appSettings.isShowZmanimWidgetsEnabled())
-                "widgets-visibility"
             }
         }
     }

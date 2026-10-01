@@ -89,7 +89,6 @@ fun HomeWidgetsGrid(
     widgets: List<WidgetPlacement>,
     gridState: LazyGridState,
     modifier: Modifier = Modifier,
-    showWidgets: Boolean = true,
     header: LazyGridScope.() -> Unit = {},
 ) {
     AutoScroll(state, gridState)
@@ -104,13 +103,11 @@ fun HomeWidgetsGrid(
             verticalArrangement = Arrangement.spacedBy(GRID_GAP),
         ) {
             header()
-            if (showWidgets) {
-                // The search sections were 16 dp apart and 32 dp above the widgets: keep that rhythm
-                fullWidthItem { Spacer(Modifier.height(4.dp)) }
-                fullWidthItem { WidgetCells(state, widgets) }
-                // Lets the last widgets scroll above the gallery panel
-                if (state.editingWidgets) fullWidthItem { Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT)) }
-            }
+            // The search sections were 16 dp apart and 32 dp above the widgets: keep that rhythm
+            fullWidthItem { Spacer(Modifier.height(4.dp)) }
+            fullWidthItem { WidgetCells(state, widgets) }
+            // Lets the last widgets scroll above the gallery panel
+            if (state.editingWidgets) fullWidthItem { Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT)) }
         }
     }
 }

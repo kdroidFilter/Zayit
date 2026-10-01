@@ -274,8 +274,6 @@ private fun HomeBody(
     homeUserLocation: HomeUserLocation?,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
-    // Whether to show zmanim widgets
-    val showZmanimWidgets by appSettings.showZmanimWidgetsFlow.collectAsState()
 
     val userLocation =
         homeUserLocation ?: run {
@@ -389,7 +387,6 @@ private fun HomeBody(
                         widgets = widgetsLayout,
                         gridState = listState,
                         modifier = Modifier.fillMaxWidth(),
-                        showWidgets = showZmanimWidgets,
                     ) {
                         fullWidthItem(gapAfter = 4.dp) {
                             BoxWithConstraints(
@@ -639,7 +636,7 @@ private fun HomeBody(
                 }
             }
         }
-        if (showZmanimWidgets) HomeWidgetsOverlay(widgetsState, widgetsLayout)
+        HomeWidgetsOverlay(widgetsState, widgetsLayout)
     }
 }
 

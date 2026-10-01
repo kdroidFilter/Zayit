@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -321,9 +320,9 @@ internal object TefilaWidget : HomeWidget {
                 }
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     // The lines share the card's height, but never further apart than reads as one list
-                    val gap = ((maxHeight - TEFILA_LINE_HEIGHT * lines.size) / lines.size).coerceIn(5.dp, 10.dp)
+                    val gap = ((maxHeight - LINE_HEIGHT * lines.size) / lines.size).coerceIn(5.dp, 10.dp)
                     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically)) {
-                        lines.forEach { TefilaRow(it, accent) }
+                        lines.forEach { LabeledRow(it, accent) }
                     }
                 }
             }
@@ -331,10 +330,10 @@ internal object TefilaWidget : HomeWidget {
     }
 }
 
-private val TEFILA_LINE_HEIGHT = 17.dp
+private val LINE_HEIGHT = 17.dp
 
 @Composable
-private fun TefilaRow(
+private fun LabeledRow(
     line: TefilaLine,
     accent: Color,
     modifier: Modifier = Modifier,
@@ -356,9 +355,11 @@ private fun TefilaRow(
 internal object MoladWidget : HomeWidget {
     override val id = "molad"
     override val title = Res.string.home_widget_name_molad
-    override val defaultSpan = CellSpan(6, 2)
-    override val minSpan = CellSpan(4, 2)
-    override val maxSpan = CellSpan(8, 2)
+
+    // A title and three short lines: the size they fill, no more
+    override val defaultSpan = CellSpan(5, 2)
+    override val minSpan = CellSpan(5, 2)
+    override val maxSpan = CellSpan(5, 2)
 
     @Composable
     override fun Content(
@@ -373,33 +374,21 @@ internal object MoladWidget : HomeWidget {
         val zone = state.location.timeZone
         val moment = remember(zone) { SimpleDateFormat("d.M · HH:mm").apply { timeZone = zone } }
         val accent = rememberAccentColor(JewelTheme.isDark)
-        val moladPart = @Composable { partModifier: Modifier ->
-            Column(partModifier, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
-                Kicker("מולד חודש ${molad.month}")
-                Text("יום ${molad.weekday}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = accent, maxLines = 1)
-                Text("⁦${molad.time}⁩ · ${molad.chalakim} חלקים", fontSize = 12.sp, maxLines = 1)
-            }
-        }
-        val levanaPart = @Composable { partModifier: Modifier ->
-            Column(partModifier, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
-                Kicker("קידוש לבנה")
-                Text("מ־ ${moment.format(molad.kiddushLevanaStart).ltr()}", fontSize = 12.sp, maxLines = 1)
-                Text("עד ${moment.format(molad.kiddushLevanaEnd).ltr()}", fontSize = 12.sp, maxLines = 1)
-            }
-        }
+        // Kiddush Levana can be said now: its dates in the accent
+        val open = now.after(molad.kiddushLevanaStart)
         PanelCard(modifier) {
-            BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
-                // Side by side on a wide card, one above the other on a narrow one
-                if (maxWidth >= 200.dp) {
-                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        moladPart(Modifier.weight(1f).fillMaxHeight())
-                        levanaPart(Modifier.weight(1f).fillMaxHeight())
-                    }
-                } else {
-                    Column(Modifier.fillMaxSize()) {
-                        moladPart(Modifier.fillMaxWidth().weight(1f))
-                        levanaPart(Modifier.fillMaxWidth().weight(1f))
-                    }
+            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Text("מולד חודש ${molad.month}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Column(
+                    Modifier.fillMaxWidth().weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
+                ) {
+                    LabeledRow(
+                        TefilaLine("מולד", "${molad.weekday} · ${molad.time.ltr()} · ${molad.chalakim} ח׳", special = true),
+                        accent,
+                    )
+                    LabeledRow(TefilaLine("קידוש לבנה", "מ־ ${moment.format(molad.kiddushLevanaStart).ltr()}", special = open), accent)
+                    LabeledRow(TefilaLine("", "עד ${moment.format(molad.kiddushLevanaEnd).ltr()}", special = open), accent)
                 }
             }
         }

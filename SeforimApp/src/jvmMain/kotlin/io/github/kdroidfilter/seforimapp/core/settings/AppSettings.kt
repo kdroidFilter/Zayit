@@ -54,6 +54,15 @@ class AppSettings(
     private val _homeWidgetsLayoutFlow = MutableStateFlow(settings.getStringOrNull(KEY_HOME_WIDGETS_LAYOUT))
     val homeWidgetsLayoutFlow: StateFlow<String?> = _homeWidgetsLayoutFlow.asStateFlow()
 
+    // Each Home widget's own options, set from its menu, by widget id; their format is the widget's own
+    private val _homeWidgetOptionsFlow =
+        MutableStateFlow(
+            settings.keys
+                .filter { it.startsWith(KEY_HOME_WIDGET_OPTIONS_PREFIX) }
+                .associate { it.removePrefix(KEY_HOME_WIDGET_OPTIONS_PREFIX) to settings.getString(it, "") },
+        )
+    val homeWidgetOptionsFlow: StateFlow<Map<String, String>> = _homeWidgetOptionsFlow.asStateFlow()
+
     // StateFlow for homepage wallpaper visibility
     private val _showHomeWallpaperFlow = MutableStateFlow(isShowHomeWallpaperEnabled())
     val showHomeWallpaperFlow: StateFlow<Boolean> = _showHomeWallpaperFlow.asStateFlow()
@@ -258,6 +267,17 @@ class AppSettings(
         _homeWidgetsLayoutFlow.value = layout
     }
 
+    /** Null goes back to the widget's defaults. */
+    fun setHomeWidgetOptions(
+        widgetId: String,
+        options: String?,
+    ) {
+        val key = KEY_HOME_WIDGET_OPTIONS_PREFIX + widgetId
+        if (options == null) settings.remove(key) else settings[key] = options
+        _homeWidgetOptionsFlow.value =
+            if (options == null) _homeWidgetOptionsFlow.value - widgetId else _homeWidgetOptionsFlow.value + (widgetId to options)
+    }
+
     // Homepage wallpaper visibility
     fun isShowHomeWallpaperEnabled(): Boolean = settings[KEY_SHOW_HOME_WALLPAPER, true]
 
@@ -441,6 +461,7 @@ class AppSettings(
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
         _homeWidgetsLayoutFlow.value = null
+        _homeWidgetOptionsFlow.value = emptyMap()
         _showHomeWallpaperFlow.value = true
         _compactModeFlow.value = false
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
@@ -520,6 +541,9 @@ class AppSettings(
 
         // Home widgets the user placed, in order ("id:SIZE,…"); unset means the default layout
         private const val KEY_HOME_WIDGETS_LAYOUT = "home_widgets_layout"
+
+        // A Home widget's own options: this, then its id
+        private const val KEY_HOME_WIDGET_OPTIONS_PREFIX = "home_widget_options_"
 
         // Homepage wallpaper visibility
         private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"

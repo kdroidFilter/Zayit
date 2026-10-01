@@ -25,15 +25,15 @@ class LuachDataTest {
     fun `parshiyos land on their Chumash and its Parasha TOC entry`() {
         assertEquals(LibraryPlace("בראשית", parashaIndex = 0), parshaPlace(Parsha.BERESHIS))
         assertEquals(LibraryPlace("שמות", parashaIndex = 0), parshaPlace(Parsha.SHEMOS))
-        assertEquals(LibraryPlace("במדבר", parashaIndex = 5), parshaPlace(Parsha.CHUKAS_BALAK))
+        assertEquals(LibraryPlace("במדבר", parashaIndex = 5, parashaCount = 2), parshaPlace(Parsha.CHUKAS_BALAK))
         assertEquals(LibraryPlace("דברים", parashaIndex = 10), parshaPlace(Parsha.VZOS_HABERACHA))
         assertNull(parshaPlace(Parsha.NONE))
     }
 
     @Test
     fun `a daf opens at its TOC heading, written without geresh`() {
-        assertEquals("דף כא.", bavliPlace(0, "ברכות", 21).heading)
-        assertEquals("דף טו.", bavliPlace(0, "ברכות", 15).heading)
+        assertEquals("דף כא.", bavliPlace(0, "ברכות", 21).toc.single())
+        assertEquals("דף טו.", bavliPlace(0, "ברכות", 15).toc.single())
         assertEquals(LibraryPlace("תלמוד ירושלמי שקלים"), bavliPlace(4, "שקלים", 3))
     }
 

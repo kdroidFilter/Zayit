@@ -194,6 +194,10 @@ private fun BookContentPanelContent(
                     selectedLineIds = uiState.content.selectedLineIds,
                     primarySelectedLineId = uiState.content.primarySelectedLineId,
                     isTocEntrySelection = uiState.content.isTocEntrySelection,
+                    markedLines =
+                        uiState.content.markedRange
+                            ?.takeIf { it.bookId == selectedBook.id }
+                            ?.let { it.first..it.last },
                     onLineSelect = { line, isModifier ->
                         onEvent(BookContentEvent.LineSelected(line, isModifier))
                     },

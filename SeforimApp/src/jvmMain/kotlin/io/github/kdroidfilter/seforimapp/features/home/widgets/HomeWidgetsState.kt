@@ -1,6 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -111,6 +113,19 @@ class HomeWidgetsState internal constructor(
     internal fun forgetRemoved(removed: RemovedWidget) {
         if (lastRemoved === removed) lastRemoved = null
     }
+
+    /** The widget whose [HomeWidget.Options] page is open in a dialog, from an item of its menu. */
+    var optionsOpen by mutableStateOf<HomeWidget?>(null)
+
+    /** [widget]'s own options, set in its options dialog; null while at its defaults. */
+    @Composable
+    fun optionsOf(widget: HomeWidget): String? = layout.options.collectAsState().value[widget.id]
+
+    /** Null goes back to [widget]'s defaults. */
+    fun setOptions(
+        widget: HomeWidget,
+        options: String?,
+    ) = layout.setOptions(widget, options)
 
     fun selectDate(date: LocalDate) {
         selectedDate = date

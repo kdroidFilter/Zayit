@@ -58,8 +58,10 @@ import androidx.compose.ui.window.rememberCursorPositionProvider
 import dev.nucleusframework.window.tao.TaoPointerIcons
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.MenuScope
 import org.jetbrains.jewel.ui.component.PopupMenu
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.separator
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widgets_edit
@@ -230,6 +232,7 @@ private fun WidgetMenu(
     val resizeLabel = stringResource(Res.string.home_widgets_resize)
     val removeLabel = stringResource(Res.string.home_widgets_remove)
     val editLabel = stringResource(Res.string.home_widgets_edit)
+    val ownItems = widget.menuItems(state)
     PopupMenu(
         onDismissRequest = {
             onDismiss()
@@ -237,6 +240,11 @@ private fun WidgetMenu(
         },
         popupPositionProvider = rememberCursorPositionProvider(),
     ) {
+        // Its own items first, as macOS's "Edit widget", then what every widget offers
+        if (ownItems.isNotEmpty()) {
+            widgetItems(ownItems, onDismiss)
+            separator()
+        }
         if (movable && widget.minSpan != widget.maxSpan) {
             selectableItem(
                 selected = false,
@@ -266,6 +274,26 @@ private fun WidgetMenu(
                     state.editingWidgets = true
                 },
             ) { Text(editLabel) }
+        }
+    }
+}
+
+private fun MenuScope.widgetItems(
+    items: List<WidgetMenuItem>,
+    onDismiss: () -> Unit,
+) {
+    for (item in items) {
+        if (item.children.isNotEmpty()) {
+            submenu(iconKey = item.icon, submenu = { widgetItems(item.children, onDismiss) }) { Text(item.label) }
+        } else {
+            selectableItem(
+                selected = false,
+                iconKey = if (item.checked == true) AllIconsKeys.Actions.Checked else item.icon,
+                onClick = {
+                    onDismiss()
+                    item.onClick()
+                },
+            ) { Text(item.label) }
         }
     }
 }

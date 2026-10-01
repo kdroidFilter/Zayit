@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.MarkedRange
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
@@ -276,6 +277,7 @@ class BookContentViewModel(
                 // Explicit line navigation wins (e.g., search result / deep link)
                 if (requestedLineId != null) {
                     loadBookById(bookIdToOpen, requestedLineId, triggerScroll = true)
+                    markRange(bookIdToOpen, requestedLineId, savedStateHandle.get<Long>(StateKeys.MARK_END_LINE_ID))
                     // A note opened from the notes page or widget: its pane, on its line
                     if (savedStateHandle.get<Boolean>(StateKeys.OPEN_NOTES) == true && !stateManager.state.value.notes.isVisible) {
                         notesUseCase.toggleNotes()
@@ -469,6 +471,7 @@ class BookContentViewModel(
                     loadAndSelectLine(event.lineId)
 
                 is BookContentEvent.OpenBookAtLine -> {
+                    markRange(event.bookId, event.lineId, event.endLineId)
                     // If already on the target book, just jump to the line
                     val currentBookId =
                         stateManager.state.value.navigation.selectedBook
@@ -965,6 +968,21 @@ class BookContentViewModel(
             }
             _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
         }
+    }
+
+    /** Marks the lines from [startLineId] to [endLineId] of [bookId], or nothing without an end. */
+    private suspend fun markRange(
+        bookId: Long,
+        startLineId: Long,
+        endLineId: Long?,
+    ) {
+        val range =
+            endLineId?.let {
+                val first = repository.getLine(startLineId)?.lineIndex
+                val last = repository.getLine(it)?.lineIndex
+                if (first != null && last != null && last >= first) MarkedRange(bookId, first, last) else null
+            }
+        stateManager.updateContent { copy(markedRange = range) }
     }
 
     /** Loads and selects a line */

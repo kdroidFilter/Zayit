@@ -30,6 +30,8 @@ sealed interface TabsDestination {
         val lineId: Long? = null,
         /** Opens the notes pane on [lineId]: the book is opened to read a note there. */
         val openNotes: Boolean = false,
+        /** Marks the lines from [lineId] to this one: a passage to read, such as the day's limud. */
+        val endLineId: Long? = null,
     ) : TabsDestination
 
     /** Full visit-history page (the chrome://history equivalent). */

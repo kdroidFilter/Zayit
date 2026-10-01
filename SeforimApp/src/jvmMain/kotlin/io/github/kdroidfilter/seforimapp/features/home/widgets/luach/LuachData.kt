@@ -41,14 +41,23 @@ internal val HEBREW_WEEKDAYS = listOf("ראשון", "שני", "שלישי", "ר�
 internal fun LocalDate.hebrewWeekday() = HEBREW_WEEKDAYS[dayOfWeek.value % 7]
 
 /**
- * Where a limud is in the library: [bookTitle], at its TOC heading [heading] or at the [parashaIndex]th entry of
- * its Parasha alternative TOC; at its start when neither is set.
+ * Where a limud is in the library: [bookTitle], under its TOC headings [toc] (each one under the one before), at the
+ * line whose reference is [ref] or starts it ("משנה ברכות א, ב"), or at the [parashaIndex]th entry of its Parasha
+ * alternative TOC; at its start when none is set or found.
+ *
+ * Where it ends, for the book to mark it: through the last line of the first of [endRefs] found (as [ref] finds it), or
+ * to the end of the first TOC entry of [endTocs] found (a heading beside [toc]'s last), or of [parashaCount] parshiyos;
+ * the alternatives cover the library's editions ("דף סד." without its ":", two paragraphs in one line).
  */
 @Immutable
 internal data class LibraryPlace(
     val bookTitle: String,
-    val heading: String? = null,
+    val toc: List<String> = emptyList(),
+    val ref: String? = null,
     val parashaIndex: Int? = null,
+    val endRefs: List<String> = emptyList(),
+    val endTocs: List<String> = emptyList(),
+    val parashaCount: Int = 1,
 )
 
 @Immutable
@@ -58,33 +67,59 @@ internal data class LimudItem(
     val place: LibraryPlace?,
 )
 
-/** This week's parsha and the day's dafim. */
+/** The day's limudim of [shown], in the menu's order; the ones the day has none of (Avos in the winter) left out. */
 internal fun limudOfDay(
     date: LocalDate,
     inIsrael: Boolean,
+    shown: Set<Limud> = Limud.defaults.toSet(),
 ): List<LimudItem> {
-    val day = JewishCalendar(date.toKotlinLocalDate(), inIsrael)
-    // The parsha read on the coming Shabbat; none when it is a Yom Tov, rather than one weeks away
+    val day by lazy { JewishCalendar(date.toKotlinLocalDate(), inIsrael) }
+    return Limud.entries.filter { it in shown }.mapNotNull { limud ->
+        when (limud) {
+            Limud.PARSHA -> parshaItem(date, inIsrael)
+            Limud.BAVLI ->
+                day.dafYomiBavli.let { bavli ->
+                    LimudItem(
+                        kicker = limud.kicker,
+                        value = bavli?.let(hebrewFormatter::formatDafYomiBavli) ?: "—",
+                        place = bavli?.let { bavliPlace(it.masechtaNumber, it.masechta, it.daf) },
+                    )
+                }
+            Limud.YERUSHALMI ->
+                day.dafYomiYerushalmi.let { yerushalmi ->
+                    LimudItem(
+                        kicker = limud.kicker,
+                        value = hebrewFormatter.formatDafYomiYerushalmi(yerushalmi),
+                        place = yerushalmi?.let { LibraryPlace("תלמוד ירושלמי ${yerushalmiTitle(it.yerushalmiMasechta)}") },
+                    )
+                }
+            Limud.MISHNAH -> mishnahYomis(date)
+            Limud.PEREK_MISHNAH -> perekMishnah(date)
+            Limud.PIRKEI_AVOS -> pirkeiAvosItem(date, inIsrael)
+            Limud.RAMBAM3 -> rambam3(date)
+            Limud.RAMBAM1 -> rambam1(date)
+            Limud.SEFER_HAMITZVOS -> seferHamitzvos(date)
+            Limud.TEHILLIM -> tehillimOfMonth(date)
+            Limud.TEHILLIM_WEEK -> tehillimOfWeek(date)
+            Limud.NACH -> nachYomi(date)
+            Limud.KITZUR -> kitzur(date)
+            Limud.ARUCH_HASHULCHAN -> aruchHashulchan(date)
+            Limud.CHOFETZ_CHAIM -> chofetzChaim(date)
+            Limud.SHMIRAS_HALASHON -> shmirasHalashon(date)
+        }
+    }
+}
+
+/** The parsha read on the coming Shabbat; none when it is a Yom Tov, rather than one weeks away. */
+private fun parshaItem(
+    date: LocalDate,
+    inIsrael: Boolean,
+): LimudItem {
     val shabbat = JewishCalendar(date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY)).toKotlinLocalDate(), inIsrael)
-    val parsha = shabbat.parshah
-    val bavli = day.dafYomiBavli
-    val yerushalmi = day.dafYomiYerushalmi
-    return listOf(
-        LimudItem(
-            kicker = "פרשה",
-            value = hebrewFormatter.formatParsha(shabbat)?.takeIf { it.isNotBlank() } ?: "אין פרשה",
-            place = parshaPlace(parsha),
-        ),
-        LimudItem(
-            kicker = "בבלי",
-            value = bavli?.let(hebrewFormatter::formatDafYomiBavli) ?: "—",
-            place = bavli?.let { bavliPlace(it.masechtaNumber, it.masechta, it.daf) },
-        ),
-        LimudItem(
-            kicker = "ירושלמי",
-            value = hebrewFormatter.formatDafYomiYerushalmi(yerushalmi),
-            place = yerushalmi?.let { LibraryPlace("תלמוד ירושלמי ${yerushalmiTitle(it.yerushalmiMasechta)}") },
-        ),
+    return LimudItem(
+        kicker = Limud.PARSHA.kicker,
+        value = hebrewFormatter.formatParsha(shabbat)?.takeIf { it.isNotBlank() } ?: "אין פרשה",
+        place = parshaPlace(shabbat.parshah),
     )
 }
 
@@ -104,9 +139,10 @@ private val DOUBLE_PARSHIYOS =
 
 internal fun parshaPlace(parsha: Parsha): LibraryPlace? {
     var index = (DOUBLE_PARSHIYOS[parsha] ?: parsha).ordinal - 1
-    for ((book, count) in CHUMASH) {
-        if (index in 0 until count) return LibraryPlace(book, parashaIndex = index)
-        index -= count
+    val count = if (parsha in DOUBLE_PARSHIYOS) 2 else 1
+    for ((book, parshiyos) in CHUMASH) {
+        if (index in 0 until parshiyos) return LibraryPlace(book, parashaIndex = index, parashaCount = count)
+        index -= parshiyos
     }
     return null
 }
@@ -125,7 +161,11 @@ internal fun bavliPlace(
         SHEKALIM -> LibraryPlace("תלמוד ירושלמי שקלים")
         KINNIM -> LibraryPlace("משנה קינים")
         MIDOS -> LibraryPlace("משנה מדות")
-        else -> LibraryPlace(masechta, heading = "דף ${tocNumbers.formatHebrewNumber(daf)}.")
+        else -> {
+            val number = tocNumbers.formatHebrewNumber(daf)
+            // A masechta's last daf may have no amud ב
+            LibraryPlace(masechta, toc = listOf("דף $number."), endTocs = listOf("דף $number:", "דף $number."))
+        }
     }
 
 // KosherKotlin spells three masechtos otherwise than the library's titles

@@ -73,7 +73,7 @@ internal fun limudOfDay(
     return listOf(
         LimudItem(
             kicker = "פרשת השבוע",
-            value = hebrewFormatter.formatParsha(shabbat)?.takeIf { it.isNotBlank() } ?: "אין פרשה השבוע",
+            value = hebrewFormatter.formatParsha(shabbat)?.takeIf { it.isNotBlank() } ?: "אין פרשה",
             place = parshaPlace(parsha),
         ),
         LimudItem(
@@ -249,7 +249,9 @@ internal fun upcomingEvents(
                 } else {
                     hebrewFormatter.formatRoshChodesh(day).ifBlank { "ראש חודש" }
                 }
-        events += LuachEvent(date, name, hebrewFormatter.format(day), times)
+        // The year is the one being read; leaving it out keeps the line to one
+        val hebrewDate = "${hebrewFormatter.formatHebrewNumber(day.jewishDayOfMonth)} ${hebrewFormatter.formatMonth(day)}"
+        events += LuachEvent(date, name, hebrewDate, times)
     }
     return events
 }
@@ -338,7 +340,7 @@ internal fun moladInfo(
     return MoladInfo(
         month = hebrewFormatter.formatMonth(coming),
         weekday = molad.gregorianLocalDate.toJavaLocalDate().hebrewWeekday(),
-        time = "${molad.moladHours}:${molad.moladMinutes.toString().padStart(2, '0')}",
+        time = "${molad.moladHours.toString().padStart(2, '0')}:${molad.moladMinutes.toString().padStart(2, '0')}",
         chalakim = molad.moladChalakim,
         kiddushLevanaStart = Date(start.toEpochMilliseconds()),
         kiddushLevanaEnd = Date(end.toEpochMilliseconds()),

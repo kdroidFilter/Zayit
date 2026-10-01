@@ -67,7 +67,9 @@ internal object CalendarWidget : HomeWidget {
     override val title = Res.string.home_widget_name_calendar
     override val defaultSpan = CellSpan(7, 5)
     override val minSpan = CellSpan(7, 5)
-    override val maxSpan = CellSpan(14, 8)
+
+    // Six week rows hold their two lines of text; taller would only part them
+    override val maxSpan = CellSpan(14, 6)
 
     @Composable
     override fun Content(
@@ -90,7 +92,7 @@ internal object CalendarWidget : HomeWidget {
                 )
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     // Holiday names only where a cell can hold a word
-                    val showTags = maxWidth / 7 >= 64.dp
+                    val showTags = maxWidth / 7 >= 56.dp
                     // Too narrow for both dates side by side: the Gregorian one goes under the Hebrew one
                     val stacked = maxWidth / 7 < 56.dp
                     Column(Modifier.fillMaxSize()) {

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -261,21 +262,24 @@ private fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
             }
 
             // Values — aligned to bottom
-            Box(
+            BoxWithConstraints(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .weight(1f),
                 contentAlignment = Alignment.BottomCenter,
             ) {
+                // A narrow card can't hold three roomy units: tighter ones keep "1956" on one line
+                val compact = maxWidth < 240.dp
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                    horizontalArrangement = Arrangement.spacedBy(if (compact) 6.dp else 12.dp, Alignment.CenterHorizontally),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     countdownItems.forEach { (value, label) ->
                         CountdownUnit(
                             value = value,
                             label = label,
+                            compact = compact,
                         )
                     }
                 }
@@ -300,6 +304,7 @@ private fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
 private fun CountdownUnit(
     value: Int,
     label: String,
+    compact: Boolean,
 ) {
     val glassShape = RoundedCornerShape(8.dp)
 
@@ -313,12 +318,13 @@ private fun CountdownUnit(
                     .clip(glassShape)
                     .background(Color.Black.copy(alpha = 0.35f), glassShape)
                     .border(1.dp, Color.White.copy(alpha = 0.15f), glassShape)
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(horizontal = if (compact) 8.dp else 16.dp, vertical = if (compact) 6.dp else 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = value.toString(),
-                fontSize = 22.sp,
+                fontSize = if (compact) 18.sp else 22.sp,
+                maxLines = 1,
                 fontWeight = FontWeight.Normal,
                 color = Color.White,
                 textAlign = TextAlign.Center,

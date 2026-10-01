@@ -6,17 +6,19 @@ import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -28,8 +30,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -59,33 +64,43 @@ import java.util.TimeZone
 import java.util.UUID
 
 // The luach widgets, after the KosherKotlin demo's luach: text on the calendar's panel, following the Home's day.
+// They keep the app's text sizes (only the next zman's clock grows), and their lists show as many whole rows as fit.
 
 /** This week's parsha and the day's dafim; clicking one opens it in a new tab. */
 internal object LimudWidget : HomeWidget {
     override val id = "limud"
     override val title = Res.string.home_widget_name_limud
     override val defaultSpan = CellSpan(9, 2)
-    override val minSpan = CellSpan(6, 2)
-    override val maxSpan = CellSpan(20, 4)
+    override val minSpan = CellSpan(5, 2)
+
+    // Wider, each tile would be mostly empty around its two short lines
+    override val maxSpan = CellSpan(11, 2)
 
     @Composable
     override fun Content(
         state: HomeWidgetsState,
         modifier: Modifier,
-    ) {
-        val items = remember(state.selectedDate, state.inIsrael) { limudOfDay(state.selectedDate, state.inIsrael) }
-        val open = rememberOpenInLibrary()
-        PanelCard(modifier) {
-            BoxWithConstraints(Modifier.fillMaxSize().padding(10.dp)) {
-                // Side by side where each tile can hold its two lines, one line each under one another otherwise
-                if (maxWidth >= 360.dp) {
-                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items.forEach { LimudTile(it, stacked = true, open, Modifier.weight(1f).fillMaxHeight()) }
-                    }
-                } else {
-                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        items.forEach { LimudTile(it, stacked = false, open, Modifier.weight(1f).fillMaxWidth()) }
-                    }
+    ) = LimudPanel(state, rememberOpenInLibrary(), modifier)
+}
+
+/** The limud tiles, opening a place with [open]. */
+@Composable
+internal fun LimudPanel(
+    state: HomeWidgetsState,
+    open: (LibraryPlace) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val items = remember(state.selectedDate, state.inIsrael) { limudOfDay(state.selectedDate, state.inIsrael) }
+    PanelCard(modifier) {
+        BoxWithConstraints(Modifier.fillMaxSize().padding(8.dp)) {
+            // Side by side where each tile can hold its two lines, one line each under one another otherwise
+            if (maxWidth >= 300.dp) {
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items.forEach { LimudTile(it, stacked = true, open, Modifier.weight(1f).fillMaxHeight()) }
+                }
+            } else {
+                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    items.forEach { LimudTile(it, stacked = false, open, Modifier.weight(1f).fillMaxWidth()) }
                 }
             }
         }
@@ -101,23 +116,23 @@ private fun LimudTile(
 ) {
     val accent = rememberAccentColor(JewelTheme.isDark)
     val place = item.place
-    val kicker = @Composable { Text(item.kicker, fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1) }
-    val value = @Composable { valueModifier: Modifier ->
-        Text(
-            text = item.value,
-            fontSize = if (stacked) 16.sp else 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = if (place != null) accent else JewelTheme.globalColors.text.normal,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = valueModifier,
-        )
-    }
-    HoverBox(onClick = place?.let { { open(it) } }, modifier = modifier) {
+    val color = if (place != null) accent else JewelTheme.globalColors.text.normal
+    HoverBox(onClick = place?.let { { open(it) } }, modifier = modifier, tinted = true) {
         if (stacked) {
-            Column(Modifier.fillMaxSize().padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                kicker()
-                value(Modifier)
+            Column(
+                Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Kicker(item.kicker)
+                Text(
+                    item.value,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = color,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         } else {
             Row(
@@ -125,8 +140,16 @@ private fun LimudTile(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                kicker()
-                value(Modifier.weight(1f))
+                Kicker(item.kicker)
+                Text(
+                    item.value,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = color,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -138,7 +161,9 @@ internal object NextZmanWidget : HomeWidget {
     override val title = Res.string.home_widget_name_next_zman
     override val defaultSpan = CellSpan(5, 2)
     override val minSpan = CellSpan(4, 2)
-    override val maxSpan = CellSpan(10, 4)
+
+    // Wider, its name and its clock would stand apart across the card
+    override val maxSpan = CellSpan(6, 6)
 
     @Composable
     override fun Content(
@@ -149,31 +174,45 @@ internal object NextZmanWidget : HomeWidget {
         val location = state.location
         val zmanim =
             remember(now, location, state.zmanimOpinion, state.inIsrael) {
-                nextZmanim(now, location, state.zmanimOpinion, state.inIsrael)
+                nextZmanim(now, location, state.zmanimOpinion, state.inIsrael, count = 20)
             }
         val clock = rememberClock(location.timeZone)
         val accent = rememberAccentColor(JewelTheme.isDark)
         PanelCard(modifier) {
-            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val next = zmanim.firstOrNull() ?: return@Column
-                Kicker("הזמן הבא · ${countdown(now, next.time)}")
-                HoverBox(onClick = { state.targetTime = next.time }) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            next.name,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f),
-                        )
-                        Text(clock(next.time), fontSize = 22.sp, color = accent)
+            val next = zmanim.firstOrNull() ?: return@PanelCard
+            BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 8.dp)) {
+                // The coming zman takes up to half the card, the ones after it the rest
+                val heroHeight = (maxHeight * 0.5f).coerceIn(44.dp, 96.dp)
+                // A narrow card leaves the name its room
+                val clockSize = if (maxWidth < 220.dp) 28.sp else 44.sp
+                Column(Modifier.fillMaxSize()) {
+                    HoverBox(onClick = { state.targetTime = next.time }, modifier = Modifier.fillMaxWidth().height(heroHeight)) {
+                        Column(Modifier.fillMaxSize().padding(horizontal = 6.dp, vertical = 2.dp)) {
+                            Kicker("הזמן הבא · ${countdown(now, next.time)}")
+                            Row(Modifier.fillMaxWidth().weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    next.name,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f),
+                                )
+                                FitText(clock(next.time), accent, max = clockSize, min = 18.sp)
+                            }
+                        }
                     }
-                }
-                Spacer(Modifier.weight(1f))
-                zmanim.drop(1).forEach { zman ->
-                    HoverBox(onClick = { state.targetTime = zman.time }) {
-                        TimeRow(zman.name, clock(zman.time), fontSize = 12.sp)
+                    FitColumn(Modifier.fillMaxWidth().weight(1f).padding(top = 2.dp)) {
+                        zmanim.drop(1).forEach { zman ->
+                            HoverBox(onClick = { state.targetTime = zman.time }, modifier = Modifier.fillMaxWidth()) {
+                                TimeRow(
+                                    zman.name,
+                                    clock(zman.time),
+                                    fontSize = 12.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -195,7 +234,9 @@ internal object UpcomingEventsWidget : HomeWidget {
     override val title = Res.string.home_widget_name_events
     override val defaultSpan = CellSpan(6, 4)
     override val minSpan = CellSpan(5, 3)
-    override val maxSpan = CellSpan(10, 8)
+
+    // Wider, the names and their times would stand apart across the card
+    override val maxSpan = CellSpan(7, 8)
 
     @Composable
     override fun Content(
@@ -205,29 +246,20 @@ internal object UpcomingEventsWidget : HomeWidget {
         val location = state.location
         val events =
             remember(state.selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael) {
-                upcomingEvents(state.selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael)
+                upcomingEvents(state.selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael, limit = 14)
             }
         val clock = rememberClock(location.timeZone)
         PanelCard(modifier) {
-            BoxWithConstraints(Modifier.fillMaxSize().padding(10.dp)) {
-                // As many as fit, whole
-                val shown = (maxHeight / EVENT_ROW_HEIGHT).toInt().coerceAtLeast(1)
-                Column(Modifier.fillMaxSize()) {
-                    events.take(shown).forEach { event ->
-                        HoverBox(
-                            onClick = { state.selectDate(event.date) },
-                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
-                        ) {
-                            EventRow(event, clock)
-                        }
+            FitColumn(Modifier.fillMaxSize().padding(6.dp)) {
+                events.forEach { event ->
+                    HoverBox(onClick = { state.selectDate(event.date) }, modifier = Modifier.fillMaxWidth()) {
+                        EventRow(event, clock)
                     }
                 }
             }
         }
     }
 }
-
-private val EVENT_ROW_HEIGHT = 46.dp
 
 @Composable
 private fun EventRow(
@@ -237,6 +269,7 @@ private fun EventRow(
     Row(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(Modifier.weight(1f)) {
             Text(event.name, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -262,7 +295,9 @@ internal object TefilaWidget : HomeWidget {
     override val title = Res.string.home_widget_name_tefila
     override val defaultSpan = CellSpan(6, 3)
     override val minSpan = CellSpan(5, 3)
-    override val maxSpan = CellSpan(10, 5)
+
+    // Seven short lines at most: more room would only spread them apart
+    override val maxSpan = CellSpan(6, 3)
 
     @Composable
     override fun Content(
@@ -277,23 +312,32 @@ internal object TefilaWidget : HomeWidget {
             }
         val accent = rememberAccentColor(JewelTheme.isDark)
         PanelCard(modifier) {
-            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Column(Modifier.fillMaxSize().padding(12.dp)) {
                 Kicker("תפילת היום · $hebrewDate")
-                lines.forEach { line ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(line.label, fontSize = 12.sp, color = JewelTheme.globalColors.text.info, modifier = Modifier.width(78.dp))
-                        Text(
-                            line.value,
-                            fontSize = 13.sp,
-                            fontWeight = if (line.special) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (line.special) accent else JewelTheme.globalColors.text.normal,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+                Column(Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp)) {
+                    lines.forEach { TefilaRow(it, accent, Modifier.weight(1f)) }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun TefilaRow(
+    line: TefilaLine,
+    accent: Color,
+    modifier: Modifier = Modifier,
+) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(line.label, fontSize = 12.sp, color = JewelTheme.globalColors.text.info, maxLines = 1, modifier = Modifier.width(76.dp))
+        Text(
+            line.value,
+            fontSize = 13.sp,
+            fontWeight = if (line.special) FontWeight.SemiBold else FontWeight.Normal,
+            color = if (line.special) accent else JewelTheme.globalColors.text.normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -302,8 +346,8 @@ internal object MoladWidget : HomeWidget {
     override val id = "molad"
     override val title = Res.string.home_widget_name_molad
     override val defaultSpan = CellSpan(6, 2)
-    override val minSpan = CellSpan(5, 2)
-    override val maxSpan = CellSpan(10, 3)
+    override val minSpan = CellSpan(4, 2)
+    override val maxSpan = CellSpan(8, 2)
 
     @Composable
     override fun Content(
@@ -316,23 +360,36 @@ internal object MoladWidget : HomeWidget {
                 moladInfo(now, state.selectedDate, state.inIsrael, state.kiddushLevanaEarliest, state.kiddushLevanaLatest)
             }
         val zone = state.location.timeZone
-        val moment = remember(zone) { SimpleDateFormat("d.M HH:mm").apply { timeZone = zone } }
+        val moment = remember(zone) { SimpleDateFormat("d.M · HH:mm").apply { timeZone = zone } }
         val accent = rememberAccentColor(JewelTheme.isDark)
-        PanelCard(modifier) {
-            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        val moladPart = @Composable { partModifier: Modifier ->
+            Column(partModifier, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
                 Kicker("מולד חודש ${molad.month}")
-                Text(
-                    "יום ${molad.weekday}, ⁦${molad.time}⁩ ו־${molad.chalakim} חלקים",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = accent,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.weight(1f))
+                Text("יום ${molad.weekday}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, color = accent, maxLines = 1)
+                Text("⁦${molad.time}⁩ · ${molad.chalakim} חלקים", fontSize = 12.sp, maxLines = 1)
+            }
+        }
+        val levanaPart = @Composable { partModifier: Modifier ->
+            Column(partModifier, verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
                 Kicker("קידוש לבנה")
-                TimeRow("מ־", moment.format(molad.kiddushLevanaStart).ltr(), fontSize = 12.sp)
-                TimeRow("עד", moment.format(molad.kiddushLevanaEnd).ltr(), fontSize = 12.sp)
+                Text("מ־ ${moment.format(molad.kiddushLevanaStart).ltr()}", fontSize = 12.sp, maxLines = 1)
+                Text("עד ${moment.format(molad.kiddushLevanaEnd).ltr()}", fontSize = 12.sp, maxLines = 1)
+            }
+        }
+        PanelCard(modifier) {
+            BoxWithConstraints(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                // Side by side on a wide card, one above the other on a narrow one
+                if (maxWidth >= 200.dp) {
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        moladPart(Modifier.weight(1f).fillMaxHeight())
+                        levanaPart(Modifier.weight(1f).fillMaxHeight())
+                    }
+                } else {
+                    Column(Modifier.fillMaxSize()) {
+                        moladPart(Modifier.fillMaxWidth().weight(1f))
+                        levanaPart(Modifier.fillMaxWidth().weight(1f))
+                    }
+                }
             }
         }
     }
@@ -343,13 +400,36 @@ private fun Kicker(text: String) {
     Text(text, fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
+/** One line of text, as large as fits between [min] and [max]. */
+@Composable
+private fun FitText(
+    text: String,
+    color: Color,
+    max: TextUnit,
+    min: TextUnit,
+    modifier: Modifier = Modifier,
+    weight: FontWeight = FontWeight.Normal,
+) {
+    BasicText(
+        text = text,
+        modifier = modifier,
+        style = JewelTheme.defaultTextStyle.copy(color = color, fontWeight = weight),
+        maxLines = 1,
+        softWrap = false,
+        // Ellipsis would hide the overflow from the autosizer: it would keep the largest size and cut the text
+        overflow = TextOverflow.Clip,
+        autoSize = TextAutoSize.StepBased(minFontSize = min, maxFontSize = max, stepSize = 1.sp),
+    )
+}
+
 @Composable
 private fun TimeRow(
     label: String,
     time: String,
     fontSize: TextUnit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             label,
             fontSize = fontSize,
@@ -362,21 +442,54 @@ private fun TimeRow(
     }
 }
 
-/** A rounded area lit on hover, with a hand cursor where it can be clicked. */
+/** Its children from the top, as many as fit whole; the others aren't shown. */
+@Composable
+private fun FitColumn(
+    modifier: Modifier = Modifier,
+    spacing: Dp = 0.dp,
+    content: @Composable () -> Unit,
+) {
+    Layout(content, modifier) { measurables, constraints ->
+        val gap = spacing.roundToPx()
+        val loose = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
+        var y = 0
+        val placed =
+            buildList {
+                for (measurable in measurables) {
+                    val placeable = measurable.measure(loose)
+                    if (y + placeable.height > constraints.maxHeight) break
+                    add(y to placeable)
+                    y += placeable.height + gap
+                }
+            }
+        layout(constraints.maxWidth, constraints.maxHeight) {
+            placed.forEach { (top, placeable) -> placeable.placeRelative(0, top) }
+        }
+    }
+}
+
+/** A rounded area lit on hover, with a hand cursor where it can be clicked; [tinted] shows its area at rest. */
 @Composable
 private fun HoverBox(
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
-    content: @Composable ColumnScope.() -> Unit,
+    tinted: Boolean = false,
+    content: @Composable () -> Unit,
 ) {
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
     val shape = RoundedCornerShape(10.dp)
     val tint = JewelTheme.globalColors.text.normal
-    Column(
+    val alpha =
+        when {
+            hovered && onClick != null -> 0.10f
+            tinted -> 0.05f
+            else -> 0f
+        }
+    Box(
         modifier
             .clip(shape)
-            .background(if (hovered && onClick != null) tint.copy(alpha = 0.08f) else Color.Transparent)
+            .background(if (alpha > 0f) tint.copy(alpha = alpha) else Color.Transparent)
             .then(
                 if (onClick != null) {
                     Modifier.hoverable(hover).pointerHoverIcon(PointerIcon.Hand).clickable(onClick = onClick)
@@ -384,8 +497,7 @@ private fun HoverBox(
                     Modifier
                 },
             ),
-        content = content,
-    )
+    ) { content() }
 }
 
 private fun String.ltr() = "⁦$this⁩"

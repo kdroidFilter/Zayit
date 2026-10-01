@@ -213,7 +213,9 @@ internal object ZmanimWidget : HomeWidget {
     override val title = Res.string.home_widget_name_zmanim
     override val defaultSpan = CellSpan(13, 4)
     override val minSpan = CellSpan(8, 4)
-    override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
+
+    // Its cards are a fixed height: the grid gives it the rows they need at each width (minRows), never more
+    override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 4)
 
     override fun heightAt(width: Dp): Dp = zmanimGridHeight(width)
 
@@ -443,6 +445,26 @@ private fun <T> List<T>.toZmanimRows(
         rows
     }
 
+/** [rowCount] rows of about the same total span, in order. */
+internal fun <T> List<T>.balancedRows(
+    rowCount: Int,
+    span: (T) -> Float,
+): List<List<T>> {
+    val target = sumOf { span(it).toDouble() } / rowCount
+    val rows = mutableListOf(mutableListOf<T>())
+    var filled = 0.0
+    for (item in this) {
+        // A quarter slot of slack keeps a row from closing just short of its share
+        if (filled >= target - 0.25 && rows.size < rowCount) {
+            rows += mutableListOf<T>()
+            filled = 0.0
+        }
+        rows.last() += item
+        filled += span(item)
+    }
+    return rows
+}
+
 /** Five columns while a card keeps [MIN_ZMANIM_CARD_WIDTH], else four. */
 private fun zmanimColumns(
     width: Dp,
@@ -480,16 +502,18 @@ private fun ZmanimCardsGrid(
     compactMode: Boolean = false,
 ) {
     val capacity = items.rowCapacity(columns.coerceAtLeast(1)) { it.span }
-    val rows = items.toZmanimRows(capacity) { it.span }
+    // As many rows as the greedy fill needs (the height counts on it), but shared out evenly, so none ends on a hole
+    val rows = items.balancedRows(items.toZmanimRows(capacity) { it.span }.size) { it.span }
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        // Width of one slot plus its gap: an item of span n spans n pitches minus one gap, so every full row has the same
-        // width whatever its item count (two half cards and their gap make exactly one card)
-        val pitch = (maxWidth + horizontalSpacing) / capacity
+        val width = maxWidth
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
         ) {
             rows.forEach { rowItems ->
+                // Width of one slot plus its gap: an item of span n spans n pitches minus one gap, so the row fills
+                // the width whatever its item count (two half cards and their gap make exactly one card)
+                val pitch = (width + horizontalSpacing) / rowItems.sumOf { it.span.toDouble() }.toFloat()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),

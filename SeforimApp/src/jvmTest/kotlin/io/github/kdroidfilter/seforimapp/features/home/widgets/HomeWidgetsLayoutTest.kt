@@ -100,4 +100,39 @@ class HomeWidgetsLayoutTest {
         assertEquals(CellRect(13, 0, 6, 3), layout.first { it.widget.id == "temple_countdown" }.cell)
         assertTrue(layout.first { it.widget.id == "earth" }.cell.y >= 3)
     }
+
+    @Test
+    fun `arranging leaves no hole, every widget within its limits`() {
+        val pitch = CellPitch(MAX_GRID_WIDTH)
+        val layouts =
+            listOf(
+                homeWidgets,
+                availableHomeWidgets.fold(emptyList<WidgetPlacement>()) { l, w -> l + WidgetPlacement(w, l.firstVacant(w.defaultSpan)) },
+            )
+        for (layout in layouts) {
+            val arranged = layout.arranged(pitch)
+            assertEquals(ids(layout), ids(arranged))
+            arranged.forEach { assertEquals(it.widget.clamp(it.cell, pitch), it.cell, it.widget.id) }
+            assertTrue(arranged.indices.all { i -> arranged.indices.none { j -> i != j && arranged[i].cell.overlaps(arranged[j].cell) } })
+            assertEquals(arranged.bottom() * HOME_GRID_COLUMNS, arranged.sumOf { it.cell.w * it.cell.h }, "holes in ${ids(layout)}")
+        }
+    }
+
+    @Test
+    fun `arranging again gives another layout as tight`() {
+        val pitch = CellPitch(MAX_GRID_WIDTH)
+        val first = homeWidgets.rearranged(pitch, 0)
+        val second = first.rearranged(pitch, 1)
+        assertTrue(first != homeWidgets && second != first)
+        assertEquals(homeWidgets.bottom(), second.bottom())
+        assertEquals(second.bottom() * HOME_GRID_COLUMNS, second.sumOf { it.cell.w * it.cell.h })
+    }
+
+    @Test
+    fun `where holes can't be avoided, arranging leaves the fewest`() {
+        // The zmanim are 4 rows, the calendar 5 at least and 14 columns at most: the zmanim across, the calendar below
+        val layout = listOf(WidgetPlacement(CalendarWidget, CellRect(10, 3, 7, 5)), WidgetPlacement(ZmanimWidget, CellRect(0, 12, 13, 4)))
+        val arranged = layout.arranged(CellPitch(MAX_GRID_WIDTH))
+        assertEquals(listOf(CellRect(0, 4, 14, 5), CellRect(0, 0, 20, 4)).toSet(), arranged.map { it.cell }.toSet())
+    }
 }

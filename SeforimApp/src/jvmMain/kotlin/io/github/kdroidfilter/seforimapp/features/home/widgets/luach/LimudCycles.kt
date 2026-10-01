@@ -4,19 +4,12 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import java.time.temporal.TemporalAdjusters
 
-// The daily limudim, after hebcal-learning (its schedules are in resources/limud, see NOTICE.txt there): each cycle
+// The daily limudim, after hebcal-learning (its schedules in limud.pb, see LimudSchedules): each cycle
 // counted from its first day, or set by the Hebrew day of the year. Their places are spelled as the library's lines'
 // references ("משנה ברכות א, ב"), so a click lands on the very mishnah, seif or paragraph.
 
@@ -107,15 +100,6 @@ private fun cycleDay(
 
 private fun JewishDate.monthValue() = jewishMonth.value
 
-private fun jsonResource(name: String): JsonElement =
-    Json.parseToJsonElement(
-        checkNotNull(LimudGroup::class.java.getResourceAsStream("/limud/$name")) { "Missing limud schedule $name" }
-            .bufferedReader()
-            .use { it.readText() },
-    )
-
-private fun JsonElement.text(): String? = jsonPrimitive.contentOrNull
-
 // --- Mishnah -------------------------------------------------------------------------------------------------------
 
 private class MishnahRef(
@@ -145,7 +129,9 @@ internal fun mishnahYomis(date: LocalDate): LimudItem {
                 "${first.masechta} ${h(first.perek)}, ${h(first.mishnah)} – ${h(second.perek)}, ${h(second.mishnah)}"
             else -> "${first.masechta} ${h(first.perek)}, ${range(first.mishnah, second.mishnah)}"
         }
-    return LimudItem(Limud.MISHNAH.kicker, value, first.place())
+    // Marked to the second, in the same masechta's book
+    val place = first.place().copy(endRefs = listOfNotNull(second.place().ref.takeIf { second.masechta == first.masechta }))
+    return LimudItem(Limud.MISHNAH.kicker, value, place)
 }
 
 private fun MishnahRef.place() =
@@ -167,7 +153,7 @@ internal fun perekMishnah(date: LocalDate): LimudItem {
     return LimudItem(
         Limud.PEREK_MISHNAH.kicker,
         "$masechta ${h(perek)}",
-        LibraryPlace("משנה $masechta", toc = listOf("פרק ${h(perek)}")),
+        LibraryPlace("משנה $masechta", toc = listOf("פרק ${h(perek)}"), endTocs = listOf("פרק ${h(perek)}")),
     )
 }
 
@@ -234,9 +220,16 @@ private fun RambamDay.reading(): String =
 private fun RambamDay.place(): LibraryPlace {
     val title = "משנה תורה, ${MISHNEH_TORAH[book].first}"
     return when (book) {
-        in RAMBAM_INTRO_DAYS.indices -> LibraryPlace(title, ref = "$title ${h(RAMBAM_INTRO_DAYS[book][perek - 1].first)}")
-        RAMBAM_INTRO_DAYS.size -> LibraryPlace(title, toc = listOf("פרק ${h(RAMBAM_CONTENTS_DAYS[perek - 1][0])}"))
-        else -> LibraryPlace(title, toc = listOf("פרק ${h(perek)}"))
+        in RAMBAM_INTRO_DAYS.indices ->
+            RAMBAM_INTRO_DAYS[book][perek - 1].let { (first, last) ->
+                LibraryPlace(title, ref = "$title ${h(first)}", endRefs = listOf("$title ${h(last)}"))
+            }
+        RAMBAM_INTRO_DAYS.size ->
+            RAMBAM_CONTENTS_DAYS[perek - 1].let {
+                LibraryPlace(title, toc = listOf("פרק ${h(it[0])}"), endRefs = listOf("$title ${h(it[2])}, ${h(it[3])}"))
+            }
+        // "ד-ה": to the end of ה
+        else -> LibraryPlace(title, toc = listOf("פרק ${h(perek)}"), endTocs = listOf("פרק ${perakim?.substringAfter('-') ?: h(perek)}"))
     }
 }
 
@@ -275,12 +268,15 @@ internal fun rambam3(date: LocalDate): LimudItem {
                     }
                 "${first.title()} $reading"
             }
-    return LimudItem(Limud.RAMBAM3.kicker, value, days.first().place())
+    // Marked to the day's last perek of its first book
+    val first = days.first()
+    val end = days.last { it.book == first.book }.place()
+    return LimudItem(Limud.RAMBAM3.kicker, value, first.place().copy(endRefs = end.endRefs, endTocs = end.endTocs))
 }
 
 // --- Sefer HaMitzvos, the Rambam's mitzvos learned with the three-perakim cycle -----------------------------------
 
-private val seferHamitzvos: List<String> by lazy { jsonResource("sefer_hamitzvot.json").jsonArray.map { it.jsonPrimitive.content } }
+private val seferHamitzvos: List<String> get() = limudSchedules.seferHamitzvos
 
 private val MITZVAH = Regex("""([PN])(\d+)(?:-(\d+))?""")
 private val PRINCIPLES = Regex("""Principle (\d+)-(\d+)""")
@@ -294,7 +290,14 @@ private fun seferHamitzvosPart(part: String): Pair<String, LibraryPlace>? {
         val number = first.toInt()
         val words = (if (positive) "עשה " else "ל״ת ") + if (last.isEmpty()) h(number) else range(number, last.toInt())
         val section = if (positive) "מצוות עשה" else "מצוות לא תעשה"
-        return words to LibraryPlace("ספר המצוות", toc = listOf(section), ref = "ספר המצוות, $section, ${h(number)}")
+        val lastNumber = last.toIntOrNull() ?: number
+        return words to
+            LibraryPlace(
+                "ספר המצוות",
+                toc = listOf(section),
+                ref = "ספר המצוות, $section, ${h(number)}",
+                endRefs = listOf("ספר המצוות, $section, ${h(lastNumber)}"),
+            )
     }
     PRINCIPLES.matchEntire(part)?.let { match ->
         val (first, last) = match.destructured.toList().map { it.toInt() }
@@ -316,8 +319,16 @@ private fun seferHamitzvosPart(part: String): Pair<String, LibraryPlace>? {
 }
 
 internal fun seferHamitzvos(date: LocalDate): LimudItem {
-    val parts = seferHamitzvos[cycleDay(date, RAMBAM_START, seferHamitzvos.size)].split(", ").mapNotNull(::seferHamitzvosPart)
-    return LimudItem(Limud.SEFER_HAMITZVOS.kicker, parts.joinToString(", ") { it.first }, parts.firstOrNull()?.second)
+    val tokens = seferHamitzvos[cycleDay(date, RAMBAM_START, seferHamitzvos.size)].split(", ")
+    val parts = tokens.mapNotNull(::seferHamitzvosPart)
+    // Marked only when the day is one run of mitzvos ("ל״ת שמח, ל״ת שמט, …"): its mitzvos are often far apart
+    val run = tokens.map { MITZVAH.matchEntire(it)?.destructured?.toList() }
+    val contiguous =
+        run.all { it != null && it[0] == run.first()?.get(0) } &&
+            run.zipWithNext().all { (a, b) -> b!![1].toInt() == (a!![2].ifEmpty { a[1] }).toInt() + 1 }
+    val first = parts.firstOrNull()?.second
+    val place = if (contiguous) first?.copy(endRefs = parts.last().second.endRefs) else first?.copy(endRefs = emptyList())
+    return LimudItem(Limud.SEFER_HAMITZVOS.kicker, parts.joinToString(", ") { it.first }, place)
 }
 
 // --- Tehillim and Nach ---------------------------------------------------------------------------------------------
@@ -381,7 +392,7 @@ private fun tehillim(
     first: Int,
     last: Int,
     limud: Limud = Limud.TEHILLIM,
-) = LimudItem(limud.kicker, range(first, last), LibraryPlace("תהילים", toc = listOf("פרק ${h(first)}")))
+) = LimudItem(limud.kicker, range(first, last), LibraryPlace("תהילים", toc = listOf("פרק ${h(first)}"), endTocs = listOf("פרק ${h(last)}")))
 
 private fun tehillim119(
     first: Int,
@@ -389,7 +400,12 @@ private fun tehillim119(
 ) = LimudItem(
     Limud.TEHILLIM.kicker,
     "${h(TEHILLIM_119)}, ${range(first, last)}",
-    LibraryPlace("תהילים", toc = listOf("פרק ${h(TEHILLIM_119)}"), ref = "תהילים ${h(TEHILLIM_119)}, ${h(first)}"),
+    LibraryPlace(
+        "תהילים",
+        toc = listOf("פרק ${h(TEHILLIM_119)}"),
+        ref = "תהילים ${h(TEHILLIM_119)}, ${h(first)}",
+        endRefs = listOf("תהילים ${h(TEHILLIM_119)}, ${h(last)}"),
+    ),
 )
 
 private val NACH_YOMI_START: LocalDate = LocalDate.of(2007, 11, 1)
@@ -399,7 +415,11 @@ private val nachPerakim: List<Pair<String, Int>> by lazy { NACH.flatMap { (book,
 /** A perek of Nevi'im and Kesuvim a day, from Yehoshua on 1 November 2007. */
 internal fun nachYomi(date: LocalDate): LimudItem {
     val (book, perek) = nachPerakim[cycleDay(date, NACH_YOMI_START, nachPerakim.size)]
-    return LimudItem(Limud.NACH.kicker, "$book ${h(perek)}", LibraryPlace(book, toc = listOf("פרק ${h(perek)}")))
+    return LimudItem(
+        Limud.NACH.kicker,
+        "$book ${h(perek)}",
+        LibraryPlace(book, toc = listOf("פרק ${h(perek)}"), endTocs = listOf("פרק ${h(perek)}")),
+    )
 }
 
 // --- Pirkei Avos, on the Shabbosos from Pesach to Rosh Hashanah ----------------------------------------------------
@@ -460,17 +480,17 @@ internal fun pirkeiAvosItem(
 ): LimudItem? {
     val perakim = pirkeiAvos(date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY)), inIsrael) ?: return null
     val value = if (perakim.size == 1) "פרק ${h(perakim[0])}" else "פרקים ${range(perakim.first(), perakim.last())}"
-    return LimudItem(Limud.PIRKEI_AVOS.kicker, value, LibraryPlace("משנה אבות", toc = listOf("פרק ${h(perakim[0])}")))
+    return LimudItem(
+        Limud.PIRKEI_AVOS.kicker,
+        value,
+        LibraryPlace("משנה אבות", toc = listOf("פרק ${h(perakim[0])}"), endTocs = listOf("פרק ${h(perakim.last())}")),
+    )
 }
 
 // --- Kitzur Shulchan Aruch and Aruch HaShulchan --------------------------------------------------------------------
 
 // By the Hebrew month (KosherKotlin's numbers, Adar II after Adar) and its day: "133:17-133:21", "135:13-135:E"
-private val kitzurMonths: Map<Int, List<String>> by lazy {
-    jsonResource("kitzur_shulchan_aruch.json").jsonObject.mapKeys { it.key.toInt() }.mapValues { (_, days) ->
-        days.jsonArray.map { it.jsonPrimitive.content }
-    }
-}
+private val kitzurMonths: Map<Int, List<String>> by lazy { limudSchedules.kitzur.associate { it.month to it.readings } }
 
 /** The Kitzur's yearly cycle; none on a 30th of Cheshvan or Adar I, which it has no reading for. */
 internal fun kitzur(date: LocalDate): LimudItem? {
@@ -496,7 +516,14 @@ internal fun kitzur(date: LocalDate): LimudItem? {
     return LimudItem(
         Limud.KITZUR.kicker,
         value,
-        LibraryPlace("קיצור שלחן ערוך", toc = listOf("סימן ${h(siman)}"), ref = "קיצור שלחן ערוך ${h(siman)}, ${h(seif)}"),
+        LibraryPlace(
+            "קיצור שלחן ערוך",
+            toc = listOf("סימן ${h(siman)}"),
+            ref = "קיצור שלחן ערוך ${h(siman)}, ${h(seif)}",
+            endRefs = listOfNotNull(lastSeif.toIntOrNull()?.let { "קיצור שלחן ערוך ${h(lastSiman)}, ${h(it)}" }),
+            // "E": to the end of its siman
+            endTocs = listOfNotNull("סימן ${h(lastSiman)}".takeIf { lastSeif == "E" }),
+        ),
     )
 }
 
@@ -506,11 +533,7 @@ private val AH_SHORT = listOf("או״ח", "יו״ד", "אה״ע", "חו״מ")
 private val AH_START: LocalDate = LocalDate.of(2020, 5, 29)
 
 // Its section (1 to 4) and "siman.seif-seif" or "siman.seif-siman.seif"
-private val aruchHashulchanDays: List<Pair<Int, String>> by lazy {
-    jsonResource("arukh_hashulchan.json").jsonArray.map { day ->
-        day.jsonArray.let { it[0].jsonPrimitive.int to it[1].jsonPrimitive.content }
-    }
-}
+private val aruchHashulchanDays: List<Pair<Int, String>> by lazy { limudSchedules.aruchHashulchan.map { it.section to it.reading } }
 
 /** The Aruch HaShulchan Yomi, from 29 May 2020. */
 internal fun aruchHashulchan(date: LocalDate): LimudItem {
@@ -532,6 +555,16 @@ internal fun aruchHashulchan(date: LocalDate): LimudItem {
             "ערוך השולחן",
             toc = listOf(section, "סימן ${h(siman)}"),
             ref = "ערוך השולחן, $section, ${h(siman)}, ${h(seif)}",
+            endRefs =
+                listOf(
+                    when {
+                        '-' !in reading -> "ערוך השולחן, $section, ${h(siman)}, ${h(seif)}"
+                        '.' in last -> "ערוך השולחן, $section, ${h(
+                            last.substringBefore('.').toInt(),
+                        )}, ${h(last.substringAfter('.').toInt())}"
+                        else -> "ערוך השולחן, $section, ${h(siman)}, ${h(last.toInt())}"
+                    },
+                ),
         ),
     )
 }
@@ -554,18 +587,9 @@ private class ChofetzChaimRow(
 )
 
 private val chofetzChaimRows: Map<Boolean, List<ChofetzChaimRow>> by lazy {
-    val json = jsonResource("chofetz_chaim.json").jsonObject
-    mapOf(false to "simple", true to "leap").mapValues { (_, key) ->
-        json.getValue(key).jsonArray.map { row ->
-            val cells = row.jsonArray
-            ChofetzChaimRow(
-                cells[0].jsonArray.map { it.jsonPrimitive.int },
-                cells[1].jsonPrimitive.content,
-                cells[2].text(),
-                cells[3].text(),
-            )
-        }
-    }
+    fun rows(days: List<ChofetzChaimDay>) =
+        days.map { ChofetzChaimRow(it.dates, it.section, it.first.ifEmpty { null }, it.last.ifEmpty { null }) }
+    mapOf(false to rows(limudSchedules.chofetzChaimSimple), true to rows(limudSchedules.chofetzChaimLeap))
 }
 
 /** hebcal's lookup: the first row of the day gives its start, the last its end. */
@@ -616,9 +640,9 @@ internal fun chofetzChaim(date: LocalDate): LimudItem? {
             else -> return null
         }
     val first = day.first
-    val (value, ref) =
+    val (value, ref, endRefs) =
         when {
-            first == null -> name to refBase
+            first == null -> Triple(name, refBase, listOf(refBase))
             '.' in first -> {
                 // כלל.סעיף
                 val klal = first.substringBefore('.').toInt()
@@ -631,7 +655,13 @@ internal fun chofetzChaim(date: LocalDate): LimudItem? {
                             " – ${h(last.substringBefore('.').toInt())}, ${h(last.substringAfter('.').toInt())}"
                         else -> "-${h(last.substringAfter('.').toInt())}"
                     }
-                "$name כלל ${h(klal)}, ${h(seif)}$end" to "$refBase, כלל ${h(klal)}, ${h(seif)}"
+                val lastRef =
+                    (last ?: first).let {
+                        "$refBase, כלל ${h(
+                            it.substringBefore('.').toInt(),
+                        )}, ${h(it.substringAfter('.').toInt())}"
+                    }
+                Triple("$name כלל ${h(klal)}, ${h(seif)}$end", "$refBase, כלל ${h(klal)}, ${h(seif)}", listOf(lastRef))
             }
             else -> {
                 val start = first.toInt()
@@ -643,11 +673,14 @@ internal fun chofetzChaim(date: LocalDate): LimudItem? {
                         ',' in last -> "${h(start)}, ${last.split(',').map { it.toInt() }.let { range(it.first(), it.last()) }}"
                         else -> range(start, last.toInt())
                     }
-                val ref = if (day.section == "Tziyurim") "$refBase, ציור ${h(start)}" else "$refBase, ${h(start)}"
-                "$name $reading" to ref
+
+                fun refOf(n: Int) = if (day.section == "Tziyurim") "$refBase, ציור ${h(n)}" else "$refBase, ${h(n)}"
+                // The library may hold two paragraphs in one line ("ח-ט"): the one before, then
+                val lastOne = last?.substringAfterLast(',')?.toInt() ?: start
+                Triple("$name $reading", refOf(start), (lastOne downTo start).map(::refOf))
             }
         }
-    return LimudItem(Limud.CHOFETZ_CHAIM.kicker, value, LibraryPlace("חפץ חיים", ref = ref))
+    return LimudItem(Limud.CHOFETZ_CHAIM.kicker, value, LibraryPlace("חפץ חיים", ref = ref, endRefs = endRefs))
 }
 
 private class ShmirasHalashonRow(
@@ -657,14 +690,11 @@ private class ShmirasHalashonRow(
 )
 
 private val shmirasHalashonRows: List<ShmirasHalashonRow> by lazy {
-    jsonResource("shmirat_halashon.json").jsonArray.map { row ->
-        val cells = row.jsonArray
-
-        fun date(cell: JsonElement) = cell.jsonArray.let { it[0].jsonPrimitive.int to it[1].jsonPrimitive.int }
+    limudSchedules.shmirasHalashon.map {
         ShmirasHalashonRow(
-            date(cells[0]),
-            date(cells[1]),
-            ScheduleDay(cells[2].jsonPrimitive.int, cells[3].jsonPrimitive.content, cells[4].text(), cells[5].text()),
+            it.day to it.month,
+            it.leapDay to it.leapMonth,
+            ScheduleDay(it.book, it.section, it.first.ifEmpty { null }, it.last.ifEmpty { null }),
         )
     }
 }
@@ -710,20 +740,18 @@ internal fun shmirasHalashon(date: LocalDate): LimudItem? {
     val last = day.last?.replace(FOOTNOTE, "") ?: first
     // "פרק.אות", or the introduction's paragraphs
     val (perek, os) = if ('.' in first) first.substringBefore('.').toInt() to first.substringAfter('.').toInt() else null to first.toInt()
+    val lastPerek = if ('.' in last) last.substringBefore('.').toInt() else perek
+    val lastOs = last.substringAfter('.').toInt()
     val reading =
         when {
-            perek == null -> range(os, last.substringAfter('.').toInt())
-            last
-                .substringBefore(
-                    '.',
-                ).toInt() != perek -> "${h(
-                perek,
-            )}, ${h(os)} – ${h(last.substringBefore('.').toInt())}, ${h(last.substringAfter('.').toInt())}"
-            else -> "${h(perek)}, ${range(os, last.substringAfter('.').toInt())}"
+            perek == null -> range(os, lastOs)
+            lastPerek != perek -> "${h(perek)}, ${h(os)} – ${h(lastPerek ?: perek)}, ${h(lastOs)}"
+            else -> "${h(perek)}, ${range(os, lastOs)}"
         }
     val ref = if (perek == null) "$refBase, ${h(os)}" else "$refBase, ${h(perek)}, ${h(os)}"
+    val endRef = if (lastPerek == null) "$refBase, ${h(lastOs)}" else "$refBase, ${h(lastPerek)}, ${h(lastOs)}"
     val value = "$name $reading".trim() + if (footnote) " (הגה״ה)" else ""
-    return LimudItem(Limud.SHMIRAS_HALASHON.kicker, value, LibraryPlace("שמירת הלשון", ref = ref))
+    return LimudItem(Limud.SHMIRAS_HALASHON.kicker, value, LibraryPlace("שמירת הלשון", ref = ref, endRefs = listOf(endRef)))
 }
 
 private const val FOOTNOTE = "Footnote_in_"

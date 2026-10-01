@@ -30,7 +30,7 @@ class LimudCyclesTest {
     fun `mishnah yomis reads two mishnayos from Berachos on 20 May 1947`() {
         val first = mishnahYomis(LocalDate.of(1947, 5, 20))
         assertEquals("ברכות א, א-ב", first.value)
-        assertEquals(LibraryPlace("משנה ברכות", listOf("פרק א"), "משנה ברכות א, א"), first.place)
+        assertEquals(LibraryPlace("משנה ברכות", listOf("פרק א"), "משנה ברכות א, א", endRefs = listOf("משנה ברכות א, ב")), first.place)
         assertEquals("ברכות ב, ח – ג, א", mishnahYomis(LocalDate.of(1947, 5, 26)).value)
     }
 
@@ -48,7 +48,9 @@ class LimudCyclesTest {
         assertEquals("מלכים ומלחמות י-יב", rambam3(LocalDate.of(2020, 7, 9)).value)
         val split = rambam3(LocalDate.of(1984, 5, 6))
         assertEquals("יסודי התורה י · דעות א-ב", split.value)
-        assertEquals(LibraryPlace("משנה תורה, הלכות יסודי התורה", listOf("פרק י")), split.place)
+        // Marked to its first book's last perek of the day
+        assertEquals(LibraryPlace("משנה תורה, הלכות יסודי התורה", listOf("פרק י"), endTocs = listOf("פרק י")), split.place)
+        assertEquals(listOf("פרק יב"), rambam3(LocalDate.of(2020, 7, 9)).place?.endTocs)
         // Its first day, the paragraphs of מסירת תורה שבעל פה
         assertEquals("מסירת תורה שבעל פה א-מה", rambam3(LocalDate.of(1984, 4, 29)).value)
     }
@@ -57,12 +59,23 @@ class LimudCyclesTest {
     fun `sefer hamitzvos`() {
         val day = seferHamitzvos(hebrew(5783, HebrewMonth.AV, 3))
         assertEquals("ל״ת שמח, ל״ת שמט, ל״ת שנ, ל״ת שנא", day.value)
-        assertEquals(LibraryPlace("ספר המצוות", listOf("מצוות לא תעשה"), "ספר המצוות, מצוות לא תעשה, שמח"), day.place)
+        assertEquals(
+            LibraryPlace(
+                "ספר המצוות",
+                listOf("מצוות לא תעשה"),
+                "ספר המצוות, מצוות לא תעשה, שמח",
+                endRefs = listOf("ספר המצוות, מצוות לא תעשה, שנא"),
+            ),
+            day.place,
+        )
+        // Its mitzvos far apart: nothing to mark
+        assertEquals(emptyList(), seferHamitzvos(LocalDate.of(2025, 7, 18)).place?.endRefs)
         assertEquals("ל״ת קמט, עשה קלב", seferHamitzvos(LocalDate.of(2025, 7, 18)).value)
     }
 
     @Test
     fun `tehillim by the month and the week`() {
+        assertEquals(listOf("פרק ט"), tehillimOfMonth(hebrew(5786, HebrewMonth.TISHREI, 1)).place?.endTocs)
         assertEquals("א-ט", tehillimOfMonth(hebrew(5786, HebrewMonth.TISHREI, 1)).value)
         val ps119 = tehillimOfMonth(hebrew(5786, HebrewMonth.TISHREI, 26))
         assertEquals("קיט, צז-קעו", ps119.value)
@@ -103,7 +116,15 @@ class LimudCyclesTest {
     fun `aruch hashulchan`() {
         val first = aruchHashulchan(LocalDate.of(2020, 5, 29))
         assertEquals("או״ח א, א-ח", first.value)
-        assertEquals(LibraryPlace("ערוך השולחן", listOf("אורח חיים", "סימן א"), "ערוך השולחן, אורח חיים, א, א"), first.place)
+        assertEquals(
+            LibraryPlace(
+                "ערוך השולחן",
+                listOf("אורח חיים", "סימן א"),
+                "ערוך השולחן, אורח חיים, א, א",
+                endRefs = listOf("ערוך השולחן, אורח חיים, א, ח"),
+            ),
+            first.place,
+        )
         assertEquals("או״ח ב, ט – ג, ה", aruchHashulchan(LocalDate.of(2020, 6, 3)).value)
         assertEquals("חו״מ תכז, י-יא", aruchHashulchan(LocalDate.of(2025, 2, 10)).value)
     }
@@ -116,6 +137,11 @@ class LimudCyclesTest {
         assertEquals("לשון הרע כלל א, א-ב", lashonHara?.value)
         assertEquals("חפץ חיים, חלק ראשון: הלכות איסורי לשון הרע, כלל א, א", lashonHara?.place?.ref)
         assertEquals("לשון הרע כלל ב, יא", chofetzChaim(LocalDate.of(2023, 10, 20))?.value)
+        // Its last paragraph, then the ones before: the library may hold two in one line
+        assertEquals(
+            listOf("$PSICHAH, לאוין, טו", "$PSICHAH, לאוין, יד"),
+            chofetzChaim(LocalDate.of(2023, 10, 1))?.place?.endRefs,
+        )
     }
 
     @Test
@@ -123,6 +149,7 @@ class LimudCyclesTest {
         val partTwo = shmirasHalashon(hebrew(5783, HebrewMonth.AV, 3))
         assertEquals("ח״ב טז, יד-טו", partTwo?.value)
         assertEquals("שמירת הלשון, חלק שני, טז, יד", partTwo?.place?.ref)
+        assertEquals(listOf("שמירת הלשון, חלק שני, טז, טו"), partTwo?.place?.endRefs)
         assertEquals("חתימת הספר ז, י", shmirasHalashon(LocalDate.of(2023, 5, 20))?.value)
         assertEquals("ח״ב א, א-ב", shmirasHalashon(LocalDate.of(2023, 5, 23))?.value)
     }
@@ -135,5 +162,9 @@ class LimudCyclesTest {
         assertEquals(listOf("תהילים", "שמה״ל"), picked.map { it.kicker })
         assertEquals(setOf(Limud.KITZUR, Limud.BAVLI), Limud.decode(Limud.encode(setOf(Limud.KITZUR, Limud.BAVLI))))
         assertEquals(emptySet(), Limud.decode(""))
+    }
+
+    private companion object {
+        const val PSICHAH = "חפץ חיים, פתיחה להלכות לשון הרע ורכילות"
     }
 }

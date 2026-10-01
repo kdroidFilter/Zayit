@@ -48,6 +48,8 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.delay
@@ -583,65 +585,125 @@ private fun rememberOpenInLibrary(state: HomeWidgetsState): (LibraryPlace) -> Un
                 // Read on click: the books DB is opened when first needed, never by showing the card
                 val repository = graph.repository
                 val book = repository.getBookByTitle(place.bookTitle) ?: return@launch
-                val tocLineId = place.toc.takeIf { it.isNotEmpty() }?.let { repository.tocLineId(book.id, it) }
-                val lineId =
-                    when {
-                        place.ref != null -> {
-                            val from = tocLineId?.let { repository.getLine(it)?.lineIndex } ?: 0
-                            repository.lineIdOfRef(book.id, from, book.totalLines, place.ref) ?: tocLineId
-                        }
-
-                        place.parashaIndex != null ->
-                            repository
-                                .getAltTocStructuresForBook(book.id)
-                                .firstOrNull { it.key == "Parasha" }
-                                ?.let { repository.getAltRootToc(it.id).sortedBy { entry -> entry.id } }
-                                ?.getOrNull(place.parashaIndex)
-                                ?.lineId
-
-                        else -> tocLineId
-                    }
-                state.openTab(TabsDestination.BookContent(bookId = book.id, tabId = UUID.randomUUID().toString(), lineId = lineId))
+                val (lineId, endLineId) = repository.linesOf(book, place)
+                state.openTab(
+                    TabsDestination.BookContent(
+                        bookId = book.id,
+                        tabId = UUID.randomUUID().toString(),
+                        lineId = lineId,
+                        endLineId = endLineId,
+                    ),
+                )
             }
         }
     }
 }
 
-/** The line of the TOC entry at [path]: its first heading anywhere in the book, each next one right under it. */
-private suspend fun SeforimRepository.tocLineId(
-    bookId: Long,
-    path: List<String>,
-): Long? {
-    val entries = getTocEntriesForBook(bookId)
+/** The lines [place] starts and ends on in [book]: its end only when it says where it is, for the book to mark it. */
+private suspend fun SeforimRepository.linesOf(
+    book: Book,
+    place: LibraryPlace,
+): Pair<Long?, Long?> {
+    place.parashaIndex?.let { index ->
+        val parshiyos =
+            getAltTocStructuresForBook(book.id)
+                .firstOrNull { it.key == "Parasha" }
+                ?.let { getAltRootToc(it.id).sortedBy { entry -> entry.id } }
+                ?: return null to null
+        // To the line before the next parsha's, or the book's end
+        val next = parshiyos.getOrNull(index + place.parashaCount)?.lineId?.let { getLine(it)?.lineIndex }
+        return parshiyos.getOrNull(index)?.lineId to lineIdAt(book, (next ?: book.totalLines) - 1)
+    }
+    val entries = if (place.toc.isNotEmpty() || place.endTocs.isNotEmpty()) getTocEntriesForBook(book.id) else emptyList()
+    val tocEntry = entries.atPath(place.toc)
+    val tocIndex = tocEntry?.lineId?.let { getLine(it)?.lineIndex }
+    val start = place.ref?.let { lineOfRef(book, tocIndex ?: 0, it) }
+    val startIndex = start?.lineIndex ?: tocIndex ?: 0
+    val end =
+        place.endRefs.firstNotNullOfOrNull { lastLineOfRef(book, startIndex, it) }
+            ?: place.endTocs.firstNotNullOfOrNull { heading ->
+                // A heading beside the first one, from it on
+                entries
+                    .firstOrNull { it.text == heading && it.parentId == tocEntry?.parentId && it.id >= (tocEntry?.id ?: 0) }
+                    ?.let { entryEnd(book, entries, it) }
+            }
+    return (start?.id ?: tocEntry?.lineId) to end
+}
+
+/** The TOC entry at [path]: its first heading anywhere in the book, each next one right under it. */
+private fun List<TocEntry>.atPath(path: List<String>): TocEntry? {
     var parent: TocEntry? = null
     for (heading in path) {
-        parent = entries.firstOrNull { it.text == heading && (parent == null || it.parentId == parent.id) } ?: return null
+        parent = firstOrNull { it.text == heading && (parent == null || it.parentId == parent.id) } ?: return null
     }
-    return parent?.lineId
+    return parent
 }
+
+/** The last line of [entry]'s section: the one before the next heading not under it, or the book's last. */
+private suspend fun SeforimRepository.entryEnd(
+    book: Book,
+    entries: List<TocEntry>,
+    entry: TocEntry,
+): Long? {
+    val next = entries.firstOrNull { it.id > entry.id && it.level <= entry.level }?.lineId?.let { getLine(it)?.lineIndex }
+    return lineIdAt(book, (next ?: book.totalLines) - 1)
+}
+
+private suspend fun SeforimRepository.lineIdAt(
+    book: Book,
+    index: Int,
+) = getLineByIndex(book.id, index.coerceIn(0, book.totalLines - 1))?.id
 
 private const val REF_SCAN_LINES = 500
 
-/**
- * The first line from [from] whose reference is [ref], or one of its parts: "משנה ברכות א, ב" finds "משנה ברכות א, ב"
- * but not "…א, בב"; the library's references may space their parts twice.
- */
-private suspend fun SeforimRepository.lineIdOfRef(
-    bookId: Long,
+private val SPACES = Regex("""\s+""")
+
+/** Whether a line's reference is [ref] or one of its parts: "…א, ב" is "…א, ב, א" but not "…א, בב". */
+private fun Line.isOf(ref: String): Boolean {
+    val lineRef = heRef?.replace(SPACES, " ") ?: return false
+    return lineRef == ref || lineRef.startsWith("$ref,")
+}
+
+/** The lines of [book] from [from] on, by chunks, until [visit] says to stop. */
+private suspend fun SeforimRepository.scanLines(
+    book: Book,
     from: Int,
-    totalLines: Int,
-    ref: String,
-): Long? {
-    val spaces = Regex("""\s+""")
+    visit: (Line) -> Boolean,
+) {
     var start = from
-    while (start < totalLines) {
+    while (start < book.totalLines) {
         val end = start + REF_SCAN_LINES - 1
-        getLines(bookId, start, end)
-            .firstOrNull { line ->
-                val lineRef = line.heRef?.replace(spaces, " ") ?: return@firstOrNull false
-                lineRef == ref || lineRef.startsWith("$ref,")
-            }?.let { return it.id }
+        for (line in getLines(book.id, start, end)) if (!visit(line)) return
         start = end + 1
     }
-    return null
+}
+
+/** The first line from [from] of [ref]; the library's references may space their parts twice. */
+private suspend fun SeforimRepository.lineOfRef(
+    book: Book,
+    from: Int,
+    ref: String,
+): Line? {
+    var found: Line? = null
+    scanLines(book, from) { line -> (!line.isOf(ref)).also { if (!it) found = line } }
+    return found
+}
+
+/** The last line of [ref] from [from]: its run ends at the first line of another reference (headings have none). */
+private suspend fun SeforimRepository.lastLineOfRef(
+    book: Book,
+    from: Int,
+    ref: String,
+): Long? {
+    var last: Line? = null
+    scanLines(book, from) { line ->
+        when {
+            line.isOf(ref) -> {
+                last = line
+                true
+            }
+            else -> last == null || line.heRef.isNullOrBlank()
+        }
+    }
+    return last?.id
 }

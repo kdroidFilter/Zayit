@@ -89,6 +89,8 @@ sealed interface BookContentEvent {
     data class OpenBookAtLine(
         val bookId: Long,
         val lineId: Long,
+        /** Marks the lines from [lineId] to this one (see [ContentState.markedRange]). */
+        val endLineId: Long? = null,
     ) : BookContentEvent
 
     // Open a book by its id (VM resolves Book)

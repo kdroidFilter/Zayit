@@ -46,6 +46,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
@@ -116,6 +117,8 @@ fun BookContentView(
     modifier: Modifier = Modifier,
     draftNote: NoteDraftAnchor? = null,
     isTocEntrySelection: Boolean = false,
+    // Lines by index, tinted, with an end mark after the last: a passage to read, such as the day's limud
+    markedLines: IntRange? = null,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
@@ -1046,10 +1049,12 @@ fun BookContentView(
                             }
                         }
 
+                        val isMarked = markedLines?.contains(line.lineIndex) == true
                         Row(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
+                                    .then(if (isMarked) Modifier.background(markedTint()) else Modifier)
                                     .padding(horizontal = 8.dp)
                                     .height(IntrinsicSize.Min),
                         ) {
@@ -1120,6 +1125,7 @@ fun BookContentView(
                                         },
                                     )
                                 }
+                                if (markedLines?.last == line.lineIndex) MarkedEnd()
                             }
                         }
                     } else {
@@ -1650,5 +1656,25 @@ private fun ErrorIndicator(message: String) {
             text = message,
             color = Color.Red,
         )
+    }
+}
+
+@Composable
+private fun markedTint() =
+    JewelTheme.globalColors.outlines.focused
+        .copy(alpha = 0.07f)
+
+/** Where a marked passage ends: "סוף הלימוד" between two rules. */
+@Composable
+private fun MarkedEnd() {
+    val color = JewelTheme.globalColors.outlines.focused
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(color.copy(alpha = 0.5f)))
+        Text("סוף הלימוד", color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.weight(1f).height(1.dp).background(color.copy(alpha = 0.5f)))
     }
 }

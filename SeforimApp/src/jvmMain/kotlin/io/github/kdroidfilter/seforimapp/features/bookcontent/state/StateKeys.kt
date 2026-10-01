@@ -36,6 +36,7 @@ object StateKeys {
     // Content
     const val SELECTED_LINE = "selectedLine"
     const val SELECTED_LINE_ID = "selectedLineId"
+    const val MARK_END_LINE_ID = "markEndLineId"
     const val SHOW_COMMENTARIES = "showCommentaries"
     const val SHOW_TARGUM = "showTargum"
     const val SHOW_SOURCES = "showSources"

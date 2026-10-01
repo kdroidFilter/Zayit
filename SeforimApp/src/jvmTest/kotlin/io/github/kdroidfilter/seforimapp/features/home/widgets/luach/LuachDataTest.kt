@@ -25,7 +25,7 @@ class LuachDataTest {
     fun `parshiyos land on their Chumash and its Parasha TOC entry`() {
         assertEquals(LibraryPlace("בראשית", parashaIndex = 0), parshaPlace(Parsha.BERESHIS))
         assertEquals(LibraryPlace("שמות", parashaIndex = 0), parshaPlace(Parsha.SHEMOS))
-        assertEquals(LibraryPlace("במדבר", parashaIndex = 5), parshaPlace(Parsha.CHUKAS_BALAK))
+        assertEquals(LibraryPlace("במדבר", parashaIndex = 5, parashaCount = 2), parshaPlace(Parsha.CHUKAS_BALAK))
         assertEquals(LibraryPlace("דברים", parashaIndex = 10), parshaPlace(Parsha.VZOS_HABERACHA))
         assertNull(parshaPlace(Parsha.NONE))
     }

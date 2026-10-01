@@ -424,11 +424,11 @@ private fun BookContentTabContent(
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     // React to destination changes when ViewModel is reused
-    LaunchedEffect(destination.bookId, destination.lineId) {
+    LaunchedEffect(destination.bookId, destination.lineId, destination.endLineId) {
         if (destination.bookId > 0) {
             val lineId = destination.lineId
             if (lineId != null && lineId > 0) {
-                viewModel.onEvent(BookContentEvent.OpenBookAtLine(destination.bookId, lineId))
+                viewModel.onEvent(BookContentEvent.OpenBookAtLine(destination.bookId, lineId, destination.endLineId))
             } else {
                 viewModel.onEvent(BookContentEvent.OpenBookById(destination.bookId))
             }
@@ -526,6 +526,7 @@ class SimpleTabViewModelOwner(
                     is TabsDestination.BookContent -> {
                         if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
                         destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
+                        destination.endLineId?.let { putLong(StateKeys.MARK_END_LINE_ID, it) }
                         if (destination.openNotes) putBoolean(StateKeys.OPEN_NOTES, true)
                     }
                     else -> Unit

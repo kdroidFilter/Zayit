@@ -44,6 +44,10 @@ internal fun LocalDate.hebrewWeekday() = HEBREW_WEEKDAYS[dayOfWeek.value % 7]
  * Where a limud is in the library: [bookTitle], under its TOC headings [toc] (each one under the one before), at the
  * line whose reference is [ref] or starts it ("משנה ברכות א, ב"), or at the [parashaIndex]th entry of its Parasha
  * alternative TOC; at its start when none is set or found.
+ *
+ * Where it ends, for the book to mark it: through the last line of the first of [endRefs] found (as [ref] finds it), or
+ * to the end of the first TOC entry of [endTocs] found (a heading beside [toc]'s last), or of [parashaCount] parshiyos;
+ * the alternatives cover the library's editions ("דף סד." without its ":", two paragraphs in one line).
  */
 @Immutable
 internal data class LibraryPlace(
@@ -51,6 +55,9 @@ internal data class LibraryPlace(
     val toc: List<String> = emptyList(),
     val ref: String? = null,
     val parashaIndex: Int? = null,
+    val endRefs: List<String> = emptyList(),
+    val endTocs: List<String> = emptyList(),
+    val parashaCount: Int = 1,
 )
 
 @Immutable
@@ -132,9 +139,10 @@ private val DOUBLE_PARSHIYOS =
 
 internal fun parshaPlace(parsha: Parsha): LibraryPlace? {
     var index = (DOUBLE_PARSHIYOS[parsha] ?: parsha).ordinal - 1
-    for ((book, count) in CHUMASH) {
-        if (index in 0 until count) return LibraryPlace(book, parashaIndex = index)
-        index -= count
+    val count = if (parsha in DOUBLE_PARSHIYOS) 2 else 1
+    for ((book, parshiyos) in CHUMASH) {
+        if (index in 0 until parshiyos) return LibraryPlace(book, parashaIndex = index, parashaCount = count)
+        index -= parshiyos
     }
     return null
 }
@@ -153,7 +161,11 @@ internal fun bavliPlace(
         SHEKALIM -> LibraryPlace("תלמוד ירושלמי שקלים")
         KINNIM -> LibraryPlace("משנה קינים")
         MIDOS -> LibraryPlace("משנה מדות")
-        else -> LibraryPlace(masechta, toc = listOf("דף ${tocNumbers.formatHebrewNumber(daf)}."))
+        else -> {
+            val number = tocNumbers.formatHebrewNumber(daf)
+            // A masechta's last daf may have no amud ב
+            LibraryPlace(masechta, toc = listOf("דף $number."), endTocs = listOf("דף $number:", "דף $number."))
+        }
     }
 
 // KosherKotlin spells three masechtos otherwise than the library's titles

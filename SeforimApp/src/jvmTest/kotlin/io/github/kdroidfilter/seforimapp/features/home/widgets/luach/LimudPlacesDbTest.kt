@@ -76,22 +76,40 @@ class LimudPlacesDbTest {
                         missing += "${item.kicker}: no book ${place.bookTitle}"
                         continue
                     }
-                    var parent: Long? = null
+                    var entry: Triple<Long, Long?, String>? = null
                     var from = 0
                     for (heading in place.toc) {
-                        val entry = lines.tocLines.firstOrNull { (_, p, text) -> text == heading && (parent == null || p == parent) }
+                        val parent = entry?.first
+                        entry = lines.tocLines.firstOrNull { (_, p, text) -> text == heading && (parent == null || p == parent) }
                         if (entry == null) {
                             missing += "${item.kicker}: no TOC ${place.toc} in ${place.bookTitle}"
                             break
                         }
-                        parent = entry.first
                         from = lines.tocIndex.getValue(entry.first)
                     }
-                    val ref = place.ref ?: continue
+
+                    fun lineOf(
+                        ref: String,
+                        after: Int,
+                    ) = (after until lines.refs.size).firstOrNull { lines.refs[it]?.let { r -> r == ref || r.startsWith("$ref,") } == true }
+                    var start = from
                     // The library's edition ends או״ח קפט at its seif ז: the card opens the siman
-                    if (ref in EDITION_GAPS) continue
-                    val found = (from until lines.refs.size).any { lines.refs[it]?.let { r -> r == ref || r.startsWith("$ref,") } == true }
-                    if (!found) missing += "${item.kicker} ${item.value}: no line $ref"
+                    place.ref?.takeIf { it !in EDITION_GAPS }?.let { ref ->
+                        val at = lineOf(ref, from)
+                        if (at == null) missing += "${item.kicker} ${item.value}: no line $ref" else start = at
+                    }
+                    // Where it ends, for the book to mark it: after its start, one of its alternatives
+                    val ends = place.endRefs.filterNot { it in EDITION_GAPS }
+                    if (ends.isNotEmpty() && ends.none { lineOf(it, start) != null }) {
+                        missing += "${item.kicker} ${item.value}: no end line ${ends.first()}"
+                    }
+                    if (place.endTocs.isNotEmpty() &&
+                        place.endTocs.none { heading ->
+                            lines.tocLines.any { (id, p, text) -> text == heading && p == entry?.second && id >= (entry?.first ?: 0) }
+                        }
+                    ) {
+                        missing += "${item.kicker} ${item.value}: no end TOC ${place.endTocs.first()}"
+                    }
                 }
                 date = date.plusDays(1)
             }

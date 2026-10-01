@@ -6,8 +6,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * Reactive holder for the [0f, 1f] progress shown by the installer/update windows.
- * Subclassed by the per-flow singletons so each window keeps its own progress while
- * sharing the underlying state plumbing.
+ * Subclassed per flow (app-scoped in the Metro graph) so each window keeps its own
+ * progress while sharing the underlying state plumbing.
  */
 open class ProgressBarController {
     private val _progress = MutableStateFlow(0f)

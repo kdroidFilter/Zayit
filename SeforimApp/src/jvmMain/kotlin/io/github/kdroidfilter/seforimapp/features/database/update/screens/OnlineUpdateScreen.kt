@@ -10,7 +10,6 @@ import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
-import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadProgressDetails
@@ -18,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadVi
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Download_for_offline
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -29,6 +29,7 @@ fun OnlineUpdateScreen(
     navController: NavController,
     onUpdateComplete: () -> Unit,
 ) {
+    val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
     val downloadViewModel: DownloadViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val downloadState by downloadViewModel.state.collectAsState()
@@ -41,13 +42,13 @@ fun OnlineUpdateScreen(
     LaunchedEffect(Unit) {
         // Cleanup of the old database + disk-space gate run inside DownloadViewModel
         // before the transfer starts (see DatabasePreparationUseCase).
-        DatabaseUpdateProgressBarState.setDownloadStarted()
+        progressBarState.setDownloadStarted()
         downloadViewModel.onEvent(DownloadEvents.Start)
     }
 
     LaunchedEffect(downloadState) {
         if (downloadState.inProgress) {
-            DatabaseUpdateProgressBarState.setDownloadProgress(downloadState.progress)
+            progressBarState.setDownloadProgress(downloadState.progress)
         }
         // When download completes, start extraction
         if (downloadState.completed && !hasStartedExtraction) {
@@ -59,10 +60,10 @@ fun OnlineUpdateScreen(
     // Propagate extraction progress and navigate once finished
     LaunchedEffect(extractState) {
         if (extractState.inProgress) {
-            DatabaseUpdateProgressBarState.setDownloadProgress(extractState.progress)
+            progressBarState.setDownloadProgress(extractState.progress)
         }
         if (extractState.completed) {
-            DatabaseUpdateProgressBarState.setUpdateComplete()
+            progressBarState.setUpdateComplete()
             navController.navigate(DatabaseUpdateDestination.CompletionScreen) {
                 popUpTo<DatabaseUpdateDestination.OnlineUpdateScreen> { inclusive = true }
             }

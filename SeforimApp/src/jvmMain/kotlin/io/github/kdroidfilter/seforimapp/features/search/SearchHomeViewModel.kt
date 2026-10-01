@@ -3,8 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.russhwolf.settings.Settings
-import com.russhwolf.settings.get
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
@@ -115,7 +113,7 @@ class SearchHomeViewModel(
     private val persistedStore: TabPersistedStateStore,
     private val repository: SeforimRepository,
     private val lookup: LuceneLookupSearchService,
-    private val settings: Settings,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchHomeUiState())
     val uiState: StateFlow<SearchHomeUiState> = _uiState.asStateFlow()
@@ -184,24 +182,17 @@ class SearchHomeViewModel(
     }
 
     init {
-        // Build display name from injected Settings
-        runCatching {
-            val firstName: String = settings["user_first_name", ""]
-            val lastName: String = settings["user_last_name", ""]
-            val displayName = "$firstName $lastName".trim()
-            _uiState.value = _uiState.value.copy(userDisplayName = displayName)
-        }
         // Observe changes in user profile and keep display name in sync
         viewModelScope.launch {
-            AppSettings.userFirstNameFlow
-                .combine(AppSettings.userLastNameFlow) { f, l -> "$f $l".trim() }
+            appSettings.userFirstNameFlow
+                .combine(appSettings.userLastNameFlow) { f, l -> "$f $l".trim() }
                 .distinctUntilChanged()
                 .collect { displayName ->
                     _uiState.value = _uiState.value.copy(userDisplayName = displayName)
                 }
         }
         viewModelScope.launch {
-            AppSettings.userCommunityCodeFlow
+            appSettings.userCommunityCodeFlow
                 .collect { code ->
                     _uiState.value = _uiState.value.copy(userCommunityCode = code)
                 }
@@ -594,10 +585,6 @@ class SearchHomeViewModel(
                 )
             current.copy(search = nextSearch)
         }
-
-        // Clear any previous cached search snapshot for this tab to avoid
-        // reusing stale results when a new search is submitted.
-        SearchTabCache.clear(currentTabId)
 
         // Emit navigation event - UI layer handles actual navigation
         _navigationEvents.send(SearchHomeNavigationEvent.NavigateToSearch(query, currentTabId))

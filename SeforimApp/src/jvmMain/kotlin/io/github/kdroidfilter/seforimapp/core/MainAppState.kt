@@ -14,29 +14,31 @@ import kotlinx.coroutines.flow.asStateFlow
  * Injected as a singleton via Metro DI.
  */
 @Stable
-class MainAppState {
-    private val _theme = MutableStateFlow(AppSettings.getThemeMode())
+class MainAppState(
+    private val appSettings: AppSettings,
+) {
+    private val _theme = MutableStateFlow(appSettings.getThemeMode())
     val theme: StateFlow<IntUiThemes> = _theme.asStateFlow()
 
     fun setTheme(theme: IntUiThemes) {
         _theme.value = theme
-        AppSettings.setThemeMode(theme)
+        appSettings.setThemeMode(theme)
     }
 
-    private val _themeStyle = MutableStateFlow(AppSettings.getThemeStyle())
+    private val _themeStyle = MutableStateFlow(appSettings.getThemeStyle())
     val themeStyle: StateFlow<ThemeStyle> = _themeStyle.asStateFlow()
 
     fun setThemeStyle(style: ThemeStyle) {
         _themeStyle.value = style
-        AppSettings.setThemeStyle(style)
+        appSettings.setThemeStyle(style)
     }
 
-    private val _accentColor = MutableStateFlow(AppSettings.getAccentColor())
+    private val _accentColor = MutableStateFlow(appSettings.getAccentColor())
     val accentColor: StateFlow<AccentColor> = _accentColor.asStateFlow()
 
     fun setAccentColor(accent: AccentColor) {
         _accentColor.value = accent
-        AppSettings.setAccentColor(accent)
+        appSettings.setAccentColor(accent)
     }
 
     private val _showOnboarding = MutableStateFlow<Boolean?>(null)

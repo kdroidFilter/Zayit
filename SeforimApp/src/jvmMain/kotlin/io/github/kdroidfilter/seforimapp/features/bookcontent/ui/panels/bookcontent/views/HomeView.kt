@@ -59,7 +59,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomTogg
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.SkyWidgetView
@@ -70,6 +69,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -159,10 +159,11 @@ fun HomeView(
     modifier: Modifier = Modifier,
     homeCelestialWidgetsState: HomeCelestialWidgetsState? = null,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     CatalogRow(onEvent = onEvent)
 
     val panelBackground = JewelTheme.globalColors.panelBackground
-    val showWallpaper by AppSettings.showHomeWallpaperFlow.collectAsState()
+    val showWallpaper by appSettings.showHomeWallpaperFlow.collectAsState()
 
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         if (showWallpaper) {
@@ -265,8 +266,9 @@ private fun HomeBody(
     searchCallbacks: HomeSearchCallbacks,
     homeCelestialWidgetsState: HomeCelestialWidgetsState?,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     // Whether to show zmanim widgets
-    val showZmanimWidgets by AppSettings.showZmanimWidgetsFlow.collectAsState()
+    val showZmanimWidgets by appSettings.showZmanimWidgetsFlow.collectAsState()
 
     // Date picked in the zmanim / Earth widgets, followed by the solar system widget (null until reported)
     var homeWidgetsDate by remember { mutableStateOf<LocalDate?>(null) }

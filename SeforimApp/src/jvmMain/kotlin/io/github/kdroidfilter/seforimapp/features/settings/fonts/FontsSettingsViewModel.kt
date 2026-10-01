@@ -15,11 +15,13 @@ import kotlinx.coroutines.flow.stateIn
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey
 @Inject
-class FontsSettingsViewModel : ViewModel() {
-    private val bookFont = MutableStateFlow(AppSettings.getBookFontCode())
-    private val commentaryFont = MutableStateFlow(AppSettings.getCommentaryFontCode())
-    private val targumFont = MutableStateFlow(AppSettings.getTargumFontCode())
-    private val sourceFont = MutableStateFlow(AppSettings.getSourceFontCode())
+class FontsSettingsViewModel(
+    private val appSettings: AppSettings,
+) : ViewModel() {
+    private val bookFont = MutableStateFlow(appSettings.getBookFontCode())
+    private val commentaryFont = MutableStateFlow(appSettings.getCommentaryFontCode())
+    private val targumFont = MutableStateFlow(appSettings.getTargumFontCode())
+    private val sourceFont = MutableStateFlow(appSettings.getSourceFontCode())
 
     val state =
         combine(
@@ -48,26 +50,26 @@ class FontsSettingsViewModel : ViewModel() {
     fun onEvent(event: FontsSettingsEvents) {
         when (event) {
             is FontsSettingsEvents.SetBookFont -> {
-                AppSettings.setBookFontCode(event.code)
+                appSettings.setBookFontCode(event.code)
                 bookFont.value = event.code
             }
             is FontsSettingsEvents.SetCommentaryFont -> {
-                AppSettings.setCommentaryFontCode(event.code)
+                appSettings.setCommentaryFontCode(event.code)
                 commentaryFont.value = event.code
             }
             is FontsSettingsEvents.SetTargumFont -> {
-                AppSettings.setTargumFontCode(event.code)
+                appSettings.setTargumFontCode(event.code)
                 targumFont.value = event.code
             }
             is FontsSettingsEvents.SetSourceFont -> {
-                AppSettings.setSourceFontCode(event.code)
+                appSettings.setSourceFontCode(event.code)
                 sourceFont.value = event.code
             }
             is FontsSettingsEvents.ResetToDefaults -> {
-                AppSettings.setBookFontCode(AppSettings.DEFAULT_BOOK_FONT)
-                AppSettings.setCommentaryFontCode(AppSettings.DEFAULT_COMMENTARY_FONT)
-                AppSettings.setTargumFontCode(AppSettings.DEFAULT_TARGUM_FONT)
-                AppSettings.setSourceFontCode(AppSettings.DEFAULT_SOURCE_FONT)
+                appSettings.setBookFontCode(AppSettings.DEFAULT_BOOK_FONT)
+                appSettings.setCommentaryFontCode(AppSettings.DEFAULT_COMMENTARY_FONT)
+                appSettings.setTargumFontCode(AppSettings.DEFAULT_TARGUM_FONT)
+                appSettings.setSourceFontCode(AppSettings.DEFAULT_SOURCE_FONT)
                 bookFont.value = AppSettings.DEFAULT_BOOK_FONT
                 commentaryFont.value = AppSettings.DEFAULT_COMMENTARY_FONT
                 targumFont.value = AppSettings.DEFAULT_TARGUM_FONT

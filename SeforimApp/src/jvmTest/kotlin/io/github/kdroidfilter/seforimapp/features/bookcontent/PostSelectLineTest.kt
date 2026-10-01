@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
+import io.github.kdroidfilter.seforimapp.testAppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.mockk.coEvery
@@ -28,6 +29,7 @@ import io.mockk.slot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -85,7 +87,7 @@ class PostSelectLineTest {
                     ),
                 titleUpdateManager = titleUpdateManager,
                 searchHomeViewModelFactory = {
-                    SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), mockk(relaxed = true))
+                    SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), testAppSettings())
                 },
                 defaultDesktopName = "D1",
             )
@@ -143,6 +145,8 @@ class PostSelectLineTest {
             titleUpdateManager = titleUpdateManager,
             desktopManager = desktopManager,
             historyStore = mockk<HistoryStore>(relaxed = true),
+            sessionManager = mockk { every { isRestoringSession } returns MutableStateFlow(false) },
+            appSettings = testAppSettings(),
         )
     }
 

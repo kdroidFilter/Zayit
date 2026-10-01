@@ -52,7 +52,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlig
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
@@ -101,6 +100,7 @@ fun LineCommentsView(
     showDiacritics: Boolean,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val contentState = uiState.content
     val selectedLine = contentState.primaryLine
     val selectedLineIds = contentState.selectedLineIds.toImmutableList()
@@ -128,8 +128,8 @@ fun LineCommentsView(
 
     // Animation settings with stable memorization
     val textSizes = rememberAnimatedTextSettings()
-    val findQuery by AppSettings.findQueryFlow(uiState.tabId).collectAsState("")
-    val showFind by AppSettings.findBarOpenFlow(uiState.tabId).collectAsState()
+    val findQuery by appSettings.findQueryFlow(uiState.tabId).collectAsState("")
+    val showFind by appSettings.findBarOpenFlow(uiState.tabId).collectAsState()
     val activeQuery = if (showFind) findQuery else ""
 
     val paneInteractionSource = remember { MutableInteractionSource() }
@@ -964,7 +964,8 @@ private fun ErrorMessage(error: Throwable) {
 
 @Composable
 private fun rememberAnimatedTextSettings(): AnimatedTextSizes {
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val appSettings = LocalAppGraph.current.appSettings
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
     val isBookContentZoomInProgress = LocalBookContentZoomInProgress.current
     val zoomAnimSpec = if (isTabSelected && !isBookContentZoomInProgress) tween<Float>(durationMillis = 200) else snap()
@@ -973,7 +974,7 @@ private fun rememberAnimatedTextSettings(): AnimatedTextSizes {
         animationSpec = zoomAnimSpec,
         label = "commentTextSizeAnim",
     )
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
         animationSpec = zoomAnimSpec,
@@ -1189,10 +1190,11 @@ private fun rememberCommentariesLayoutConfig(
     showDiacritics: Boolean,
     onEvent: (BookContentEvent) -> Unit,
 ): CommentariesLayoutConfig {
+    val appSettings = LocalAppGraph.current.appSettings
     val windowInfo = LocalWindowInfo.current
-    val commentaryFontCode by AppSettings.commentaryFontCodeFlow.collectAsState()
+    val commentaryFontCode by appSettings.commentaryFontCodeFlow.collectAsState()
     val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
-    val maxCommentatorsPerPage by AppSettings.maxCommentatorsPerPageFlow.collectAsState()
+    val maxCommentatorsPerPage by appSettings.maxCommentatorsPerPageFlow.collectAsState()
     val boldScaleForPlatform =
         remember(commentaryFontCode) {
             val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")

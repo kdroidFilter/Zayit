@@ -31,20 +31,16 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
-import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
 import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
-import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.cli.runCli
@@ -82,14 +78,14 @@ private data class StartupState(
  * Determines the initial routing state synchronously. All operations are fast local I/O (read settings, check file existence, read version
  * file).
  */
-private fun computeStartupState(): StartupState =
+private fun computeStartupState(appGraph: AppGraph): StartupState =
     try {
-        getDatabasePath()
-        val onboardingFinished = AppSettings.isOnboardingFinished()
+        appGraph.databasePathProvider.get()
+        val onboardingFinished = appGraph.appSettings.isOnboardingFinished()
         if (!onboardingFinished) {
             StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
         } else {
-            val isVersionCompatible = DatabaseVersionManager.isDatabaseVersionCompatible()
+            val isVersionCompatible = appGraph.databaseVersionManager.isDatabaseVersionCompatible()
             if (!isVersionCompatible) {
                 StartupState(showOnboarding = false, showDatabaseUpdate = true, isDatabaseMissing = false)
             } else {
@@ -97,7 +93,7 @@ private fun computeStartupState(): StartupState =
             }
         }
     } catch (_: Exception) {
-        val onboardingFinished = AppSettings.isOnboardingFinished()
+        val onboardingFinished = appGraph.appSettings.isOnboardingFinished()
         if (!onboardingFinished) {
             StartupState(showOnboarding = true, showDatabaseUpdate = false, isDatabaseMissing = false)
         } else {
@@ -172,8 +168,6 @@ fun main(args: Array<String>) {
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>() }
-        // Ensure AppSettings uses the DI-provided Settings immediately
-        AppSettings.initialize(appGraph.settings)
 
         // Register the AWT-level keyboard shortcuts here (instead of in main()) so they can read
         // from the DI-provided SelectionContext. The DisposableEffect re-runs only if the graph
@@ -243,7 +237,7 @@ fun main(args: Array<String>) {
         // existence, read version file) are fast local I/O with no network involved.
         // Using remember { } instead of LaunchedEffect avoids a blank first frame while
         // waiting for the coroutine scheduler to run the routing logic.
-        val startupState = remember { computeStartupState() }
+        val startupState = remember { computeStartupState(appGraph) }
         val showOnboardingFromState by mainAppState.showOnBoarding.collectAsState()
         val showOnboarding = showOnboardingFromState ?: startupState.showOnboarding
         var showDatabaseUpdate by remember { mutableStateOf(startupState.showDatabaseUpdate) }
@@ -254,7 +248,7 @@ fun main(args: Array<String>) {
             mainAppState.setShowOnBoarding(startupState.showOnboarding)
         }
 
-        val initialTheme = remember { AppSettings.getThemeMode() }
+        val initialTheme = remember { appGraph.appSettings.getThemeMode() }
         LaunchedEffect(initialTheme) {
             if (mainAppState.theme.value != initialTheme) {
                 mainAppState.setTheme(initialTheme)
@@ -308,7 +302,7 @@ fun main(args: Array<String>) {
                             // Persist session if enabled, apply any pending silent update, then exit.
                             // installPendingOnClose() launches the installer and exits the process
                             // itself when a silent (Win/Mac PATCH) update is ready.
-                            SessionManager.saveIfEnabled(appGraph)
+                            appGraph.sessionManager.saveIfEnabled()
                             appGraph.appUpdateService.installPendingOnClose()
                             exitApplication()
                         }
@@ -365,7 +359,7 @@ fun main(args: Array<String>) {
                         var sessionRestored by remember { mutableStateOf(false) }
                         LaunchedEffect(Unit) {
                             if (!sessionRestored) {
-                                SessionManager.restoreIfEnabled(appGraph)
+                                appGraph.sessionManager.restoreIfEnabled()
                                 sessionRestored = true
                             }
                         }
@@ -389,8 +383,8 @@ fun main(args: Array<String>) {
                                 }.drop(1)
                                 .debounce(2.seconds)
                                 .collect {
-                                    if (!SessionManager.isRestoringSession.value) {
-                                        SessionManager.saveIfEnabled(appGraph)
+                                    if (!appGraph.sessionManager.isRestoringSession.value) {
+                                        appGraph.sessionManager.saveIfEnabled()
                                     }
                                 }
                         }
@@ -461,7 +455,7 @@ fun main(args: Array<String>) {
                         // A system quit (Dock → Quit) ends the app without asking the tab windows,
                         // which leave the session to their workspace: persist it on the way out.
                         DisposableEffect(Unit) {
-                            onDispose { SessionManager.saveIfEnabled(appGraph) }
+                            onDispose { appGraph.sessionManager.saveIfEnabled() }
                         }
                     }
                 }

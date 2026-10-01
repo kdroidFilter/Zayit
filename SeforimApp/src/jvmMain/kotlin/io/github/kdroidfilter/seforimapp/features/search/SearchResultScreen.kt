@@ -50,12 +50,12 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
@@ -238,6 +238,7 @@ private fun SearchResultContentMvi(
     actions: SearchShellActions,
     tabId: String,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val listState = rememberLazyListState()
     // Group consecutive same-book results into Google-style cards. Cards are derived
     // purely from the loaded list, so an already-shown card never grows beyond its cap.
@@ -268,12 +269,12 @@ private fun SearchResultContentMvi(
             }
         }
     }
-    val findQuery by AppSettings.findQueryFlow(tabId).collectAsState("")
-    val showFind by AppSettings.findBarOpenFlow(tabId).collectAsState()
+    val findQuery by appSettings.findQueryFlow(tabId).collectAsState("")
+    val showFind by appSettings.findBarOpenFlow(tabId).collectAsState()
     val activeFindQuery = if (showFind) findQuery else ""
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
     val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 200) else snap()
     val mainTextSize by animateFloatAsState(
@@ -281,13 +282,13 @@ private fun SearchResultContentMvi(
         animationSpec = zoomAnimSpec,
         label = "searchMainTextSizeAnim",
     )
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
     val mainLineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
         animationSpec = zoomAnimSpec,
         label = "searchLineHeightAnim",
     )
-    val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
+    val bookFontCode by appSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily: FontFamily = FontCatalog.familyFor(bookFontCode)
     // Auxiliary size for small labels
     val commentSize by animateFloatAsState(
@@ -565,7 +566,7 @@ private fun SearchResultContentMvi(
             LaunchedEffect(findState.text, showFind) {
                 if (showFind) {
                     val q = findState.text.toString()
-                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
+                    appSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
                 }
             }
             Box(modifier = Modifier.align(Alignment.TopEnd).padding(12.dp).zIndex(2f)) {
@@ -573,7 +574,7 @@ private fun SearchResultContentMvi(
                     state = findState,
                     onEnterNext = { navigateTo(true, scope) },
                     onEnterPrev = { navigateTo(false, scope) },
-                    onClose = { AppSettings.closeFindBar(tabId) },
+                    onClose = { appSettings.closeFindBar(tabId) },
                 )
             }
         }

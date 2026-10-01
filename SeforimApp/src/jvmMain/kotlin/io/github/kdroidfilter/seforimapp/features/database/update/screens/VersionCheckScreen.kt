@@ -8,9 +8,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
-import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -21,11 +21,13 @@ fun VersionCheckScreen(
     navController: NavController,
     isDatabaseMissing: Boolean = false,
 ) {
-    val currentVersion = remember { DatabaseVersionManager.getCurrentDatabaseVersion() }
+    val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
+    val databaseVersionManager = LocalAppGraph.current.databaseVersionManager
+    val currentVersion = remember(databaseVersionManager) { databaseVersionManager.getCurrentDatabaseVersion() }
     val minRequiredVersion = remember { DatabaseVersionManager.getMinimumRequiredVersion() }
 
     LaunchedEffect(Unit) {
-        DatabaseUpdateProgressBarState.resetProgress()
+        progressBarState.resetProgress()
     }
 
     OnBoardingScaffold(

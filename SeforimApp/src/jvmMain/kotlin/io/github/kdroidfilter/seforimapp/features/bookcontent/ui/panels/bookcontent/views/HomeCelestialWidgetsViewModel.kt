@@ -33,13 +33,15 @@ private val DEFAULT_PLACE = Place(31.7683, 35.2137, 800.0)
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey
 @Inject
-class HomeCelestialWidgetsViewModel : ViewModel() {
+class HomeCelestialWidgetsViewModel(
+    private val appSettings: AppSettings,
+) : ViewModel() {
     private val _state = MutableStateFlow(resolveState())
     val state: StateFlow<HomeCelestialWidgetsState> = _state.asStateFlow()
 
     private fun resolveState(): HomeCelestialWidgetsState {
-        val country = AppSettings.getRegionCountry()
-        val city = AppSettings.getRegionCity()
+        val country = appSettings.getRegionCountry()
+        val city = appSettings.getRegionCity()
         val place =
             if (!country.isNullOrBlank() && !city.isNullOrBlank()) {
                 worldPlaces[country]?.get(city)

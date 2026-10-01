@@ -1,6 +1,8 @@
 package io.github.kdroidfilter.seforimapp.framework.database
 
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.warnln
@@ -12,82 +14,17 @@ import io.github.kdroidfilter.seforimlibrary.core.models.extractCategoryChildren
 import io.github.kdroidfilter.seforimlibrary.core.models.extractRootCategories
 import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.vinceglb.filekit.FileKit
-import io.github.vinceglb.filekit.databasesDir
-import io.github.vinceglb.filekit.path
-import java.io.File
-
-private const val DEFAULT_DB_NAME = "seforim.db"
 
 /**
- * Cached database path. Resolved on first access and kept for the runtime, but can
- * be invalidated with [resetDatabasePathCache] after a reinstall changes the database
- * location (e.g. following [io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase]).
- */
-@Volatile
-private var cachedDatabasePath: String? = null
-private val databasePathLock = Any()
-
-/**
- * Gets the database path, preferring an environment variable if present,
- * falling back to AppSettings, and finally checking the default location.
- *
- * The path is resolved once and cached (thread-safe); call [resetDatabasePathCache]
- * to force re-resolution after the database is reinstalled or relocated.
- */
-fun getDatabasePath(): String {
-    cachedDatabasePath?.let { return it }
-    return synchronized(databasePathLock) {
-        cachedDatabasePath ?: resolveDatabasePath().also { cachedDatabasePath = it }
-    }
-}
-
-/**
- * Clears the cached database path so the next [getDatabasePath] re-resolves it.
- * Called after a reinstall so the app opens the freshly installed database rather
- * than a stale path captured at startup.
- */
-fun resetDatabasePathCache() {
-    synchronized(databasePathLock) { cachedDatabasePath = null }
-}
-
-private fun resolveDatabasePath(): String {
-    // 1) Prefer an explicit environment variable override if provided
-    val envDbPath = System.getenv("SEFORIMAPP_DATABASE_PATH")?.takeIf { it.isNotBlank() }
-
-    // 2) Try AppSettings (but fix if it points to lexical.db which is wrong)
-    val rawSettingsPath = AppSettings.getDatabasePath()
-    val settingsPath =
-        if (rawSettingsPath?.endsWith("lexical.db", ignoreCase = true) == true) {
-            // Fix incorrect path by clearing it
-            AppSettings.setDatabasePath(null)
-            null
-        } else {
-            rawSettingsPath
-        }
-
-    // 3) Fallback to default location
-    val defaultDbPath = File(FileKit.databasesDir.path, DEFAULT_DB_NAME).absolutePath
-
-    val dbPath = envDbPath ?: settingsPath ?: defaultDbPath
-
-    infoln { "[DatabaseUtils] Database path resolved: $dbPath (exists: ${File(dbPath).exists()})" }
-
-    // Check if the database file exists
-    val dbFile = File(dbPath)
-    if (!dbFile.exists()) {
-        throw IllegalStateException("Database file not found at $dbPath")
-    }
-
-    return dbPath
-}
-
-/**
- * Singleton holder for the precomputed catalog and its extracted data.
- * The catalog is loaded once at application startup and cached for the entire session.
+ * App-scoped holder for the precomputed catalog and its extracted data.
+ * The catalog is loaded lazily on first access and cached for the entire session.
  * Extracted data (categories, books) is also cached to avoid re-traversing the tree on each tab open.
  */
-object CatalogCache {
+@Inject
+@SingleIn(AppScope::class)
+class CatalogCache(
+    private val databasePathProvider: DatabasePathProvider,
+) {
     private var _catalog: PrecomputedCatalog? = null
 
     // Cached extracted data - computed once from the catalog
@@ -95,12 +32,15 @@ object CatalogCache {
     private var _categoryChildren: Map<Long, List<Category>>? = null
     private var _categoriesById: Map<Long, Category>? = null
     private var _allBooks: Set<Book>? = null
+
+    @Volatile
     private var _allBooksWithAltFlags: Set<Book>? = null
 
     /**
      * Gets the cached catalog, loading it if necessary.
      * Returns null if the catalog file doesn't exist or can't be loaded.
      */
+    @Synchronized
     fun getCatalog(): PrecomputedCatalog? {
         if (_catalog == null) {
             _catalog = loadCatalog()
@@ -112,6 +52,7 @@ object CatalogCache {
      * Gets the cached root categories, extracting them from the catalog if necessary.
      * Returns null if the catalog is not available.
      */
+    @Synchronized
     fun getRootCategories(): List<Category>? {
         if (_rootCategories == null) {
             _rootCategories = getCatalog()?.extractRootCategories()
@@ -123,6 +64,7 @@ object CatalogCache {
      * Gets the cached category children map, extracting it from the catalog if necessary.
      * Returns null if the catalog is not available.
      */
+    @Synchronized
     fun getCategoryChildren(): Map<Long, List<Category>>? {
         if (_categoryChildren == null) {
             _categoryChildren = getCatalog()?.extractCategoryChildren()
@@ -134,6 +76,7 @@ object CatalogCache {
      * Flat id → Category index built once from roots + children. Used by features that need
      * O(1) parent walks (e.g. resolving the root category of a book) without hitting the DB.
      */
+    @Synchronized
     fun getCategoriesById(): Map<Long, Category>? {
         if (_categoriesById == null) {
             val roots = getRootCategories() ?: return null
@@ -175,6 +118,7 @@ object CatalogCache {
      * Gets all books from the catalog, cached after first extraction.
      * Returns null if the catalog is not available.
      */
+    @Synchronized
     fun getAllBooks(): Set<Book>? {
         if (_allBooks == null) {
             _allBooks = getCatalog()?.extractAllBooks()
@@ -204,7 +148,7 @@ object CatalogCache {
      */
     private fun loadCatalog(): PrecomputedCatalog? =
         try {
-            val dbPath = getDatabasePath()
+            val dbPath = databasePathProvider.get()
             val catalog = CatalogLoader.loadCatalog(dbPath)
 
             if (catalog != null) {
@@ -218,21 +162,4 @@ object CatalogCache {
             errorln { "[CatalogCache] Failed to load precomputed catalog: ${e.message}" }
             null
         }
-
-    /**
-     * Forces a reload of the catalog (useful after regeneration).
-     * Also clears extracted data caches.
-     */
-    fun reloadCatalog() {
-        _catalog = loadCatalog()
-        _rootCategories = null
-        _categoryChildren = null
-        _categoriesById = null
-        _allBooks = null
-    }
-
-    /**
-     * Checks if the catalog is available.
-     */
-    fun isCatalogAvailable(): Boolean = getCatalog() != null
 }

@@ -16,7 +16,9 @@ import java.io.FilterInputStream
 import java.io.InputStream
 import java.io.SequenceInputStream
 
-class ExtractUseCase {
+class ExtractUseCase(
+    private val appSettings: AppSettings,
+) {
     suspend fun extractToDatabase(
         sourcePath: String,
         onProgress: (Float) -> Unit,
@@ -67,7 +69,7 @@ class ExtractUseCase {
                     }
                 }
             onProgress(1f)
-            AppSettings.setDatabasePath(dbFile.absolutePath)
+            appSettings.setDatabasePath(dbFile.absolutePath)
             runCatching { maybeCleanupSources(source, dbDir) }
             return@withContext dbFile.absolutePath
         }

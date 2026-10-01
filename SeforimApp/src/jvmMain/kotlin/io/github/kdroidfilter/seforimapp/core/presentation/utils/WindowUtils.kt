@@ -25,6 +25,7 @@ fun getCenteredWindowState(
 
 fun processKeyShortcuts(
     keyEvent: KeyEvent,
+    appSettings: AppSettings,
     onNavigateTo: (String) -> Unit,
     tabId: String = "",
 ): Boolean {
@@ -40,23 +41,23 @@ fun processKeyShortcuts(
         when (keyEvent.key) {
             Key.F -> {
                 // Toggle Find-in-page bar scoped to the current tab
-                if (AppSettings.findBarOpenFlow(tabId).value) AppSettings.closeFindBar(tabId) else AppSettings.openFindBar(tabId)
+                if (appSettings.findBarOpenFlow(tabId).value) appSettings.closeFindBar(tabId) else appSettings.openFindBar(tabId)
                 return true
             }
             Key.Plus, Key.NumPadAdd -> {
                 debugln { "[DEBUG_LOG] Detected Plus or NumPadAdd key, increasing text size" }
-                AppSettings.increaseTextSize()
+                appSettings.increaseTextSize()
                 return true
             }
             // Handle Equals key too: many layouts send '=' for zoom-in (with or without Shift)
             Key.Equals -> {
                 debugln { "[DEBUG_LOG] Detected Equals key, increasing text size" }
-                AppSettings.increaseTextSize()
+                appSettings.increaseTextSize()
                 return true
             }
             Key.Minus, Key.NumPadSubtract -> {
                 debugln { "[DEBUG_LOG] Detected Minus or NumPadSubtract key, decreasing text size" }
-                AppSettings.decreaseTextSize()
+                appSettings.decreaseTextSize()
                 return true
             }
         }

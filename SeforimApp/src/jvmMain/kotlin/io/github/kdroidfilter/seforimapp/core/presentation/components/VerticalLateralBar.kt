@@ -27,7 +27,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
@@ -47,6 +47,7 @@ fun VerticalLateralBar(
     topContentLabel: String? = null,
     bottomContentLabel: String? = null,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val boxModifier =
         Modifier
             .fillMaxWidth()
@@ -54,7 +55,7 @@ fun VerticalLateralBar(
     val lazyColumnVerticalArrangement = Arrangement.spacedBy(4.dp)
 
     val isIslands = ThemeUtils.isIslandsStyle()
-    val compactMode by AppSettings.compactModeFlow.collectAsState()
+    val compactMode by appSettings.compactModeFlow.collectAsState()
     val barWidth = if (compactMode) 48.dp else 64.dp
     val outerModifier =
         if (isIslands) {

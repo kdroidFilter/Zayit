@@ -28,7 +28,9 @@ import java.util.Locale
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey
 @Inject
-class DataSettingsViewModel : ViewModel() {
+class DataSettingsViewModel(
+    private val appSettings: AppSettings,
+) : ViewModel() {
     private val _state = MutableStateFlow(DataSettingsState())
     val state: StateFlow<DataSettingsState> = _state.asStateFlow()
 
@@ -102,9 +104,9 @@ class DataSettingsViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val dbDir = File(FileKit.databasesDir.path)
             // Read the custom DB path before clearing settings (clearAll() drops it).
-            val customDbPath = runCatching { AppSettings.getDatabasePath() }.getOrNull()
+            val customDbPath = runCatching { appSettings.getDatabasePath() }.getOrNull()
 
-            AppSettings.clearAll()
+            appSettings.clearAll()
 
             // Delete every file/directory in the managed databases directory (this also holds the
             // user settings DB with notes and highlights).

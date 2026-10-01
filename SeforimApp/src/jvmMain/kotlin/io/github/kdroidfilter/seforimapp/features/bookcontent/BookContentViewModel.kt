@@ -48,6 +48,8 @@ class BookContentViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     private val desktopManager: DesktopManager,
     private val historyStore: HistoryStore,
+    sessionManager: SessionManager,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(BookContentViewModel::class)
@@ -64,7 +66,7 @@ class BookContentViewModel(
 
     // True when this ViewModel was created by the boot session restore: its book was already
     // recorded when originally opened, so the first load must not re-enter the history.
-    private val createdDuringSessionRestore = SessionManager.isRestoringSession.value
+    private val createdDuringSessionRestore = sessionManager.isRestoringSession.value
 
     // Pre-set loading before uiState is initialized to avoid a single-frame Home flash.
     private val hasBookToLoad: Boolean =
@@ -745,7 +747,7 @@ class BookContentViewModel(
      * Called when opening a book from search results, toolbar, or links.
      */
     private fun closeBookTreeIfEnabled() {
-        if (AppSettings.getCloseBookTreeOnNewBookSelected()) {
+        if (appSettings.getCloseBookTreeOnNewBookSelected()) {
             val isTreeVisible = stateManager.state.value.navigation.isVisible
             if (isTreeVisible) {
                 navigationUseCase.toggleBookTree()

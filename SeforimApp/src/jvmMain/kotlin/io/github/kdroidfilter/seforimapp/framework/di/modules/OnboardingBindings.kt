@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.framework.di.modules
 
-import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
 import dev.zacsweers.metro.Provides
@@ -8,13 +7,16 @@ import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
+import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
+import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
+import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 
 @ContributesTo(AppScope::class)
@@ -33,10 +35,7 @@ object OnboardingBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideExtractUseCase(settings: Settings): ExtractUseCase {
-        AppSettings.initialize(settings)
-        return ExtractUseCase()
-    }
+    fun provideExtractUseCase(appSettings: AppSettings): ExtractUseCase = ExtractUseCase(appSettings)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -52,7 +51,18 @@ object OnboardingBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideDatabaseCleanupUseCase(): DatabaseCleanupUseCase = DatabaseCleanupUseCase()
+    fun provideOnboardingProgressBarState(): ProgressBarState = ProgressBarState()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDatabaseUpdateProgressBarState(): DatabaseUpdateProgressBarState = DatabaseUpdateProgressBarState()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideDatabaseCleanupUseCase(
+        databasePathProvider: DatabasePathProvider,
+        appSettings: AppSettings,
+    ): DatabaseCleanupUseCase = DatabaseCleanupUseCase(databasePathProvider, appSettings)
 
     @Provides
     @SingleIn(AppScope::class)

@@ -19,10 +19,10 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Map
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
@@ -45,8 +45,9 @@ import seforimapp.seforimapp.generated.resources.onboarding_region_title
 @Composable
 fun RegionConfigScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState,
+    progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val viewModel: RegionConfigViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
@@ -62,8 +63,8 @@ fun RegionConfigScreen(
             if (countryIdx >= 0 && cityIdx >= 0) {
                 val country = state.countries[countryIdx]
                 val city = state.cities[cityIdx]
-                AppSettings.setRegionCountry(country)
-                AppSettings.setRegionCity(city)
+                appSettings.setRegionCountry(country)
+                appSettings.setRegionCity(city)
             }
             navController.navigate(OnBoardingDestination.FinishScreen)
         },

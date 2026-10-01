@@ -87,6 +87,7 @@ class SearchResultViewModel(
     private val titleUpdateManager: TabTitleUpdateManager,
     private val desktopManager: DesktopManager,
     private val historyStore: HistoryStore,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(SearchResultViewModel::class)
@@ -622,7 +623,7 @@ class SearchResultViewModel(
                 scrollOffset = persisted.scrollOffset,
                 anchorId = persisted.anchorId,
                 anchorIndex = persisted.anchorIndex,
-                textSize = AppSettings.getTextSize(),
+                textSize = appSettings.getTextSize(),
                 scopeTocId = persisted.filterTocId.takeIf { it > 0 },
             )
 
@@ -770,7 +771,7 @@ class SearchResultViewModel(
 
         // Observe user text size setting and reflect into UI state
         viewModelScope.launch {
-            AppSettings.textSizeFlow.collect { size ->
+            appSettings.textSizeFlow.collect { size ->
                 _uiState.value = _uiState.value.copy(textSize = size)
             }
         }
@@ -1777,9 +1778,9 @@ class SearchResultViewModel(
             // Pre-configure find-in-page with the search query and smart mode enabled
             val searchQuery = _uiState.value.query
             if (searchQuery.length >= 2) {
-                AppSettings.setFindQuery(newTabId, searchQuery)
-                AppSettings.setFindSmartMode(newTabId, true)
-                AppSettings.openFindBar(newTabId)
+                appSettings.setFindQuery(newTabId, searchQuery)
+                appSettings.setFindSmartMode(newTabId, true)
+                appSettings.openFindBar(newTabId)
             }
 
             desktopManager.tabsViewModelFor(tabId)?.openTab(
@@ -1826,9 +1827,9 @@ class SearchResultViewModel(
             // Pre-configure find-in-page with the search query and smart mode enabled
             val searchQuery = _uiState.value.query
             if (searchQuery.length >= 2) {
-                AppSettings.setFindQuery(tabId, searchQuery)
-                AppSettings.setFindSmartMode(tabId, true)
-                AppSettings.openFindBar(tabId)
+                appSettings.setFindQuery(tabId, searchQuery)
+                appSettings.setFindSmartMode(tabId, true)
+                appSettings.openFindBar(tabId)
             }
 
             // Swap current tab destination to BookContent while preserving tabId

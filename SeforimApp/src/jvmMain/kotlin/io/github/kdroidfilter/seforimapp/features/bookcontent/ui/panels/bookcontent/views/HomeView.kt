@@ -3,7 +3,10 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.background
@@ -379,8 +382,8 @@ private fun HomeBody(
                 val homeContentModifier =
                     Modifier.widthIn(max = 600.dp).fillMaxWidth()
 
-                // The page is centred; while the gallery shows it holds still, the room made for the gallery scrolling below
-                FreezableCenter(frozen = widgetsState.editingWidgets) {
+                // The page is centred; while the gallery shows or a widget is dragged it holds still, gliding back after
+                FreezableCenter(frozen = widgetsState.pageHeld) {
                     HomeWidgetsGrid(
                         state = widgetsState,
                         widgets = widgetsLayout,
@@ -645,12 +648,20 @@ private fun HomeBody(
  * scroll instead of lifting the whole page by half of it. The content scrolls within what's left under its top.
  */
 @Composable
-private fun FreezableCenter(
+internal fun FreezableCenter(
     frozen: Boolean,
     content: @Composable () -> Unit,
 ) {
     // Not state: written while measuring, read back only by the next measure
     val lastTop = remember { IntArray(1) }
+    val lastSize = remember { IntArray(2) }
+    // Where the page is centred, gliding there when its height changes (a widget moved or resized), not jumping
+    val shownTop = remember { Animatable(0f) }
+    var wanted by remember { mutableStateOf<Pair<Int, Boolean>?>(null) }
+    LaunchedEffect(wanted) {
+        val (top, snap) = wanted ?: return@LaunchedEffect
+        if (snap) shownTop.snapTo(top.toFloat()) else shownTop.animateTo(top.toFloat(), spring(stiffness = Spring.StiffnessMediumLow))
+    }
     Layout(content = content, modifier = Modifier.fillMaxSize()) { measurables, constraints ->
         val free = constraints.copy(minWidth = 0, minHeight = 0)
         val placeable =
@@ -661,8 +672,14 @@ private fun FreezableCenter(
             }
         val top = if (frozen) lastTop[0] else ((constraints.maxHeight - placeable.height) / 2).coerceAtLeast(0)
         lastTop[0] = top
+        // A new window size (or the first layout) puts it there at once
+        val resized = lastSize[0] != constraints.maxWidth || lastSize[1] != constraints.maxHeight
+        lastSize[0] = constraints.maxWidth
+        lastSize[1] = constraints.maxHeight
+        if (wanted?.first != top) wanted = top to (resized || wanted == null)
+        val shown = if (resized || wanted?.second == true && shownTop.value != top.toFloat()) top else shownTop.value.roundToInt()
         layout(constraints.maxWidth, constraints.maxHeight) {
-            placeable.placeRelative((constraints.maxWidth - placeable.width) / 2, top)
+            placeable.placeRelative((constraints.maxWidth - placeable.width) / 2, shown)
         }
     }
 }

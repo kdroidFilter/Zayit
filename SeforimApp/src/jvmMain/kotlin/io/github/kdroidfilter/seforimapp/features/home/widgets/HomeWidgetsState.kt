@@ -78,8 +78,18 @@ class HomeWidgetsState internal constructor(
     /** The Home's edit mode, as on macOS: widgets can be moved and removed, and the gallery adds new ones. */
     var editingWidgets by mutableStateOf(false)
 
+    /** The widget whose resize frame shows, in edit mode. */
+    var selectedWidget by mutableStateOf<String?>(null)
+
     /** A widget being dragged, from the grid or the gallery. */
     internal val drag = WidgetDrag()
+
+    /**
+     * Whether the page around the widgets must hold still: in edit mode, and while a widget is dragged, whose drop
+     * area may make the grid taller or shorter (a centred page would jump under the pointer).
+     */
+    val pageHeld: Boolean
+        get() = editingWidgets || drag.movingId != null || drag.resizing != null || drag.newWidget != null
 
     /** The widget just removed, while its undo is offered. */
     internal var lastRemoved by mutableStateOf<RemovedWidget?>(null)

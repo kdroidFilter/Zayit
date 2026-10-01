@@ -14,6 +14,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.ReaderPane
+import io.github.kdroidfilter.seforimapp.features.home.widgets.CellRect
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsLayout
 import io.github.kdroidfilter.seforimapp.features.home.widgets.availableHomeWidgets
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
@@ -396,11 +398,14 @@ object E2eTortureScenario {
                 val widget = availableHomeWidgets.random(random)
                 val placed = homeLayout.current()
                 when {
-                    placed.none {
-                        it.widget.id == widget.id
-                    } -> homeLayout.add(widget, widget.sizes.keys.random(random), placed.randomOrNull(random)?.widget)
+                    placed.none { it.widget.id == widget.id } -> homeLayout.add(widget)
                     random.nextBoolean() -> home?.removeWidget(widget) ?: homeLayout.remove(widget)
-                    else -> homeLayout.resize(widget, widget.sizes.keys.random(random))
+                    // Moved and resized anywhere, the others making room, as a drag would
+                    else -> {
+                        val w = random.nextInt(widget.minSpan.w, minOf(widget.maxSpan.w, HOME_GRID_COLUMNS) + 1)
+                        val h = random.nextInt(widget.minSpan.h, widget.maxSpan.h + 1)
+                        homeLayout.place(widget, CellRect(random.nextInt(0, HOME_GRID_COLUMNS - w + 1), random.nextInt(0, 12), w, h))
+                    }
                 }
                 "widgets-layout"
             }
@@ -410,7 +415,9 @@ object E2eTortureScenario {
                 ) {
                     homeLayout.reset()
                 } else {
-                    homeLayout.save(homeLayout.current().shuffled(random))
+                    // The areas dealt out again: each widget on another's, the others making room
+                    val placed = homeLayout.current()
+                    placed.zip(placed.shuffled(random)).forEach { (widget, other) -> homeLayout.place(widget.widget, other.cell) }
                 }
                 "widgets-reorder"
             }

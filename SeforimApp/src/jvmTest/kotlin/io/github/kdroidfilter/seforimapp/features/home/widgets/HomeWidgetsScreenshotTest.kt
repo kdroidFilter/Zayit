@@ -51,8 +51,9 @@ class HomeWidgetsScreenshotTest {
     @Test
     fun `render calendar widget`() {
         // One placement per widget: the grid keys them by id
-        val medium = listOf(WidgetPlacement(CalendarWidget), WidgetPlacement(ZmanimWidget))
-        val large = listOf(WidgetPlacement(CalendarWidget, WidgetSize.LARGE), WidgetPlacement(TempleCountdownWidget))
+        val medium = listOf(WidgetPlacement(CalendarWidget, CellRect(0, 0, 7, 5)), WidgetPlacement(ZmanimWidget, CellRect(7, 0, 13, 4)))
+        val large =
+            listOf(WidgetPlacement(CalendarWidget, CellRect(0, 0, 10, 6)), WidgetPlacement(TempleCountdownWidget, CellRect(10, 0, 6, 3)))
         for (dark in listOf(false, true)) {
             shot("calendar-medium", 1100, dark, medium)
             shot("calendar-large", 1100, dark, large)
@@ -62,12 +63,8 @@ class HomeWidgetsScreenshotTest {
     @Test
     fun `render edit mode`() {
         for (dark in listOf(false, true)) shot("edit", 1100, dark, homeWidgets.take(3), editing = true)
-        // The calendar held over the Temple, from the gallery: its placeholder pushes the Temple on
-        shot("edit-drop", 1100, false, homeWidgets.take(3), editing = true) {
-            it.drag.newWidget = WidgetPlacement(CalendarWidget)
-            it.drag.overGrid = true
-            it.drag.targetId = "temple_countdown"
-        }
+        // The Temple selected: its resize frame, a handle on each side
+        shot("edit-resize", 1100, false, homeWidgets.take(3), editing = true) { it.selectedWidget = TempleCountdownWidget.id }
     }
 
     private fun shot(

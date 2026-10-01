@@ -38,10 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
-import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
+import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -65,9 +64,9 @@ import java.time.LocalDate
 internal object CalendarWidget : HomeWidget {
     override val id = "calendar"
     override val title = Res.string.home_widget_name_calendar
-    override val sizes =
-        mapOf(WidgetSize.MEDIUM to GridSize(7, 2.5f), WidgetSize.LARGE to GridSize(10, 3f))
-    override val defaultSize = WidgetSize.MEDIUM
+    override val defaultSpan = CellSpan(7, 5)
+    override val minSpan = CellSpan(7, 5)
+    override val maxSpan = CellSpan(14, 8)
 
     @Composable
     override fun Content(

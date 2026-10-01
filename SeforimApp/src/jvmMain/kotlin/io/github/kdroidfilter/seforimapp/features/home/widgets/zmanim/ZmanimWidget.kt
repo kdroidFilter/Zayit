@@ -52,10 +52,10 @@ import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.earthwidget.ohrHaChaimSunset
 import io.github.kdroidfilter.seforimapp.earthwidget.toDate
 import io.github.kdroidfilter.seforimapp.earthwidget.zmanimCalendar
-import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
+import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import kotlinx.collections.immutable.ImmutableList
@@ -211,8 +211,9 @@ private sealed class ZmanimGridItem {
 internal object ZmanimWidget : HomeWidget {
     override val id = "zmanim"
     override val title = Res.string.home_widget_name_zmanim
-    override val sizes = mapOf(WidgetSize.MEDIUM to GridSize(8, 2f), WidgetSize.LARGE to GridSize(13, 2f))
-    override val defaultSize = WidgetSize.LARGE
+    override val defaultSpan = CellSpan(13, 4)
+    override val minSpan = CellSpan(8, 4)
+    override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
 
     override fun heightAt(width: Dp): Dp = zmanimGridHeight(width)
 

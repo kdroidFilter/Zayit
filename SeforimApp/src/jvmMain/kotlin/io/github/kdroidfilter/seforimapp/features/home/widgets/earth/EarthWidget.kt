@@ -12,12 +12,11 @@ import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
+import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.EarthPreview
-import io.github.kdroidfilter.seforimapp.features.home.widgets.GridSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
-import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -28,8 +27,9 @@ import seforimapp.seforimapp.generated.resources.home_widget_name_earth
 internal object EarthWidget : HomeWidget {
     override val id = "earth"
     override val title = Res.string.home_widget_name_earth
-    override val sizes = mapOf(WidgetSize.SMALL to GridSize(5, 2f), WidgetSize.MEDIUM to GridSize(7, 2f))
-    override val defaultSize = WidgetSize.MEDIUM
+    override val defaultSpan = CellSpan(7, 4)
+    override val minSpan = CellSpan(5, 4)
+    override val maxSpan = CellSpan(12, 8)
     override val isSupported get() = isEarthWidgetSupported
 
     @Composable

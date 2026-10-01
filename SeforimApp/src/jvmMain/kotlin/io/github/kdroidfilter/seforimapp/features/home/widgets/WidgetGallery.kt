@@ -1,13 +1,11 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,22 +27,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -57,6 +58,7 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -64,9 +66,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.toSize
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
-import io.github.kdroidfilter.seforimapp.icons.Trash
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -79,15 +82,13 @@ import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
-import seforimapp.seforimapp.generated.resources.home_widgets_added
+import seforimapp.seforimapp.generated.resources.home_widgets_all_placed
 import seforimapp.seforimapp.generated.resources.home_widgets_done
 import seforimapp.seforimapp.generated.resources.home_widgets_edit
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_hint
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_title
 import seforimapp.seforimapp.generated.resources.home_widgets_removed
 import seforimapp.seforimapp.generated.resources.home_widgets_reset
-import seforimapp.seforimapp.generated.resources.home_widgets_trash_hint
-import seforimapp.seforimapp.generated.resources.home_widgets_trash_release
 import seforimapp.seforimapp.generated.resources.home_widgets_undo
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.seconds
@@ -95,12 +96,15 @@ import kotlin.time.Duration.Companion.seconds
 private const val PREVIEW_SCALE = 0.42f
 private const val GHOST_SCALE = 0.6f
 
+/** The gallery shows widgets at their size on a full-width grid. */
+private val GALLERY_PITCH = CellPitch(MAX_GRID_WIDTH)
+
 /** Room the gallery panel takes at the bottom of the Home, for the page to scroll its last widgets above it. */
 val WIDGET_GALLERY_HEIGHT = 320.dp
 
 /**
  * The widget gallery floating over the bottom of the Home, as on macOS, and the widget dragged out of it: click a
- * widget to add it at the end, or drag it onto the grid (onto a widget to take its place). Escape or "Done" closes.
+ * widget to add it in the first vacant area, or drag it onto the grid where it should go. Escape or "Done" closes.
  */
 @Composable
 fun BoxScope.HomeWidgetsOverlay(
@@ -116,10 +120,6 @@ fun BoxScope.HomeWidgetsOverlay(
     if (!state.editingWidgets && drag.movingId == null && drag.newWidget == null) {
         EditWidgetsButton(state, Modifier.align(Alignment.BottomEnd).padding(20.dp))
     }
-    // Only while a placed widget is moved, above the page's auto-scroll band so aiming at it doesn't scroll
-    if (drag.movingId != null) {
-        TrashZone(drag, Modifier.align(Alignment.BottomCenter).padding(bottom = 88.dp))
-    }
     state.lastRemoved?.let { removed ->
         UndoBar(
             removed = removed,
@@ -130,19 +130,32 @@ fun BoxScope.HomeWidgetsOverlay(
                     .padding(bottom = if (state.editingWidgets) WIDGET_GALLERY_HEIGHT else 24.dp),
         )
     }
-    // The dragged widget follows the pointer, above everything
-    drag.newWidget?.let { dragged ->
-        val grid = dragged.grid
+    // A widget held or landing, above everything: its live picture, where it is
+    drag.lifted?.let { lifted ->
         Box(
             Modifier
+                // From the top-left in either direction: a start alignment would mirror it right to left
+                .align(AbsoluteAlignment.TopLeft)
+                .absoluteOffset { (lifted.at - origin).round() }
+                .size(with(LocalDensity.current) { lifted.size.toSize().toDpSize() })
+                .testTag("widget-lifted")
+                .drawBehind { drawLayer(lifted.layer) },
+        )
+    }
+    // The dragged widget follows the pointer, above everything
+    drag.newWidget?.let { dragged ->
+        val span = dragged.defaultSpan
+        Box(
+            Modifier
+                .align(AbsoluteAlignment.TopLeft)
                 .absoluteOffset {
-                    val half = Offset(grid.width().toPx(), grid.height().toPx()) * (GHOST_SCALE / 2)
+                    val half = Offset(GALLERY_PITCH.width(span.w).toPx(), GALLERY_PITCH.height(span.h).toPx()) * (GHOST_SCALE / 2)
                     val at = drag.pointer - origin - half
                     IntOffset(at.x.roundToInt(), at.y.roundToInt())
                 }.alpha(0.9f)
                 .shadow(16.dp, RoundedCornerShape(18.dp * GHOST_SCALE)),
         ) {
-            WidgetPreview(dragged.widget, grid, state, GHOST_SCALE)
+            WidgetPreview(dragged, span, state, GHOST_SCALE)
         }
     }
 }
@@ -190,7 +203,7 @@ private fun WidgetGallery(
                 )
             }
             RoundIconButton(
-                icon = AllIconsKeys.Actions.Rollback,
+                icon = AllIconsKeys.General.Reset,
                 label = stringResource(Res.string.home_widgets_reset),
                 onClick = { state.layout.reset() },
             )
@@ -208,9 +221,14 @@ private fun WidgetGallery(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 itemVerticalAlignment = Alignment.Bottom,
             ) {
-                availableHomeWidgets.filter { it.isSupported }.forEach { widget ->
-                    GalleryItem(widget, state, added = placed.any { it.widget.id == widget.id })
+                // The ones not on the page yet: one already there is moved or resized there, not added again
+                val addable = availableHomeWidgets.filter { widget -> widget.isSupported && placed.none { it.widget.id == widget.id } }
+                if (addable.isEmpty()) {
+                    Text(stringResource(Res.string.home_widgets_all_placed), color = JewelTheme.globalColors.text.info)
                 }
+                // One back while the gallery is open (removed from the page) pops in, as on iOS
+                val offeredAtOpen = remember { addable.map { it.id }.toSet() }
+                addable.forEach { widget -> key(widget.id) { GalleryItem(widget, state, appearing = widget.id !in offeredAtOpen) } }
             }
         }
     }
@@ -220,60 +238,46 @@ private fun WidgetGallery(
 private fun GalleryItem(
     widget: HomeWidget,
     state: HomeWidgetsState,
-    added: Boolean,
+    appearing: Boolean,
 ) {
     val drag = state.drag
-    var size by remember(widget) { mutableStateOf(widget.defaultSize) }
-    val grid = widget.sizes.getValue(size)
     var bounds by remember { mutableStateOf(Rect.Zero) }
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(
-            Modifier
-                .alpha(if (added) 0.4f else 1f)
-                .onGloballyPositioned { bounds = it.boundsInRoot() },
-        ) {
-            WidgetPreview(widget, grid, state, PREVIEW_SCALE)
+    val appear = remember { Animatable(if (appearing) 0f else 1f) }
+    LaunchedEffect(Unit) { if (appear.value < 1f) appear.animateTo(1f, PopInSpec) }
+    Column(
+        modifier =
+            Modifier.testTag("gallery-${widget.id}").graphicsLayer {
+                scaleX = popIn(appear.value)
+                scaleY = popIn(appear.value)
+                alpha = appear.value.coerceIn(0f, 1f)
+            },
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.onGloballyPositioned { bounds = it.boundsInRoot() }) {
+            WidgetPreview(widget, widget.defaultSpan, state, PREVIEW_SCALE)
             // On top of the preview, so its own buttons never get the click
             Box(
                 Modifier
                     .matchParentSize()
-                    .then(if (added) Modifier else Modifier.pointerHoverIcon(PointerIcon.Hand))
-                    .pointerInput(added) { detectTapGestures { if (!added) state.layout.add(widget, size) } }
-                    .pointerInput(added, size) {
-                        if (added) return@pointerInput
-                        detectDragGestures(
-                            onDragStart = {
-                                drag.newWidget = WidgetPlacement(widget, size)
-                                drag.moveTo(bounds.topLeft + it)
-                            },
-                            onDrag = { change, amount ->
-                                change.consume()
-                                drag.moveTo(drag.pointer + amount)
-                            },
-                            onDragEnd = {
-                                // Dropped back on the gallery: nothing; else where its placeholder shows
-                                if (drag.overGrid) {
-                                    val target = availableHomeWidgets.firstOrNull { it.id == drag.targetId }
-                                    state.layout.add(widget, size, before = target)
-                                }
+                    .pointerHoverIcon(PointerIcon.Hand)
+                    .pointerInput(widget) { detectTapGestures { state.layout.add(widget) } }
+                    .pointerInput(widget) {
+                        cancellableDrag(
+                            root = { bounds.topLeft + it },
+                            onStart = { drag.startAdd(widget, it) },
+                            onMove = drag::moveTo,
+                            onEnd = {
+                                // Dropped back on the gallery: nothing; else where its outline shows
+                                if (drag.overGrid) drag.drop()
                                 drag.end()
                             },
-                            onDragCancel = { drag.end() },
+                            onCancel = drag::end,
                         )
                     },
             )
         }
         Text(stringResource(widget.title), fontWeight = FontWeight.SemiBold)
-        when {
-            added ->
-                Text(stringResource(Res.string.home_widgets_added), fontSize = 11.sp, color = JewelTheme.globalColors.text.info)
-            widget.sizes.size > 1 ->
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    WidgetSize.entries.filter { it in widget.sizes }.forEach { option ->
-                        SizeChip(stringResource(option.label), selected = option == size, onClick = { size = option })
-                    }
-                }
-        }
     }
 }
 
@@ -281,7 +285,7 @@ private fun GalleryItem(
 @Composable
 internal fun WidgetPreview(
     widget: HomeWidget,
-    grid: GridSize,
+    span: CellSpan,
     state: HomeWidgetsState,
     scale: Float,
 ) {
@@ -291,8 +295,8 @@ internal fun WidgetPreview(
             Modifier
                 .clip(RoundedCornerShape(18.dp * scale))
                 .layout { measurable, _ ->
-                    val width = grid.width().roundToPx()
-                    val height = grid.height().roundToPx()
+                    val width = GALLERY_PITCH.width(span.w).roundToPx()
+                    val height = GALLERY_PITCH.height(span.h).roundToPx()
                     val placeable = measurable.measure(Constraints.fixed(width, height))
                     layout((width * scale).roundToInt(), (height * scale).roundToInt()) {
                         placeable.placeWithLayer(0, 0) {
@@ -308,32 +312,6 @@ internal fun WidgetPreview(
             widget.Preview(state, Modifier)
         }
     }
-}
-
-@Composable
-private fun SizeChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    val shape = RoundedCornerShape(50)
-    Text(
-        text = label,
-        fontSize = 11.sp,
-        modifier =
-            Modifier
-                .clip(shape)
-                .background(
-                    if (selected) {
-                        JewelTheme.globalColors.outlines.focused
-                            .copy(alpha = 0.25f)
-                    } else {
-                        JewelTheme.globalColors.panelBackground
-                    },
-                ).border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 3.dp),
-    )
 }
 
 /** A pencil floating in the Home's corner, always at hand, that opens the edit mode and its gallery. */
@@ -379,41 +357,6 @@ private fun RoundIconButton(
                 modifier = Modifier.size(18.dp),
             )
         }
-    }
-}
-
-/** The drop zone a moved widget is removed in: red and larger once the pointer is over it. */
-@Composable
-private fun TrashZone(
-    drag: WidgetDrag,
-    modifier: Modifier = Modifier,
-) {
-    val over = drag.overTrash
-    val scale by animateFloatAsState(if (over) 1.12f else 1f)
-    val danger = Color(0xFFE5484D)
-    val shape = RoundedCornerShape(50)
-    Row(
-        modifier
-            .onGloballyPositioned { drag.trashBounds = it.boundsInRoot() }
-            .testTag("widget-trash")
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }.shadow(16.dp, shape)
-            .clip(shape)
-            .background(if (over) danger else JewelTheme.globalColors.panelBackground)
-            .border(1.5.dp, danger.copy(alpha = if (over) 1f else 0.6f), shape)
-            .padding(horizontal = 24.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        val tint = if (over) Color.White else danger
-        Image(Trash, contentDescription = null, colorFilter = ColorFilter.tint(tint), modifier = Modifier.size(22.dp))
-        Text(
-            stringResource(if (over) Res.string.home_widgets_trash_release else Res.string.home_widgets_trash_hint),
-            color = tint,
-            fontWeight = FontWeight.SemiBold,
-        )
     }
 }
 

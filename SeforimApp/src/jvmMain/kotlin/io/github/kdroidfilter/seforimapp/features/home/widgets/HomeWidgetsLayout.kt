@@ -1,6 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /** Further down than any layout a user makes (every widget stacked at its tallest is under 50 rows). */
 private const val MAX_SAVED_ROW = 200
@@ -107,6 +109,22 @@ internal class HomeWidgetsLayout(
             return
         }
         edit { it.reorder(placement, SAVED_PITCH) }
+    }
+
+    private var arrangements = 0
+    private var arranging = false
+
+    /** Laid out again, resized within their limits, with the fewest holes and rows; again, another way (see [rearranged]). */
+    suspend fun arrange() {
+        if (arranging) return
+        arranging = true
+        try {
+            val shown = current().filter { it.widget.isSupported }
+            val arranged = withContext(Dispatchers.Default) { shown.rearranged(SAVED_PITCH, arrangements++) }
+            edit { arranged }
+        } finally {
+            arranging = false
+        }
     }
 
     fun reset() = appSettings.setHomeWidgetsLayout(null)

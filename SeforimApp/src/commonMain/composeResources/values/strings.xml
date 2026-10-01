@@ -335,6 +335,7 @@
     <string name="home_widgets_resize">שינוי גודל</string>
     <string name="home_widgets_removed">%1$s הוסר</string>
     <string name="home_widgets_undo">ביטול</string>
+    <string name="home_widgets_arrange">סידור חכם</string>
     <string name="home_widgets_reset">שחזור ברירת המחדל</string>
     <string name="home_widget_name_zmanim">זמני היום</string>
     <string name="home_widget_name_earth">כדור הארץ</string>

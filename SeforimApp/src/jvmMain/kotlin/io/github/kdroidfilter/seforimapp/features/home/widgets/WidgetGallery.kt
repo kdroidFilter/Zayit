@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
@@ -30,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
@@ -59,18 +61,22 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.round
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.toSize
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -83,6 +89,7 @@ import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widgets_all_placed
+import seforimapp.seforimapp.generated.resources.home_widgets_arrange
 import seforimapp.seforimapp.generated.resources.home_widgets_done
 import seforimapp.seforimapp.generated.resources.home_widgets_edit
 import seforimapp.seforimapp.generated.resources.home_widgets_gallery_hint
@@ -160,7 +167,7 @@ fun BoxScope.HomeWidgetsOverlay(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun WidgetGallery(
     state: HomeWidgetsState,
@@ -170,6 +177,7 @@ private fun WidgetGallery(
     val shape = RoundedCornerShape(16.dp)
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { focus.requestFocus() }
+    val scope = rememberCoroutineScope()
     // Fades away while a widget is dragged out, to show the grid it goes to
     val alpha by animateFloatAsState(if (state.drag.newWidget != null || state.drag.movingId != null) 0.15f else 1f)
     Column(
@@ -202,6 +210,11 @@ private fun WidgetGallery(
                     color = JewelTheme.globalColors.text.info,
                 )
             }
+            RoundIconButton(
+                icon = AllIconsKeys.Diff.MagicResolveToolbar,
+                label = stringResource(Res.string.home_widgets_arrange),
+                onClick = { scope.launch { state.layout.arrange() } },
+            )
             RoundIconButton(
                 icon = AllIconsKeys.General.Reset,
                 label = stringResource(Res.string.home_widgets_reset),
@@ -315,20 +328,26 @@ internal fun WidgetPreview(
 }
 
 /** A pencil floating in the Home's corner, always at hand, that opens the edit mode and its gallery. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EditWidgetsButton(
     state: HomeWidgetsState,
     modifier: Modifier = Modifier,
 ) {
+    // Beside it, towards the page, not over it
+    val gap = if (LocalLayoutDirection.current == LayoutDirection.Ltr) -TOOLTIP_GAP else TOOLTIP_GAP
     RoundIconButton(
         icon = AllIconsKeys.Actions.Edit,
         label = stringResource(Res.string.home_widgets_edit),
         onClick = { state.editingWidgets = true },
         modifier = modifier.shadow(8.dp, CircleShape),
+        tooltipPlacement = TooltipPlacement.ComponentRect(Alignment.CenterStart, Alignment.CenterStart, DpOffset(gap, 0.dp)),
     )
 }
 
-/** A round icon button whose [label] shows as a tooltip; [primary] fills it with the accent, for the main action. */
+private val TOOLTIP_GAP = 8.dp
+
+/** A round icon button whose [label] shows as a tooltip, above it by default; [primary] fills it with the accent, for the main action. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun RoundIconButton(
@@ -337,9 +356,11 @@ private fun RoundIconButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
+    tooltipPlacement: TooltipPlacement =
+        TooltipPlacement.ComponentRect(Alignment.TopCenter, Alignment.TopCenter, DpOffset(0.dp, -TOOLTIP_GAP)),
 ) {
     val accent = JewelTheme.globalColors.outlines.focused
-    Tooltip(tooltip = { Text(label) }, modifier = modifier) {
+    Tooltip(tooltip = { Text(label) }, modifier = modifier, tooltipPlacement = tooltipPlacement) {
         IconButton(
             onClick = onClick,
             modifier =

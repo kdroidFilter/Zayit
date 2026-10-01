@@ -168,7 +168,6 @@ fun HomeView(
     homeUserLocation: HomeUserLocation? = null,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
-    CatalogRow(onEvent = onEvent)
 
     val panelBackground = JewelTheme.globalColors.panelBackground
     val showWallpaper by appSettings.showHomeWallpaperFlow.collectAsState()
@@ -252,6 +251,7 @@ fun HomeView(
 
         // Layer 4: Content
         HomeBody(
+            onEvent = onEvent,
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
             homeUserLocation = homeUserLocation,
@@ -270,6 +270,7 @@ fun HomeView(
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
 @Composable
 private fun HomeBody(
+    onEvent: (BookContentEvent) -> Unit,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
     homeUserLocation: HomeUserLocation?,
@@ -306,7 +307,7 @@ private fun HomeBody(
             scrollState = listState,
         ) {
             Box(
-                modifier = Modifier.padding(top = 56.dp).fillMaxSize().padding(8.dp),
+                modifier = Modifier.fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 // Keep state outside LazyColumn so it persists across item recompositions
@@ -391,6 +392,8 @@ private fun HomeBody(
                         gridState = listState,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
+                        // Scrolls with the page instead of floating over the widgets
+                        fullWidthItem(gapAfter = 4.dp) { CatalogRow(onEvent = onEvent) }
                         fullWidthItem(gapAfter = 4.dp) {
                             BoxWithConstraints(
                                 Modifier.fillMaxWidth(),

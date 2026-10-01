@@ -112,6 +112,8 @@ sealed interface BookContentEvent {
 
     data object ToggleTargum : BookContentEvent
 
+    data object ToggleShnayimMikra : BookContentEvent
+
     data object ToggleSources : BookContentEvent
 
     data object ToggleDiacritics : BookContentEvent

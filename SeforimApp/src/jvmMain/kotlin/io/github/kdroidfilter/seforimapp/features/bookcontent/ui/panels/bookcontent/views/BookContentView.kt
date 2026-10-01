@@ -119,6 +119,8 @@ fun BookContentView(
     isTocEntrySelection: Boolean = false,
     // Lines by index, tinted, with an end mark after the last: a passage to read, such as the day's limud
     markedLines: IntRange? = null,
+    // Each verse twice, then its targum: shnayim mikra
+    shnayimMikra: Boolean = false,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
@@ -292,6 +294,9 @@ fun BookContentView(
     // Selected font for main book content
     val bookFontCode by appSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
+    val targumFontCode by appSettings.targumFontCodeFlow.collectAsState()
+    val targumFontFamily = FontCatalog.familyFor(targumFontCode)
+    val shnayimMikraTargum = rememberShnayimMikraTargum(bookId, shnayimMikra)
     // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
     val boldScaleForPlatform =
         remember(bookFontCode) {
@@ -1125,7 +1130,28 @@ fun BookContentView(
                                         },
                                     )
                                 }
-                                if (markedLines?.last == line.lineIndex) MarkedEnd()
+                                // The verse read again, then its targum (headings have no reference)
+                                if (shnayimMikra && !line.heRef.isNullOrBlank()) {
+                                    Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
+                                        LineItem(
+                                            lineId = line.id,
+                                            lineContent = line.content,
+                                            fontFamily = hebrewFontFamily,
+                                            onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                            isSelected = isCurrentSelected,
+                                            isPrimary = useThickBar,
+                                            baseTextSize = textSize,
+                                            lineHeight = lineHeight,
+                                            boldScale = boldScaleForPlatform,
+                                            annotatedCache = stableAnnotatedCache,
+                                            showDiacritics = showDiacritics,
+                                        )
+                                    }
+                                    shnayimMikraTargum.targumOf(line.heRef)?.let {
+                                        ShnayimMikraTargum(it, targumFontFamily, textSize, lineHeight, showDiacritics)
+                                    }
+                                }
+                                if (markedLines?.last == line.lineIndex) MarkedEnd(if (shnayimMikra) "סוף הקריאה" else "סוף הלימוד")
                             }
                         }
                     } else {
@@ -1664,9 +1690,9 @@ private fun markedTint() =
     JewelTheme.globalColors.outlines.focused
         .copy(alpha = 0.07f)
 
-/** Where a marked passage ends: "סוף הלימוד" between two rules. */
+/** Where a marked passage ends: [label] between two rules, "סוף הלימוד" or, for an aliya read, "סוף הקריאה". */
 @Composable
-private fun MarkedEnd() {
+private fun MarkedEnd(label: String) {
     val color = JewelTheme.globalColors.outlines.focused
     Row(
         Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -1674,7 +1700,7 @@ private fun MarkedEnd() {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Box(Modifier.weight(1f).height(1.dp).background(color.copy(alpha = 0.5f)))
-        Text("סוף הלימוד", color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Text(label, color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         Box(Modifier.weight(1f).height(1.dp).background(color.copy(alpha = 0.5f)))
     }
 }

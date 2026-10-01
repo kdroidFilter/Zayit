@@ -198,6 +198,7 @@ private fun BookContentPanelContent(
                         uiState.content.markedRange
                             ?.takeIf { it.bookId == selectedBook.id }
                             ?.let { it.first..it.last },
+                    shnayimMikra = uiState.content.shnayimMikra,
                     onLineSelect = { line, isModifier ->
                         onEvent(BookContentEvent.LineSelected(line, isModifier))
                     },

@@ -146,6 +146,8 @@ data class ContentState(
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
     val showSources: Boolean = false,
+    // Each verse twice, then its targum
+    val shnayimMikra: Boolean = false,
     // Scroll positions
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,

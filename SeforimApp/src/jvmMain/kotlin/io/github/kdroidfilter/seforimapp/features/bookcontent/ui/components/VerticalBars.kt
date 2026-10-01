@@ -168,6 +168,17 @@ fun EndVerticalBar(
                         shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
                     )
                 }
+                // Shnayim mikra: in the Chumash, each verse twice and then its targum
+                if (selectedBook.title in CHUMASH_TITLES) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.shnayim_mikra_mode_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleShnayimMikra) },
+                        isSelected = uiState.content.shnayimMikra,
+                        icon = JournalText,
+                        iconDescription = stringResource(Res.string.shnayim_mikra_mode),
+                        label = stringResource(Res.string.shnayim_mikra_mode),
+                    )
+                }
             }
 //            SelectableIconButtonWithToolip(
 //                toolTipText = stringResource(
@@ -285,3 +296,5 @@ private data class LineResourceAvailability(
     val commentariesAvailable: Boolean? = null,
     val sourcesAvailable: Boolean? = null,
 )
+
+private val CHUMASH_TITLES = setOf("בראשית", "שמות", "ויקרא", "במדבר", "דברים")

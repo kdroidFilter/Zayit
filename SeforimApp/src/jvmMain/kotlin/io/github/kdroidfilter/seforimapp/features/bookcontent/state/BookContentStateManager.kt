@@ -73,6 +73,7 @@ class BookContentStateManager(
                     showCommentaries = persisted.showCommentaries,
                     showTargum = persisted.showTargum,
                     showSources = persisted.showSources,
+                    shnayimMikra = persisted.shnayimMikra,
                     scrollIndex = persisted.contentScrollIndex,
                     scrollOffset = persisted.contentScrollOffset,
                     // A restored tab with no saved position opens on its selected line: its pager is
@@ -276,6 +277,7 @@ class BookContentStateManager(
                 showCommentaries = currentState.content.showCommentaries,
                 showTargum = currentState.content.showTargum,
                 showSources = currentState.content.showSources,
+                shnayimMikra = currentState.content.shnayimMikra,
                 paragraphScrollPosition = currentState.content.paragraphScrollPosition,
                 chapterScrollPosition = currentState.content.chapterScrollPosition,
                 selectedChapter = currentState.content.selectedChapter,

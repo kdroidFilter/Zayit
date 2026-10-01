@@ -184,6 +184,8 @@
     <string name="zoom_out_tooltip">הקטן גודל הטקסט</string>
     <string name="zoom_out">הקטן</string>
     <string name="toggle_diacritics">ניקוד</string>
+    <string name="shnayim_mikra_mode">שנים מקרא</string>
+    <string name="shnayim_mikra_mode_tooltip">שנים מקרא ואחד תרגום: כל פסוק פעמיים ואחריו התרגום</string>
     <string name="show_diacritics_tooltip">הצג ניקוד וטעמים</string>
     <string name="hide_diacritics_tooltip">הסתר ניקוד וטעמים</string>
     <string name="add_bookmark_tooltip">הוסף סימנייה</string>
@@ -344,6 +346,7 @@
     <string name="home_widget_name_sky">השמיים</string>
     <string name="home_widget_name_calendar">לוח עברי</string>
     <string name="home_widget_name_limud">לימוד יומי</string>
+    <string name="home_widget_name_shnayim_mikra">שנים מקרא ואחד תרגום</string>
     <string name="home_widget_name_next_zman">הזמן הבא</string>
     <string name="home_widget_name_events">מועדים קרובים</string>
     <string name="home_widget_name_tefila">תפילת היום</string>

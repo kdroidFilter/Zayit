@@ -267,9 +267,8 @@ fun EarthWidgetScene(
                 modifier = Modifier.size(sphereSize),
             )
             if (showOrbitPath && orbitLabels.isNotEmpty()) {
-                // Same state the 3D image was rendered with (see FrameSync.kt), so the labels don't slide on drag
                 OrbitDayLabelsOverlay(
-                    state = rememberFrameDelayed(sceneState, RENDER_LATENCY_FRAMES),
+                    state = sceneState,
                     sphereSize = sphereSize,
                     labels = orbitLabels,
                     onLabelClick = onOrbitLabelClick,

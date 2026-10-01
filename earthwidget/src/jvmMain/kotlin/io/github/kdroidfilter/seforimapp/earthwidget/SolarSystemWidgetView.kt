@@ -455,21 +455,16 @@ fun SolarSystemWidgetView(
         val textures = rememberWidgetTextures(engine)
 
         Box(modifier = Modifier.fillMaxSize().orbitCameraGestures(camera) { 180f / widthPx }) {
-            // The 3D image reaches the screen RENDER_LATENCY_FRAMES late (filament-compose renders offscreen and reads
-            // the pixels back asynchronously); the 2D layers follow the same state that late, or they slide against it
-            // Events travel with it: a new year's list must not meet the previous year's markers
-            val (overlayState, overlayEvents) = rememberFrameDelayed(state to events, RENDER_LATENCY_FRAMES)
             SolarSystemSceneView(
                 state = state,
                 engine = engine,
                 textures = textures,
                 modifier = Modifier.matchParentSize(),
-                overlayState = overlayState,
                 animated = pointerOver || playing,
             )
             SolarEventMarkers(
-                state = overlayState,
-                events = overlayEvents,
+                state = state,
+                events = events,
                 shown = hovered,
                 current = currentEvent,
                 onHover = { event, isHovered -> hovered = if (isHovered) event else hovered.takeIf { it != event } },

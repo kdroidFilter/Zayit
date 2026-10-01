@@ -362,10 +362,19 @@ internal object UpcomingEventsWidget : HomeWidget {
             }
         val clock = rememberClock(location.timeZone)
         PanelCard(modifier) {
-            FitColumn(Modifier.fillMaxSize().padding(6.dp)) {
-                events.forEach { event ->
-                    HoverBox(onClick = { state.selectDate(event.date) }, modifier = Modifier.fillMaxWidth()) {
-                        EventRow(event, clock)
+            Column(Modifier.fillMaxSize().padding(8.dp)) {
+                Text(
+                    "אירועים קרובים",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    modifier = Modifier.padding(horizontal = 4.dp).height(22.dp),
+                )
+                FitColumn(Modifier.fillMaxWidth().weight(1f)) {
+                    events.forEach { event ->
+                        HoverBox(onClick = { state.selectDate(event.date) }, modifier = Modifier.fillMaxWidth()) {
+                            EventRow(event, clock)
+                        }
                     }
                 }
             }

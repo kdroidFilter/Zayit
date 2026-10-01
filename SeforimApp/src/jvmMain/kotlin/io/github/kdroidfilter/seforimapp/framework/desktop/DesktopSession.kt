@@ -244,11 +244,12 @@ class DesktopSession internal constructor(
                 is TabsDestination.BookContent -> if (destination.bookId > 0) TabType.BOOK else TabType.SEARCH
                 is TabsDestination.History -> TabType.HISTORY
                 is TabsDestination.Favorites -> TabType.FAVORITES
+                is TabsDestination.Notes -> TabType.NOTES
             }
 
         fun stripEphemeral(destination: TabsDestination): TabsDestination =
             when (destination) {
-                is TabsDestination.BookContent -> destination.copy(lineId = null)
+                is TabsDestination.BookContent -> destination.copy(lineId = null, openNotes = false)
                 else -> destination
             }
     }

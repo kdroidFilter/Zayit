@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.core.annotations
 
 import androidx.compose.runtime.Stable
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
+import io.github.kdroidfilter.seforimapp.db.User_notes
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,13 @@ data class UserNote(
     val updatedAt: Long = 0L,
 )
 
+/** A note with the book it is in. */
+@Stable
+data class BookNote(
+    val bookId: Long,
+    val note: UserNote,
+)
+
 /**
  * Persists position-based notes in the local user database and exposes them as a per-book
  * in-memory cache for the render hot path. Mirrors [HighlightStore]: reads hit SQLite once per
@@ -55,6 +63,17 @@ class NoteStore(
             if (bookId in loadedBooks) return@withContext
             refreshBook(bookId)
             loadedBooks += bookId
+        }
+
+    /** Every note of every book, the most recently written first. */
+    suspend fun all(): List<BookNote> = recent(limit = -1) // SQLite: a negative LIMIT is none
+
+    /** The [limit] most recently written notes, of every book. */
+    suspend fun recent(limit: Int): List<BookNote> =
+        withContext(Dispatchers.IO) {
+            queries.selectRecent(limit.toLong()).executeAsList().map { row ->
+                BookNote(bookId = row.bookId, note = row.toNote())
+            }
         }
 
     /** Notes of a single line; safe to call from composition (cache lookup). */
@@ -122,21 +141,22 @@ class NoteStore(
             refreshBook(bookId)
         }
 
+    private fun User_notes.toNote() =
+        UserNote(
+            id = id,
+            lineId = lineId,
+            startOffset = startOffset.toInt(),
+            endOffset = endOffset.toInt(),
+            note = note,
+            quote = quote,
+            createdAt = createdAt,
+            updatedAt = updatedAt,
+        )
+
     /** Re-reads the book's notes from SQLite and replaces the cache entry. */
     private fun refreshBook(bookId: Long) {
         val list =
-            queries.selectAllForBook(bookId).executeAsList().map { row ->
-                UserNote(
-                    id = row.id,
-                    lineId = row.lineId,
-                    startOffset = row.startOffset.toInt(),
-                    endOffset = row.endOffset.toInt(),
-                    note = row.note,
-                    quote = row.quote,
-                    createdAt = row.createdAt,
-                    updatedAt = row.updatedAt,
-                )
-            }
+            queries.selectAllForBook(bookId).executeAsList().map { it.toNote() }
         _notesByBook.update { it + (bookId to list) }
     }
 }

@@ -77,6 +77,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.fullWidthItem
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -290,6 +291,8 @@ private fun HomeBody(
         remember(userLocation, community, appSettings) {
             HomeWidgetsState(userLocation, community, HomeWidgetsLayout(appSettings))
         }
+    val tabs = LocalOpenWindow.current.tabsViewModel
+    SideEffect { widgetsState.openTab = tabs::openTab }
     if (E2e.enabled && LocalTabSelected.current) SideEffect { E2e.homeWidgets = widgetsState }
     // Composed here, outside the LazyColumn, so scrolling a card away doesn't close its window
     val widgetsLayoutRaw by appSettings.homeWidgetsLayoutFlow.collectAsState()

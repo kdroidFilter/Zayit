@@ -213,7 +213,9 @@ internal object ZmanimWidget : HomeWidget {
     override val title = Res.string.home_widget_name_zmanim
     override val defaultSpan = CellSpan(13, 4)
     override val minSpan = CellSpan(8, 4)
-    override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
+
+    // Its cards are a fixed height: the grid gives it the rows they need at each width (minRows), never more
+    override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 4)
 
     override fun heightAt(width: Dp): Dp = zmanimGridHeight(width)
 
@@ -443,6 +445,26 @@ private fun <T> List<T>.toZmanimRows(
         rows
     }
 
+/** [rowCount] rows of about the same total span, in order. */
+internal fun <T> List<T>.balancedRows(
+    rowCount: Int,
+    span: (T) -> Float,
+): List<List<T>> {
+    val target = sumOf { span(it).toDouble() } / rowCount
+    val rows = mutableListOf(mutableListOf<T>())
+    var filled = 0.0
+    for (item in this) {
+        // A quarter slot of slack keeps a row from closing just short of its share
+        if (filled >= target - 0.25 && rows.size < rowCount) {
+            rows += mutableListOf<T>()
+            filled = 0.0
+        }
+        rows.last() += item
+        filled += span(item)
+    }
+    return rows
+}
+
 /** Five columns while a card keeps [MIN_ZMANIM_CARD_WIDTH], else four. */
 private fun zmanimColumns(
     width: Dp,
@@ -480,16 +502,18 @@ private fun ZmanimCardsGrid(
     compactMode: Boolean = false,
 ) {
     val capacity = items.rowCapacity(columns.coerceAtLeast(1)) { it.span }
-    val rows = items.toZmanimRows(capacity) { it.span }
+    // As many rows as the greedy fill needs (the height counts on it), but shared out evenly, so none ends on a hole
+    val rows = items.balancedRows(items.toZmanimRows(capacity) { it.span }.size) { it.span }
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        // Width of one slot plus its gap: an item of span n spans n pitches minus one gap, so every full row has the same
-        // width whatever its item count (two half cards and their gap make exactly one card)
-        val pitch = (maxWidth + horizontalSpacing) / capacity
+        val width = maxWidth
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(verticalSpacing),
         ) {
             rows.forEach { rowItems ->
+                // Width of one slot plus its gap: an item of span n spans n pitches minus one gap, so the row fills
+                // the width whatever its item count (two half cards and their gap make exactly one card)
+                val pitch = (width + horizontalSpacing) / rowItems.sumOf { it.span.toDouble() }.toFloat()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
@@ -1323,28 +1347,53 @@ private fun computeShabbatTimes(
         }
     val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
 
-    val entryCalendar = zmanimCalendar(fridayDate, location, opinion, inIsrael)
-    val exitCalendar = zmanimCalendar(shabbatDate, location, opinion, inIsrael)
-    val (entryTime, exitTime) =
-        when (opinion) {
-            // אור החיים: candles 20 minutes before sunset everywhere; Shabbat ends 30 minutes after it in Israel.
-            // ponytail: abroad the RO calendar defaults to Amudei Horaah (7.165°); we keep its fixed-minutes choice, 40
-            ZmanimOpinion.OHR_HACHAIM -> {
-                exitCalendar.ateretTorahSunsetOffset = if (inIsrael) 30.0 else 40.0
-                entryCalendar.ohrHaChaimSunset?.minus(20.minutes)?.toDate() to exitCalendar.tzaisAteretTorah.toDate()
-            }
-
-                val candles =
-                val sunset = if (candles.fromHeight) entryCalendar.sunset else entryCalendar.seaLevelSunset
-                sunset?.minus(candles.minutes.minutes)?.toDate() to exitCalendar.tzais.toDate()
-            }
-        }
+    val entryTime = candleLightingTime(fridayDate, location, opinion, cityLabel, inIsrael)
+    val exitTime = havdalahTime(shabbatDate, location, opinion, inIsrael)
 
     return ShabbatTimes(
         parashaName = parashaTitle,
         entryTime = entryTime,
         exitTime = exitTime,
     )
+}
+
+/** Candle lighting on [eve], the day before a Shabbat or Yom Tov, as [opinion]'s luach prints it. */
+internal fun candleLightingTime(
+    eve: LocalDate,
+    location: EarthWidgetLocation,
+    opinion: ZmanimOpinion,
+    cityLabel: String?,
+    inIsrael: Boolean,
+): Date? {
+    val calendar = zmanimCalendar(eve, location, opinion, inIsrael)
+    return when (opinion) {
+        // אור החיים: candles 20 minutes before sunset everywhere
+        ZmanimOpinion.OHR_HACHAIM -> calendar.ohrHaChaimSunset?.minus(20.minutes)?.toDate()
+
+            val candles =
+            val sunset = if (candles.fromHeight) calendar.sunset else calendar.seaLevelSunset
+            sunset?.minus(candles.minutes.minutes)?.toDate()
+        }
+    }
+}
+
+/** The end of the Shabbat or Yom Tov of [day], as [opinion]'s luach prints it. */
+internal fun havdalahTime(
+    day: LocalDate,
+    location: EarthWidgetLocation,
+    opinion: ZmanimOpinion,
+    inIsrael: Boolean,
+): Date? {
+    val calendar = zmanimCalendar(day, location, opinion, inIsrael)
+    return when (opinion) {
+        // אור החיים: 30 minutes after sunset in Israel
+        // ponytail: abroad the RO calendar defaults to Amudei Horaah (7.165°); we keep its fixed-minutes choice, 40
+        ZmanimOpinion.OHR_HACHAIM -> {
+            calendar.ateretTorahSunsetOffset = if (inIsrael) 30.0 else 40.0
+            calendar.tzaisAteretTorah.toDate()
+        }
+
+    }
 }
 
 private fun isJerusalemLocation(

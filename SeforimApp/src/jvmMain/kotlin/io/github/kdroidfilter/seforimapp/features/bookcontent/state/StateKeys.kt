@@ -9,6 +9,9 @@ object StateKeys {
     const val BOOK_ID = "bookId"
     const val LINE_ID = "lineId"
 
+    // Open the notes pane on the requested line (a note opened from the notes page or widget)
+    const val OPEN_NOTES = "openNotes"
+
     // Source hints for book opening (ephemeral)
     const val OPEN_SOURCE = "bookOpenSource"
 

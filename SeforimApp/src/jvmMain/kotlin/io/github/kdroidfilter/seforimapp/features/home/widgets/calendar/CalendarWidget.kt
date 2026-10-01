@@ -41,6 +41,7 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -66,7 +67,9 @@ internal object CalendarWidget : HomeWidget {
     override val title = Res.string.home_widget_name_calendar
     override val defaultSpan = CellSpan(7, 5)
     override val minSpan = CellSpan(7, 5)
-    override val maxSpan = CellSpan(14, 8)
+
+    // Six week rows hold their two lines of text; taller would only part them
+    override val maxSpan = CellSpan(14, 6)
 
     @Composable
     override fun Content(
@@ -80,7 +83,7 @@ internal object CalendarWidget : HomeWidget {
         val month = remember(shown, state.inIsrael) { calendarMonth(shown, state.inIsrael) }
         val accent = rememberAccentColor(JewelTheme.isDark)
 
-        CalendarCard(modifier) {
+        PanelCard(modifier) {
             Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MonthHeader(
                     month = month,
@@ -89,7 +92,7 @@ internal object CalendarWidget : HomeWidget {
                 )
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     // Holiday names only where a cell can hold a word
-                    val showTags = maxWidth / 7 >= 64.dp
+                    val showTags = maxWidth / 7 >= 56.dp
                     // Too narrow for both dates side by side: the Gregorian one goes under the Hebrew one
                     val stacked = maxWidth / 7 < 56.dp
                     Column(Modifier.fillMaxSize()) {
@@ -195,22 +198,6 @@ private fun JewishCalendar.tag(): String {
     hebrewFormatter.formatYomTov(this).takeIf { it.isNotBlank() }?.let { return it }
     if (isRoshChodesh) return hebrewFormatter.formatRoshChodesh(this).ifBlank { "ראש חודש" }
     return ""
-}
-
-@Composable
-private fun CalendarCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val isDark = JewelTheme.isDark
-    val shape = RoundedCornerShape(18.dp)
-    val border = if (isDark) JewelTheme.globalColors.borders.disabled else JewelTheme.globalColors.borders.normal
-    Box(
-        modifier
-            .clip(shape)
-            .background(JewelTheme.globalColors.panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f), shape)
-            .border(1.5.dp, border, shape),
-    ) { content() }
 }
 
 @Composable

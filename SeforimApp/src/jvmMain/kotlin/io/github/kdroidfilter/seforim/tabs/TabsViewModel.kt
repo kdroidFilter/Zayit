@@ -141,4 +141,5 @@ internal fun TabsDestination.withTabId(tabId: String): TabsDestination =
         is TabsDestination.BookContent -> copy(tabId = tabId)
         is TabsDestination.History -> copy(tabId = tabId)
         is TabsDestination.Favorites -> copy(tabId = tabId)
+        is TabsDestination.Notes -> copy(tabId = tabId)
     }

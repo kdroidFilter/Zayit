@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.MainAppState
+import io.github.kdroidfilter.seforimapp.core.annotations.BookNote
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteEntry
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
@@ -86,6 +87,32 @@ fun AppNativeMenuBar(
         }
     }
 
+    val noteStore = LocalAppGraph.current.noteStore
+    val notesWritten by noteStore.notesByBook.collectAsState()
+    var recentNotes by remember { mutableStateOf<List<BookNote>>(emptyList()) }
+    LaunchedEffect(notesWritten) { recentNotes = noteStore.recent(MENU_RECENT_NOTES) }
+
+    fun openNotesTab() {
+        val tabs = tabsViewModel.state.value.tabs
+        val existing = tabs.indexOfFirst { it.destination is TabsDestination.Notes }
+        if (existing >= 0) {
+            tabsViewModel.onEvent(TabsEvents.OnSelect(existing))
+        } else {
+            tabsViewModel.openTab(TabsDestination.Notes(tabId = UUID.randomUUID().toString()))
+        }
+    }
+
+    fun openNote(bookNote: BookNote) {
+        tabsViewModel.openTab(
+            TabsDestination.BookContent(
+                bookId = bookNote.bookId,
+                tabId = UUID.randomUUID().toString(),
+                lineId = bookNote.note.lineId,
+                openNotes = true,
+            ),
+        )
+    }
+
     fun openFavorite(entry: FavoriteEntry) {
         tabsViewModel.openTab(
             TabsDestination.BookContent(bookId = entry.bookId, tabId = UUID.randomUUID().toString(), lineId = entry.lineId),
@@ -149,6 +176,8 @@ fun AppNativeMenuBar(
     val menuRecentlyVisited = stringResource(Res.string.menu_recently_visited)
     val menuFavorites = stringResource(Res.string.favorites_title)
     val menuShowAllFavorites = stringResource(Res.string.favorites_show_all)
+    val menuNotes = stringResource(Res.string.notes_title)
+    val menuShowAllNotes = stringResource(Res.string.notes_show_all)
     val menuWindow = stringResource(Res.string.menu_window)
     val menuHelp = stringResource(Res.string.menu_help)
 
@@ -380,6 +409,26 @@ fun AppNativeMenuBar(
             }
         }
 
+        Menu(menuNotes) {
+            Item(
+                text = menuShowAllNotes,
+                icon = NsMenuItemImage.SystemSymbol("note.text"),
+            ) {
+                openNotesTab()
+            }
+            if (recentNotes.isNotEmpty()) {
+                Separator()
+                recentNotes.forEach { bookNote ->
+                    Item(
+                        text = bookNote.note.note.take(MENU_TITLE_MAX_LENGTH),
+                        icon = NsMenuItemImage.SystemSymbol("square.and.pencil"),
+                    ) {
+                        openNote(bookNote)
+                    }
+                }
+            }
+        }
+
         // Window menu (macOS auto-adds window list)
         MenuWindow(menuWindow) {}
 
@@ -390,3 +439,4 @@ fun AppNativeMenuBar(
 
 private const val RECENT_VISITS_IN_MENU = 40
 private const val MENU_TITLE_MAX_LENGTH = 50
+private const val MENU_RECENT_NOTES = 10

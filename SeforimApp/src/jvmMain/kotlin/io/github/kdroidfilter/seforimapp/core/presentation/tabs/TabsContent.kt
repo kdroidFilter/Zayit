@@ -48,6 +48,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.favorites.FavoritesTabContent
 import io.github.kdroidfilter.seforimapp.features.history.HistoryTabContent
+import io.github.kdroidfilter.seforimapp.features.notes.NotesTabContent
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
@@ -76,6 +77,7 @@ private fun TabsDestination.typeKey(): String =
         is TabsDestination.BookContent -> "book"
         is TabsDestination.History -> "history"
         is TabsDestination.Favorites -> "favorites"
+        is TabsDestination.Notes -> "notes"
     }
 
 private fun saveableKeyFor(destination: TabsDestination): String = "${destination.tabId}:${destination.typeKey()}"
@@ -279,6 +281,10 @@ fun TabsContent() {
 
                                 is TabsDestination.Favorites -> {
                                     FavoritesTabContent(tabId = tabId)
+                                }
+
+                                is TabsDestination.Notes -> {
+                                    NotesTabContent(tabId = tabId)
                                 }
                             }
                         }
@@ -520,6 +526,7 @@ class SimpleTabViewModelOwner(
                     is TabsDestination.BookContent -> {
                         if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
                         destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
+                        if (destination.openNotes) putBoolean(StateKeys.OPEN_NOTES, true)
                     }
                     else -> Unit
                 }

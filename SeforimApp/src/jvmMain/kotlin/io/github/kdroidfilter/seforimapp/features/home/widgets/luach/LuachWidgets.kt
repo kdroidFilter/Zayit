@@ -31,10 +31,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,7 +53,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.toKotlinLocalDate
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widget_name_events
 import seforimapp.seforimapp.generated.resources.home_widget_name_limud
@@ -70,11 +74,11 @@ import java.util.UUID
 internal object LimudWidget : HomeWidget {
     override val id = "limud"
     override val title = Res.string.home_widget_name_limud
-    override val defaultSpan = CellSpan(9, 2)
-    override val minSpan = CellSpan(5, 2)
+    override val defaultSpan = CellSpan(4, 2)
+    override val minSpan = CellSpan(4, 2)
 
-    // Wider, each tile would be mostly empty around its two short lines
-    override val maxSpan = CellSpan(11, 2)
+    // Three short lines: wider would only part them from their tags
+    override val maxSpan = CellSpan(5, 2)
 
     @Composable
     override fun Content(
@@ -83,7 +87,7 @@ internal object LimudWidget : HomeWidget {
     ) = LimudPanel(state, rememberOpenInLibrary(), modifier)
 }
 
-/** The limud tiles, opening a place with [open]. */
+/** The limud lines, opening a place with [open]. */
 @Composable
 internal fun LimudPanel(
     state: HomeWidgetsState,
@@ -91,64 +95,62 @@ internal fun LimudPanel(
     modifier: Modifier = Modifier,
 ) {
     val items = remember(state.selectedDate, state.inIsrael) { limudOfDay(state.selectedDate, state.inIsrael) }
+    val accent = rememberAccentColor(JewelTheme.isDark)
     PanelCard(modifier) {
-        BoxWithConstraints(Modifier.fillMaxSize().padding(8.dp)) {
-            // Side by side where each tile can hold its two lines, one line each under one another otherwise
-            if (maxWidth >= 300.dp) {
-                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items.forEach { LimudTile(it, stacked = true, open, Modifier.weight(1f).fillMaxHeight()) }
-                }
-            } else {
-                Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    items.forEach { LimudTile(it, stacked = false, open, Modifier.weight(1f).fillMaxWidth()) }
-                }
+        Column(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp)) {
+            Text(
+                "לימוד יומי",
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
+            Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
+                items.forEach { LimudRow(it, accent, open) }
             }
         }
     }
 }
 
 @Composable
-private fun LimudTile(
+private fun LimudRow(
     item: LimudItem,
-    stacked: Boolean,
+    accent: Color,
     open: (LibraryPlace) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
-    val accent = rememberAccentColor(JewelTheme.isDark)
     val place = item.place
-    val color = if (place != null) accent else JewelTheme.globalColors.text.normal
-    HoverBox(onClick = place?.let { { open(it) } }, modifier = modifier, tinted = true) {
-        if (stacked) {
-            Column(
-                Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
-                horizontalAlignment = Alignment.CenterHorizontally,
+    HoverBox(onClick = place?.let { { open(it) } }, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // The kind of limud, as a tag
+            Box(
+                Modifier
+                    .width(54.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(accent.copy(alpha = 0.16f))
+                    .padding(vertical = 2.dp),
+                contentAlignment = Alignment.Center,
             ) {
-                Kicker(item.kicker)
-                Text(
-                    item.value,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = color,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(item.kicker, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = accent, maxLines = 1)
             }
-        } else {
-            Row(
-                Modifier.fillMaxSize().padding(horizontal = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Kicker(item.kicker)
-                Text(
-                    item.value,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = color,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
+            Text(
+                item.value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            if (place != null) {
+                // Towards the end of the reading direction: "open"
+                val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+                Icon(
+                    key = if (rtl) AllIconsKeys.General.ChevronLeft else AllIconsKeys.General.ChevronRight,
+                    contentDescription = null,
+                    tint = JewelTheme.globalColors.text.info,
                 )
             }
         }
@@ -293,7 +295,7 @@ private fun EventRow(
 internal object TefilaWidget : HomeWidget {
     override val id = "tefila"
     override val title = Res.string.home_widget_name_tefila
-    override val defaultSpan = CellSpan(6, 3)
+    override val defaultSpan = CellSpan(5, 3)
     override val minSpan = CellSpan(5, 3)
 
     // Seven short lines at most: more room would only spread them apart
@@ -312,15 +314,24 @@ internal object TefilaWidget : HomeWidget {
             }
         val accent = rememberAccentColor(JewelTheme.isDark)
         PanelCard(modifier) {
-            Column(Modifier.fillMaxSize().padding(12.dp)) {
-                Kicker("תפילת היום · $hebrewDate")
-                Column(Modifier.fillMaxWidth().weight(1f).padding(top = 4.dp)) {
-                    lines.forEach { TefilaRow(it, accent, Modifier.weight(1f)) }
+            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text("תפילת היום", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.weight(1f))
+                    Text(hebrewDate, fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1)
+                }
+                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                    // The lines share the card's height, but never further apart than reads as one list
+                    val gap = ((maxHeight - TEFILA_LINE_HEIGHT * lines.size) / lines.size).coerceIn(5.dp, 10.dp)
+                    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically)) {
+                        lines.forEach { TefilaRow(it, accent) }
+                    }
                 }
             }
         }
     }
 }
+
+private val TEFILA_LINE_HEIGHT = 17.dp
 
 @Composable
 private fun TefilaRow(
@@ -329,7 +340,7 @@ private fun TefilaRow(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(line.label, fontSize = 12.sp, color = JewelTheme.globalColors.text.info, maxLines = 1, modifier = Modifier.width(76.dp))
+        Text(line.label, fontSize = 12.sp, color = JewelTheme.globalColors.text.info, maxLines = 1, modifier = Modifier.width(68.dp))
         Text(
             line.value,
             fontSize = 13.sp,

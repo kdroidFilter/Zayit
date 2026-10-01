@@ -72,17 +72,17 @@ internal fun limudOfDay(
     val yerushalmi = day.dafYomiYerushalmi
     return listOf(
         LimudItem(
-            kicker = "פרשת השבוע",
+            kicker = "פרשה",
             value = hebrewFormatter.formatParsha(shabbat)?.takeIf { it.isNotBlank() } ?: "אין פרשה",
             place = parshaPlace(parsha),
         ),
         LimudItem(
-            kicker = "דף יומי · בבלי",
+            kicker = "בבלי",
             value = bavli?.let(hebrewFormatter::formatDafYomiBavli) ?: "—",
             place = bavli?.let { bavliPlace(it.masechtaNumber, it.masechta, it.daf) },
         ),
         LimudItem(
-            kicker = "דף יומי · ירושלמי",
+            kicker = "ירושלמי",
             value = hebrewFormatter.formatDafYomiYerushalmi(yerushalmi),
             place = yerushalmi?.let { LibraryPlace("תלמוד ירושלמי ${yerushalmiTitle(it.yerushalmiMasechta)}") },
         ),

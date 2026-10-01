@@ -2,7 +2,6 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets.luach
 
 import androidx.compose.runtime.Immutable
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
-import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar.Parsha
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.TefilaRules
@@ -159,7 +158,7 @@ internal fun tefilaOfDay(
             when {
                 rules.isMashivHaruachStartDate(day) -> "מוריד הטל · במוסף משיב הרוח"
                 rules.isMashivHaruachEndDate(day) -> "משיב הרוח · במוסף מוריד הטל"
-                day.isMashivHaruachSeason() -> "משיב הרוח ומוריד הגשם"
+                rules.isMashivHaruachRecited(day) -> "משיב הרוח ומוריד הגשם"
                 else -> "מוריד הטל"
             }
         add(TefilaLine("גבורות", gevuros))
@@ -172,20 +171,6 @@ internal fun tefilaOfDay(
         if (rules.isYaalehVeyavoRecited(day)) add(TefilaLine("יעלה ויבוא", "אומרים", special = true))
         if (rules.isAlHanissimRecited(day)) add(TefilaLine("על הניסים", "אומרים", special = true))
         if (day.dayOfOmer != -1) add(TefilaLine("ספירת העומר", hebrewFormatter.formatOmer(day), special = true))
-    }
-}
-
-/**
- * From after 22 Tishrei to before 15 Nissan. TefilaRules.isMashivHaruachRecited of KosherKotlin 3.0.0 builds its
- * bounds with the month as the year, and throws.
- */
-private fun JewishCalendar.isMashivHaruachSeason(): Boolean {
-    val day = jewishDayOfMonth
-    return when (hebrewLocalDate.month) {
-        HebrewMonth.TISHREI -> day > 22
-        HebrewMonth.NISSAN -> day < 15
-        HebrewMonth.CHESHVAN, HebrewMonth.KISLEV, HebrewMonth.TEVES, HebrewMonth.SHEVAT, HebrewMonth.ADAR, HebrewMonth.ADAR_II -> true
-        else -> false
     }
 }
 

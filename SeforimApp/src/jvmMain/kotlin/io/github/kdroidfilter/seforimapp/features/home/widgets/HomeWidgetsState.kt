@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
@@ -74,6 +75,9 @@ class HomeWidgetsState internal constructor(
             }
 
     var solarSystemFullscreen by mutableStateOf(false)
+
+    /** Opens a destination in a new tab of the Home's window; set by the Home, a no-op where there's no window. */
+    var openTab: (TabsDestination) -> Unit = {}
 
     /** The Home's edit mode, as on macOS: widgets can be moved and removed, and the gallery adds new ones. */
     var editingWidgets by mutableStateOf(false)

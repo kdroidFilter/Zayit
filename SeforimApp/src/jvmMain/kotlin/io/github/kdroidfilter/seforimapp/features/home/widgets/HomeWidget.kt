@@ -6,6 +6,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.library.FavoritesWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.library.HistoryWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.library.NotesWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.MoladWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.NextZmanWidget
@@ -81,6 +84,9 @@ val availableHomeWidgets: List<HomeWidget> =
         UpcomingEventsWidget,
         TefilaWidget,
         MoladWidget,
+        HistoryWidget,
+        FavoritesWidget,
+        NotesWidget,
     )
 
 /**

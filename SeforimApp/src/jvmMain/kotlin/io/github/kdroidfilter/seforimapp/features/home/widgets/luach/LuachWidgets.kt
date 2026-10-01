@@ -1,10 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets.luach
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,14 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Constraints
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -42,11 +33,12 @@ import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
+import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
-import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -83,12 +75,12 @@ internal object LimudWidget : HomeWidget {
     override fun Content(
         state: HomeWidgetsState,
         modifier: Modifier,
-    ) = LimudPanel(state, rememberOpenInLibrary(), modifier)
+    ) = LimudPanel(state, rememberOpenInLibrary(state), modifier)
 }
 
 /** The limud lines, opening a place with [open]. */
 @Composable
-internal fun LimudPanel(
+private fun LimudPanel(
     state: HomeWidgetsState,
     open: (LibraryPlace) -> Unit,
     modifier: Modifier = Modifier,
@@ -442,64 +434,6 @@ private fun TimeRow(
     }
 }
 
-/** Its children from the top, as many as fit whole; the others aren't shown. */
-@Composable
-private fun FitColumn(
-    modifier: Modifier = Modifier,
-    spacing: Dp = 0.dp,
-    content: @Composable () -> Unit,
-) {
-    Layout(content, modifier) { measurables, constraints ->
-        val gap = spacing.roundToPx()
-        val loose = constraints.copy(minHeight = 0, maxHeight = Constraints.Infinity)
-        var y = 0
-        val placed =
-            buildList {
-                for (measurable in measurables) {
-                    val placeable = measurable.measure(loose)
-                    if (y + placeable.height > constraints.maxHeight) break
-                    add(y to placeable)
-                    y += placeable.height + gap
-                }
-            }
-        layout(constraints.maxWidth, constraints.maxHeight) {
-            placed.forEach { (top, placeable) -> placeable.placeRelative(0, top) }
-        }
-    }
-}
-
-/** A rounded area lit on hover, with a hand cursor where it can be clicked; [tinted] shows its area at rest. */
-@Composable
-private fun HoverBox(
-    onClick: (() -> Unit)?,
-    modifier: Modifier = Modifier,
-    tinted: Boolean = false,
-    content: @Composable () -> Unit,
-) {
-    val hover = remember { MutableInteractionSource() }
-    val hovered by hover.collectIsHoveredAsState()
-    val shape = RoundedCornerShape(10.dp)
-    val tint = JewelTheme.globalColors.text.normal
-    val alpha =
-        when {
-            hovered && onClick != null -> 0.10f
-            tinted -> 0.05f
-            else -> 0f
-        }
-    Box(
-        modifier
-            .clip(shape)
-            .background(if (alpha > 0f) tint.copy(alpha = alpha) else Color.Transparent)
-            .then(
-                if (onClick != null) {
-                    Modifier.hoverable(hover).pointerHoverIcon(PointerIcon.Hand).clickable(onClick = onClick)
-                } else {
-                    Modifier
-                },
-            ),
-    ) { content() }
-}
-
 private fun String.ltr() = "⁦$this⁩"
 
 /** HH:mm in [zone], kept left-to-right in the Hebrew text. */
@@ -521,15 +455,16 @@ private fun rememberMinute(): Date {
     return now
 }
 
-/** Opens a [LibraryPlace] in a new tab of this window; does nothing if the library doesn't have the book. */
+/** Opens a [LibraryPlace] in a new tab of the Home's window; does nothing if the library doesn't have the book. */
 @Composable
-private fun rememberOpenInLibrary(): (LibraryPlace) -> Unit {
-    val repository = LocalAppGraph.current.repository
-    val tabs = LocalOpenWindow.current.tabsViewModel
+private fun rememberOpenInLibrary(state: HomeWidgetsState): (LibraryPlace) -> Unit {
+    val graph = LocalAppGraph.current
     val scope = rememberCoroutineScope()
-    return remember(repository, tabs, scope) {
+    return remember(graph, state, scope) {
         { place ->
             scope.launch {
+                // Read on click: the books DB is opened when first needed, never by showing the card
+                val repository = graph.repository
                 val book = repository.getBookByTitle(place.bookTitle) ?: return@launch
                 val lineId =
                     when {
@@ -546,7 +481,7 @@ private fun rememberOpenInLibrary(): (LibraryPlace) -> Unit {
 
                         else -> null
                     }
-                tabs.openTab(TabsDestination.BookContent(bookId = book.id, tabId = UUID.randomUUID().toString(), lineId = lineId))
+                state.openTab(TabsDestination.BookContent(bookId = book.id, tabId = UUID.randomUUID().toString(), lineId = lineId))
             }
         }
     }

@@ -15,13 +15,12 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudPanel
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudWidget
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.testAppSettings
 import io.github.vinceglb.filekit.FileKit
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import java.awt.image.BufferedImage
@@ -39,8 +38,33 @@ import kotlin.test.assertTrue
 class WidgetSizesScreenshotTest {
     private val graph by lazy {
         FileKit.init("seforimapp-tests")
-        createGraph<AppGraph>()
+        createGraph<AppGraph>().also(::seed)
     }
+
+    /** Enough history, favorites and notes in the tests' own user DB for their widgets to fill every size. */
+    private fun seed(graph: AppGraph) =
+        runBlocking {
+            val now = System.currentTimeMillis()
+            repeat(40) { i ->
+                if (i % 4 == 3) {
+                    graph.historyStore.recordSearchVisit(SEARCHES[i % SEARCHES.size], now - i * HOUR)
+                } else {
+                    graph.historyStore.recordBookVisit(1000L + i, TITLES[i % TITLES.size], now - i * HOUR)
+                }
+            }
+            val folder =
+                graph.favoritesStore
+                    .folders()
+                    .firstOrNull()
+                    ?.id ?: graph.favoritesStore.createFolder("תיקייה", now)
+            repeat(40) { i ->
+                graph.favoritesStore.add(2000L + i, TITLES[i % TITLES.size], now - i * HOUR, folderId = folder.takeIf { i % 3 == 0 })
+            }
+            graph.noteStore.recent(100).forEach { graph.noteStore.removeNote(it.bookId, it.note.id) }
+            repeat(20) { i ->
+                graph.noteStore.addNote(3000L + i, 1L, 0, 5, NOTES[i % NOTES.size], now - i * HOUR, quote = QUOTES[i % QUOTES.size])
+            }
+        }
 
     private val pitch = CellPitch(MAX_GRID_WIDTH)
     private val out =
@@ -92,11 +116,15 @@ class WidgetSizesScreenshotTest {
                         val state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE, HomeWidgetsLayout(testAppSettings()))
                         Box(Modifier.background(JewelTheme.globalColors.panelBackground)) {
                             val modifier = Modifier.size(width, height)
-                            if (widget == LimudWidget) LimudPanel(state, {}, modifier) else widget.Content(state, modifier)
+                            widget.Content(state, modifier)
                         }
                     }
                 }
             }
+            waitForIdle()
+            // ponytail: the lists read their stores on Dispatchers.IO, which waitForIdle doesn't wait for; a pause
+            // lets them land. A wait on the store's result if it ever proves too short
+            Thread.sleep(STORE_READ_MS)
             waitForIdle()
             image = onRoot().captureToImage().toAwtImage()
         }
@@ -144,6 +172,23 @@ class WidgetSizesScreenshotTest {
 
     private companion object {
         val FILAMENT_WIDGETS = setOf("earth", "sky", "solar_system")
+
+        const val HOUR = 3_600_000L
+        const val STORE_READ_MS = 150L
+
+        // As long as real entries: a book, its part and its chapter
+        val TITLES =
+            listOf(
+                "שולחן ערוך, אורח חיים, סימן קכח",
+                "משנה ברורה, סימן רסג",
+                "ברכות, דף כו.",
+                "רמב״ם, הלכות תפילה, פרק ד",
+                "בראשית, פרק כח",
+                "מסילת ישרים, פרק יט",
+            )
+        val SEARCHES = listOf("תפילת הדרך", "קריאת שמע על המטה", "ברכת הלבנה")
+        val NOTES = listOf("לעיין בשיטת הרמב״ם כאן", "השווה למשנה ברורה ס״ק ב", "קושיא: למה לא הביא את הירושלמי?")
+        val QUOTES = listOf("והוא רחום יכפר עון", "מאימתי קורין את שמע בערבין", "ויצא יעקב מבאר שבע")
 
         /** The frame, its rounded corners and the cards' own padding: not content, never counted. */
         const val FRAME_INSET = 16

@@ -66,6 +66,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocation
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocationViewModel
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsGrid
+import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsLayout
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsOverlay
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
@@ -284,10 +285,13 @@ private fun HomeBody(
         remember(searchUi.userCommunityCode) {
             searchUi.userCommunityCode?.let { code -> runCatching { Community.valueOf(code) }.getOrNull() }
         }
-    val widgetsState = remember(userLocation, community) { HomeWidgetsState(userLocation, community) }
+    val widgetsState =
+        remember(userLocation, community, appSettings) {
+            HomeWidgetsState(userLocation, community, HomeWidgetsLayout(appSettings))
+        }
     if (E2e.enabled && LocalTabSelected.current) SideEffect { E2e.homeWidgets = widgetsState }
     // Composed here, outside the LazyColumn, so scrolling a card away doesn't close its window
-    val widgetsLayoutRaw by AppSettings.homeWidgetsLayoutFlow.collectAsState()
+    val widgetsLayoutRaw by appSettings.homeWidgetsLayoutFlow.collectAsState()
     val widgetsLayout = remember(widgetsLayoutRaw) { decodeLayout(widgetsLayoutRaw) }
     widgetsLayout.forEach { it.widget.Detached(widgetsState) }
 

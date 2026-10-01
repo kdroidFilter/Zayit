@@ -137,7 +137,7 @@ fun HomeWidgetsGrid(
             }
         }
     // Widgets this platform can't show keep their place in the save
-    val save = { HomeWidgetsLayout.save(live + widgets.filterNot { it.widget.isSupported }) }
+    val save = { state.layout.save(live + widgets.filterNot { it.widget.isSupported }) }
 
     // A widget dragged in from the gallery gets its place in the grid while it's held there, the others making room
     val incoming = state.drag.newWidget?.takeIf { state.drag.overGrid }

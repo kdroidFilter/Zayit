@@ -192,7 +192,7 @@ private fun WidgetGallery(
             RoundIconButton(
                 icon = AllIconsKeys.Actions.Rollback,
                 label = stringResource(Res.string.home_widgets_reset),
-                onClick = { HomeWidgetsLayout.reset() },
+                onClick = { state.layout.reset() },
             )
             RoundIconButton(
                 icon = AllIconsKeys.Actions.Checked,
@@ -238,7 +238,7 @@ private fun GalleryItem(
                 Modifier
                     .matchParentSize()
                     .then(if (added) Modifier else Modifier.pointerHoverIcon(PointerIcon.Hand))
-                    .pointerInput(added) { detectTapGestures { if (!added) HomeWidgetsLayout.add(widget, size) } }
+                    .pointerInput(added) { detectTapGestures { if (!added) state.layout.add(widget, size) } }
                     .pointerInput(added, size) {
                         if (added) return@pointerInput
                         detectDragGestures(
@@ -254,7 +254,7 @@ private fun GalleryItem(
                                 // Dropped back on the gallery: nothing; else where its placeholder shows
                                 if (drag.overGrid) {
                                     val target = availableHomeWidgets.firstOrNull { it.id == drag.targetId }
-                                    HomeWidgetsLayout.add(widget, size, before = target)
+                                    state.layout.add(widget, size, before = target)
                                 }
                                 drag.end()
                             },

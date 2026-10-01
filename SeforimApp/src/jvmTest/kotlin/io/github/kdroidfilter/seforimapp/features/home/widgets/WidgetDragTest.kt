@@ -2,9 +2,9 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
+import io.github.kdroidfilter.seforimapp.testAppSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -12,6 +12,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WidgetDragTest {
+    private val appSettings = testAppSettings()
+    private val layout = HomeWidgetsLayout(appSettings)
+
     @Test
     fun `a gallery drag targets the widget under it, and holds over its own placeholder`() {
         val drag =
@@ -42,15 +45,15 @@ class WidgetDragTest {
 
     @Test
     fun `a removed widget comes back where it was`() {
-        val saved = AppSettings.homeWidgetsLayoutFlow.value
+        val saved = appSettings.homeWidgetsLayoutFlow.value
         try {
-            AppSettings.setHomeWidgetsLayout(encodeLayout(homeWidgets))
-            val removed = HomeWidgetsLayout.remove(TempleCountdownWidget)!!
-            assertTrue(HomeWidgetsLayout.current().none { it.widget.id == "temple_countdown" })
-            HomeWidgetsLayout.restore(removed)
-            assertEquals(homeWidgets, HomeWidgetsLayout.current())
+            appSettings.setHomeWidgetsLayout(encodeLayout(homeWidgets))
+            val removed = layout.remove(TempleCountdownWidget)!!
+            assertTrue(layout.current().none { it.widget.id == "temple_countdown" })
+            layout.restore(removed)
+            assertEquals(homeWidgets, layout.current())
         } finally {
-            AppSettings.setHomeWidgetsLayout(saved)
+            appSettings.setHomeWidgetsLayout(saved)
         }
     }
 }

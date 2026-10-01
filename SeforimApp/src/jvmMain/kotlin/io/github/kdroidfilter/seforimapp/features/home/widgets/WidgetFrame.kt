@@ -228,7 +228,7 @@ private fun WidgetMenu(
                     iconKey = if (size == placement.size) AllIconsKeys.Actions.Checked else null,
                     onClick = {
                         onDismiss()
-                        HomeWidgetsLayout.resize(widget, size)
+                        state.layout.resize(widget, size)
                     },
                 ) { Text(sizeLabels.getValue(size)) }
             }

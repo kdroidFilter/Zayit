@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidg
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.testAppSettings
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import java.io.File
@@ -33,6 +34,9 @@ import kotlin.test.Test
 /** Renders the Home widgets to build/screenshots so their layout can be eyeballed without launching the app. */
 @OptIn(ExperimentalTestApi::class)
 class HomeWidgetsScreenshotTest {
+    private val appSettings = testAppSettings()
+    private val layout = HomeWidgetsLayout(appSettings)
+
     private val graph by lazy { createGraph<AppGraph>() }
 
     @Test
@@ -83,7 +87,7 @@ class HomeWidgetsScreenshotTest {
                     LocalLayoutDirection provides LayoutDirection.Rtl,
                 ) {
                     val state =
-                        HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE).also {
+                        HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE, layout).also {
                             it.editingWidgets = editing
                             setUp(it)
                         }

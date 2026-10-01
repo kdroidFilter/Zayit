@@ -12,7 +12,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.ReaderPane
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsLayout
@@ -47,6 +46,9 @@ import kotlin.random.Random
  * `ZAYIT_E2E_BURST` (operations launched together, interleaving at their suspension points, to shake out races).
  */
 object E2eTortureScenario {
+    private val appSettings get() = E2eScenario.graph().appSettings
+    private val homeLayout get() = HomeWidgetsLayout(appSettings)
+
     private const val OPS = 400
     private const val SETTLE_MS = 350L
     private const val CAPTURE_EVERY = 50
@@ -99,8 +101,8 @@ object E2eTortureScenario {
             .drop(1)
             .forEach { dm.closeWindow(it.id) }
         delay(1000)
-        val widgetsLayout = AppSettings.homeWidgetsLayoutFlow.value
-        val showWidgets = AppSettings.isShowZmanimWidgetsEnabled()
+        val widgetsLayout = appSettings.homeWidgetsLayoutFlow.value
+        val showWidgets = appSettings.isShowZmanimWidgetsEnabled()
         sc.note("TORTURE seed=$seed ops=$ops settle=${settleMs}ms burst=$burst books=${books.size}")
         coroutineScope {
             val watchers = watch(this)
@@ -140,8 +142,8 @@ object E2eTortureScenario {
                 }
             } finally {
                 watchers.cancel()
-                AppSettings.setHomeWidgetsLayout(widgetsLayout)
-                AppSettings.setShowZmanimWidgetsEnabled(showWidgets)
+                appSettings.setHomeWidgetsLayout(widgetsLayout)
+                appSettings.setShowZmanimWidgetsEnabled(showWidgets)
             }
         }
         sc.note(
@@ -383,7 +385,7 @@ object E2eTortureScenario {
                 "theme"
             }
             21 -> {
-                AppSettings.setTextSize(12f + random.nextInt(30))
+                appSettings.setTextSize(12f + random.nextInt(30))
                 "text-size"
             }
             22 -> {
@@ -392,13 +394,13 @@ object E2eTortureScenario {
             }
             23 -> {
                 val widget = availableHomeWidgets.random(random)
-                val placed = HomeWidgetsLayout.current()
+                val placed = homeLayout.current()
                 when {
                     placed.none {
                         it.widget.id == widget.id
-                    } -> HomeWidgetsLayout.add(widget, widget.sizes.keys.random(random), placed.randomOrNull(random)?.widget)
-                    random.nextBoolean() -> home?.removeWidget(widget) ?: HomeWidgetsLayout.remove(widget)
-                    else -> HomeWidgetsLayout.resize(widget, widget.sizes.keys.random(random))
+                    } -> homeLayout.add(widget, widget.sizes.keys.random(random), placed.randomOrNull(random)?.widget)
+                    random.nextBoolean() -> home?.removeWidget(widget) ?: homeLayout.remove(widget)
+                    else -> homeLayout.resize(widget, widget.sizes.keys.random(random))
                 }
                 "widgets-layout"
             }
@@ -406,9 +408,9 @@ object E2eTortureScenario {
                 if (random.nextInt(8) ==
                     0
                 ) {
-                    HomeWidgetsLayout.reset()
+                    homeLayout.reset()
                 } else {
-                    HomeWidgetsLayout.save(HomeWidgetsLayout.current().shuffled(random))
+                    homeLayout.save(homeLayout.current().shuffled(random))
                 }
                 "widgets-reorder"
             }
@@ -421,7 +423,7 @@ object E2eTortureScenario {
                 "widgets-date"
             }
             else -> {
-                AppSettings.setShowZmanimWidgetsEnabled(!AppSettings.isShowZmanimWidgetsEnabled())
+                appSettings.setShowZmanimWidgetsEnabled(!appSettings.isShowZmanimWidgetsEnabled())
                 "widgets-visibility"
             }
         }

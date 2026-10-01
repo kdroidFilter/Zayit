@@ -19,10 +19,12 @@ internal fun decodeLayout(raw: String?): List<WidgetPlacement> {
 internal fun encodeLayout(layout: List<WidgetPlacement>): String = layout.joinToString(",") { "${it.widget.id}:${it.size.name}" }
 
 /** The edits the Home offers on its layout, each saved at once. */
-internal object HomeWidgetsLayout {
-    fun current(): List<WidgetPlacement> = decodeLayout(AppSettings.homeWidgetsLayoutFlow.value)
+internal class HomeWidgetsLayout(
+    private val appSettings: AppSettings,
+) {
+    fun current(): List<WidgetPlacement> = decodeLayout(appSettings.homeWidgetsLayoutFlow.value)
 
-    fun save(layout: List<WidgetPlacement>) = AppSettings.setHomeWidgetsLayout(encodeLayout(layout))
+    fun save(layout: List<WidgetPlacement>) = appSettings.setHomeWidgetsLayout(encodeLayout(layout))
 
     /** At the end, or in [before]'s place when dropped on it. */
     fun add(
@@ -56,7 +58,7 @@ internal object HomeWidgetsLayout {
         size: WidgetSize,
     ) = save(current().map { if (it.widget.id == widget.id) WidgetPlacement(widget, size) else it })
 
-    fun reset() = AppSettings.setHomeWidgetsLayout(null)
+    fun reset() = appSettings.setHomeWidgetsLayout(null)
 }
 
 internal data class RemovedWidget(

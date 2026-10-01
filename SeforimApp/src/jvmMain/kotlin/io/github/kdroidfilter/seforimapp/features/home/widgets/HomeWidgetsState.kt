@@ -19,9 +19,10 @@ import java.util.Date
  * widget [selectDate] / [selectLocation], and every widget follows.
  */
 @Stable
-class HomeWidgetsState(
+class HomeWidgetsState internal constructor(
     private val user: HomeUserLocation,
     community: Community?,
+    internal val layout: HomeWidgetsLayout,
 ) {
     private val sephardi = community == Community.SEPHARADE
 
@@ -85,11 +86,11 @@ class HomeWidgetsState(
         private set
 
     internal fun removeWidget(widget: HomeWidget) {
-        lastRemoved = HomeWidgetsLayout.remove(widget)
+        lastRemoved = layout.remove(widget)
     }
 
     internal fun undoRemove() {
-        lastRemoved?.let(HomeWidgetsLayout::restore)
+        lastRemoved?.let(layout::restore)
         lastRemoved = null
     }
 

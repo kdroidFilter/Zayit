@@ -278,6 +278,10 @@ class BookContentViewModel(
                 if (requestedLineId != null) {
                     loadBookById(bookIdToOpen, requestedLineId, triggerScroll = true)
                     markRange(bookIdToOpen, requestedLineId, savedStateHandle.get<Long>(StateKeys.MARK_END_LINE_ID))
+                    // An aliya opened from the Shnayim Mikra widget
+                    if (savedStateHandle.get<Boolean>(StateKeys.SHNAYIM_MIKRA) == true) {
+                        stateManager.updateContent { copy(shnayimMikra = true) }
+                    }
                     // A note opened from the notes page or widget: its pane, on its line
                     if (savedStateHandle.get<Boolean>(StateKeys.OPEN_NOTES) == true && !stateManager.state.value.notes.isVisible) {
                         notesUseCase.toggleNotes()
@@ -543,6 +547,9 @@ class BookContentViewModel(
 
                 BookContentEvent.ToggleTargum ->
                     contentUseCase.toggleTargum()
+
+                BookContentEvent.ToggleShnayimMikra ->
+                    stateManager.updateContent { copy(shnayimMikra = !shnayimMikra) }
 
                 BookContentEvent.ToggleSources ->
                     contentUseCase.toggleSources()

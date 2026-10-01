@@ -18,7 +18,6 @@ import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.temporal.TemporalAdjusters
 import java.util.Date
 
 // What the luach widgets show, after the KosherKotlin demo's luach: plain data, computed from the day and the place.
@@ -110,17 +109,13 @@ internal fun limudOfDay(
     }
 }
 
-/** The parsha read on the coming Shabbat; none when it is a Yom Tov, rather than one weeks away. */
+/** The parsha of the week, as the Shnayim Mikra widget reads it: past a Shabbat of Yom Tov, the next one read. */
 private fun parshaItem(
     date: LocalDate,
     inIsrael: Boolean,
 ): LimudItem {
-    val shabbat = JewishCalendar(date.with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY)).toKotlinLocalDate(), inIsrael)
-    return LimudItem(
-        kicker = Limud.PARSHA.kicker,
-        value = hebrewFormatter.formatParsha(shabbat)?.takeIf { it.isNotBlank() } ?: "אין פרשה",
-        place = parshaPlace(shabbat.parshah),
-    )
+    val week = mikraWeek(date, inIsrael)
+    return LimudItem(kicker = Limud.PARSHA.kicker, value = week.name, place = parshaPlace(week.parsha))
 }
 
 // Parsha.BERESHIS..VZOS_HABERACHA are 1..54, in the order of the Chumash's Parasha TOCs

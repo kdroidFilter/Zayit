@@ -574,12 +574,18 @@ private fun rememberMinute(): Date {
     return now
 }
 
-/** Opens a [LibraryPlace] in a new tab of the Home's window; does nothing if the library doesn't have the book. */
+/**
+ * Opens a [LibraryPlace] in a new tab of the Home's window, in [shnayimMikra] if asked; does nothing if the library
+ * doesn't have the book.
+ */
 @Composable
-private fun rememberOpenInLibrary(state: HomeWidgetsState): (LibraryPlace) -> Unit {
+internal fun rememberOpenInLibrary(
+    state: HomeWidgetsState,
+    shnayimMikra: Boolean = false,
+): (LibraryPlace) -> Unit {
     val graph = LocalAppGraph.current
     val scope = rememberCoroutineScope()
-    return remember(graph, state, scope) {
+    return remember(graph, state, scope, shnayimMikra) {
         { place ->
             scope.launch {
                 // Read on click: the books DB is opened when first needed, never by showing the card
@@ -592,6 +598,7 @@ private fun rememberOpenInLibrary(state: HomeWidgetsState): (LibraryPlace) -> Un
                         tabId = UUID.randomUUID().toString(),
                         lineId = lineId,
                         endLineId = endLineId,
+                        shnayimMikra = shnayimMikra,
                     ),
                 )
             }

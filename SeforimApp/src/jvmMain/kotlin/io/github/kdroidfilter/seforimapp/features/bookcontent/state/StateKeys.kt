@@ -39,6 +39,7 @@ object StateKeys {
     const val MARK_END_LINE_ID = "markEndLineId"
     const val SHOW_COMMENTARIES = "showCommentaries"
     const val SHOW_TARGUM = "showTargum"
+    const val SHNAYIM_MIKRA = "shnayimMikra"
     const val SHOW_SOURCES = "showSources"
     const val PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
     const val CHAPTER_SCROLL_POSITION = "chapterScrollPosition"

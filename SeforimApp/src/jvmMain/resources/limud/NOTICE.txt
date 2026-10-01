@@ -1,5 +1,6 @@
 The daily learning schedules in this folder come from hebcal-learning (https://github.com/hebcal/hebcal-learning),
-converted to limud.pb (see LimudSchedules.kt); a few typos of the Kitzur Shulchan Aruch schedule were fixed against
+converted to limud.pb (see LimudSchedules.kt), and the aliyot of hebcal-leyning (https://github.com/hebcal/hebcal-leyning,
+same license), in ShnayimMikraWidget.kt; a few typos of the Kitzur Shulchan Aruch schedule were fixed against
 the library's simanim.
 
 BSD 2-Clause License

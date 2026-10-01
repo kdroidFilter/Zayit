@@ -198,6 +198,8 @@ private fun BookContentPanelContent(
                         uiState.content.markedRange
                             ?.takeIf { it.bookId == selectedBook.id }
                             ?.let { it.first..it.last },
+                    // The Chumash's only: another book opened in the tab, by any way, reads as usual
+                    shnayimMikra = uiState.content.shnayimMikra && selectedBook.isChumash,
                     onLineSelect = { line, isModifier ->
                         onEvent(BookContentEvent.LineSelected(line, isModifier))
                     },

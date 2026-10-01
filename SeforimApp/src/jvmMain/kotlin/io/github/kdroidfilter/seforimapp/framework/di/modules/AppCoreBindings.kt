@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
 import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoritesStore
+import io.github.kdroidfilter.seforimapp.core.shnayimmikra.ShnayimMikraStore
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.selection.DefaultSelectionContext
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
@@ -102,6 +103,10 @@ object AppCoreBindings {
     @Provides
     @SingleIn(AppScope::class)
     fun provideFavoritesStore(database: UserSettingsDb): FavoritesStore = FavoritesStore(database)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideShnayimMikraStore(database: UserSettingsDb): ShnayimMikraStore = ShnayimMikraStore(database)
 
     @Provides
     @SingleIn(AppScope::class)

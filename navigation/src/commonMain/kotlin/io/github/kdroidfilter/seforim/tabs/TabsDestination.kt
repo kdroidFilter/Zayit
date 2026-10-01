@@ -32,6 +32,8 @@ sealed interface TabsDestination {
         val openNotes: Boolean = false,
         /** Marks the lines from [lineId] to this one: a passage to read, such as the day's limud. */
         val endLineId: Long? = null,
+        /** Opens it in shnayim mikra: each verse twice, then its targum. */
+        val shnayimMikra: Boolean = false,
     ) : TabsDestination
 
     /** Full visit-history page (the chrome://history equivalent). */

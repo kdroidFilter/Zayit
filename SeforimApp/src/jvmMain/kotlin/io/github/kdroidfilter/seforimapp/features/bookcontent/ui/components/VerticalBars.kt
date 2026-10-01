@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.isChumash
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
@@ -166,6 +167,17 @@ fun EndVerticalBar(
                         iconDescription = stringResource(Res.string.toggle_diacritics),
                         label = stringResource(Res.string.toggle_diacritics),
                         shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
+                    )
+                }
+                // Shnayim mikra: in the Chumash, each verse twice and then its targum
+                if (selectedBook.isChumash) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.shnayim_mikra_mode_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleShnayimMikra) },
+                        isSelected = uiState.content.shnayimMikra,
+                        icon = JournalText,
+                        iconDescription = stringResource(Res.string.shnayim_mikra_mode),
+                        label = stringResource(Res.string.shnayim_mikra_mode),
                     )
                 }
             }

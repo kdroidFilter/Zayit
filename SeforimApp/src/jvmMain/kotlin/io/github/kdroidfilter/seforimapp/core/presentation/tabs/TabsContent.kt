@@ -528,6 +528,7 @@ class SimpleTabViewModelOwner(
                         destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }
                         destination.endLineId?.let { putLong(StateKeys.MARK_END_LINE_ID, it) }
                         if (destination.openNotes) putBoolean(StateKeys.OPEN_NOTES, true)
+                        if (destination.shnayimMikra) putBoolean(StateKeys.SHNAYIM_MIKRA, true)
                     }
                     else -> Unit
                 }

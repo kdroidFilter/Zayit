@@ -57,6 +57,7 @@ data class BookContentPersistedState(
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
     val showSources: Boolean = false,
+    val shnayimMikra: Boolean = false,
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,
     val selectedChapter: Int = 0,

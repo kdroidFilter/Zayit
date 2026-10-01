@@ -92,4 +92,12 @@ class HomeWidgetsLayoutTest {
         // Still a layout to work with: a widget added finds its place at once
         assertEquals(CellRect(0, 0, 7, 5), layout.firstVacant(CalendarWidget.defaultSpan))
     }
+
+    @Test
+    fun `a save of the format before areas leaves no hole for the widgets this platform can't show`() {
+        val layout = decodeOrderLayout("zmanim:LARGE,earth:MEDIUM,temple_countdown:MEDIUM") { it.id != "earth" }
+        // The Temple beside the zmanim, where the Earth would have been; the Earth after them
+        assertEquals(CellRect(13, 0, 6, 3), layout.first { it.widget.id == "temple_countdown" }.cell)
+        assertTrue(layout.first { it.widget.id == "earth" }.cell.y >= 3)
+    }
 }

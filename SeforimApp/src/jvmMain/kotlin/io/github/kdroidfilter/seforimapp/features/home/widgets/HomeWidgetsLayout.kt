@@ -36,12 +36,21 @@ internal fun decodeLayout(raw: String?): List<WidgetPlacement> {
  * The format before widgets had areas, "zmanim:LARGE,earth:MEDIUM": the widgets in their order, each at its default
  * size in the first vacant area, as if added one after the other. The ones removed stay removed.
  */
-private fun decodeOrderLayout(raw: String): List<WidgetPlacement> =
-    raw
-        .split(',')
-        .mapNotNull { entry -> availableHomeWidgets.firstOrNull { it.id == entry.substringBefore(':').trim() } }
-        .distinct()
-        .fold(emptyList()) { layout, widget -> layout + WidgetPlacement(widget, layout.firstVacant(widget.defaultSpan)) }
+internal fun decodeOrderLayout(
+    raw: String,
+    shown: (HomeWidget) -> Boolean = { it.isSupported },
+): List<WidgetPlacement> {
+    val widgets =
+        raw
+            .split(',')
+            .mapNotNull { entry -> availableHomeWidgets.firstOrNull { it.id == entry.substringBefore(':').trim() } }
+            .distinct()
+    // The ones this platform shows first, so the ones it can't don't leave holes among them
+    val (visible, hidden) = widgets.partition(shown)
+    return (visible + hidden).fold(
+        emptyList(),
+    ) { layout, widget -> layout + WidgetPlacement(widget, layout.firstVacant(widget.defaultSpan)) }
+}
 
 internal fun encodeLayout(layout: List<WidgetPlacement>): String =
     layout.joinToString(";") { (widget, c) -> "${widget.id}@${c.x},${c.y},${c.w},${c.h}" }

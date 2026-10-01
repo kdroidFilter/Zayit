@@ -182,9 +182,11 @@ internal fun WidgetFrame(
                         .pointerInput(widget.id) { detectTapGestures { if (movable) state.selectedWidget = widget.id } },
                 )
                 if (selected) ResizeFrame(widget.id, drag, shape)
+                // On its corner; inside it while selected, clear of the resize frame's corner handle
+                val badgeOffset = if (selected) 12.dp else (-8).dp
                 RemoveBadge(
                     onClick = { state.removeWidget(widget) },
-                    modifier = Modifier.align(Alignment.TopStart).offset((-8).dp, (-8).dp).testTag("widget-remove-${widget.id}"),
+                    modifier = Modifier.align(Alignment.TopStart).offset(badgeOffset, badgeOffset).testTag("widget-remove-${widget.id}"),
                 )
             }
         }

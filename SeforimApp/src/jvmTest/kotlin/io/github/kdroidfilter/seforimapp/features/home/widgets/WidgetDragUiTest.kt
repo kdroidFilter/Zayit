@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.toPixelMap
@@ -77,6 +79,7 @@ class WidgetDragUiTest {
     private fun home(
         editing: Boolean = true,
         width: Int = 1000,
+        widthNow: () -> Int = { width },
         height: Int = 1300,
         rtl: Boolean = false,
         header: Int = 0,
@@ -95,7 +98,7 @@ class WidgetDragUiTest {
                         LocalLayoutDirection provides if (rtl) LayoutDirection.Rtl else LayoutDirection.Ltr,
                     ) {
                         val raw by appSettings.homeWidgetsLayoutFlow.collectAsState()
-                        Box(Modifier.testTag("home").width(width.dp).height(height.dp)) {
+                        Box(Modifier.testTag("home").width(widthNow().dp).height(height.dp)) {
                             // As on the Home: centred, held still while a widget is dragged; room above it for the rest of
                             // the app, which a widget may be dragged over
                             Box(Modifier.padding(top = gridTop.dp)) {
@@ -940,4 +943,47 @@ class WidgetDragUiTest {
             repeat(40) { mainClock.advanceTimeByFrame() }
             assertEquals(widthOf("widget-calendar")!!, first, 2f)
         }
+
+    @Test
+    fun `selected, a widget's remove badge stays clear of its resize frame's corner handle`() {
+        for (rtl in listOf(true, false)) {
+            home(rtl = rtl) { _ ->
+                onNodeWithTag("home").performMouseInput { click(centreOf("widget-temple_countdown")) }
+                waitForIdle()
+                val badge = onNodeWithTag("widget-remove-temple_countdown", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
+                val corner =
+                    onNodeWithTag(
+                        "widget-resize-temple_countdown-start-top",
+                        useUnmergedTree = true,
+                    ).fetchSemanticsNode().boundsInRoot
+                assertTrue(!badge.overlaps(corner), "rtl=$rtl: the badge $badge covers the corner handle $corner")
+            }
+        }
+    }
+
+    @Test
+    fun `let go as the window is resized, a widget lands on its area, not stuck where it was let go`() {
+        var width by mutableIntStateOf(1000)
+        home(widthNow = { width }) { state ->
+            val start = centreOf("widget-earth")
+            onNodeWithTag("home").performMouseInput {
+                moveTo(start)
+                press()
+                glide(start, start + Offset(0f, pitch.y * 5), restMs = 100)
+            }
+            waitForIdle()
+            width = 900
+            waitForIdle()
+            onNodeWithTag("home").performMouseInput { release() }
+            waitForIdle()
+            val cell = saved().cellOf(EarthWidget)
+            val at =
+                state.drag.bounds
+                    .getValue(EarthWidget.id)
+                    .topLeft - state.drag.gridOrigin
+            val narrower = CellPitch(900.dp)
+            val shouldBe = with(density) { Offset((cell.x * narrower.x).dp.toPx(), (cell.y * narrower.y).dp.toPx()) }
+            assertTrue(abs(at.y - shouldBe.y) < 3f, "stuck at $at, its area is at $shouldBe")
+        }
+    }
 }

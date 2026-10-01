@@ -457,6 +457,8 @@ private fun Modifier.onCell(
         if (held) return@LaunchedEffect
         if (gridWidth != placedFor || resized) {
             placedFor = gridWidth
+            // Let go as the window was resized: on its area at once, no longer where it was let go
+            letGo.value = null
             position.snapTo(target)
             return@LaunchedEffect
         }

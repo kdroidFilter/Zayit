@@ -12,9 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -208,8 +210,14 @@ internal object ShnayimMikraWidget : HomeWidget {
     ) {
         val week = remember(state.selectedDate, state.inIsrael) { mikraWeek(state.selectedDate, state.inIsrael) }
         val store = LocalAppGraph.current.shnayimMikraStore
+        var weekShown by remember { mutableStateOf(week) }
         val revision by store.revision.collectAsState()
-        val done by produceState(emptySet<Int>(), week, revision) { value = store.read(week.year, week.parsha.name) }
+        val done by produceState(emptySet<Int>(), week, revision) {
+            // Another week's ticks aren't shown while this one's load
+            if (week != weekShown) value = emptySet()
+            weekShown = week
+            value = store.read(week.year, week.parsha.name)
+        }
         val scope = rememberCoroutineScope()
         val aliyos = remember(week) { aliyosOf(week.parsha) }
         val open = rememberOpenInLibrary(state, shnayimMikra = true)

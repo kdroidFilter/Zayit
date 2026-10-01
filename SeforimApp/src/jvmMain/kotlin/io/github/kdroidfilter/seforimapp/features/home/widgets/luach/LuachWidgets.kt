@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -56,6 +57,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
@@ -181,13 +183,26 @@ private fun LimudPanel(
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val columns = limudColumnsAt(maxWidth)
             Column(Modifier.fillMaxSize().padding(LIMUD_PADDING)) {
-                Text(
-                    "לימוד יומי",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    modifier = Modifier.height(LIMUD_TITLE_HEIGHT).padding(horizontal = 4.dp),
-                )
+                Row(Modifier.fillMaxWidth().height(LIMUD_TITLE_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "לימוד יומי",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f).padding(horizontal = 4.dp),
+                    )
+                    // Its options at hand, as in its menu
+                    IconButton(
+                        onClick = { state.optionsOpen = LimudWidget },
+                        modifier = Modifier.size(LIMUD_TITLE_HEIGHT).testTag("limud-settings"),
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.General.Settings,
+                            contentDescription = stringResource(Res.string.home_widgets_options),
+                            tint = JewelTheme.globalColors.text.info,
+                        )
+                    }
+                }
                 // Two columns: the lines two by two, so both columns' lines stay level
                 FitColumn(Modifier.fillMaxWidth().weight(1f), spacing = LIMUD_ROW_GAP, spread = true) {
                     items.chunked(columns).forEach { pair ->

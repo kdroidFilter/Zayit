@@ -55,6 +55,16 @@ class WidgetMenuUiTest {
         }
 
     @Test
+    fun `the limud card's settings button opens its options`() =
+        runDesktopComposeUiTest(width = 700, height = 700) {
+            val state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE, HomeWidgetsLayout(testAppSettings()))
+            show { LimudWidget.Content(state, Modifier.size(300.dp, 300.dp)) }
+            onNodeWithTag("limud-settings").performClick()
+            waitForIdle()
+            assertEquals(LimudWidget, state.optionsOpen)
+        }
+
+    @Test
     fun `the limud options pick the limudim the card shows`() =
         runDesktopComposeUiTest(width = 460, height = 900) {
             val settings = testAppSettings()

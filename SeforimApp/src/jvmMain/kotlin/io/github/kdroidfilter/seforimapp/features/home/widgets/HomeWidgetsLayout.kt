@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 /** Further down than any layout a user makes (every widget stacked at its tallest is under 50 rows). */
@@ -61,6 +62,10 @@ internal fun encodeLayout(layout: List<WidgetPlacement>): String =
 internal class HomeWidgetsLayout(
     private val appSettings: AppSettings,
 ) {
+    init {
+        availableHomeWidgets.forEach { it.applyOptions(appSettings.homeWidgetOptionsFlow.value[it.id]) }
+    }
+
     fun current(): List<WidgetPlacement> = decodeLayout(appSettings.homeWidgetsLayoutFlow.value)
 
     fun save(layout: List<WidgetPlacement>) = appSettings.setHomeWidgetsLayout(encodeLayout(layout))
@@ -128,6 +133,19 @@ internal class HomeWidgetsLayout(
     }
 
     fun reset() = appSettings.setHomeWidgetsLayout(null)
+
+    /** Each widget's own options, set from its menu, by widget id: a widget left at its defaults has none. */
+    val options: StateFlow<Map<String, String>> get() = appSettings.homeWidgetOptionsFlow
+
+    /** Saved, and [widget] grown as its new content asks, the widgets in the way making room. */
+    fun setOptions(
+        widget: HomeWidget,
+        options: String?,
+    ) {
+        appSettings.setHomeWidgetOptions(widget.id, options)
+        widget.applyOptions(options)
+        current().firstOrNull { it.widget.id == widget.id }?.let { place(widget, it.cell) }
+    }
 }
 
 internal data class RemovedWidget(

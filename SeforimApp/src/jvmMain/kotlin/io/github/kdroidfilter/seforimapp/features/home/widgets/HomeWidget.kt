@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.Solar
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidget
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.jewel.ui.icon.IconKey
 
 /**
  * A Home widget, placed by [HomeWidgetsGrid] on an area of a grid of [HOME_GRID_COLUMNS] columns, as on Android's home
@@ -42,6 +43,12 @@ interface HomeWidget {
     /** The height its content needs at [width], when it decides it: it can't be made shorter. */
     fun heightAt(width: Dp): Dp? = null
 
+    /**
+     * Its options as saved, given at the start and on each change, for a widget whose size follows them (its [heightAt]):
+     * the grid reads that size where no composition is (laying out, arranging).
+     */
+    fun applyOptions(options: String?) {}
+
     val isSupported: Boolean get() = true
 
     /** Fills the size the host gives it through [modifier]. */
@@ -58,10 +65,34 @@ interface HomeWidget {
         modifier: Modifier,
     ) = Content(state, modifier)
 
+    /**
+     * Its own items atop its right-click menu: actions, check marks, submenus; none by default. Read in composition, so
+     * they follow its options (see [HomeWidgetsState.optionsOf]).
+     */
+    @Composable
+    fun menuItems(state: HomeWidgetsState): List<WidgetMenuItem> = emptyList()
+
+    /** Its settings page, for an item of its menu to open in a dialog (see [HomeWidgetsState.optionsOpen]). */
+    @Composable
+    fun Options(state: HomeWidgetsState) {}
+
     /** Composed outside the scrolling Home list, for windows that must outlive the card scrolling away. */
     @Composable
     fun Detached(state: HomeWidgetsState) {}
 }
+
+/**
+ * An item of a widget's own menu, with [icon]: [checked] shows a check mark instead, null a plain action; with
+ * [children], it opens them as a submenu.
+ */
+@Immutable
+data class WidgetMenuItem(
+    val label: String,
+    val icon: IconKey? = null,
+    val checked: Boolean? = null,
+    val children: List<WidgetMenuItem> = emptyList(),
+    val onClick: () -> Unit = {},
+)
 
 /** A widget on the Home grid, on [cell]. */
 @Immutable

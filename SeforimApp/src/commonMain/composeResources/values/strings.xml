@@ -333,6 +333,7 @@
     <string name="home_widgets_all_placed">כל הווידג'טים כבר בדף</string>
     <string name="home_widgets_remove">הסרת הווידג'ט</string>
     <string name="home_widgets_resize">שינוי גודל</string>
+    <string name="home_widgets_options">אפשרויות…</string>
     <string name="home_widgets_removed">%1$s הוסר</string>
     <string name="home_widgets_undo">ביטול</string>
     <string name="home_widgets_arrange">סידור חכם</string>

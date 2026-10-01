@@ -43,11 +43,15 @@ internal fun WidgetTitle(
     }
 }
 
-/** Its children from the top, as many as fit whole; the others aren't shown. */
+/**
+ * Its children from the top, as many as fit whole; the others aren't shown. [spread], the room left is shared between
+ * the ones shown, above, between and below them.
+ */
 @Composable
 internal fun FitColumn(
     modifier: Modifier = Modifier,
     spacing: Dp = 0.dp,
+    spread: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     Layout(content, modifier) { measurables, constraints ->
@@ -63,8 +67,10 @@ internal fun FitColumn(
                     y += placeable.height + gap
                 }
             }
+        val used = placed.lastOrNull()?.let { (top, placeable) -> top + placeable.height } ?: 0
+        val share = if (spread) (constraints.maxHeight - used) / (placed.size + 1) else 0
         layout(constraints.maxWidth, constraints.maxHeight) {
-            placed.forEach { (top, placeable) -> placeable.placeRelative(0, top) }
+            placed.forEachIndexed { i, (top, placeable) -> placeable.placeRelative(0, top + share * (i + 1)) }
         }
     }
 }

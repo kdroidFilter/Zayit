@@ -124,6 +124,8 @@ fun BoxScope.HomeWidgetsOverlay(
     if (state.editingWidgets) {
         WidgetGallery(state, placed, Modifier.align(Alignment.BottomCenter))
     }
+    // Over the page, not in its card: scrolled away, the card would close it
+    state.optionsOpen?.let { widget -> WidgetOptionsDialog(widget, state, onClose = { state.optionsOpen = null }) }
     if (!state.editingWidgets && drag.movingId == null && drag.newWidget == null) {
         EditWidgetsButton(state, Modifier.align(Alignment.BottomEnd).padding(20.dp))
     }

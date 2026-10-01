@@ -11,21 +11,27 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -38,12 +44,17 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.toKotlinLocalDate
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -53,6 +64,7 @@ import seforimapp.seforimapp.generated.resources.home_widget_name_limud
 import seforimapp.seforimapp.generated.resources.home_widget_name_molad
 import seforimapp.seforimapp.generated.resources.home_widget_name_next_zman
 import seforimapp.seforimapp.generated.resources.home_widget_name_tefila
+import seforimapp.seforimapp.generated.resources.home_widgets_options
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -61,43 +73,131 @@ import java.util.UUID
 // The luach widgets, after the KosherKotlin demo's luach: text on the calendar's panel, following the Home's day.
 // They keep the app's text sizes (only the next zman's clock grows), and their lists show as many whole rows as fit.
 
-/** This week's parsha and the day's dafim; clicking one opens it in a new tab. */
+// Every line the same height, and the title: the card's height is worked out from their number (heightAt)
+private val LIMUD_ROW_HEIGHT = 26.dp
+private val LIMUD_ROW_GAP = 2.dp
+private val LIMUD_TITLE_HEIGHT = 22.dp
+private val LIMUD_PADDING = 8.dp
+private val LIMUD_COLUMN_GAP = 12.dp
+
+/** From this width the lines go two by two, the card half as tall. */
+private val LIMUD_TWO_COLUMNS_WIDTH = 330.dp
+
+internal fun limudColumnsAt(width: Dp) = if (width >= LIMUD_TWO_COLUMNS_WIDTH) 2 else 1
+
+/** The day's limudim the user picked in its options (see [Limud]); clicking one opens it in a new tab. */
 internal object LimudWidget : HomeWidget {
     override val id = "limud"
     override val title = Res.string.home_widget_name_limud
-    override val defaultSpan = CellSpan(4, 2)
+    override val defaultSpan = CellSpan(4, 4)
     override val minSpan = CellSpan(4, 2)
 
-    // Three short lines: wider would only part them from their tags
-    override val maxSpan = CellSpan(5, 2)
+    // Its height is the one its lines need (heightAt), no more: only its width is the user's, to two columns
+    override val maxSpan = CellSpan(10, 2)
+
+    // The limudim shown, as saved: read by the grid for the card's height as well as by the card
+    private var shown by mutableStateOf(Limud.defaults.toSet())
+
+    override fun applyOptions(options: String?) {
+        shown = Limud.decode(options)
+    }
+
+    /** Tall enough for every limud picked, never one hidden for want of room. */
+    override fun heightAt(width: Dp): Dp {
+        val columns = limudColumnsAt(width)
+        val rows = (shown.size + columns - 1) / columns
+        return LIMUD_PADDING * 2 + LIMUD_TITLE_HEIGHT + LIMUD_ROW_HEIGHT * rows + LIMUD_ROW_GAP * (rows - 1).coerceAtLeast(0)
+    }
 
     @Composable
     override fun Content(
         state: HomeWidgetsState,
         modifier: Modifier,
-    ) = LimudPanel(state, rememberOpenInLibrary(state), modifier)
+    ) = LimudPanel(state, shown, rememberOpenInLibrary(state), modifier)
+
+    // Its limudim are many: picked in a page of their own rather than in the menu
+    @Composable
+    override fun menuItems(state: HomeWidgetsState) =
+        listOf(
+            WidgetMenuItem(stringResource(Res.string.home_widgets_options), icon = AllIconsKeys.General.Settings) {
+                state.optionsOpen = this
+            },
+        )
+
+    @Composable
+    override fun Options(state: HomeWidgetsState) = LimudOptions(state)
 }
 
-/** The limud lines, opening a place with [open]. */
+/** A box for each limud, by group, with the day's reading beside it; each tick shows or hides it at once. */
+@Composable
+private fun LimudOptions(state: HomeWidgetsState) {
+    val shown = Limud.decode(state.optionsOf(LimudWidget))
+    val readings =
+        remember(state.selectedDate, state.inIsrael) {
+            Limud.entries.associateWith { limudOfDay(state.selectedDate, state.inIsrael, setOf(it)).firstOrNull()?.value }
+        }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        for (group in LimudGroup.entries) {
+            Text(
+                group.title,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 10.dp, bottom = 2.dp),
+            )
+            for (limud in Limud.entries.filter { it.group == group }) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    CheckboxRow(
+                        text = limud.title,
+                        checked = limud in shown,
+                        onCheckedChange = { on -> state.setOptions(LimudWidget, Limud.encode(if (on) shown + limud else shown - limud)) },
+                        modifier = Modifier.weight(1f).testTag("limud-option-${limud.id}"),
+                    )
+                    readings[limud]?.let {
+                        Text(
+                            it,
+                            fontSize = 12.sp,
+                            color = JewelTheme.globalColors.text.info,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** The limud lines of [shown], opening a place with [open]: as many as fit the card. */
 @Composable
 private fun LimudPanel(
     state: HomeWidgetsState,
+    shown: Set<Limud>,
     open: (LibraryPlace) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val items = remember(state.selectedDate, state.inIsrael) { limudOfDay(state.selectedDate, state.inIsrael) }
+    val items = remember(state.selectedDate, state.inIsrael, shown) { limudOfDay(state.selectedDate, state.inIsrael, shown) }
     val accent = rememberAccentColor(JewelTheme.isDark)
     PanelCard(modifier) {
-        Column(Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 8.dp)) {
-            Text(
-                "לימוד יומי",
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                modifier = Modifier.padding(horizontal = 4.dp),
-            )
-            Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically)) {
-                items.forEach { LimudRow(it, accent, open) }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val columns = limudColumnsAt(maxWidth)
+            Column(Modifier.fillMaxSize().padding(LIMUD_PADDING)) {
+                Text(
+                    "לימוד יומי",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    modifier = Modifier.height(LIMUD_TITLE_HEIGHT).padding(horizontal = 4.dp),
+                )
+                // Two columns: the lines two by two, so both columns' lines stay level
+                FitColumn(Modifier.fillMaxWidth().weight(1f), spacing = LIMUD_ROW_GAP, spread = true) {
+                    items.chunked(columns).forEach { pair ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(LIMUD_COLUMN_GAP)) {
+                            repeat(columns) { i ->
+                                Box(Modifier.weight(1f)) { pair.getOrNull(i)?.let { LimudRow(it, accent, open, chevron = columns == 1) } }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -108,11 +208,13 @@ private fun LimudRow(
     item: LimudItem,
     accent: Color,
     open: (LibraryPlace) -> Unit,
+    // Left out on two columns, for the text's room: the hover still tells it opens
+    chevron: Boolean = true,
 ) {
     val place = item.place
-    HoverBox(onClick = place?.let { { open(it) } }, modifier = Modifier.fillMaxWidth()) {
+    HoverBox(onClick = place?.let { { open(it) } }, modifier = Modifier.fillMaxWidth().height(LIMUD_ROW_HEIGHT)) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 3.dp),
+            Modifier.fillMaxSize().padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -135,7 +237,7 @@ private fun LimudRow(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f),
             )
-            if (place != null) {
+            if (place != null && chevron) {
                 // Towards the end of the reading direction: "open"
                 val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
                 Icon(
@@ -466,10 +568,13 @@ private fun rememberOpenInLibrary(state: HomeWidgetsState): (LibraryPlace) -> Un
                 // Read on click: the books DB is opened when first needed, never by showing the card
                 val repository = graph.repository
                 val book = repository.getBookByTitle(place.bookTitle) ?: return@launch
+                val tocLineId = place.toc.takeIf { it.isNotEmpty() }?.let { repository.tocLineId(book.id, it) }
                 val lineId =
                     when {
-                        place.heading != null ->
-                            repository.getTocEntriesForBook(book.id).firstOrNull { it.text == place.heading }?.lineId
+                        place.ref != null -> {
+                            val from = tocLineId?.let { repository.getLine(it)?.lineIndex } ?: 0
+                            repository.lineIdOfRef(book.id, from, book.totalLines, place.ref) ?: tocLineId
+                        }
 
                         place.parashaIndex != null ->
                             repository
@@ -479,10 +584,49 @@ private fun rememberOpenInLibrary(state: HomeWidgetsState): (LibraryPlace) -> Un
                                 ?.getOrNull(place.parashaIndex)
                                 ?.lineId
 
-                        else -> null
+                        else -> tocLineId
                     }
                 state.openTab(TabsDestination.BookContent(bookId = book.id, tabId = UUID.randomUUID().toString(), lineId = lineId))
             }
         }
     }
+}
+
+/** The line of the TOC entry at [path]: its first heading anywhere in the book, each next one right under it. */
+private suspend fun SeforimRepository.tocLineId(
+    bookId: Long,
+    path: List<String>,
+): Long? {
+    val entries = getTocEntriesForBook(bookId)
+    var parent: TocEntry? = null
+    for (heading in path) {
+        parent = entries.firstOrNull { it.text == heading && (parent == null || it.parentId == parent.id) } ?: return null
+    }
+    return parent?.lineId
+}
+
+private const val REF_SCAN_LINES = 500
+
+/**
+ * The first line from [from] whose reference is [ref], or one of its parts: "משנה ברכות א, ב" finds "משנה ברכות א, ב"
+ * but not "…א, בב"; the library's references may space their parts twice.
+ */
+private suspend fun SeforimRepository.lineIdOfRef(
+    bookId: Long,
+    from: Int,
+    totalLines: Int,
+    ref: String,
+): Long? {
+    val spaces = Regex("""\s+""")
+    var start = from
+    while (start < totalLines) {
+        val end = start + REF_SCAN_LINES - 1
+        getLines(bookId, start, end)
+            .firstOrNull { line ->
+                val lineRef = line.heRef?.replace(spaces, " ") ?: return@firstOrNull false
+                lineRef == ref || lineRef.startsWith("$ref,")
+            }?.let { return it.id }
+        start = end + 1
+    }
+    return null
 }

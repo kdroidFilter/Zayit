@@ -32,8 +32,8 @@ class LuachDataTest {
 
     @Test
     fun `a daf opens at its TOC heading, written without geresh`() {
-        assertEquals("דף כא.", bavliPlace(0, "ברכות", 21).heading)
-        assertEquals("דף טו.", bavliPlace(0, "ברכות", 15).heading)
+        assertEquals("דף כא.", bavliPlace(0, "ברכות", 21).toc.single())
+        assertEquals("דף טו.", bavliPlace(0, "ברכות", 15).toc.single())
         assertEquals(LibraryPlace("תלמוד ירושלמי שקלים"), bavliPlace(4, "שקלים", 3))
     }
 

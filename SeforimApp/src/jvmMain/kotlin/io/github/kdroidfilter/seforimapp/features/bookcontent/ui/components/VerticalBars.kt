@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.isChumash
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
@@ -169,7 +170,7 @@ fun EndVerticalBar(
                     )
                 }
                 // Shnayim mikra: in the Chumash, each verse twice and then its targum
-                if (selectedBook.title in CHUMASH_TITLES) {
+                if (selectedBook.isChumash) {
                     SelectableIconButtonWithToolip(
                         toolTipText = stringResource(Res.string.shnayim_mikra_mode_tooltip),
                         onClick = { onEvent(BookContentEvent.ToggleShnayimMikra) },
@@ -296,5 +297,3 @@ private data class LineResourceAvailability(
     val commentariesAvailable: Boolean? = null,
     val sourcesAvailable: Boolean? = null,
 )
-
-private val CHUMASH_TITLES = setOf("בראשית", "שמות", "ויקרא", "במדבר", "דברים")

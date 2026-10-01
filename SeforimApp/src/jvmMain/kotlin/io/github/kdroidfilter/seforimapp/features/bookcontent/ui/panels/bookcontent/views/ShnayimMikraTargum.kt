@@ -11,11 +11,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
 private const val TARGUM_SCALE = 0.9f
+
+private val CHUMASH_TITLES = setOf("בראשית", "שמות", "ויקרא", "במדבר", "דברים")
+
+/** The five books of the Chumash: the only ones shnayim mikra reads. */
+internal val Book.isChumash get() = title in CHUMASH_TITLES
 
 private val SPACES = Regex("""\s+""")
 

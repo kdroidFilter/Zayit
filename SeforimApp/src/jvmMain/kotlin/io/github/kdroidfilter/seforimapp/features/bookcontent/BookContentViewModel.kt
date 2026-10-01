@@ -276,6 +276,10 @@ class BookContentViewModel(
                 // Explicit line navigation wins (e.g., search result / deep link)
                 if (requestedLineId != null) {
                     loadBookById(bookIdToOpen, requestedLineId, triggerScroll = true)
+                    // A note opened from the notes page or widget: its pane, on its line
+                    if (savedStateHandle.get<Boolean>(StateKeys.OPEN_NOTES) == true && !stateManager.state.value.notes.isVisible) {
+                        notesUseCase.toggleNotes()
+                    }
                 } else {
                     // Restore from persisted state: build the pager around the persisted anchor/selection.
                     // This provides a stable starting window for Paging3 so scroll restoration can be exact.

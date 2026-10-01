@@ -28,6 +28,8 @@ sealed interface TabsDestination {
         val bookId: Long,
         override val tabId: String,
         val lineId: Long? = null,
+        /** Opens the notes pane on [lineId]: the book is opened to read a note there. */
+        val openNotes: Boolean = false,
     ) : TabsDestination
 
     /** Full visit-history page (the chrome://history equivalent). */
@@ -41,6 +43,13 @@ sealed interface TabsDestination {
     @Serializable
     @Immutable
     data class Favorites(
+        override val tabId: String,
+    ) : TabsDestination
+
+    /** The user's notes, of every book. */
+    @Serializable
+    @Immutable
+    data class Notes(
         override val tabId: String,
     ) : TabsDestination
 }

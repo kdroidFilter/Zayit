@@ -230,6 +230,10 @@ class SessionManager(
                 is TabsDestination.Favorites -> {
                     // No-op: the Favorites screen localizes its own title.
                 }
+
+                is TabsDestination.Notes -> {
+                    // No-op: the Notes screen localizes its own title.
+                }
             }
         }
         return titles

@@ -65,6 +65,9 @@ class NoteStore(
             loadedBooks += bookId
         }
 
+    /** Every note of every book, the most recently written first. */
+    suspend fun all(): List<BookNote> = recent(limit = -1) // SQLite: a negative LIMIT is none
+
     /** The [limit] most recently written notes, of every book. */
     suspend fun recent(limit: Int): List<BookNote> =
         withContext(Dispatchers.IO) {

@@ -284,6 +284,7 @@ fun ListRow(
     leadingContent: @Composable (RowScope.() -> Unit)? = null,
     showDivider: Boolean = true,
     compact: Boolean = false,
+    subtitle: String? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -325,14 +326,24 @@ fun ListRow(
                     colorFilter = ColorFilter.tint(leadingTint),
                 )
             }
-            Text(
-                text = title,
-                fontSize = if (compact) 12.sp else 14.sp,
-                color = JewelTheme.globalColors.text.normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = if (compact) 12.sp else 14.sp,
+                    color = JewelTheme.globalColors.text.normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (subtitle != null) {
+                    Text(
+                        text = subtitle,
+                        fontSize = if (compact) 11.sp else 12.sp,
+                        color = JewelTheme.globalColors.text.info,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
             DeleteButton(visible = isHovered, onClick = onDelete)
         }
         if (showDivider) {

@@ -61,8 +61,8 @@ import seforimapp.seforimapp.generated.resources.history_yesterday
 import seforimapp.seforimapp.generated.resources.home_widget_name_favorites
 import seforimapp.seforimapp.generated.resources.home_widget_name_history
 import seforimapp.seforimapp.generated.resources.home_widget_name_notes
-import seforimapp.seforimapp.generated.resources.home_widget_notes_empty
 import seforimapp.seforimapp.generated.resources.home_widget_show_all
+import seforimapp.seforimapp.generated.resources.notes_empty
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -219,7 +219,8 @@ internal object NotesWidget : HomeWidget {
         val accent = rememberAccentColor(JewelTheme.isDark)
         ListCard(
             title = stringResource(Res.string.home_widget_name_notes),
-            empty = stringResource(Res.string.home_widget_notes_empty).takeIf { notes.isEmpty() },
+            onShowAll = { state.openTab(TabsDestination.Notes(UUID.randomUUID().toString())) },
+            empty = stringResource(Res.string.notes_empty).takeIf { notes.isEmpty() },
             modifier = modifier,
         ) {
             notes.forEach { (bookNote, bookTitle) ->
@@ -230,6 +231,7 @@ internal object NotesWidget : HomeWidget {
                                 bookId = bookNote.bookId,
                                 tabId = UUID.randomUUID().toString(),
                                 lineId = bookNote.note.lineId,
+                                openNotes = true,
                             ),
                         )
                     },

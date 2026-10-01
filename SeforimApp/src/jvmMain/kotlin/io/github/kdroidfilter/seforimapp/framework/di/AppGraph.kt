@@ -9,6 +9,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
 import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoritesStore
+import io.github.kdroidfilter.seforimapp.core.shnayimmikra.ShnayimMikraStore
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -51,6 +52,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val highlightStore: HighlightStore
     abstract val historyStore: HistoryStore
     abstract val favoritesStore: FavoritesStore
+    abstract val shnayimMikraStore: ShnayimMikraStore
     abstract val noteStore: NoteStore
     abstract val repository: SeforimRepository
     abstract val searchEngine: SearchEngine

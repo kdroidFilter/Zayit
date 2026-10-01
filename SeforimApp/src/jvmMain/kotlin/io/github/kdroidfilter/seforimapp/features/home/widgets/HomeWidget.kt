@@ -6,6 +6,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.MoladWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.NextZmanWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.TefilaWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.UpcomingEventsWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
@@ -64,7 +69,19 @@ data class WidgetPlacement(
 
 /** Every widget the user can place, shown by default or not. */
 val availableHomeWidgets: List<HomeWidget> =
-    listOf(ZmanimWidget, EarthWidget, TempleCountdownWidget, SolarSystemWidget, SkyWidget, CalendarWidget)
+    listOf(
+        ZmanimWidget,
+        EarthWidget,
+        TempleCountdownWidget,
+        SolarSystemWidget,
+        SkyWidget,
+        CalendarWidget,
+        LimudWidget,
+        NextZmanWidget,
+        UpcomingEventsWidget,
+        TefilaWidget,
+        MoladWidget,
+    )
 
 /**
  * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky. Where some can't

@@ -337,6 +337,11 @@
     <string name="home_widget_name_temple">חורבן הבית</string>
     <string name="home_widget_name_sky">השמיים</string>
     <string name="home_widget_name_calendar">לוח עברי</string>
+    <string name="home_widget_name_limud">לימוד יומי</string>
+    <string name="home_widget_name_next_zman">הזמן הבא</string>
+    <string name="home_widget_name_events">מועדים קרובים</string>
+    <string name="home_widget_name_tefila">תפילת היום</string>
+    <string name="home_widget_name_molad">מולד וקידוש לבנה</string>
     <string name="home_calendar_previous_month">החודש הקודם</string>
     <string name="home_calendar_next_month">החודש הבא</string>
     <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>

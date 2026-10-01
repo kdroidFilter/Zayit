@@ -41,6 +41,7 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
@@ -80,7 +81,7 @@ internal object CalendarWidget : HomeWidget {
         val month = remember(shown, state.inIsrael) { calendarMonth(shown, state.inIsrael) }
         val accent = rememberAccentColor(JewelTheme.isDark)
 
-        CalendarCard(modifier) {
+        PanelCard(modifier) {
             Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 MonthHeader(
                     month = month,
@@ -195,22 +196,6 @@ private fun JewishCalendar.tag(): String {
     hebrewFormatter.formatYomTov(this).takeIf { it.isNotBlank() }?.let { return it }
     if (isRoshChodesh) return hebrewFormatter.formatRoshChodesh(this).ifBlank { "ראש חודש" }
     return ""
-}
-
-@Composable
-private fun CalendarCard(
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    val isDark = JewelTheme.isDark
-    val shape = RoundedCornerShape(18.dp)
-    val border = if (isDark) JewelTheme.globalColors.borders.disabled else JewelTheme.globalColors.borders.normal
-    Box(
-        modifier
-            .clip(shape)
-            .background(JewelTheme.globalColors.panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f), shape)
-            .border(1.5.dp, border, shape),
-    ) { content() }
 }
 
 @Composable

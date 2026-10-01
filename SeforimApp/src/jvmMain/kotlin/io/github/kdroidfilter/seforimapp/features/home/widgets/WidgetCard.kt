@@ -32,6 +32,24 @@ internal fun WidgetCard(
     )
 }
 
+/** The frame of the text widgets (the calendar, the luach ones): the panel's colour, see-through. */
+@Composable
+internal fun PanelCard(
+    modifier: Modifier = Modifier,
+    content: @Composable BoxScope.() -> Unit,
+) {
+    val isDark = JewelTheme.isDark
+    val shape = RoundedCornerShape(18.dp)
+    val border = if (isDark) JewelTheme.globalColors.borders.disabled else JewelTheme.globalColors.borders.normal
+    Box(
+        modifier
+            .clip(shape)
+            .background(JewelTheme.globalColors.panelBackground.copy(alpha = if (isDark) 0.25f else 0.35f), shape)
+            .border(1.5.dp, border, shape),
+        content = content,
+    )
+}
+
 @Composable
 internal fun rememberAccentColor(isDark: Boolean): Color {
     val accentColor by LocalAppGraph.current.mainAppState.accentColor

@@ -1323,28 +1323,53 @@ private fun computeShabbatTimes(
         }
     val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
 
-    val entryCalendar = zmanimCalendar(fridayDate, location, opinion, inIsrael)
-    val exitCalendar = zmanimCalendar(shabbatDate, location, opinion, inIsrael)
-    val (entryTime, exitTime) =
-        when (opinion) {
-            // אור החיים: candles 20 minutes before sunset everywhere; Shabbat ends 30 minutes after it in Israel.
-            // ponytail: abroad the RO calendar defaults to Amudei Horaah (7.165°); we keep its fixed-minutes choice, 40
-            ZmanimOpinion.OHR_HACHAIM -> {
-                exitCalendar.ateretTorahSunsetOffset = if (inIsrael) 30.0 else 40.0
-                entryCalendar.ohrHaChaimSunset?.minus(20.minutes)?.toDate() to exitCalendar.tzaisAteretTorah.toDate()
-            }
-
-                val candles =
-                val sunset = if (candles.fromHeight) entryCalendar.sunset else entryCalendar.seaLevelSunset
-                sunset?.minus(candles.minutes.minutes)?.toDate() to exitCalendar.tzais.toDate()
-            }
-        }
+    val entryTime = candleLightingTime(fridayDate, location, opinion, cityLabel, inIsrael)
+    val exitTime = havdalahTime(shabbatDate, location, opinion, inIsrael)
 
     return ShabbatTimes(
         parashaName = parashaTitle,
         entryTime = entryTime,
         exitTime = exitTime,
     )
+}
+
+/** Candle lighting on [eve], the day before a Shabbat or Yom Tov, as [opinion]'s luach prints it. */
+internal fun candleLightingTime(
+    eve: LocalDate,
+    location: EarthWidgetLocation,
+    opinion: ZmanimOpinion,
+    cityLabel: String?,
+    inIsrael: Boolean,
+): Date? {
+    val calendar = zmanimCalendar(eve, location, opinion, inIsrael)
+    return when (opinion) {
+        // אור החיים: candles 20 minutes before sunset everywhere
+        ZmanimOpinion.OHR_HACHAIM -> calendar.ohrHaChaimSunset?.minus(20.minutes)?.toDate()
+
+            val candles =
+            val sunset = if (candles.fromHeight) calendar.sunset else calendar.seaLevelSunset
+            sunset?.minus(candles.minutes.minutes)?.toDate()
+        }
+    }
+}
+
+/** The end of the Shabbat or Yom Tov of [day], as [opinion]'s luach prints it. */
+internal fun havdalahTime(
+    day: LocalDate,
+    location: EarthWidgetLocation,
+    opinion: ZmanimOpinion,
+    inIsrael: Boolean,
+): Date? {
+    val calendar = zmanimCalendar(day, location, opinion, inIsrael)
+    return when (opinion) {
+        // אור החיים: 30 minutes after sunset in Israel
+        // ponytail: abroad the RO calendar defaults to Amudei Horaah (7.165°); we keep its fixed-minutes choice, 40
+        ZmanimOpinion.OHR_HACHAIM -> {
+            calendar.ateretTorahSunsetOffset = if (inIsrael) 30.0 else 40.0
+            calendar.tzaisAteretTorah.toDate()
+        }
+
+    }
 }
 
 private fun isJerusalemLocation(

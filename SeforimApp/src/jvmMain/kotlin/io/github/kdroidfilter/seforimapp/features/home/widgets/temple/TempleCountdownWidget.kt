@@ -21,11 +21,11 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -186,6 +186,7 @@ private class TemplePlayer {
     private var codec: Codec? = null
     private var durations: List<Long> = emptyList()
     private var work: Bitmap? = null
+    private var pending: Bitmap? = null
     private var shown: Bitmap? = null
     private var previous: Bitmap? = null
     private var index = 0
@@ -208,19 +209,22 @@ private class TemplePlayer {
         codec.readPixels(work, index, if (index == 0) -1 else index - 1)
         duration = durations[index]
         index = (index + 1) % codec.frameCount
-        return work.makeClone()
+        // Held until shown: a decode cancelled midway (the card leaving) still gets it freed
+        return work.makeClone().also { pending = it }
     }
 
     /** UI thread: [next] goes on screen; the one before the current frame has been off it a whole frame: freed. */
     fun show(next: Bitmap): ImageBitmap {
+        pending = null
         previous?.close()
         previous = shown
         shown = next
         return next.asComposeImageBitmap()
     }
 
+    /** Off screen for good (the card left composition): every bitmap goes. */
     fun close() {
-        work?.close()
+        listOfNotNull(pending, shown, previous, work).forEach { it.close() }
         codec?.close()
     }
 }

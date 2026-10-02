@@ -155,8 +155,9 @@ internal fun SolarSystemWindow(
                     var optionsShown by remember { mutableStateOf(false) }
                     // The one clock, run here while the window shows the play; closed, it stops where it is
                     val daysPerSecond by rememberUpdatedState(solarSystemOptions(state).daysPerSecond)
-                    LaunchedEffect(state.playing) { if (state.playing) state.runPlayClock { daysPerSecond } }
-                    DisposableEffect(Unit) { onDispose { state.stopPlay() } }
+                    // Keyed on the state too: the Home may build a new one while the window is open
+                    LaunchedEffect(state, state.playing) { if (state.playing) state.runPlayClock { daysPerSecond } }
+                    DisposableEffect(state) { onDispose { state.stopPlay() } }
                     E2ePerf.Record()
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                         SolarSystemWidgetView(

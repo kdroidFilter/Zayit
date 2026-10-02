@@ -17,8 +17,10 @@ import androidx.compose.runtime.withFrameNanos
 internal fun rememberRenderOnChange(scene: Any?): Boolean {
     var rendering by remember { mutableStateOf(true) }
     // TAA builds its picture over many jittered frames: paused at once, a still scene would stay unconverged
-    val quietFrames = if (LocalWidgetAntiAliasing.current == WidgetAntiAliasing.TAA) TAA_SETTLE_FRAMES else 2
-    LaunchedEffect(scene) {
+    val antiAliasing = LocalWidgetAntiAliasing.current
+    val quietFrames = if (antiAliasing == WidgetAntiAliasing.TAA) TAA_SETTLE_FRAMES else 2
+    // A new anti-aliasing changes the picture too: a still scene renders again with it
+    LaunchedEffect(scene, antiAliasing) {
         rendering = true
         // Two quiet frames before pausing: a scene changing every frame (a play, a drag) restarts this before then,
         // so the view keeps rendering on and off never flips (each flip restarted its frame loop, dropping frames)

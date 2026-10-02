@@ -24,6 +24,7 @@ import dev.nucleusframework.window.ControlButtonsDirection
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.nucleusframework.window.jewel.JewelTitleBar
 import dev.nucleusframework.window.newFullscreenControls
+import dev.nucleusframework.window.styling.LocalTitleBarStyle
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -117,6 +118,14 @@ internal fun DefaultToolWindow(
                 window.toFront()
                 window.requestFocus()
             }
+            // A tool whose content decides its height (its heightAt) gets just that, and follows its options
+            val titleBarHeight = LocalTitleBarStyle.current.metrics.height
+            val contentHeight = tool.heightAt(windowState.size.width - TOOL_PADDING * 2)
+            if (contentHeight != null) {
+                LaunchedEffect(contentHeight) {
+                    windowState.size = windowState.size.copy(height = contentHeight + titleBarHeight + TOOL_PADDING * 2)
+                }
+            }
             JewelTitleBar(
                 modifier = Modifier.newFullscreenControls(),
                 gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
@@ -129,7 +138,7 @@ internal fun DefaultToolWindow(
                     .trackActivation()
                     .fillMaxSize()
                     .background(JewelTheme.globalColors.panelBackground)
-                    .padding(8.dp),
+                    .padding(TOOL_PADDING),
             ) {
                 tool.Content(state, Modifier.fillMaxSize())
             }
@@ -137,3 +146,5 @@ internal fun DefaultToolWindow(
         }
     }
 }
+
+private val TOOL_PADDING = 8.dp

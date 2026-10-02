@@ -66,7 +66,7 @@ internal object MeasuresWidget : HomeWidget {
     override val id = "measures"
     override val title = Res.string.home_widget_name_measures
     override val defaultSpan = CellSpan(7, 4)
-    override val toolWindowSize = DpSize(460.dp, 520.dp)
+    override val toolWindowSize = DpSize(400.dp, 400.dp)
     override val toolSymbol = "ruler"
     override val minSpan = CellSpan(7, 2)
 

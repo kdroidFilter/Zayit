@@ -482,7 +482,7 @@ internal object MoladWidget : HomeWidget {
     // A title and three short lines: the size they fill, no more
     override val defaultSpan = CellSpan(5, 2)
     override val minSpan = CellSpan(5, 2)
-    override val toolWindowSize = DpSize(380.dp, 240.dp)
+    override val toolWindowSize = DpSize(280.dp, 200.dp)
     override val toolSymbol = "moon.stars"
     override val maxSpan = CellSpan(5, 2)
 

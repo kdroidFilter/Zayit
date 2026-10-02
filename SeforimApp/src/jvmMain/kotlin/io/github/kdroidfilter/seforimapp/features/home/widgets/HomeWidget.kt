@@ -4,19 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
-import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
+import androidx.compose.ui.unit.DpSize
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.library.DictionaryWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.library.FavoritesWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.library.HistoryWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.library.NotesWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.MoladWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.NextZmanWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.ShnayimMikraWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.TefilaWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.UpcomingEventsWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.MeasuresWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
@@ -54,6 +43,15 @@ interface HomeWidget {
 
     val isSupported: Boolean get() = true
 
+    /**
+     * Its window's size when it's also a tool, opened alone from the app's Tools menu (see [availableTools]); null for a
+     * widget only.
+     */
+    val toolWindowSize: DpSize? get() = null
+
+    /** Its icon in the macOS Tools menu: an SF Symbol's name. */
+    val toolSymbol: String? get() = null
+
     /** Fills the size the host gives it through [modifier]. */
     @Composable
     fun Content(
@@ -79,6 +77,13 @@ interface HomeWidget {
     @Composable
     fun Options(state: HomeWidgetsState) {}
 
+    /** Its window as a tool, opened from the app's Tools menu: its [Content] alone in a window of [toolWindowSize]. */
+    @Composable
+    fun ToolWindow(
+        state: HomeWidgetsState,
+        onClose: () -> Unit,
+    ) = DefaultToolWindow(this, state, onClose)
+
     /** Composed outside the scrolling Home list, for windows that must outlive the card scrolling away. */
     @Composable
     fun Detached(state: HomeWidgetsState) {}
@@ -103,28 +108,6 @@ data class WidgetPlacement(
     val widget: HomeWidget,
     val cell: CellRect,
 )
-
-/** Every widget the user can place, shown by default or not. */
-val availableHomeWidgets: List<HomeWidget> =
-    listOf(
-        ZmanimWidget,
-        EarthWidget,
-        TempleCountdownWidget,
-        SolarSystemWidget,
-        SkyWidget,
-        CalendarWidget,
-        LimudWidget,
-        ShnayimMikraWidget,
-        NextZmanWidget,
-        UpcomingEventsWidget,
-        TefilaWidget,
-        MoladWidget,
-        HistoryWidget,
-        FavoritesWidget,
-        NotesWidget,
-        MeasuresWidget,
-        DictionaryWidget,
-    )
 
 /**
  * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky. Where some can't

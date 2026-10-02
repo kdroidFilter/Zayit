@@ -42,6 +42,7 @@ plugins {
 
 include(":SeforimApp")
 include(":cataloggen")
+include(":widgetprocessor")
 
 include(":jewel")
 include((":htmlparser"))

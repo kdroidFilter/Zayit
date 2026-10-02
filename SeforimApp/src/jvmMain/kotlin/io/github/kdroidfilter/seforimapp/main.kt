@@ -35,6 +35,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowV
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
+import io.github.kdroidfilter.seforimapp.features.home.widgets.ToolWindowsHost
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
@@ -422,6 +423,8 @@ fun main(args: Array<String>) {
                                 onClose = { appGraph.appUpdateService.closeDialog() },
                             )
                         }
+
+                        ToolWindowsHost()
 
                         // Every open desktop's tabs, its windows' pane satellites and its tab-drag ghost.
                         val sessions by desktopManager.sessions.collectAsState()

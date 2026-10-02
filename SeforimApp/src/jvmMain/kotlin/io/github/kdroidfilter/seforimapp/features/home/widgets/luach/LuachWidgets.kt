@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -416,6 +417,8 @@ internal object TefilaWidget : HomeWidget {
     override val title = Res.string.home_widget_name_tefila
     override val defaultSpan = CellSpan(5, 3)
     override val minSpan = CellSpan(5, 3)
+    override val toolWindowSize = DpSize(380.dp, 320.dp)
+    override val toolSymbol = "text.book.closed"
 
     // Seven short lines at most: more room would only spread them apart
     override val maxSpan = CellSpan(6, 3)
@@ -479,6 +482,8 @@ internal object MoladWidget : HomeWidget {
     // A title and three short lines: the size they fill, no more
     override val defaultSpan = CellSpan(5, 2)
     override val minSpan = CellSpan(5, 2)
+    override val toolWindowSize = DpSize(380.dp, 240.dp)
+    override val toolSymbol = "moon.stars"
     override val maxSpan = CellSpan(5, 2)
 
     @Composable

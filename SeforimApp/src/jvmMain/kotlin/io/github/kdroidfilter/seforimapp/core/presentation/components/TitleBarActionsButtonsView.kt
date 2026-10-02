@@ -149,6 +149,7 @@ fun TitleBarActionsButtonsView() {
     if (!PlatformInfo.isMacOS) {
         FavoritesMenuButton()
         TabSearchButton()
+        ToolsMenuButton()
     }
     // On macOS, theme toggle and settings are handled by the native menu bar
     if (!PlatformInfo.isMacOS) {

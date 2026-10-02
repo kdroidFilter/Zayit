@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -213,6 +214,8 @@ internal object ZmanimWidget : HomeWidget {
     override val title = Res.string.home_widget_name_zmanim
     override val defaultSpan = CellSpan(13, 4)
     override val minSpan = CellSpan(8, 4)
+    override val toolWindowSize = DpSize(700.dp, 360.dp)
+    override val toolSymbol = "clock"
 
     // Its cards are a fixed height: the grid gives it the rows they need at each width (minRows), never more
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 4)

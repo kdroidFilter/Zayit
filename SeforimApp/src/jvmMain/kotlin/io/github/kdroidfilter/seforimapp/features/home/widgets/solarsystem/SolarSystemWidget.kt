@@ -3,6 +3,8 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
@@ -23,6 +25,8 @@ internal object SolarSystemWidget : HomeWidget {
     override val minSpan = CellSpan(6, 3)
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
     override val isSupported get() = isEarthWidgetSupported
+    override val toolWindowSize = DpSize(1200.dp, 720.dp)
+    override val toolSymbol = "sun.max"
 
     @Composable
     override fun Preview(
@@ -50,6 +54,19 @@ internal object SolarSystemWidget : HomeWidget {
             }
         }
     }
+
+    /** As a tool, its full-window view, not the card. */
+    @Composable
+    override fun ToolWindow(
+        state: HomeWidgetsState,
+        onClose: () -> Unit,
+    ) = SolarSystemWindow(
+        date = state.selectedDate,
+        inIsrael = state.userInIsrael,
+        kiddushLevanaEarliest = state.kiddushLevanaEarliest,
+        kiddushLevanaLatest = state.kiddushLevanaLatest,
+        onClose = onClose,
+    )
 
     @Composable
     override fun Detached(state: HomeWidgetsState) {

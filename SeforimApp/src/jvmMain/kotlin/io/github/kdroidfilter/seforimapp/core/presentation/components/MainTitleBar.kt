@@ -48,9 +48,9 @@ fun DecoratedWindowScope.MainTitleBar(modifier: Modifier = Modifier) {
                 .value.showTitleBarIcon
         BoxWithConstraints(modifier = Modifier.align(Alignment.Start)) {
             val windowWidth = maxWidth
-            // Non-macOS gets the extra Tab Search and Favorites buttons (macOS uses the
-            // native History/Favorites menus)
-            val actionButtonCount = (if (PlatformInfo.isMacOS) 2 else 6) + if (updateIconVisible) 1 else 0
+            // Non-macOS gets the extra Tab Search, Favorites and Tools buttons (macOS uses the
+            // native History/Favorites/Tools menus)
+            val actionButtonCount = (if (PlatformInfo.isMacOS) 2 else 7) + if (updateIconVisible) 1 else 0
             val iconWidth: Dp = 40.dp
             val desktopSwitcherWidth: Dp = DESKTOP_SWITCHER_WIDTH
             val actionButtonsWidth = iconWidth * actionButtonCount + desktopSwitcherWidth

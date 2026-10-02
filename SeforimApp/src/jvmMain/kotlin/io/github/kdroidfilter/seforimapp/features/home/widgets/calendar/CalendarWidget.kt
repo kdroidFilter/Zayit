@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +72,8 @@ internal object CalendarWidget : HomeWidget {
     override val id = "calendar"
     override val title = Res.string.home_widget_name_calendar
     override val defaultSpan = CellSpan(7, 5)
+    override val toolWindowSize = DpSize(420.dp, 460.dp)
+    override val toolSymbol = "calendar"
     override val minSpan = CellSpan(7, 5)
 
     // Six week rows hold their two lines of text; taller would only part them

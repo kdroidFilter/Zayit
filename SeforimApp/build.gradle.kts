@@ -21,6 +21,7 @@ plugins {
     alias(libs.plugins.nucleus)
     alias(libs.plugins.structured.coroutines)
     alias(libs.plugins.sentryJvmGradle)
+    alias(libs.plugins.ksp)
 }
 
 structuredCoroutines {
@@ -369,4 +370,9 @@ kover {
             }
         }
     }
+}
+
+dependencies {
+    // Generates availableHomeWidgets from every HomeWidget object (see :widgetprocessor).
+    add("kspJvm", project(":widgetprocessor"))
 }

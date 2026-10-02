@@ -17,6 +17,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsSt
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanupUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.ToolWindows
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
@@ -70,4 +71,5 @@ abstract class AppGraph : ViewModelGraph {
 
     /** App self-update facade (Nucleus updater + native SSL). */
     abstract val appUpdateService: AppUpdateService
+    abstract val toolWindows: ToolWindows
 }

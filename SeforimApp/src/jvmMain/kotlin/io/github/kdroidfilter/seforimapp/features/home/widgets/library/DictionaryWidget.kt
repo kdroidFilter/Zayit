@@ -43,6 +43,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -291,6 +292,8 @@ internal object DictionaryWidget : HomeWidget {
     override val id = "dictionary"
     override val title = Res.string.home_widget_name_dictionary
     override val defaultSpan = CellSpan(6, 5)
+    override val toolWindowSize = DpSize(460.dp, 560.dp)
+    override val toolSymbol = "character.book.closed"
     override val minSpan = CellSpan(4, 4)
     override val maxSpan = CellSpan(10, 10)
 

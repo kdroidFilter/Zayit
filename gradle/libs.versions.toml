@@ -18,6 +18,7 @@ androidx-activityCompose = "1.13.0"
 androidx-uiTest = "1.11.4"
 hotReload = "1.2.0"
 kotlinpoet = "2.3.0"
+ksp = "2.3.12"
 ktor = "3.6.0"
 androidx-lifecycle = "2.10.0"
 androidx-navigation = "2.9.2"
@@ -86,6 +87,7 @@ nucleus-menu-macos = { module = "dev.nucleusframework:nucleus.menu-macos", versi
 nucleus-sf-symbols = { module = "dev.nucleusframework:nucleus.sf-symbols", version.ref = "nucleus" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
+ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 kotlinx-serialization-protobuf = { module = "org.jetbrains.kotlinx:kotlinx-serialization-protobuf", version.ref = "kotlinx-serialization" }
 ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -189,4 +191,5 @@ ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint" }
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 structured-coroutines = { id = "io.github.santimattius.structured-coroutines", version.ref = "structured-coroutines" }
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
+ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 sentryJvmGradle = { id = "io.sentry.jvm.gradle", version.ref = "sentry" }

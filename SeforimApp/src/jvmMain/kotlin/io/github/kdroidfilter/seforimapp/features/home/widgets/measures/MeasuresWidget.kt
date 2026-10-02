@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -65,6 +66,8 @@ internal object MeasuresWidget : HomeWidget {
     override val id = "measures"
     override val title = Res.string.home_widget_name_measures
     override val defaultSpan = CellSpan(7, 4)
+    override val toolWindowSize = DpSize(460.dp, 520.dp)
+    override val toolSymbol = "ruler"
     override val minSpan = CellSpan(7, 2)
 
     // Its height is the one its opinions need (heightAt), no more: only its width is the user's

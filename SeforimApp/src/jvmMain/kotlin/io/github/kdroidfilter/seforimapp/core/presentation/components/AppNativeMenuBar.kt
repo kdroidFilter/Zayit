@@ -25,6 +25,7 @@ import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
+import io.github.kdroidfilter.seforimapp.features.home.widgets.availableTools
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
@@ -179,6 +180,9 @@ fun AppNativeMenuBar(
     val menuNotes = stringResource(Res.string.notes_title)
     val menuShowAllNotes = stringResource(Res.string.notes_show_all)
     val menuWindow = stringResource(Res.string.menu_window)
+    val menuTools = stringResource(Res.string.menu_tools)
+    val toolWindows = LocalAppGraph.current.toolWindows
+    val tools = availableTools.map { it to stringResource(it.title) }
     val menuHelp = stringResource(Res.string.menu_help)
 
     NativeMenuBar {
@@ -426,6 +430,12 @@ fun AppNativeMenuBar(
                         openNote(bookNote)
                     }
                 }
+            }
+        }
+
+        Menu(menuTools) {
+            tools.forEach { (tool, title) ->
+                Item(text = title, icon = tool.toolSymbol?.let(NsMenuItemImage::SystemSymbol)) { toolWindows.open(tool) }
             }
         }
 

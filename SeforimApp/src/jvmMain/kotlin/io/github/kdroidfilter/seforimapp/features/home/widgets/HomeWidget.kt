@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.NextZmanWid
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.ShnayimMikraWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.TefilaWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.UpcomingEventsWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.MeasuresWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
@@ -120,6 +121,7 @@ val availableHomeWidgets: List<HomeWidget> =
         HistoryWidget,
         FavoritesWidget,
         NotesWidget,
+        MeasuresWidget,
     )
 
 /**

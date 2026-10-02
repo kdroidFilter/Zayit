@@ -46,4 +46,15 @@ class CalendarMonthTest {
                 .isNotBlank(),
         )
     }
+
+    @Test
+    fun `a civil month runs from its 1st, Sunday-first, with its Hebrew days`() {
+        val october = civilMonth(LocalDate.of(2026, 10, 15), inIsrael = true)
+        assertEquals("אוקטובר 2026", october.title)
+        assertEquals("כ׳ תשרי – כ׳ חשון", october.subtitle)
+        // 1 October 2026 is a Thursday
+        assertEquals(listOf(null, null, null, null, 1, 2, 3), october.weeks.first().map { it?.gregorianDay })
+        assertEquals(31, october.weeks.flatten().count { it != null })
+        assertEquals("כ׳", october.weeks.first()[4]?.hebrewDay)
+    }
 }

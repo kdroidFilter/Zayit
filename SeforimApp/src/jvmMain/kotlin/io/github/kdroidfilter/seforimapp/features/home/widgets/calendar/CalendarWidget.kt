@@ -46,6 +46,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentCol
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.isoDayNumber
+import kotlinx.datetime.number
 import kotlinx.datetime.plus
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
@@ -58,10 +59,14 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_calendar_next_month
 import seforimapp.seforimapp.generated.resources.home_calendar_previous_month
+import seforimapp.seforimapp.generated.resources.home_calendar_swap
 import seforimapp.seforimapp.generated.resources.home_widget_name_calendar
 import java.time.LocalDate
 
-/** The Hebrew month, as in the KosherKotlin demo's luach; clicking a day moves every widget to it. */
+/**
+ * The Hebrew month, as in the KosherKotlin demo's luach, or the civil one, swapped by the arrow of its header; clicking
+ * a day moves every widget to it.
+ */
 internal object CalendarWidget : HomeWidget {
     override val id = "calendar"
     override val title = Res.string.home_widget_name_calendar
@@ -80,7 +85,11 @@ internal object CalendarWidget : HomeWidget {
         val today = remember(selected, state.location) { LocalDate.now(state.location.timeZone.toZoneId()) }
         // Any day of the month on show; follows the date picked elsewhere (a zman card, the Earth orbit)
         var shown by remember(selected) { mutableStateOf(selected) }
-        val month = remember(shown, state.inIsrael) { calendarMonth(shown, state.inIsrael) }
+        val civil = state.optionsOf(this) == CIVIL_OPTION
+        val month =
+            remember(shown, civil, state.inIsrael) {
+                if (civil) civilMonth(shown, state.inIsrael) else calendarMonth(shown, state.inIsrael)
+            }
         val accent = rememberAccentColor(JewelTheme.isDark)
 
         PanelCard(modifier) {
@@ -89,6 +98,7 @@ internal object CalendarWidget : HomeWidget {
                     month = month,
                     onPrevious = { shown = month.first.minusDays(1) },
                     onNext = { shown = month.last.plusDays(1) },
+                    onSwap = { state.setOptions(this@CalendarWidget, if (civil) null else CIVIL_OPTION) },
                 )
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     // Holiday names only where a cell can hold a word
@@ -116,6 +126,7 @@ internal object CalendarWidget : HomeWidget {
                                         isSelected = day?.date == selected,
                                         showTag = showTags,
                                         stacked = stacked,
+                                        civil = civil,
                                         accent = accent,
                                         onClick = { day?.let { state.selectDate(it.date) } },
                                         modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -129,6 +140,8 @@ internal object CalendarWidget : HomeWidget {
         }
     }
 }
+
+private const val CIVIL_OPTION = "civil"
 
 private val WEEKDAY_INITIALS = listOf("א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳")
 
@@ -145,6 +158,8 @@ internal data class CalendarDay(
 @Immutable
 internal data class CalendarMonth(
     val title: String,
+    /** Its first and last days in the other calendar. */
+    val subtitle: String,
     val first: LocalDate,
     val last: LocalDate,
     /** Sunday-first weeks; null pads the days of the neighbouring months. */
@@ -186,12 +201,59 @@ internal fun calendarMonth(
             }
             while (size % 7 != 0) add(null)
         }
+    val last = first.plus(length - 1, DateTimeUnit.DAY)
     return CalendarMonth(
         title = "${hebrewFormatter.formatMonth(anchor)} ${hebrewFormatter.formatHebrewNumber(anchor.jewishYear)}",
+        subtitle = "⁦${first.day}.${first.month.number} – ${last.day}.${last.month.number}.${last.year}⁩",
         first = first.toJavaLocalDate(),
-        last = first.plus(length - 1, DateTimeUnit.DAY).toJavaLocalDate(),
+        last = last.toJavaLocalDate(),
         weeks = cells.chunked(7),
     )
+}
+
+private val CIVIL_MONTHS =
+    listOf("ינואר", "פברואר", "מרץ", "אפריל", "מאי", "יוני", "יולי", "אוגוסט", "ספטמבר", "אוקטובר", "נובמבר", "דצמבר")
+
+/** The civil month that [date] falls in, laid out as [calendarMonth] lays out a Hebrew one. */
+internal fun civilMonth(
+    date: LocalDate,
+    inIsrael: Boolean,
+): CalendarMonth {
+    val first = date.withDayOfMonth(1)
+    val last = date.withDayOfMonth(date.lengthOfMonth())
+    val cells =
+        buildList {
+            repeat(first.dayOfWeek.value % 7) { add(null) } // Sunday is column 0
+            for (offset in 0L until date.lengthOfMonth()) {
+                val gregorian = first.plusDays(offset)
+                val day = JewishCalendar(gregorian.toKotlinLocalDate(), inIsrael)
+                add(
+                    CalendarDay(
+                        date = gregorian,
+                        hebrewDay = hebrewFormatter.formatHebrewNumber(day.jewishDayOfMonth),
+                        gregorianDay = gregorian.dayOfMonth,
+                        tag = day.tag(),
+                        isShabbat = gregorian.dayOfWeek == java.time.DayOfWeek.SATURDAY,
+                    ),
+                )
+            }
+            while (size % 7 != 0) add(null)
+        }
+    return CalendarMonth(
+        title = "${CIVIL_MONTHS[first.monthValue - 1]} ${first.year}",
+        subtitle = "${hebrewDayMonth(first, inIsrael)} – ${hebrewDayMonth(last, inIsrael)}",
+        first = first,
+        last = last,
+        weeks = cells.chunked(7),
+    )
+}
+
+private fun hebrewDayMonth(
+    date: LocalDate,
+    inIsrael: Boolean,
+): String {
+    val day = JewishCalendar(date.toKotlinLocalDate(), inIsrael)
+    return "${hebrewFormatter.formatHebrewNumber(day.jewishDayOfMonth)} ${hebrewFormatter.formatMonth(day)}"
 }
 
 private fun JewishCalendar.tag(): String {
@@ -205,6 +267,7 @@ private fun MonthHeader(
     month: CalendarMonth,
     onPrevious: () -> Unit,
     onNext: () -> Unit,
+    onSwap: () -> Unit,
 ) {
     // The earlier month sits at the start of the reading direction; Jewel icons don't mirror themselves
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -214,14 +277,9 @@ private fun MonthHeader(
         StepButton(towardsStart, stringResource(Res.string.home_calendar_previous_month), onPrevious)
         Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(month.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-            Text(
-                text =
-                    "⁦${month.first.dayOfMonth}.${month.first.monthValue} – " +
-                        "${month.last.dayOfMonth}.${month.last.monthValue}.${month.last.year}⁩",
-                fontSize = 11.sp,
-                color = JewelTheme.globalColors.text.info,
-            )
+            Text(month.subtitle, fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1)
         }
+        StepButton(AllIconsKeys.Actions.SwapPanels, stringResource(Res.string.home_calendar_swap), onSwap)
         StepButton(towardsEnd, stringResource(Res.string.home_calendar_next_month), onNext)
     }
 }
@@ -251,6 +309,7 @@ private fun DayCell(
     isSelected: Boolean,
     showTag: Boolean,
     stacked: Boolean,
+    civil: Boolean,
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -286,9 +345,10 @@ private fun DayCell(
             Modifier.fillMaxSize().padding(horizontal = 4.dp, vertical = 2.dp),
             horizontalAlignment = if (stacked) Alignment.CenterHorizontally else Alignment.Start,
         ) {
-            val hebrew = @Composable { rowModifier: Modifier ->
+            // The day in the month's calendar, then in the other one
+            val main = @Composable { rowModifier: Modifier ->
                 Text(
-                    text = day.hebrewDay,
+                    text = if (civil) day.gregorianDay.toString() else day.hebrewDay,
                     fontSize = 14.sp,
                     fontWeight = if (isToday) FontWeight.Bold else FontWeight.Medium,
                     color = if (isToday) accent else textColor,
@@ -297,9 +357,9 @@ private fun DayCell(
                     modifier = rowModifier,
                 )
             }
-            val gregorian = @Composable {
+            val other = @Composable {
                 Text(
-                    text = day.gregorianDay.toString(),
+                    text = if (civil) day.hebrewDay else day.gregorianDay.toString(),
                     fontSize = 9.sp,
                     color = JewelTheme.globalColors.text.info,
                     maxLines = 1,
@@ -307,12 +367,12 @@ private fun DayCell(
                 )
             }
             if (stacked) {
-                hebrew(Modifier)
-                gregorian()
+                main(Modifier)
+                other()
             } else {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-                    hebrew(Modifier.weight(1f))
-                    gregorian()
+                    main(Modifier.weight(1f))
+                    other()
                 }
             }
             if (showTag && day.tag.isNotBlank()) {

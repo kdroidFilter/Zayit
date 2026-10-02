@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.library.DictionaryWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.library.FavoritesWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.library.HistoryWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.library.NotesWidget
@@ -122,6 +123,7 @@ val availableHomeWidgets: List<HomeWidget> =
         FavoritesWidget,
         NotesWidget,
         MeasuresWidget,
+        DictionaryWidget,
     )
 
 /**

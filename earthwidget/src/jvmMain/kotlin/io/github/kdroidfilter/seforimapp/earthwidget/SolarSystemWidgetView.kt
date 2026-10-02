@@ -84,8 +84,8 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthwidget_kiddush_levana_legend
-import seforimapp.earthwidget.generated.resources.earthwidget_solar_real_spin_tooltip
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_title
+import java.time.Instant
 import java.time.LocalDate
 import java.util.Date
 import java.util.TimeZone
@@ -148,10 +148,10 @@ internal fun kiddushLevanaWindow(
 private const val DAY_MILLIS = 86_400_000L
 
 /** Play speed of the full window: a lunar month in ~5 s, a year in ~1 min. */
-private const val PLAY_DAYS_PER_SECOND = 6f
+const val PLAY_DAYS_PER_SECOND = 6f
 
 /** The Earth's shown spin while playing — slowed down (the real one is a turn per day, 6 a second here). */
-private const val PLAY_SPIN_SECONDS_PER_TURN = 2f
+const val PLAY_SPIN_SECONDS_PER_TURN = 2f
 
 /** Outward steps tried to fit a label before leaving it out. */
 private const val LABEL_PLACEMENT_TRIES = 6
@@ -299,12 +299,23 @@ fun SolarSystemWidgetView(
     timeZone: TimeZone = TimeZone.getDefault(),
     /** Shows a button opening the widget in its own window; null inside that window. */
     onFullscreen: (() -> Unit)? = null,
+    /** Shows a button opening the widget's options; null for none. */
+    onOptions: (() -> Unit)? = null,
+    /** The Earth's shown spin while playing, in seconds a turn; null for its real one (a turn per simulated day). */
+    spinSecondsPerTurn: Float? = PLAY_SPIN_SECONDS_PER_TURN,
     /** Inside its own window: finer, more realistic rendering (see [SolarRenderState.detailed]). */
     fullWindow: Boolean = false,
     /** Shows a date picker (as on the Earth widget) that reports the chosen day; null on the Home card. */
     onDateSelect: ((LocalDate) -> Unit)? = null,
     kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
+    /**
+     * The instant played, owned by the caller with every other view's (one clock for all): non-null while playing, it
+     * is shown as is, frame by frame.
+     */
+    playMillis: Long? = null,
+    /** Shows a play / pause button (in the full window); the caller runs the clock. */
+    onPlayToggle: (() -> Unit)? = null,
     /** Keeps the header and caption clear of the window's own controls; the 3D scene still fills the view. */
     chromePadding: PaddingValues = PaddingValues(0.dp),
 ) {
@@ -312,47 +323,33 @@ fun SolarSystemWidgetView(
     val appMenuStyle = JewelTheme.menuStyle
     val today = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
     val baseDate = date ?: today
-    // Full window play: time runs from baseDate at PLAY_DAYS_PER_SECOND; pausing reports the day reached, which
-    // comes back as the new baseDate (and resets the offset)
-    var playing by remember { mutableStateOf(false) }
-    var playOffsetDays by remember { mutableFloatStateOf(0f) }
-    // The day a pause reported: when it comes back as baseDate the offset keeps its fraction of a day (no jump);
-    // any other new baseDate (the date picker, the Home widgets) starts from it afresh
-    var pausedOn by remember { mutableStateOf<LocalDate?>(null) }
-    // A visible spin of the Earth while playing (its real one, 6 turns a second, would only flicker); kept on pause
+    val playing = playMillis != null
+    // A visible spin of the Earth while playing (its real one, a turn per simulated day, can only flicker at speed):
+    // wall-clock driven, a look only — the orbits and the Moon keep to the one played instant
     var playSpinDegrees by remember { mutableFloatStateOf(0f) }
-    // Full window switch: the Earth's real spin (a turn per simulated day) instead of the slowed-down one
-    var realSpin by remember { mutableStateOf(false) }
-    LaunchedEffect(baseDate) {
-        if (baseDate != pausedOn) {
-            playOffsetDays = 0f
-            playSpinDegrees = 0f
-        }
-    }
+    val spinRate by rememberUpdatedState(spinSecondsPerTurn)
     LaunchedEffect(playing) {
         if (!playing) return@LaunchedEffect
+        playSpinDegrees = 0f
         var last = 0L
         while (true) {
             withFrameNanos { now ->
-                if (last != 0L) {
-                    val seconds = (now - last) / 1e9f
-                    playOffsetDays += seconds * PLAY_DAYS_PER_SECOND
-                    playSpinDegrees = (playSpinDegrees + seconds * 360f / PLAY_SPIN_SECONDS_PER_TURN).mod(360f)
-                }
+                if (last != 0L) spinRate?.let { playSpinDegrees = (playSpinDegrees + (now - last) / 1e9f * 360f / it).mod(360f) }
                 last = now
             }
         }
     }
-    val displayedDate = baseDate.plusDays(playOffsetDays.toLong())
-    val dayFraction = playOffsetDays - playOffsetDays.toLong()
+    val displayedDate =
+        playMillis?.let { Instant.ofEpochMilli(it).atZone(timeZone.toZoneId()).toLocalDate() } ?: baseDate
     // Shows the holidays of the date's Hebrew year, until the user picks another one
     val dateHebrewYear = remember(displayedDate) { JewishCalendar(displayedDate.toKotlinLocalDate()).jewishYear.toInt() }
     var hebrewYear by remember(dateHebrewYear) { mutableIntStateOf(dateHebrewYear) }
     val events = remember(hebrewYear, inIsrael) { computeHebrewYearEvents(hebrewYear, inIsrael) }
-    // Noon of the displayed day (or the given instant), plus the running part of a day while playing (smooth orbits)
+    // The instant played, else the given one, else noon of the day
     val julianDay =
-        timeMillis?.takeIf { playOffsetDays == 0f }?.let { it / MILLIS_PER_DAY + UNIX_EPOCH_JD }
-            ?: (julianDayAt(displayedDate, timeZone) + dayFraction)
+        (playMillis ?: timeMillis)?.let { it / MILLIS_PER_DAY + UNIX_EPOCH_JD } ?: julianDayAt(displayedDate, timeZone)
+    // While playing, the noon of the played day: the stylised spin below turns from there
+    val dayFraction = if (playing) (julianDay - julianDayAt(displayedDate, timeZone)).toFloat() else 0f
 
     val earthLongitudeTarget = normalizeAngle360(computeSunEclipticLongitude(julianDay) + 180f)
     // While playing, the Earth is shown at noon each day (solar-day frame) plus a slowed-down visible spin: at real
@@ -360,7 +357,7 @@ fun SolarSystemWidgetView(
     // 0.9856°/day drift only.
     val siderealTarget =
         (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() +
-            if (realSpin) 0f else -360f * dayFraction + playSpinDegrees
+            if (spinSecondsPerTurn == null || !playing) 0f else -360f * dayFraction + playSpinDegrees
     val moon = computeMoonEclipticPosition(julianDay)
     // Kiddush Levana of the lunar month at the displayed instant, as the Moon's longitudes at its start and end
     val kiddushLevana =
@@ -525,6 +522,7 @@ fun SolarSystemWidgetView(
                                 onYearChange = { hebrewYear = it },
                             )
                         }
+                        onOptions?.let { ChromeIcon(AllIconsKeys.General.Settings, onClick = it) }
                         onFullscreen?.let { ChromeIcon(AllIconsKeys.General.ExpandComponent, onClick = it) }
                         if (camera.isMoved || anchorDate != displayedDate) {
                             ChromeIcon(AllIconsKeys.General.Locate) {
@@ -544,20 +542,8 @@ fun SolarSystemWidgetView(
                             kiddushLevanaNow = fullWindow && kiddushLevanaNow,
                         )
                         Spacer(modifier = Modifier.weight(1f))
-                        onDateSelect?.let { select ->
-                            ChromeIcon(
-                                AllIconsKeys.Actions.Refresh,
-                                active = realSpin,
-                                tooltip = stringResource(Res.string.earthwidget_solar_real_spin_tooltip),
-                            ) { realSpin = !realSpin }
-                            ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute) {
-                                if (playing) {
-                                    pausedOn = displayedDate
-                                    playOffsetDays = dayFraction
-                                    select(displayedDate)
-                                }
-                                playing = !playing
-                            }
+                        onPlayToggle?.let { toggle ->
+                            ChromeIcon(if (playing) AllIconsKeys.Actions.Pause else AllIconsKeys.Actions.Execute, onClick = toggle)
                         }
                     }
                 }
@@ -702,7 +688,11 @@ private fun SolarEventMarkers(
     modifier: Modifier = Modifier,
 ) {
     // Hit targets and labels sit on the middle of each holiday's stretch
-    val positions = remember(state) { state.markers.map { solarOrbitScreenPosition(state, it.middleDegrees()) } }
+    // Only the camera and the markers place them: not the Earth moving along (each frame of a play)
+    val positions =
+        remember(state.widthPx, state.heightPx, state.viewAzimuthDegrees, state.viewElevationDegrees, state.viewZoom, state.markers) {
+            state.markers.map { solarOrbitScreenPosition(state, it.middleDegrees()) }
+        }
     // Labels next to the Earth step out of its way
     val earth = solarOrbitScreenPosition(state, state.earthLongitudeDegrees)
     val earthClearance = SolarGeometry(state.widthPx, state.heightPx).earthRadius * state.viewZoom * 1.4f

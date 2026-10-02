@@ -45,5 +45,4 @@
     <string name="earthwidget_sky_sunrise">זריחה</string>
     <string name="earthwidget_sky_sunset">שקיעה</string>
     <string name="earthwidget_sky_chatzos">חצות</string>
-    <string name="earthwidget_solar_real_spin_tooltip">סיבוב אמיתי של כדור הארץ בהפעלה (סיבוב אחד ביממה)</string>
 </resources>

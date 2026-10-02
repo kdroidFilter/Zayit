@@ -23,8 +23,10 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.erkko68.filament.compose.rememberFilamentEngine
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -48,6 +51,9 @@ import kotlin.math.sqrt
 // ============================================================================
 // SHARED ANIMATION SPECS
 // ============================================================================
+
+/** Long enough for [SmoothAngleSpringSpec] to settle: the camera's way back onto the marker after a play. */
+private const val VIEW_EASE_BACK_MS = 2000L
 
 /** Shared spring spec for smooth angle animations. */
 internal val SmoothAngleSpringSpec =
@@ -137,6 +143,8 @@ fun EarthWidgetScene(
     moonPhaseAngleDegrees: Float? = null,
     julianDay: Double? = null,
     animateEarthRotation: Boolean = true,
+    /** The moment is a running clock (a new one each frame): the sky follows it as is; easing would trail and flip. */
+    followClock: Boolean = false,
     moonFromMarkerLightDegrees: Float? = null,
     moonFromMarkerSunElevationDegrees: Float? = null,
     kiddushLevanaStartDegrees: Float? = null,
@@ -156,9 +164,27 @@ fun EarthWidgetScene(
         rememberSmoothAnimatedAngle(
             targetValue = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),
             normalize = ::normalizeAngle360,
+            instant = followClock,
+        )
+    // Following a running clock, the camera holds still in space (aimed at the marker as it was when the clock
+    // started): the Earth turns under it and the Moon goes round once a month, as in the solar system. Stopped, it
+    // eases back onto the marker.
+    val heldSidereal = remember(followClock) { animatedSidereal }
+    var easingBack by remember { mutableStateOf(false) }
+    LaunchedEffect(followClock) {
+        if (followClock) return@LaunchedEffect
+        easingBack = true
+        delay(VIEW_EASE_BACK_MS)
+        easingBack = false
+    }
+    val animatedViewSidereal =
+        rememberSmoothAnimatedAngle(
+            targetValue = if (followClock) heldSidereal else animatedSidereal,
+            normalize = ::normalizeAngle360,
         )
     val sunLongitude = computeSunEclipticLongitude(skyJulianDay)
-    val animatedSunLongitude = rememberSmoothAnimatedAngle(targetValue = sunLongitude, normalize = ::normalizeAngle360)
+    val animatedSunLongitude =
+        rememberSmoothAnimatedAngle(targetValue = sunLongitude, normalize = ::normalizeAngle360, instant = followClock)
     // Earth rotation and light can be instant (during drag) or animated (location change)
     val animatedEarthRotation =
         if (animateEarthRotation) {
@@ -174,13 +200,14 @@ fun EarthWidgetScene(
             rememberSmoothAnimatedAngle(
                 targetValue = lightDegrees,
                 normalize = ::normalizeAngle180,
+                instant = followClock,
             )
         } else {
             normalizeAngle180(lightDegrees)
         }
     val animatedSunElevation by animateFloatAsState(
         targetValue = sunElevationDegrees,
-        animationSpec = SmoothAngleSpringSpec,
+        animationSpec = if (followClock) snap() else SmoothAngleSpringSpec,
         label = "sunElevation",
     )
     val animatedTiltDegrees by animateFloatAsState(
@@ -192,6 +219,7 @@ fun EarthWidgetScene(
         rememberSmoothAnimatedAngle(
             targetValue = moonOrbitDegrees,
             normalize = ::normalizeAngle360,
+            instant = followClock,
         )
     val animatedMarkerLat by animateFloatAsState(
         targetValue = markerLatitudeDegrees,
@@ -207,15 +235,16 @@ fun EarthWidgetScene(
         rememberSmoothAnimatedAngle(
             targetValue = moonLightDegrees,
             normalize = ::normalizeAngle180,
+            instant = followClock,
         )
     val animatedMoonSunElevation by animateFloatAsState(
         targetValue = moonSunElevationDegrees,
-        animationSpec = SmoothAngleSpringSpec,
+        animationSpec = if (followClock) snap() else SmoothAngleSpringSpec,
         label = "moonSunElevation",
     )
     val animatedMoonPhaseAngle =
         moonPhaseAngleDegrees?.let {
-            rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360)
+            rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360, instant = followClock)
         }
 
     val engine = rememberFilamentEngine()
@@ -249,6 +278,8 @@ fun EarthWidgetScene(
             kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
             siderealDegrees = animatedSidereal,
+            // Away from a play, aimed at the marker itself (centred, no lag), once it has eased back there
+            viewSiderealDegrees = animatedViewSidereal.takeIf { followClock || easingBack },
             sunLongitudeDegrees = animatedSunLongitude,
             moonNodeDegrees = computeMoonAscendingNodeLongitude(skyJulianDay),
             viewYawDegrees = animatedViewYaw,

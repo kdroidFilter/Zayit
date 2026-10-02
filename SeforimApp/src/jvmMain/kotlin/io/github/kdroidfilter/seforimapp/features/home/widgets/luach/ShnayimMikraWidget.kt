@@ -33,6 +33,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
@@ -208,7 +209,8 @@ internal object ShnayimMikraWidget : HomeWidget {
         state: HomeWidgetsState,
         modifier: Modifier,
     ) {
-        val week = remember(state.selectedDate, state.inIsrael) { mikraWeek(state.selectedDate, state.inIsrael) }
+        val day = state.shownDateHere()
+        val week = remember(day, state.inIsrael) { mikraWeek(day, state.inIsrael) }
         val store = LocalAppGraph.current.shnayimMikraStore
         var weekShown by remember { mutableStateOf(week) }
         val revision by store.revision.collectAsState()

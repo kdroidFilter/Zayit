@@ -10,6 +10,8 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.skyTimeMillisHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.SkyPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import seforimapp.seforimapp.generated.resources.Res
@@ -40,7 +42,9 @@ internal object SkyWidget : HomeWidget {
                 SkyWidgetView(
                     latitude = state.location.latitude,
                     longitude = state.location.longitude,
-                    timeMillis = state.skyTimeMillis,
+                    timeMillis = state.skyTimeMillisHere(),
+                    // Following the solar system's play frame by frame: no glide between frames
+                    glide = state.playMillisHere() == null,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

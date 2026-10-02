@@ -44,6 +44,7 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import io.github.erkko68.filament.Camera as FilamentCamera
 
@@ -211,18 +212,26 @@ internal fun SolarSystemSceneView(
         }
     // Rosh Chodesh: a short graduation across the orbit, like the month ticks of a dial
     // The Moon's orbit round the Earth (a thin ring) and the stretch of it the Moon crosses during Kiddush Levana
+    // Built round the origin and moved onto the Earth by its node, their cross-sections turned from the Sun as when
+    // they were built in place: the Earth's place to a quarter degree (4 times a day) rebuilds them, not each frame of
+    // a play; a camera move or another month does too
+    val ringEarthStep = (state.earthLongitudeDegrees * 4f).roundToInt()
     val moonRing =
-        run {
+        remember(view, geometry, ringEarthStep, state.kiddushLevanaStartDegrees, state.kiddushLevanaEndDegrees) {
+            val sunToEarth = view * eclipticDirection(ringEarthStep / 4f) * geometry.orbitRadius
+            val fromSun = Vec3f(sunToEarth.x, sunToEarth.y, sunToEarth.z)
+
             fun ringPoint(longitude: Float): MoonOrbitPosition {
-                val p = earthPos + view * eclipticDirection(longitude) * geometry.moonOrbitRadius
+                val p = view * eclipticDirection(longitude) * geometry.moonOrbitRadius
                 return MoonOrbitPosition(x = p.x, yCam = p.y, zCam = p.z)
             }
-            val ring = tubeMesh((0..MOON_RING_STEPS).map { ringPoint(it * 360f / MOON_RING_STEPS) }, MOON_RING_RADIUS)
+            val ring =
+                tubeMesh((0..MOON_RING_STEPS).map { ringPoint(it * 360f / MOON_RING_STEPS) }, MOON_RING_RADIUS, normalOrigin = fromSun)
             val kl =
                 state.kiddushLevanaStartDegrees?.let { start ->
                     val span = ((state.kiddushLevanaEndDegrees ?: start) - start).mod(360f)
                     val steps = (span / 2f).toInt().coerceAtLeast(2)
-                    tubeMesh((0..steps).map { ringPoint(start + span * it / steps) }, ARC_STROKE_RADIUS)
+                    tubeMesh((0..steps).map { ringPoint(start + span * it / steps) }, ARC_STROKE_RADIUS, normalOrigin = fromSun)
                 }
             ring to kl
         }
@@ -300,7 +309,7 @@ internal fun SolarSystemSceneView(
             cameraState = camera,
             indirectLightState = ambient,
             postProcessing =
-                WidgetPostProcessing.copy(
+                widgetPostProcessing.copy(
                     vignette = if (state.detailed) Vignette(midPoint = 0.55f, roundness = 0.6f, feather = 0.7f) else null,
                 ),
             shadows = null,
@@ -368,13 +377,17 @@ internal fun SolarSystemSceneView(
             }
             Orbit(orbitMeshes, 0xFFFFFF)
             // The full window only: on the Home card the ring and arc would crowd the small Earth
-            if (state.detailed) moonRing.first?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(0xFFFFFF, 0x55)), it, 1f) }
+            val earthAt = Position(earthPos.x, earthPos.y, earthPos.z)
+            if (state.detailed) {
+                moonRing.first?.let { MeshNode(rememberUnlitColorMaterialInstance(dimmed(0xFFFFFF, 0x55)), it, 1f, position = earthAt) }
+            }
             if (state.detailed) {
                 moonRing.second?.let {
                     MeshNode(
                         rememberUnlitColorMaterialInstance(dimmed(KIDDUSH_LEVANA_SOLAR_RGB, 0xFF)),
                         it,
                         1f,
+                        position = earthAt,
                     )
                 }
             }

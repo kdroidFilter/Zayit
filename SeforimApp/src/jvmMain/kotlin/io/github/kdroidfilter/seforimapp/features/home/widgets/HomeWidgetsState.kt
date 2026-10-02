@@ -3,9 +3,15 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
+import androidx.compose.runtime.withFrameNanos
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
@@ -14,6 +20,9 @@ import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.time.Instant
 import java.time.LocalDate
 import java.util.Date
 
@@ -63,8 +72,61 @@ class HomeWidgetsState internal constructor(
     /** The moment picked on a zman card; null shows [selectedDate] at noon (or now, today). */
     var targetTime by mutableStateOf<Date?>(null)
 
+    /**
+     * The instant being played, the one clock every widget reads (the solar system, the Earth, the sky, the luach):
+     * advanced by [runPlayClock], frame by frame; null when not playing.
+     */
+    var playingMillis by mutableStateOf<Long?>(null)
+        private set
+
+    // Its own state: the day widgets recompose when the day changes, not at each frame of the play
+    private var playingDay by mutableStateOf<LocalDate?>(null)
+
+    val playing: Boolean get() = playingMillis != null
+
+    private fun setPlaying(millis: Long?) {
+        playingMillis = millis
+        playingDay = millis?.let { Instant.ofEpochMilli(it).atZone(location.timeZone.toZoneId()).toLocalDate() }
+    }
+
+    /** Plays from the moment shown, or stops on the moment reached: it stays shown, to the minute, everywhere. */
+    fun togglePlay() {
+        val reached = playingMillis
+        if (reached == null) {
+            setPlaying(skyTimeMillis ?: System.currentTimeMillis())
+        } else {
+            setPlaying(null)
+            selectDate(Instant.ofEpochMilli(reached).atZone(location.timeZone.toZoneId()).toLocalDate())
+            targetTime = Date(reached)
+        }
+    }
+
+    /** Stops playing where it is (its window closing). */
+    fun stopPlay() {
+        if (playing) togglePlay()
+    }
+
+    /** Runs the clock while playing, at [daysPerSecond] simulated days a real second (read at each frame). */
+    suspend fun runPlayClock(daysPerSecond: () -> Float) {
+        var last = 0L
+        while (playing) {
+            withFrameNanos { now ->
+                if (last != 0L) {
+                    playingMillis?.let { setPlaying(it + ((now - last) / 1e9 * daysPerSecond() * DAY_MILLIS).toLong()) }
+                }
+                last = now
+            }
+        }
+    }
+
+    /** The day shown: the one played at while the solar system plays, else [selectedDate]. */
+    val shownDate: LocalDate get() = playingDay ?: selectedDate
+
     /** The moment the sky and the solar system show; null means now. */
-    val skyTimeMillis: Long?
+    val skyTimeMillis: Long? get() = playingMillis ?: restingSkyMillis
+
+    /** [skyTimeMillis] when not playing. */
+    internal val restingSkyMillis: Long?
         get() =
             targetTime?.time ?: if (selectedDate == today) {
                 null
@@ -128,6 +190,8 @@ class HomeWidgetsState internal constructor(
     ) = layout.setOptions(widget, options)
 
     fun selectDate(date: LocalDate) {
+        // A day picked while playing: the play stops there, rather than going on and dropping it at the pause
+        if (playingMillis != null) setPlaying(null)
         selectedDate = date
         targetTime = null
     }
@@ -149,3 +213,47 @@ class HomeWidgetsState internal constructor(
 
     private fun todayAt(location: EarthWidgetLocation) = LocalDate.now(location.timeZone.toZoneId())
 }
+
+/**
+ * [compute] for [keys], run off the UI thread: the last value stays shown until the new one is ready, so a widget
+ * following the solar system's play (a new day 6 times a second) never stalls a frame. Computed in place the first
+ * time, so the card never opens empty.
+ */
+@Composable
+internal fun <T> rememberOffMain(
+    vararg keys: Any?,
+    compute: () -> T,
+): T {
+    val first = remember { compute() }
+    val latest by rememberUpdatedState(compute)
+    return produceState(first, *keys) { value = withContext(Dispatchers.Default) { latest() } }.value
+}
+
+private const val DAY_MILLIS = 86_400_000.0
+
+/**
+ * Whether the widgets composed here are on show while the solar system's full window plays: true in that window;
+ * false on the Home, hidden behind it, whose 3D cards then hold still (see [playMillisHere]) instead of rendering a
+ * picture nobody sees at every frame. They catch up when the window closes.
+ */
+internal val LocalFollowsPlay = compositionLocalOf { false }
+
+/** [HomeWidgetsState.playingMillis] for the widgets composed here: held still on the Home behind the full window. */
+@Composable
+internal fun HomeWidgetsState.playMillisHere(): Long? {
+    val follow = LocalFollowsPlay.current || !solarSystemFullscreen
+    val held = remember(follow) { Snapshot.withoutReadObservation { playingMillis } }
+    return if (follow) playingMillis else held
+}
+
+/** [HomeWidgetsState.shownDate] for the widgets composed here: held still on the Home behind the full window. */
+@Composable
+internal fun HomeWidgetsState.shownDateHere(): LocalDate {
+    val follow = LocalFollowsPlay.current || !solarSystemFullscreen
+    val held = remember(follow) { Snapshot.withoutReadObservation { shownDate } }
+    return if (follow) shownDate else held
+}
+
+/** [HomeWidgetsState.skyTimeMillis] for the widgets composed here (see [playMillisHere]). */
+@Composable
+internal fun HomeWidgetsState.skyTimeMillisHere(): Long? = playMillisHere() ?: restingSkyMillis

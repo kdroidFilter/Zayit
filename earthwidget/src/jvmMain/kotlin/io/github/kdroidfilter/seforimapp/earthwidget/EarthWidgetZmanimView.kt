@@ -48,6 +48,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
+import java.time.Instant
 import java.time.LocalDate
 import java.util.*
 import kotlin.math.roundToInt
@@ -184,6 +185,8 @@ fun EarthWidgetZmanimView(
     locationOptions: Map<String, Map<String, EarthWidgetLocation>> = emptyMap(),
     targetTimeMillis: Long? = null,
     targetDateEpochDay: Long? = null,
+    /** [targetTimeMillis] is a running clock (a moment per frame): the scene follows it as is, without easing. */
+    followClock: Boolean = false,
     onDateSelect: ((LocalDate) -> Unit)? = null,
     onLocationSelect: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     containerBackground: Color? = null,
@@ -296,7 +299,7 @@ fun EarthWidgetZmanimView(
         }
     }
 
-    val referenceTime =
+    val pickedTime =
         remember(selectedDate, selectedHour, selectedMinute, timeZone) {
             Calendar
                 .getInstance(timeZone)
@@ -310,6 +313,11 @@ fun EarthWidgetZmanimView(
                     set(Calendar.MILLISECOND, 0)
                 }.time
         }
+    // Following a running clock, its instant is the one truth, read as is at each frame (no copy a frame behind, no
+    // rounding to the minute); else the date and time picked here
+    val clockMillis = targetTimeMillis?.takeIf { followClock }
+    val referenceTime = clockMillis?.let { Date(it) } ?: pickedTime
+    val shownDay = clockMillis?.let { Instant.ofEpochMilli(it).atZone(timeZone.toZoneId()).toLocalDate() } ?: selectedDate
 
     // Compute astronomical model
     val model =
@@ -332,7 +340,8 @@ fun EarthWidgetZmanimView(
         }
 
     val stableOrbitLabels =
-        remember(referenceTime, timeZone, showOrbitLabels) {
+        // By day, not by minute: a moment per frame (the solar system's play) would rebuild them at every frame
+        remember(shownDay, timeZone, showOrbitLabels) {
             StableOrbitLabels(
                 if (showOrbitLabels) {
                     computeHebrewMonthOrbitLabels(
@@ -348,7 +357,9 @@ fun EarthWidgetZmanimView(
     // Compute Kiddush Levana data
     val kiddushLevanaData =
         remember(
-            referenceTime,
+            shownDay,
+            // On a molad's day the window it opens starts at the molad: the hour sides with one month or the other
+            hebrewDayAt(referenceTime.time, timeZone).isAfterMolad(referenceTime.time),
             timeZone,
             showKiddushLevana,
             kiddushLevanaEarliestOpinion,
@@ -401,7 +412,7 @@ fun EarthWidgetZmanimView(
             }
         }
     val hebrewDateLabel =
-        remember(referenceTime, timeZone) {
+        remember(shownDay, timeZone) {
             val jewishDate = jewishCalendarAt(referenceTime, timeZone)
             val dateFormatter =
                 HebrewDateFormatter().apply {
@@ -479,6 +490,7 @@ fun EarthWidgetZmanimView(
     ) {
         EarthSceneContent(
             modifier = Modifier.fillMaxSize(),
+            followClock = followClock,
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
             markerLongitudeDegrees = markerLongitudeDegrees,
@@ -658,6 +670,7 @@ private fun EarthSceneContent(
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
+    followClock: Boolean = false,
 ) {
     val density = LocalDensity.current
     // A full drag across the sphere width = 180 degrees
@@ -689,6 +702,7 @@ private fun EarthSceneContent(
             moonFromMarkerLightDegrees = model.lightDegrees,
             moonFromMarkerSunElevationDegrees = model.sunElevationDegrees,
             animateEarthRotation = !camera.isGesturing, // Instant rotation during gestures
+            followClock = followClock,
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
@@ -1025,16 +1039,18 @@ private fun computeZmanimModel(
 
     // Calculate moon position
     val julianDay = computeJulianDayUtc(referenceTime)
-    val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
+    // The Hebrew day, by day: a running clock asks for it at every frame
+    val hebrewDay = hebrewDayAt(referenceTime.time, timeZone)
+    val phaseAngle = hebrewDay.phaseAngleAt(referenceTime.time)
     val moonOrbitDegrees =
         run {
-            val jewishCalendar = jewishCalendarAt(referenceTime, timeZone)
-
-            val daysInMonth = jewishCalendar.daysInJewishMonth
-            val dayOfMonth = jewishCalendar.jewishDayOfMonth
+            val daysInMonth = hebrewDay.daysInMonth
+            val dayOfMonth = hebrewDay.dayOfMonth
             if (daysInMonth > 0 && dayOfMonth in 1..daysInMonth) {
                 val stepDegrees = 360f / daysInMonth.toFloat()
-                normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1) * stepDegrees)
+                // Gliding through the day from its label to the next one: a turn per month, no step at midnight
+                val dayFraction = (referenceTime.time - hebrewDay.startMillis).toFloat() / (hebrewDay.endMillis - hebrewDay.startMillis)
+                normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1 + dayFraction) * stepDegrees)
             } else {
                 normalizeOrbitDegrees(phaseAngle + ORBIT_DAY_LABEL_START_DEGREES)
             }
@@ -1168,6 +1184,56 @@ internal fun jewishCalendarAt(
 // ============================================================================
 
 /**
+ * The Hebrew calendar of one local day ([startMillis] until [endMillis]): its day of the month and the month's
+ * length, and the moladot an instant of it is aged from.
+ */
+internal class HebrewDay(
+    val zoneId: String,
+    val startMillis: Long,
+    val endMillis: Long,
+    val dayOfMonth: Int,
+    val daysInMonth: Int,
+    private val molad: Long,
+    private val previousMolad: Long,
+) {
+    /** Whether [millis] is past this month's molad (else the month is still aged from the previous one). */
+    fun isAfterMolad(millis: Long): Boolean = molad <= millis
+
+    /** As [computeHalakhicPhaseAngle]: the age since the last molad, as an angle. */
+    fun phaseAngleAt(millis: Long): Float {
+        val from = if (molad > millis) previousMolad else molad
+        return (((millis - from).toDouble() / LUNAR_CYCLE_MILLIS) * 360.0).toFloat() % 360f
+    }
+}
+
+// ponytail: one day cached (the shown one); a second widget on another zone recomputes on each switch
+@Volatile
+private var lastHebrewDay: HebrewDay? = null
+
+internal fun hebrewDayAt(
+    millis: Long,
+    timeZone: TimeZone,
+): HebrewDay {
+    lastHebrewDay?.let { if (it.zoneId == timeZone.id && millis >= it.startMillis && millis < it.endMillis) return it }
+    val zone = timeZone.toZoneId()
+    val date = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+    val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+    val end =
+        date
+            .plusDays(1)
+            .atStartOfDay(zone)
+            .toInstant()
+            .toEpochMilli()
+    val calendar = jewishCalendarAt(Date(millis), timeZone)
+    val dayOfMonth = calendar.jewishDayOfMonth
+    val daysInMonth = calendar.daysInJewishMonth
+    val molad = calendar.moladAsInstant.toDate().time
+    goToPreviousHebrewMonth(calendar)
+    val previousMolad = calendar.moladAsInstant.toDate().time
+    return HebrewDay(timeZone.id, start, end, dayOfMonth, daysInMonth, molad, previousMolad).also { lastHebrewDay = it }
+}
+
+/**
  * Computes the Halakhic moon phase angle based on the Hebrew calendar molad.
  *
  * The molad (lunar conjunction) is the traditional Hebrew calculation
@@ -1178,7 +1244,7 @@ internal fun jewishCalendarAt(
  * @param timeZone Local timezone.
  * @return Moon phase angle in degrees (0 = new moon, 180 = full moon).
  */
-private fun computeHalakhicPhaseAngle(
+internal fun computeHalakhicPhaseAngle(
     referenceTime: Date,
     timeZone: TimeZone,
 ): Float {

@@ -16,6 +16,8 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.EarthPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
@@ -61,6 +63,7 @@ internal object EarthWidget : HomeWidget {
                     }
                 }
             }
+        val playMillis = state.playMillisHere()
         WidgetCard(modifier) {
             // Filament renders every vsync while composed; hidden tabs stay composed, so drop it there.
             if (LocalTabSelected.current) {
@@ -71,8 +74,10 @@ internal object EarthWidget : HomeWidget {
                         modifier = Modifier.fillMaxSize(),
                         sphereSize = sphereSize,
                         locationOverride = state.location,
-                        targetTimeMillis = state.targetTime?.time,
-                        targetDateEpochDay = state.selectedDate.toEpochDay(),
+                        targetTimeMillis = playMillis ?: state.targetTime?.time,
+                        // While playing, the day comes with the instant (both would pull it each its way)
+                        targetDateEpochDay = state.shownDateHere().toEpochDay().takeIf { playMillis == null },
+                        followClock = playMillis != null,
                         onDateSelect = state::selectDate,
                         onLocationSelect = state::selectLocation,
                         containerBackground = Color.Transparent,

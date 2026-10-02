@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
@@ -270,13 +269,15 @@ private fun FloatingCard(
     val gripOnLeft = heldGripSide ?: (frame.x + frame.w / 2 > bounds.width.value / 2)
     val currentGripOnLeft by rememberUpdatedState(gripOnLeft)
     val currentSaved by rememberUpdatedState(saved)
-    val density = LocalDensity.current.density
 
     // Compose maps both ends of each drag step into the handle's current place, so moving it along stays exact
     @Composable
     fun Modifier.dragging(update: CardFrame.(dx: Float, dy: Float) -> CardFrame): Modifier {
         val currentUpdate by rememberUpdatedState(update)
         return pointerInput(Unit) {
+            // The scope's own density: it follows the window onto a screen of another scale
+            val scope = this
+
             fun end() {
                 heldGripSide = null
                 live?.let(currentOnSave)
@@ -292,7 +293,7 @@ private fun FloatingCard(
                 onDragCancel = ::end,
             ) { change, amount ->
                 change.consume()
-                live = (live ?: current).currentUpdate(amount.x / density, amount.y / density).clampedTo(currentBounds)
+                live = (live ?: current).currentUpdate(amount.x / scope.density, amount.y / scope.density).clampedTo(currentBounds)
             }
         }
     }
@@ -331,16 +332,14 @@ private fun FloatingCard(
                 .alpha(chromeAlpha)
                 .pointerHoverIcon(PointerIcon(Cursor(gripCursor)))
                 .dragging { dx, dy ->
+                    // Only the dragged edges move: grown up to the window's edge, never pushing the card back
+                    val h = (h + dy).coerceAtMost(currentBounds.height.value - y)
                     if (gripOnLeft) {
                         // The right edge stays put: no further left than the window, no narrower than the minimum
                         val d = dx.coerceIn(-x, w - MIN_CARD_WIDTH)
-                        copy(x = x + d, w = w - d, h = h + dy)
+                        copy(x = x + d, w = w - d, h = h)
                     } else {
-                        copy(
-                            w = w + dx,
-                            h =
-                                h + dy,
-                        )
+                        copy(w = (w + dx).coerceAtMost(currentBounds.width.value - x), h = h)
                     }
                 }.drawBehind {
                     val stroke = 2.dp.toPx()

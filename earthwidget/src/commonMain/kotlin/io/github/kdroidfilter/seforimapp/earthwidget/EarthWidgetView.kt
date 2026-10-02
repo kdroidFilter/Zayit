@@ -23,8 +23,10 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
@@ -41,6 +43,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.erkko68.filament.compose.rememberFilamentEngine
+import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
@@ -48,6 +51,9 @@ import kotlin.math.sqrt
 // ============================================================================
 // SHARED ANIMATION SPECS
 // ============================================================================
+
+/** Long enough for [SmoothAngleSpringSpec] to settle: the camera's way back onto the marker after a play. */
+private const val VIEW_EASE_BACK_MS = 2000L
 
 /** Shared spring spec for smooth angle animations. */
 internal val SmoothAngleSpringSpec =
@@ -164,6 +170,13 @@ fun EarthWidgetScene(
     // started): the Earth turns under it and the Moon goes round once a month, as in the solar system. Stopped, it
     // eases back onto the marker.
     val heldSidereal = remember(followClock) { animatedSidereal }
+    var easingBack by remember { mutableStateOf(false) }
+    LaunchedEffect(followClock) {
+        if (followClock) return@LaunchedEffect
+        easingBack = true
+        delay(VIEW_EASE_BACK_MS)
+        easingBack = false
+    }
     val animatedViewSidereal =
         rememberSmoothAnimatedAngle(
             targetValue = if (followClock) heldSidereal else animatedSidereal,
@@ -265,7 +278,8 @@ fun EarthWidgetScene(
             kiddushLevanaEndDegrees = kiddushLevanaEndDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
             siderealDegrees = animatedSidereal,
-            viewSiderealDegrees = animatedViewSidereal,
+            // Away from a play, aimed at the marker itself (centred, no lag), once it has eased back there
+            viewSiderealDegrees = animatedViewSidereal.takeIf { followClock || easingBack },
             sunLongitudeDegrees = animatedSunLongitude,
             moonNodeDegrees = computeMoonAscendingNodeLongitude(skyJulianDay),
             viewYawDegrees = animatedViewYaw,

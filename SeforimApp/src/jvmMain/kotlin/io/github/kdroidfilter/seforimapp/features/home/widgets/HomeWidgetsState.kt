@@ -2,8 +2,8 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -190,6 +190,8 @@ class HomeWidgetsState internal constructor(
     ) = layout.setOptions(widget, options)
 
     fun selectDate(date: LocalDate) {
+        // A day picked while playing: the play stops there, rather than going on and dropping it at the pause
+        if (playingMillis != null) setPlaying(null)
         selectedDate = date
         targetTime = null
     }

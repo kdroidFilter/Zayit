@@ -1,6 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets.library
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.TooltipPlacement
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,6 +31,7 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -52,17 +55,21 @@ import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.favorites_empty
+import seforimapp.seforimapp.generated.resources.favorites_show_all
 import seforimapp.seforimapp.generated.resources.history_empty
 import seforimapp.seforimapp.generated.resources.history_yesterday
 import seforimapp.seforimapp.generated.resources.home_widget_name_favorites
 import seforimapp.seforimapp.generated.resources.home_widget_name_history
 import seforimapp.seforimapp.generated.resources.home_widget_name_notes
-import seforimapp.seforimapp.generated.resources.home_widget_show_all
 import seforimapp.seforimapp.generated.resources.notes_empty
+import seforimapp.seforimapp.generated.resources.notes_show_all
+import seforimapp.seforimapp.generated.resources.tab_search_show_all_history
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -93,6 +100,7 @@ internal object HistoryWidget : HomeWidget {
         ListCard(
             title = stringResource(Res.string.home_widget_name_history),
             onShowAll = { state.openTab(TabsDestination.History(UUID.randomUUID().toString())) },
+            showAllLabel = stringResource(Res.string.tab_search_show_all_history),
             empty = stringResource(Res.string.history_empty).takeIf { entries.isEmpty() },
             modifier = modifier,
         ) {
@@ -138,6 +146,7 @@ internal object FavoritesWidget : HomeWidget {
         ListCard(
             title = stringResource(Res.string.home_widget_name_favorites),
             onShowAll = { state.openTab(TabsDestination.Favorites(UUID.randomUUID().toString())) },
+            showAllLabel = stringResource(Res.string.favorites_show_all),
             empty = stringResource(Res.string.favorites_empty).takeIf { entries.isEmpty() },
             header = {
                 if (folders.isNotEmpty()) FolderChips(folders, folder, accent) { folder = it }
@@ -220,6 +229,7 @@ internal object NotesWidget : HomeWidget {
         ListCard(
             title = stringResource(Res.string.home_widget_name_notes),
             onShowAll = { state.openTab(TabsDestination.Notes(UUID.randomUUID().toString())) },
+            showAllLabel = stringResource(Res.string.notes_show_all),
             empty = stringResource(Res.string.notes_empty).takeIf { notes.isEmpty() },
             modifier = modifier,
         ) {
@@ -260,12 +270,14 @@ internal object NotesWidget : HomeWidget {
 }
 
 /** A titled card of rows, or its [empty] message when there is nothing to list. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ListCard(
     title: String,
     empty: String?,
     modifier: Modifier = Modifier,
     onShowAll: (() -> Unit)? = null,
+    showAllLabel: String = "",
     header: @Composable () -> Unit = {},
     rows: @Composable () -> Unit,
 ) {
@@ -273,12 +285,15 @@ private fun ListCard(
         Column(Modifier.fillMaxSize().padding(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             WidgetTitle(title) {
                 if (onShowAll != null) {
-                    Text(
-                        stringResource(Res.string.home_widget_show_all),
-                        fontSize = 11.sp,
-                        color = JewelTheme.globalColors.text.info,
-                        modifier = Modifier.clickable(onClick = onShowAll).pointerHoverIcon(PointerIcon.Hand),
-                    )
+                    Tooltip(
+                        tooltip = { Text(showAllLabel) },
+                        // Centred above the button, not under the cursor
+                        tooltipPlacement = TooltipPlacement.ComponentRect(Alignment.TopCenter, Alignment.TopCenter, DpOffset(0.dp, (-8).dp)),
+                    ) {
+                        IconButton(onClick = onShowAll, modifier = Modifier.size(22.dp)) {
+                            Icon(AllIconsKeys.Actions.OpenNewTab, showAllLabel, tint = JewelTheme.globalColors.text.info)
+                        }
+                    }
                 }
             }
             header()

@@ -354,7 +354,7 @@
     <string name="home_widget_name_history">היסטוריה</string>
     <string name="home_widget_name_favorites">מועדפים</string>
     <string name="home_widget_name_notes">ההערות שלי</string>
-    <string name="home_widget_name_measures">מידות התורה</string>
+    <string name="home_widget_name_measures">ממיר מידות</string>
     <string name="home_widget_name_dictionary">מילון</string>
     <string name="home_dictionary_hint">חיפוש ב%1$s</string>
     <string name="home_dictionary_not_found">המילה לא נמצאה</string>
@@ -366,7 +366,6 @@
     <string name="home_dictionary_failed">חלק מהמילונים לא נטענו</string>
     <string name="home_dictionary_retry">לנסות שוב</string>
     <string name="home_dictionary_options_title">המילונים לחיפוש</string>
-    <string name="home_widget_show_all">הכל</string>
     <string name="home_calendar_previous_month">החודש הקודם</string>
     <string name="home_calendar_next_month">החודש הבא</string>
     <string name="home_calendar_swap">לוח עברי / לועזי</string>

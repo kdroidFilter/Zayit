@@ -31,4 +31,12 @@ class MeasuresTest {
         )
         assertEquals(emptyList(), conversionSources(LengthUnit.MIL, LengthUnit.MIL))
     }
+
+    @Test
+    fun `every opinion is shown until the user picks`() {
+        assertEquals(setOf("chazon_ish", "igros_moshe", "mil_18", "mil_22_5", "mil_24"), shownOpinions(null))
+        assertEquals(setOf("igros_moshe"), shownOpinions("igros_moshe"))
+        // All unticked: none
+        assertEquals(emptySet(), shownOpinions(""))
+    }
 }

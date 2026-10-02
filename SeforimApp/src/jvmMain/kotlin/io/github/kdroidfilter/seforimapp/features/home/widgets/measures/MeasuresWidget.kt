@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -17,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -28,16 +32,22 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CheckboxRow
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.ListComboBox
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextField
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widget_name_measures
+import seforimapp.seforimapp.generated.resources.home_widgets_options
 import java.math.BigDecimal
 import java.math.MathContext
 import java.text.DecimalFormat
@@ -56,6 +66,18 @@ internal object MeasuresWidget : HomeWidget {
     override val minSpan = CellSpan(7, 4)
     override val maxSpan = CellSpan(10, 4)
 
+    // Its opinions picked in a page of their own, as the limudim
+    @Composable
+    override fun menuItems(state: HomeWidgetsState) =
+        listOf(
+            WidgetMenuItem(stringResource(Res.string.home_widgets_options), icon = AllIconsKeys.General.Settings) {
+                state.optionsOpen = this
+            },
+        )
+
+    @Composable
+    override fun Options(state: HomeWidgetsState) = MeasuresOptions(state)
+
     @Composable
     override fun Content(
         state: HomeWidgetsState,
@@ -67,6 +89,9 @@ internal object MeasuresWidget : HomeWidget {
         val typed = field.text.trim().toString()
         val amount = typed.replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 }
         val etzbaos = amount?.let { it * from.etzbaos }
+        val shown = shownOpinions(state.optionsOf(this))
+        val ammaOpinions = AMMA_OPINIONS.filter { it.id in shown }
+        val milOpinions = MIL_OPINIONS.filter { it.id in shown }
         val accent = rememberAccentColor(JewelTheme.isDark)
         val open = rememberOpenSource(state)
         PanelCard(modifier) {
@@ -74,7 +99,26 @@ internal object MeasuresWidget : HomeWidget {
                 Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.SpaceBetween,
             ) {
-                Text(stringResource(title), fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(title),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        modifier = Modifier.weight(1f),
+                    )
+                    // Its options at hand, as in its menu
+                    IconButton(
+                        onClick = { state.optionsOpen = MeasuresWidget },
+                        modifier = Modifier.size(22.dp).testTag("measures-settings"),
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.General.Settings,
+                            contentDescription = stringResource(Res.string.home_widgets_options),
+                            tint = JewelTheme.globalColors.text.info,
+                        )
+                    }
+                }
                 Row(
                     Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -105,32 +149,80 @@ internal object MeasuresWidget : HomeWidget {
                         conversionSources(from, to).forEach { SourceLink(it, open) }
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    SectionTitle("בימינו")
-                    AMMA_OPINIONS.forEach { opinion ->
-                        OpinionRow(
-                            label = opinion.label,
-                            value = etzbaos?.let { length(it / ETZBAOS_IN_AMMA * opinion.cm) },
-                            source = opinion.source,
-                            accent = accent,
-                            open = open,
-                        )
+                if (ammaOpinions.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        SectionTitle(TODAY_TITLE)
+                        ammaOpinions.forEach { opinion ->
+                            OpinionRow(
+                                label = opinion.label,
+                                value = etzbaos?.let { length(it / ETZBAOS_IN_AMMA * opinion.cm) },
+                                source = opinion.source,
+                                accent = accent,
+                                open = open,
+                            )
+                        }
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    SectionTitle("זמן הליכה")
-                    MIL_OPINIONS.forEach { opinion ->
-                        OpinionRow(
-                            label = opinion.label,
-                            value = etzbaos?.let { duration(it / ETZBAOS_IN_AMMA / AMOS_IN_MIL * opinion.minutes * 60) },
-                            source = opinion.source,
-                            accent = accent,
-                            open = open,
-                        )
+                if (milOpinions.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        SectionTitle(WALK_TITLE)
+                        milOpinions.forEach { opinion ->
+                            OpinionRow(
+                                label = opinion.label,
+                                value = etzbaos?.let { duration(it / ETZBAOS_IN_AMMA / AMOS_IN_MIL * opinion.minutes * 60) },
+                                source = opinion.source,
+                                accent = accent,
+                                open = open,
+                            )
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+private const val TODAY_TITLE = "בימינו"
+private const val WALK_TITLE = "זמן הליכה"
+
+/** The ids of the opinions shown, after [options]: every one until the user picks. */
+internal fun shownOpinions(options: String?): Set<String> =
+    options?.split(',')?.filter { it.isNotEmpty() }?.toSet() ?: (AMMA_OPINIONS.map { it.id } + MIL_OPINIONS.map { it.id }).toSet()
+
+/** A box for each opinion, by kind, with its figure and source; each tick shows or hides it at once. */
+@Composable
+private fun MeasuresOptions(state: HomeWidgetsState) {
+    val shown = shownOpinions(state.optionsOf(MeasuresWidget))
+    val toggle = { id: String, on: Boolean -> state.setOptions(MeasuresWidget, (if (on) shown + id else shown - id).joinToString(",")) }
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        OptionsGroup(TODAY_TITLE)
+        AMMA_OPINIONS.forEach { OptionRow(it.id, it.label, "אמה ${length(it.cm)} · ${it.source.ref}", it.id in shown, toggle) }
+        OptionsGroup(WALK_TITLE)
+        MIL_OPINIONS.forEach { OptionRow(it.id, it.label, it.source.ref, it.id in shown, toggle) }
+    }
+}
+
+@Composable
+private fun OptionsGroup(title: String) {
+    Text(title, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 10.dp, bottom = 2.dp))
+}
+
+@Composable
+private fun OptionRow(
+    id: String,
+    label: String,
+    detail: String,
+    checked: Boolean,
+    onToggle: (String, Boolean) -> Unit,
+) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        CheckboxRow(
+            text = label,
+            checked = checked,
+            onCheckedChange = { onToggle(id, it) },
+            modifier = Modifier.weight(1f).testTag("measures-option-$id"),
+        )
+        Text(detail, fontSize = 12.sp, color = JewelTheme.globalColors.text.info, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 
@@ -256,6 +348,7 @@ internal enum class LengthUnit(
 }
 
 internal class AmmaOpinion(
+    val id: String,
     val label: String,
     val cm: Double,
     val source: Source,
@@ -264,12 +357,13 @@ internal class AmmaOpinion(
 internal val AMMA_OPINIONS =
     listOf(
         // "ומדת האמה 58 ס"מ" (קונטרס השיעורים)
-        AmmaOpinion("חזון איש", 58.0, Source("חזו״א, קונטרס השיעורים לט, ט", "חזון איש, אורח חיים מועד", 1533)),
+        AmmaOpinion("chazon_ish", "חזון איש", 58.0, Source("חזו״א, קונטרס השיעורים לט, ט", "חזון איש, אורח חיים מועד", 1533)),
         // "אמה של תורה שהוא כ"ד אצבעות מדת כ"א אינטשעס ורביע"
-        AmmaOpinion("אגרות משה", 21.25 * 2.54, Source("אגרות משה או״ח א, קלו", "אגרות משה אורח חיים א", 1256)),
+        AmmaOpinion("igros_moshe", "אגרות משה", 21.25 * 2.54, Source("אגרות משה או״ח א, קלו", "אגרות משה אורח חיים א", 1256)),
     )
 
 internal class MilOpinion(
+    val id: String,
     val label: String,
     val minutes: Double,
     val source: Source,
@@ -280,11 +374,11 @@ private val BIUR_HALACHA_459_2 = Source("ביאור הלכה תנט, ב", "בי�
 internal val MIL_OPINIONS =
     listOf(
         // "ושיעור מיל הוי רביעית שעה וחלק מעשרים מן השעה"
-        MilOpinion("מיל 18 דק׳", 18.0, Source("שו״ע או״ח תנט, ב", "שולחן ערוך, אורח חיים", 3402)),
+        MilOpinion("mil_18", "מיל 18 דק׳", 18.0, Source("שו״ע או״ח תנט, ב", "שולחן ערוך, אורח חיים", 3402)),
         // "שחושבין שיעור מיל לחשבון כ"ב מינוטין וחצי"
-        MilOpinion("מיל 22.5 דק׳", 22.5, BIUR_HALACHA_459_2),
+        MilOpinion("mil_22_5", "מיל 22.5 דק׳", 22.5, BIUR_HALACHA_459_2),
         // "שליש שעה וחלק ט"ו מן השעה"
-        MilOpinion("מיל 24 דק׳", 24.0, BIUR_HALACHA_459_2),
+        MilOpinion("mil_24", "מיל 24 דק׳", 24.0, BIUR_HALACHA_459_2),
     )
 
 /** [count] [unit]s, its name in the singular for one. */

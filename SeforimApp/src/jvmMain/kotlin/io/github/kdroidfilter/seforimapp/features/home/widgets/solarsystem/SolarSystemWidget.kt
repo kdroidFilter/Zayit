@@ -14,6 +14,9 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.skyTimeMillisHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.SolarSystemPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
@@ -51,12 +54,12 @@ internal object SolarSystemWidget : HomeWidget {
                 CompositionLocalProvider(LocalWidgetAntiAliasing provides solarSystemOptions(state).antiAliasing) {
                     SolarSystemWidgetView(
                         modifier = Modifier.fillMaxSize(),
-                        date = state.shownDate,
-                        timeMillis = state.skyTimeMillis,
+                        date = state.shownDateHere(),
+                        timeMillis = state.skyTimeMillisHere(),
                         onFullscreen = { state.solarSystemFullscreen = true },
                         onOptions = { state.optionsOpen = SolarSystemWidget },
                         // The one clock: the full window's play shows here too
-                        playMillis = state.playingMillis,
+                        playMillis = state.playMillisHere(),
                         timeZone = state.location.timeZone,
                         spinSecondsPerTurn = solarSystemOptions(state).spinSecondsPerTurn,
                         inIsrael = state.userInIsrael,

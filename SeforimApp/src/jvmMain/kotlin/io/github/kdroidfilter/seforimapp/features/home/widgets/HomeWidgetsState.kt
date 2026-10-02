@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -9,6 +10,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.withFrameNanos
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
@@ -121,9 +123,12 @@ class HomeWidgetsState internal constructor(
     val shownDate: LocalDate get() = playingDay ?: selectedDate
 
     /** The moment the sky and the solar system show; null means now. */
-    val skyTimeMillis: Long?
+    val skyTimeMillis: Long? get() = playingMillis ?: restingSkyMillis
+
+    /** [skyTimeMillis] when not playing. */
+    internal val restingSkyMillis: Long?
         get() =
-            playingMillis ?: targetTime?.time ?: if (selectedDate == today) {
+            targetTime?.time ?: if (selectedDate == today) {
                 null
             } else {
                 selectedDate
@@ -223,3 +228,30 @@ internal fun <T> rememberOffMain(
 }
 
 private const val DAY_MILLIS = 86_400_000.0
+
+/**
+ * Whether the widgets composed here are on show while the solar system's full window plays: true in that window;
+ * false on the Home, hidden behind it, whose 3D cards then hold still (see [playMillisHere]) instead of rendering a
+ * picture nobody sees at every frame. They catch up when the window closes.
+ */
+internal val LocalFollowsPlay = compositionLocalOf { false }
+
+/** [HomeWidgetsState.playingMillis] for the widgets composed here: held still on the Home behind the full window. */
+@Composable
+internal fun HomeWidgetsState.playMillisHere(): Long? {
+    val follow = LocalFollowsPlay.current || !solarSystemFullscreen
+    val held = remember(follow) { Snapshot.withoutReadObservation { playingMillis } }
+    return if (follow) playingMillis else held
+}
+
+/** [HomeWidgetsState.shownDate] for the widgets composed here: held still on the Home behind the full window. */
+@Composable
+internal fun HomeWidgetsState.shownDateHere(): LocalDate {
+    val follow = LocalFollowsPlay.current || !solarSystemFullscreen
+    val held = remember(follow) { Snapshot.withoutReadObservation { shownDate } }
+    return if (follow) shownDate else held
+}
+
+/** [HomeWidgetsState.skyTimeMillis] for the widgets composed here (see [playMillisHere]). */
+@Composable
+internal fun HomeWidgetsState.skyTimeMillisHere(): Long? = playMillisHere() ?: restingSkyMillis

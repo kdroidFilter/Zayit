@@ -231,7 +231,7 @@ fun EarthWidgetScene(
     )
     val animatedMoonPhaseAngle =
         moonPhaseAngleDegrees?.let {
-            rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360)
+            rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360, instant = followClock)
         }
 
     val engine = rememberFilamentEngine()

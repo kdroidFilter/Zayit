@@ -18,6 +18,9 @@ internal fun rememberRenderOnChange(scene: Any?): Boolean {
     var rendering by remember { mutableStateOf(true) }
     LaunchedEffect(scene) {
         rendering = true
+        // Two quiet frames before pausing: a scene changing every frame (a play, a drag) restarts this before then,
+        // so the view keeps rendering on and off never flips (each flip restarted its frame loop, dropping frames)
+        withFrameNanos {}
         withFrameNanos {}
         rendering = false
     }

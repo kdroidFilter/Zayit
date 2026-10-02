@@ -18,7 +18,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,11 +43,15 @@ import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
 import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -142,36 +152,77 @@ private const val MIN_FRAME_MS = 20L
 
 /**
  * Plays the animated WebP frame by frame with Skia's [Codec]: only one decoded frame is alive at a time
- * (plus the one still on screen), instead of the whole animation in RAM. Stops when the card leaves composition.
+ * (plus the one still on screen), instead of the whole animation in RAM. Decoded off the UI thread (up to 50 frames a
+ * second of a large image), and held on its frame while its tab is hidden; stops when the card leaves composition.
  */
 @Composable
 private fun AnimatedTempleBackground(modifier: Modifier = Modifier) {
-    val frame by produceState<ImageBitmap?>(null) {
-        val codec = Codec.makeFromData(Data.makeFromBytes(Res.readBytes(TEMPLE_ANIMATION)))
-        val durations = codec.framesInfo.map { it.duration.toLong().coerceAtLeast(MIN_FRAME_MS) }
-        val work = Bitmap().apply { allocPixels(codec.imageInfo) }
-        var shown: Bitmap? = null
-        var previous: Bitmap? = null
+    val playing by rememberUpdatedState(LocalTabSelected.current)
+    var frame by remember { mutableStateOf<ImageBitmap?>(null) }
+    LaunchedEffect(Unit) {
+        val player = TemplePlayer()
         try {
-            var index = 0
+            withContext(Dispatchers.Default) { player.open() }
             while (true) {
-                // Frames are deltas on top of the previous one, which `work` still holds.
-                codec.readPixels(work, index, if (index == 0) -1 else index - 1)
-                val next = work.makeClone()
-                value = next.asComposeImageBitmap()
-                // The one before the current frame has been off screen for a whole frame duration: safe to free.
-                previous?.close()
-                previous = shown
-                shown = next
-                delay(durations[index])
-                index = (index + 1) % codec.frameCount
+                // Decoded off the UI thread; shown, and the old frames freed, back on it, between two frames drawn
+                // (a bitmap freed under the drawing would crash). Cancelled, the decoding finishes before the close.
+                val decoded = withContext(Dispatchers.Default) { player.decode() }
+                frame = player.show(decoded)
+                delay(player.duration)
+                snapshotFlow { playing }.first { it }
             }
         } finally {
-            work.close()
-            codec.close()
+            player.close()
         }
     }
     frame?.let { Image(it, contentDescription = null, modifier = modifier, contentScale = ContentScale.Crop) }
+}
+
+/**
+ * The animation's decoder: one frame decoded at a time, the one before it freed once off screen. [decode] may run on
+ * another thread than the rest, never at the same time.
+ */
+private class TemplePlayer {
+    private var codec: Codec? = null
+    private var durations: List<Long> = emptyList()
+    private var work: Bitmap? = null
+    private var shown: Bitmap? = null
+    private var previous: Bitmap? = null
+    private var index = 0
+
+    /** How long the frame last decoded stays on screen. */
+    var duration = MIN_FRAME_MS
+        private set
+
+    suspend fun open() {
+        val opened = Codec.makeFromData(Data.makeFromBytes(Res.readBytes(TEMPLE_ANIMATION)))
+        durations = opened.framesInfo.map { it.duration.toLong().coerceAtLeast(MIN_FRAME_MS) }
+        work = Bitmap().apply { allocPixels(opened.imageInfo) }
+        codec = opened
+    }
+
+    fun decode(): Bitmap {
+        val codec = checkNotNull(codec)
+        val work = checkNotNull(work)
+        // Frames are deltas on top of the previous one, which `work` still holds.
+        codec.readPixels(work, index, if (index == 0) -1 else index - 1)
+        duration = durations[index]
+        index = (index + 1) % codec.frameCount
+        return work.makeClone()
+    }
+
+    /** UI thread: [next] goes on screen; the one before the current frame has been off it a whole frame: freed. */
+    fun show(next: Bitmap): ImageBitmap {
+        previous?.close()
+        previous = shown
+        shown = next
+        return next.asComposeImageBitmap()
+    }
+
+    fun close() {
+        work?.close()
+        codec?.close()
+    }
 }
 
 /** Years, months and days since the Temple's destruction, over the burning Temple. */

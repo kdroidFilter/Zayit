@@ -688,7 +688,11 @@ private fun SolarEventMarkers(
     modifier: Modifier = Modifier,
 ) {
     // Hit targets and labels sit on the middle of each holiday's stretch
-    val positions = remember(state) { state.markers.map { solarOrbitScreenPosition(state, it.middleDegrees()) } }
+    // Only the camera and the markers place them: not the Earth moving along (each frame of a play)
+    val positions =
+        remember(state.widthPx, state.heightPx, state.viewAzimuthDegrees, state.viewElevationDegrees, state.viewZoom, state.markers) {
+            state.markers.map { solarOrbitScreenPosition(state, it.middleDegrees()) }
+        }
     // Labels next to the Earth step out of its way
     val earth = solarOrbitScreenPosition(state, state.earthLongitudeDegrees)
     val earthClearance = SolarGeometry(state.widthPx, state.heightPx).earthRadius * state.viewZoom * 1.4f

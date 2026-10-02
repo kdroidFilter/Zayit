@@ -64,10 +64,12 @@ import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
 import dev.nucleusframework.window.windowDragArea
+import io.github.kdroidfilter.seforimapp.core.e2e.E2ePerf
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.LocalFollowsPlay
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import org.jetbrains.compose.resources.stringResource
@@ -147,6 +149,7 @@ internal fun SolarSystemWindow(
                 // A window of its own: always "selected", so the Filament views keep rendering
                 CompositionLocalProvider(
                     LocalTabSelected provides true,
+                    LocalFollowsPlay provides true,
                     LocalWidgetAntiAliasing provides solarSystemOptions(state).antiAliasing,
                 ) {
                     // In the window itself, not a dialog: in macOS fullscreen a dialog would open on another Space
@@ -155,6 +158,7 @@ internal fun SolarSystemWindow(
                     val daysPerSecond by rememberUpdatedState(solarSystemOptions(state).daysPerSecond)
                     LaunchedEffect(state.playing) { if (state.playing) state.runPlayClock { daysPerSecond } }
                     DisposableEffect(Unit) { onDispose { state.stopPlay() } }
+                    E2ePerf.Record()
                     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                         SolarSystemWidgetView(
                             modifier = Modifier.fillMaxSize(),

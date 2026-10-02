@@ -1037,19 +1037,17 @@ private fun computeZmanimModel(
 
     // Calculate moon position
     val julianDay = computeJulianDayUtc(referenceTime)
-    val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
+    // The Hebrew day, by day: a running clock asks for it at every frame
+    val hebrewDay = hebrewDayAt(referenceTime.time, timeZone)
+    val phaseAngle = hebrewDay.phaseAngleAt(referenceTime.time)
     val moonOrbitDegrees =
         run {
-            val jewishCalendar = jewishCalendarAt(referenceTime, timeZone)
-
-            val daysInMonth = jewishCalendar.daysInJewishMonth
-            val dayOfMonth = jewishCalendar.jewishDayOfMonth
+            val daysInMonth = hebrewDay.daysInMonth
+            val dayOfMonth = hebrewDay.dayOfMonth
             if (daysInMonth > 0 && dayOfMonth in 1..daysInMonth) {
                 val stepDegrees = 360f / daysInMonth.toFloat()
                 // Gliding through the day from its label to the next one: a turn per month, no step at midnight
-                val local = Calendar.getInstance(timeZone).apply { time = referenceTime }
-                val dayFraction =
-                    (local.get(Calendar.HOUR_OF_DAY) * 3600 + local.get(Calendar.MINUTE) * 60 + local.get(Calendar.SECOND)) / 86_400f
+                val dayFraction = (referenceTime.time - hebrewDay.startMillis).toFloat() / (hebrewDay.endMillis - hebrewDay.startMillis)
                 normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1 + dayFraction) * stepDegrees)
             } else {
                 normalizeOrbitDegrees(phaseAngle + ORBIT_DAY_LABEL_START_DEGREES)
@@ -1184,6 +1182,53 @@ internal fun jewishCalendarAt(
 // ============================================================================
 
 /**
+ * The Hebrew calendar of one local day ([startMillis] until [endMillis]): its day of the month and the month's
+ * length, and the moladot an instant of it is aged from.
+ */
+internal class HebrewDay(
+    val zoneId: String,
+    val startMillis: Long,
+    val endMillis: Long,
+    val dayOfMonth: Int,
+    val daysInMonth: Int,
+    private val molad: Long,
+    private val previousMolad: Long,
+) {
+    /** As [computeHalakhicPhaseAngle]: the age since the last molad, as an angle. */
+    fun phaseAngleAt(millis: Long): Float {
+        val from = if (molad > millis) previousMolad else molad
+        return (((millis - from).toDouble() / LUNAR_CYCLE_MILLIS) * 360.0).toFloat() % 360f
+    }
+}
+
+// ponytail: one day cached (the shown one); a second widget on another zone recomputes on each switch
+@Volatile
+private var lastHebrewDay: HebrewDay? = null
+
+internal fun hebrewDayAt(
+    millis: Long,
+    timeZone: TimeZone,
+): HebrewDay {
+    lastHebrewDay?.let { if (it.zoneId == timeZone.id && millis >= it.startMillis && millis < it.endMillis) return it }
+    val zone = timeZone.toZoneId()
+    val date = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+    val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+    val end =
+        date
+            .plusDays(1)
+            .atStartOfDay(zone)
+            .toInstant()
+            .toEpochMilli()
+    val calendar = jewishCalendarAt(Date(millis), timeZone)
+    val dayOfMonth = calendar.jewishDayOfMonth
+    val daysInMonth = calendar.daysInJewishMonth
+    val molad = calendar.moladAsInstant.toDate().time
+    goToPreviousHebrewMonth(calendar)
+    val previousMolad = calendar.moladAsInstant.toDate().time
+    return HebrewDay(timeZone.id, start, end, dayOfMonth, daysInMonth, molad, previousMolad).also { lastHebrewDay = it }
+}
+
+/**
  * Computes the Halakhic moon phase angle based on the Hebrew calendar molad.
  *
  * The molad (lunar conjunction) is the traditional Hebrew calculation
@@ -1194,7 +1239,7 @@ internal fun jewishCalendarAt(
  * @param timeZone Local timezone.
  * @return Moon phase angle in degrees (0 = new moon, 180 = full moon).
  */
-private fun computeHalakhicPhaseAngle(
+internal fun computeHalakhicPhaseAngle(
     referenceTime: Date,
     timeZone: TimeZone,
 ): Float {

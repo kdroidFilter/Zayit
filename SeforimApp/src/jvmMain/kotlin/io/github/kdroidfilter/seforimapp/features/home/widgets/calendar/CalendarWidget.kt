@@ -42,6 +42,7 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import kotlinx.datetime.DateTimeUnit
@@ -84,7 +85,7 @@ internal object CalendarWidget : HomeWidget {
         state: HomeWidgetsState,
         modifier: Modifier,
     ) {
-        val selected = state.shownDate
+        val selected = state.shownDateHere()
         val today = remember(selected, state.location) { LocalDate.now(state.location.timeZone.toZoneId()) }
         // Any day of the month on show; follows the date picked elsewhere (a zman card, the Earth orbit)
         var shown by remember(selected) { mutableStateOf(selected) }

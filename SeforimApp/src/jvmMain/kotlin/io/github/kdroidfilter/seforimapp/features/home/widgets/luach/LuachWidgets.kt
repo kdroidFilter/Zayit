@@ -49,6 +49,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -181,7 +182,7 @@ private fun LimudPanel(
     open: (LibraryPlace) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val day = state.shownDate
+    val day = state.shownDateHere()
     val inIsrael = state.inIsrael
     val items = rememberOffMain(day, inIsrael, shown) { limudOfDay(day, inIsrael, shown) }
     val accent = rememberAccentColor(JewelTheme.isDark)
@@ -360,7 +361,7 @@ internal object UpcomingEventsWidget : HomeWidget {
         modifier: Modifier,
     ) {
         val location = state.location
-        val day = state.shownDate
+        val day = state.shownDateHere()
         val opinion = state.zmanimOpinion
         val cityLabel = state.cityLabel
         val inIsrael = state.inIsrael
@@ -436,10 +437,11 @@ internal object TefilaWidget : HomeWidget {
         modifier: Modifier,
     ) {
         // ponytail: the civil day's tefila; tonight's maariv already belongs to tomorrow's
-        val lines = remember(state.shownDate, state.inIsrael) { tefilaOfDay(state.shownDate, state.inIsrael) }
+        val day = state.shownDateHere()
+        val lines = remember(day, state.inIsrael) { tefilaOfDay(day, state.inIsrael) }
         val hebrewDate =
-            remember(state.shownDate, state.inIsrael) {
-                hebrewFormatter.format(JewishCalendar(state.shownDate.toKotlinLocalDate(), state.inIsrael))
+            remember(day, state.inIsrael) {
+                hebrewFormatter.format(JewishCalendar(day.toKotlinLocalDate(), state.inIsrael))
             }
         val accent = rememberAccentColor(JewelTheme.isDark)
         PanelCard(modifier) {
@@ -499,7 +501,7 @@ internal object MoladWidget : HomeWidget {
         modifier: Modifier,
     ) {
         val now = rememberMinute()
-        val day = state.shownDate
+        val day = state.shownDateHere()
         val inIsrael = state.inIsrael
         val earliest = state.kiddushLevanaEarliest
         val latest = state.kiddushLevanaLatest

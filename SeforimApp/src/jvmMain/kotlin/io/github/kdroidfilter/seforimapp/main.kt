@@ -20,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eFilamentScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eSolarPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eNotesScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
@@ -455,6 +456,7 @@ fun main(args: Array<String>) {
                                         E2eZoomScenario.run(it)
                                         E2eWidgetsScenario.run(it)
                                         E2eFilamentScenario.run(it)
+                                        E2eSolarPerfScenario.run(it)
                                         E2eNotesScenario.run(it)
                                     }) { exitApplication() }
                                 }

@@ -88,8 +88,12 @@ internal data class SolarSystemOptions(
     }
 }
 
+/** Decoded once per change: read several times a frame while the solar system plays. */
 @Composable
-internal fun solarSystemOptions(state: HomeWidgetsState) = SolarSystemOptions.decode(state.optionsOf(SolarSystemWidget))
+internal fun solarSystemOptions(state: HomeWidgetsState): SolarSystemOptions {
+    val raw = state.optionsOf(SolarSystemWidget)
+    return remember(raw) { SolarSystemOptions.decode(raw) }
+}
 
 internal fun HomeWidgetsState.setSolarSystemOptions(options: SolarSystemOptions) = setOptions(SolarSystemWidget, options.encode())
 

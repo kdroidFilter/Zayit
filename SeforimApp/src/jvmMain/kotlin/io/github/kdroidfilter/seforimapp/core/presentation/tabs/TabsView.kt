@@ -934,11 +934,12 @@ private fun RtlAwareTab(
             val closeRightLabel = stringResource(Res.string.close_tabs_right)
             val copyLinkLabel = stringResource(Res.string.copy_tab_link)
             val detachLabel = stringResource(Res.string.tab_open_in_new_window)
-            val moveToDesktopLabel = stringResource(Res.string.tab_move_to_desktop)
             val desktops by LocalAppGraph.current.desktopManager.desktops
                 .collectAsState()
             val currentDesktopId = LocalOpenWindow.current.session.desktopId
             val otherDesktops = desktops.filter { it.id != currentDesktopId }
+            val moveToDesktopLabels =
+                otherDesktops.associate { it.id to stringResource(Res.string.tab_move_to_desktop, it.name) }
 
             TabContextMenu(
                 anchorOffset = anchorOffset,
@@ -955,29 +956,17 @@ private fun RtlAwareTab(
                         },
                     )
                 }
-                if (onMoveToDesktop != null && otherDesktops.isNotEmpty()) {
-                    submenu(
-                        submenu = {
-                            otherDesktops.forEach { desktop ->
-                                selectableItem(selected = false, onClick = {
-                                    contextMenuOpen = false
-                                    onMoveToDesktop(desktop.id)
-                                }) { Text(desktop.name) }
-                            }
-                        },
-                    ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                key = AllIconsKeys.Actions.MoveTo2,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = JewelTheme.globalColors.text.normal,
-                            )
-                            Text(moveToDesktopLabel)
-                        }
+                // ponytail: flat items, not a submenu — Jewel's submenu always opens to the right, even in RTL
+                if (onMoveToDesktop != null) {
+                    otherDesktops.forEach { desktop ->
+                        tabContextMenuItem(
+                            label = moveToDesktopLabels.getValue(desktop.id),
+                            icon = AllIconsKeys.Actions.MoveTo2,
+                            onClick = {
+                                contextMenuOpen = false
+                                onMoveToDesktop(desktop.id)
+                            },
+                        )
                     }
                 }
                 if (onCopyLink != null) {

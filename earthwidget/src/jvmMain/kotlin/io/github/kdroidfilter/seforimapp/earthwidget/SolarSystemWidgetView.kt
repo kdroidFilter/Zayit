@@ -357,7 +357,7 @@ fun SolarSystemWidgetView(
     // 0.9856°/day drift only.
     val siderealTarget =
         (greenwichMeanSiderealTimeRad(julianDay) * 180.0 / PI).toFloat() +
-            if (spinSecondsPerTurn == null) 0f else -360f * dayFraction + playSpinDegrees
+            if (spinSecondsPerTurn == null || !playing) 0f else -360f * dayFraction + playSpinDegrees
     val moon = computeMoonEclipticPosition(julianDay)
     // Kiddush Levana of the lunar month at the displayed instant, as the Moon's longitudes at its start and end
     val kiddushLevana =

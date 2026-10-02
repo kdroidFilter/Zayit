@@ -358,6 +358,8 @@ fun EarthWidgetZmanimView(
     val kiddushLevanaData =
         remember(
             shownDay,
+            // On a molad's day the window it opens starts at the molad: the hour sides with one month or the other
+            hebrewDayAt(referenceTime.time, timeZone).isAfterMolad(referenceTime.time),
             timeZone,
             showKiddushLevana,
             kiddushLevanaEarliestOpinion,
@@ -1194,6 +1196,9 @@ internal class HebrewDay(
     private val molad: Long,
     private val previousMolad: Long,
 ) {
+    /** Whether [millis] is past this month's molad (else the month is still aged from the previous one). */
+    fun isAfterMolad(millis: Long): Boolean = molad <= millis
+
     /** As [computeHalakhicPhaseAngle]: the age since the last molad, as an angle. */
     fun phaseAngleAt(millis: Long): Float {
         val from = if (molad > millis) previousMolad else molad

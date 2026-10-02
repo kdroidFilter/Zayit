@@ -265,7 +265,11 @@ private fun FloatingCard(
     val currentBounds by rememberUpdatedState(bounds)
     val currentOnSave by rememberUpdatedState(onSave)
     // The grip sits on the side facing the middle: resizing grows the card inward
-    val gripOnLeft = frame.x + frame.w / 2 > bounds.width.value / 2
+    // Held for the length of a drag: crossing the middle mid-resize mustn't flip the side it grows from
+    var heldGripSide by remember { mutableStateOf<Boolean?>(null) }
+    val gripOnLeft = heldGripSide ?: (frame.x + frame.w / 2 > bounds.width.value / 2)
+    val currentGripOnLeft by rememberUpdatedState(gripOnLeft)
+    val currentSaved by rememberUpdatedState(saved)
     val density = LocalDensity.current.density
 
     // Compose maps both ends of each drag step into the handle's current place, so moving it along stays exact
@@ -273,10 +277,19 @@ private fun FloatingCard(
     fun Modifier.dragging(update: CardFrame.(dx: Float, dy: Float) -> CardFrame): Modifier {
         val currentUpdate by rememberUpdatedState(update)
         return pointerInput(Unit) {
+            fun end() {
+                heldGripSide = null
+                live?.let(currentOnSave)
+                // Ended where it already was saved: no new value to clear it (and hide the chrome) when it comes back
+                if (live == currentSaved) live = null
+            }
             detectDragGestures(
-                onDragStart = { live = current },
-                onDragEnd = { live?.let(currentOnSave) },
-                onDragCancel = { live?.let(currentOnSave) },
+                onDragStart = {
+                    live = current
+                    heldGripSide = currentGripOnLeft
+                },
+                onDragEnd = ::end,
+                onDragCancel = ::end,
             ) { change, amount ->
                 change.consume()
                 live = (live ?: current).currentUpdate(amount.x / density, amount.y / density).clampedTo(currentBounds)
@@ -319,7 +332,9 @@ private fun FloatingCard(
                 .pointerHoverIcon(PointerIcon(Cursor(gripCursor)))
                 .dragging { dx, dy ->
                     if (gripOnLeft) {
-                        copy(x = x + dx.coerceAtMost(w - MIN_CARD_WIDTH), w = w - dx, h = h + dy)
+                        // The right edge stays put: no further left than the window, no narrower than the minimum
+                        val d = dx.coerceIn(-x, w - MIN_CARD_WIDTH)
+                        copy(x = x + d, w = w - d, h = h + dy)
                     } else {
                         copy(
                             w = w + dx,

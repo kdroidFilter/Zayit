@@ -14,12 +14,12 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
-import io.github.kdroidfilter.seforimapp.features.home.widgets.skyTimeMillisHere
-import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.SolarSystemPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
+import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.skyTimeMillisHere
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res

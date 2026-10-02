@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -24,6 +25,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -63,8 +65,27 @@ internal object MeasuresWidget : HomeWidget {
     override val id = "measures"
     override val title = Res.string.home_widget_name_measures
     override val defaultSpan = CellSpan(7, 4)
-    override val minSpan = CellSpan(7, 4)
-    override val maxSpan = CellSpan(10, 4)
+    override val minSpan = CellSpan(7, 2)
+
+    // Its height is the one its opinions need (heightAt), no more: only its width is the user's
+    override val maxSpan = CellSpan(10, 2)
+
+    // The opinions shown, as saved: read by the grid for the card's height as well as by the card
+    private var shown by mutableStateOf(shownOpinions(null))
+
+    override fun applyOptions(options: String?) {
+        shown = shownOpinions(options)
+    }
+
+    /** Tall enough for every opinion picked, never one hidden for want of room. */
+    override fun heightAt(width: Dp): Dp {
+        var height = PADDING * 2 + TITLE_HEIGHT + BLOCK_GAP + INPUT_HEIGHT + BLOCK_GAP + RESULT_HEIGHT + LINK_HEIGHT
+        // A kind with no opinion shown is left out, its title too
+        for (rows in listOf(AMMA_OPINIONS.count { it.id in shown }, MIL_OPINIONS.count { it.id in shown })) {
+            if (rows > 0) height += BLOCK_GAP + SECTION_TITLE_HEIGHT + (ROW_GAP + OPINION_ROW_HEIGHT) * rows
+        }
+        return height
+    }
 
     // Its opinions picked in a page of their own, as the limudim
     @Composable
@@ -89,17 +110,17 @@ internal object MeasuresWidget : HomeWidget {
         val typed = field.text.trim().toString()
         val amount = typed.replace(',', '.').toDoubleOrNull()?.takeIf { it >= 0 }
         val etzbaos = amount?.let { it * from.etzbaos }
-        val shown = shownOpinions(state.optionsOf(this))
         val ammaOpinions = AMMA_OPINIONS.filter { it.id in shown }
         val milOpinions = MIL_OPINIONS.filter { it.id in shown }
         val accent = rememberAccentColor(JewelTheme.isDark)
         val open = rememberOpenSource(state)
         PanelCard(modifier) {
             Column(
-                Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalArrangement = Arrangement.SpaceBetween,
+                Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = PADDING),
+                // Taller than its content (heightAt) by a row's rounding: spread over its blocks
+                verticalArrangement = Arrangement.spacedBy(BLOCK_GAP, Alignment.CenterVertically),
             ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().height(TITLE_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         stringResource(title),
                         fontSize = 15.sp,
@@ -110,7 +131,7 @@ internal object MeasuresWidget : HomeWidget {
                     // Its options at hand, as in its menu
                     IconButton(
                         onClick = { state.optionsOpen = MeasuresWidget },
-                        modifier = Modifier.size(22.dp).testTag("measures-settings"),
+                        modifier = Modifier.size(TITLE_HEIGHT).testTag("measures-settings"),
                     ) {
                         Icon(
                             key = AllIconsKeys.General.Settings,
@@ -120,7 +141,7 @@ internal object MeasuresWidget : HomeWidget {
                     }
                 }
                 Row(
-                    Modifier.fillMaxWidth(),
+                    Modifier.fillMaxWidth().height(INPUT_HEIGHT),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -138,19 +159,19 @@ internal object MeasuresWidget : HomeWidget {
                 Column {
                     Text(
                         etzbaos?.let { "= ${quantity(it / to.etzbaos, to)}" } ?: "–",
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = accent,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(horizontal = 4.dp),
+                        modifier = Modifier.height(RESULT_HEIGHT).padding(horizontal = 4.dp),
                     )
-                    Row {
+                    Row(Modifier.height(LINK_HEIGHT)) {
                         conversionSources(from, to).forEach { SourceLink(it, open) }
                     }
                 }
                 if (ammaOpinions.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(ROW_GAP)) {
                         SectionTitle(TODAY_TITLE)
                         ammaOpinions.forEach { opinion ->
                             OpinionRow(
@@ -164,7 +185,7 @@ internal object MeasuresWidget : HomeWidget {
                     }
                 }
                 if (milOpinions.isNotEmpty()) {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(ROW_GAP)) {
                         SectionTitle(WALK_TITLE)
                         milOpinions.forEach { opinion ->
                             OpinionRow(
@@ -181,6 +202,17 @@ internal object MeasuresWidget : HomeWidget {
         }
     }
 }
+
+// Every block a fixed height: the card's is worked out from the opinions shown (heightAt)
+private val PADDING = 8.dp
+private val TITLE_HEIGHT = 22.dp
+private val INPUT_HEIGHT = 30.dp
+private val RESULT_HEIGHT = 28.dp
+private val LINK_HEIGHT = 16.dp
+private val SECTION_TITLE_HEIGHT = 16.dp
+private val OPINION_ROW_HEIGHT = 20.dp
+private val BLOCK_GAP = 8.dp
+private val ROW_GAP = 2.dp
 
 private const val TODAY_TITLE = "בימינו"
 private const val WALK_TITLE = "זמן הליכה"
@@ -242,7 +274,14 @@ private fun UnitPicker(
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.info, maxLines = 1)
+    Text(
+        text,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = JewelTheme.globalColors.text.info,
+        maxLines = 1,
+        modifier = Modifier.height(SECTION_TITLE_HEIGHT),
+    )
 }
 
 /** What the amount is after an opinion, with its source. */
@@ -254,7 +293,11 @@ private fun OpinionRow(
     accent: Color,
     open: (Source) -> Unit,
 ) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        Modifier.fillMaxWidth().height(OPINION_ROW_HEIGHT),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(label, fontSize = 13.sp, maxLines = 1)
         SourceLink(source, open, Modifier.weight(1f))
         Text(value ?: "–", fontSize = 14.sp, fontWeight = FontWeight.SemiBold, color = accent, maxLines = 1)

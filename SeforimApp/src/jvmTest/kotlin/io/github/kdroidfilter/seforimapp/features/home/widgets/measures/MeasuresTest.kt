@@ -1,5 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets.measures
 
+import io.github.kdroidfilter.seforimapp.features.home.widgets.CellPitch
+import io.github.kdroidfilter.seforimapp.features.home.widgets.MAX_GRID_WIDTH
+import io.github.kdroidfilter.seforimapp.features.home.widgets.minRows
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -38,5 +41,20 @@ class MeasuresTest {
         assertEquals(setOf("igros_moshe"), shownOpinions("igros_moshe"))
         // All unticked: none
         assertEquals(emptySet(), shownOpinions(""))
+    }
+
+    @Test
+    fun `the card is as tall as the opinions shown`() {
+        val pitch = CellPitch(MAX_GRID_WIDTH)
+        try {
+            MeasuresWidget.applyOptions(null)
+            assertEquals(4, MeasuresWidget.minRows(7, pitch))
+            MeasuresWidget.applyOptions("chazon_ish")
+            assertEquals(3, MeasuresWidget.minRows(7, pitch))
+            MeasuresWidget.applyOptions("")
+            assertEquals(2, MeasuresWidget.minRows(7, pitch))
+        } finally {
+            MeasuresWidget.applyOptions(null)
+        }
     }
 }

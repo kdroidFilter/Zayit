@@ -23,10 +23,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,9 +45,11 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
@@ -61,15 +65,18 @@ import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
 import dev.nucleusframework.window.windowDragArea
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_solar_system_title
 import java.awt.Cursor
+import kotlin.math.roundToInt
 
 /**
  * Height of the title bar band: the traffic lights are centred in it, so it matches the widget header's centre in a
@@ -138,7 +145,10 @@ internal fun SolarSystemWindow(
                 controlButtonsDirection = ControlButtonsDirection.SystemNative,
             ) { _ ->
                 // A window of its own: always "selected", so the Filament views keep rendering
-                CompositionLocalProvider(LocalTabSelected provides true) {
+                CompositionLocalProvider(
+                    LocalTabSelected provides true,
+                    LocalWidgetAntiAliasing provides solarSystemOptions(state).antiAliasing,
+                ) {
                     // In the window itself, not a dialog: in macOS fullscreen a dialog would open on another Space
                     var optionsShown by remember { mutableStateOf(false) }
                     // The one clock, run here while the window shows the play; closed, it stops where it is
@@ -206,6 +216,9 @@ internal fun SolarSystemWindow(
                                     onSave = { state.setSolarSystemOptions(solarOptionsNow(state).copy(sky = it)) },
                                 ) { SkyWidget.Content(state, Modifier.fillMaxSize()) }
                             }
+                        }
+                        if (options.showFps) {
+                            FpsCounter(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
                         }
                         if (optionsShown) OptionsPanel(state, onDismiss = { optionsShown = false })
                     }
@@ -353,4 +366,35 @@ private fun OptionsPanel(
             SolarSystemOptionsPage(state)
         }
     }
+}
+
+/** Frames drawn a second, refreshed twice a second. It draws a frame each vsync itself while shown: a debug readout. */
+@Composable
+private fun FpsCounter(modifier: Modifier = Modifier) {
+    var fps by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        var windowStart = 0L
+        var frames = 0
+        while (true) {
+            withFrameNanos { now ->
+                if (windowStart == 0L) windowStart = now
+                frames++
+                if (now - windowStart >= 500_000_000L) {
+                    fps = (frames * 1e9 / (now - windowStart)).roundToInt()
+                    windowStart = now
+                    frames = 0
+                }
+            }
+        }
+    }
+    Text(
+        "$fps FPS",
+        color = Color.White.copy(alpha = 0.85f),
+        fontSize = 12.sp,
+        fontFamily = FontFamily.Monospace,
+        modifier =
+            modifier
+                .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                .padding(horizontal = 10.dp, vertical = 4.dp),
+    )
 }

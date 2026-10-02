@@ -300,7 +300,7 @@ internal fun SolarSystemSceneView(
             cameraState = camera,
             indirectLightState = ambient,
             postProcessing =
-                WidgetPostProcessing.copy(
+                widgetPostProcessing.copy(
                     vignette = if (state.detailed) Vignette(midPoint = 0.55f, roundness = 0.6f, feather = 0.7f) else null,
                 ),
             shadows = null,

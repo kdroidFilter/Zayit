@@ -208,7 +208,7 @@ internal object ShnayimMikraWidget : HomeWidget {
         state: HomeWidgetsState,
         modifier: Modifier,
     ) {
-        val week = remember(state.selectedDate, state.inIsrael) { mikraWeek(state.selectedDate, state.inIsrael) }
+        val week = remember(state.shownDate, state.inIsrael) { mikraWeek(state.shownDate, state.inIsrael) }
         val store = LocalAppGraph.current.shnayimMikraStore
         var weekShown by remember { mutableStateOf(week) }
         val revision by store.revision.collectAsState()

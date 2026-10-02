@@ -71,8 +71,10 @@ internal object EarthWidget : HomeWidget {
                         modifier = Modifier.fillMaxSize(),
                         sphereSize = sphereSize,
                         locationOverride = state.location,
-                        targetTimeMillis = state.targetTime?.time,
-                        targetDateEpochDay = state.selectedDate.toEpochDay(),
+                        targetTimeMillis = state.playingMillis ?: state.targetTime?.time,
+                        // While playing, the day comes with the instant (both would pull it each its way)
+                        targetDateEpochDay = state.shownDate.toEpochDay().takeIf { state.playingMillis == null },
+                        followClock = state.playingMillis != null,
                         onDateSelect = state::selectDate,
                         onLocationSelect = state::selectLocation,
                         containerBackground = Color.Transparent,

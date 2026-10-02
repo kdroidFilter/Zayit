@@ -92,6 +92,11 @@ internal data class EarthRenderState(
     val kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
     /** Greenwich sidereal angle: spins the Earth in [SceneFrame]. */
     val siderealDegrees: Float = 0f,
+    /**
+     * The sidereal angle the camera aims at the marker for; null follows [siderealDegrees] (the marker kept centred).
+     * Held still, the camera stays put in space: the Earth turns under it, the Moon goes round once a month.
+     */
+    val viewSiderealDegrees: Float? = null,
     val sunLongitudeDegrees: Float = 0f,
     /** Ecliptic longitude of the Moon's ascending node. */
     val moonNodeDegrees: Float = 0f,
@@ -819,7 +824,8 @@ internal class SceneFrame(
      */
     val view: Rotation =
         run {
-            val marker = earth * latLonToUnitVector(state.markerLatitudeDegrees, state.markerLongitudeDegrees).toDirection()
+            val aimedEarth = state.viewSiderealDegrees?.let { earthToWorld(it, state.earthTiltDegrees) } ?: earth
+            val marker = aimedEarth * latLonToUnitVector(state.markerLatitudeDegrees, state.markerLongitudeDegrees).toDirection()
             val elevation = asin(marker.y.coerceIn(-1f, 1f)) * RAD_TO_DEG_F + state.viewPitchDegrees
             Rotation.axisAngle(AxisX, elevation) * Rotation.axisAngle(Direction.Up, azimuthOf(marker) + state.viewYawDegrees)
         }

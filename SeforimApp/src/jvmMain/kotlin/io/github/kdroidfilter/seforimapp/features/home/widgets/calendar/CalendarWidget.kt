@@ -84,7 +84,7 @@ internal object CalendarWidget : HomeWidget {
         state: HomeWidgetsState,
         modifier: Modifier,
     ) {
-        val selected = state.selectedDate
+        val selected = state.shownDate
         val today = remember(selected, state.location) { LocalDate.now(state.location.timeZone.toZoneId()) }
         // Any day of the month on show; follows the date picked elsewhere (a zman card, the Earth orbit)
         var shown by remember(selected) { mutableStateOf(selected) }

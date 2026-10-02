@@ -14,8 +14,12 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.SolarSystemPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
+import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_solar_system_title
+import seforimapp.seforimapp.generated.resources.home_widgets_options
 
 /** The solar system on the selected day, openable in its own window. */
 internal object SolarSystemWidget : HomeWidget {
@@ -44,9 +48,14 @@ internal object SolarSystemWidget : HomeWidget {
             if (LocalTabSelected.current) {
                 SolarSystemWidgetView(
                     modifier = Modifier.fillMaxSize(),
-                    date = state.selectedDate,
+                    date = state.shownDate,
                     timeMillis = state.skyTimeMillis,
                     onFullscreen = { state.solarSystemFullscreen = true },
+                    onOptions = { state.optionsOpen = SolarSystemWidget },
+                    // The one clock: the full window's play shows here too
+                    playMillis = state.playingMillis,
+                    timeZone = state.location.timeZone,
+                    spinSecondsPerTurn = solarSystemOptions(state).spinSecondsPerTurn,
                     inIsrael = state.userInIsrael,
                     kiddushLevanaEarliestOpinion = state.kiddushLevanaEarliest,
                     kiddushLevanaLatestOpinion = state.kiddushLevanaLatest,
@@ -55,16 +64,24 @@ internal object SolarSystemWidget : HomeWidget {
         }
     }
 
+    @Composable
+    override fun menuItems(state: HomeWidgetsState) =
+        listOf(
+            WidgetMenuItem(stringResource(Res.string.home_widgets_options), icon = AllIconsKeys.General.Settings) {
+                state.optionsOpen = this
+            },
+        )
+
+    @Composable
+    override fun Options(state: HomeWidgetsState) = SolarSystemOptionsPage(state)
+
     /** As a tool, its full-window view, not the card. */
     @Composable
     override fun ToolWindow(
         state: HomeWidgetsState,
         onClose: () -> Unit,
     ) = SolarSystemWindow(
-        date = state.selectedDate,
-        inIsrael = state.userInIsrael,
-        kiddushLevanaEarliest = state.kiddushLevanaEarliest,
-        kiddushLevanaLatest = state.kiddushLevanaLatest,
+        state = state,
         onClose = onClose,
     )
 
@@ -72,10 +89,7 @@ internal object SolarSystemWidget : HomeWidget {
     override fun Detached(state: HomeWidgetsState) {
         if (state.solarSystemFullscreen) {
             SolarSystemWindow(
-                date = state.selectedDate,
-                inIsrael = state.userInIsrael,
-                kiddushLevanaEarliest = state.kiddushLevanaEarliest,
-                kiddushLevanaLatest = state.kiddushLevanaLatest,
+                state = state,
                 onClose = { state.solarSystemFullscreen = false },
             )
         }

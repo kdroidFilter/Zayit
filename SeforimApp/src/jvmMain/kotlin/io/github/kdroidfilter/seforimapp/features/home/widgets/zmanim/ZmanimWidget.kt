@@ -58,6 +58,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
+import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -229,14 +230,17 @@ internal object ZmanimWidget : HomeWidget {
     ) {
         val location = state.location
         val timeZone = location.timeZone
-        val selectedDate = state.selectedDate
+        val selectedDate = state.shownDate
+        val opinion = state.zmanimOpinion
+        val inIsrael = state.inIsrael
+        val cityLabel = state.cityLabel
         val zmanimTimes =
-            remember(selectedDate, location, state.zmanimOpinion, state.inIsrael) {
-                computeZmanimTimes(selectedDate, location, state.zmanimOpinion, state.inIsrael)
+            rememberOffMain(selectedDate, location, opinion, inIsrael) {
+                computeZmanimTimes(selectedDate, location, opinion, inIsrael)
             }
         val shabbatTimes =
-            remember(selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael) {
-                computeShabbatTimes(selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael)
+            rememberOffMain(selectedDate, location, opinion, cityLabel, inIsrael) {
+                computeShabbatTimes(selectedDate, location, opinion, cityLabel, inIsrael)
             }
         val timeFormatter =
             remember(timeZone) {

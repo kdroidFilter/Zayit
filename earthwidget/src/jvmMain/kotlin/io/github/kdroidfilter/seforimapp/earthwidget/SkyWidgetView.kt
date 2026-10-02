@@ -423,6 +423,8 @@ fun SkyWidgetView(
     modifier: Modifier = Modifier,
     /** The moment to show (the Earth widget's); null follows now. */
     timeMillis: Long? = null,
+    /** Glides to a new moment and re-aims at what is up; false follows [timeMillis] as is (a moment per frame). */
+    glide: Boolean = true,
 ) {
     val catalog by produceState<StarCatalog?>(null) {
         value = withContext(Dispatchers.Default) { parseStars(Res.readBytes("files/stars.csv").decodeToString()) }
@@ -448,7 +450,7 @@ fun SkyWidgetView(
     var shown by remember { mutableLongStateOf(target) }
     LaunchedEffect(target) {
         val delta = target - shown
-        if (kotlin.math.abs(delta) < 60_000L) {
+        if (!glide || kotlin.math.abs(delta) < 60_000L) {
             shown = target
             return@LaunchedEffect
         }
@@ -470,7 +472,8 @@ fun SkyWidgetView(
     val moon = skyDirection(moonPos.azimuthFromNorthDeg, moonPos.elevationDeg + refractionDeg(moonPos.elevationDeg))
 
     // Today's path of the Sun (while it or its glow is up) and the Moon's while it is up; refreshed every 10 min
-    val passKey = instant / 600_000L
+    // Played frame by frame, minutes go by at each frame: by day then
+    val passKey = instant / if (glide) 600_000L else DAY_MS
     val sunRising = sunSoon.elevationDegrees > sunPos.elevationDegrees
     val sunPass =
         remember(latitude, longitude, passKey, sunPos.elevationDegrees > -10.0) {
@@ -512,7 +515,8 @@ fun SkyWidgetView(
         )
     }
     // Turned toward whatever is up at the new place or moment, gliding there with the time
-    val aim = remember(latitude, longitude, timeMillis) { facingAt(timeMillis ?: System.currentTimeMillis()) }
+    // Not glided, the view holds still: re-aimed at every frame it would swing about
+    val aim = remember(latitude, longitude, if (glide) timeMillis else Unit) { facingAt(timeMillis ?: System.currentTimeMillis()) }
     var yaw by remember { mutableFloatStateOf(aim.yawDeg) }
     var pitch by remember { mutableFloatStateOf(aim.pitchDeg) }
     var fov by remember { mutableFloatStateOf(aim.fovDeg) }

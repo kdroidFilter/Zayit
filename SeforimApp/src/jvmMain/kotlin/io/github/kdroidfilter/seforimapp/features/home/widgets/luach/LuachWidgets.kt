@@ -48,6 +48,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
+import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -138,8 +139,8 @@ internal object LimudWidget : HomeWidget {
 private fun LimudOptions(state: HomeWidgetsState) {
     val shown = Limud.decode(state.optionsOf(LimudWidget))
     val readings =
-        remember(state.selectedDate, state.inIsrael) {
-            Limud.entries.associateWith { limudOfDay(state.selectedDate, state.inIsrael, setOf(it)).firstOrNull()?.value }
+        remember(state.shownDate, state.inIsrael) {
+            Limud.entries.associateWith { limudOfDay(state.shownDate, state.inIsrael, setOf(it)).firstOrNull()?.value }
         }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         for (group in LimudGroup.entries) {
@@ -180,7 +181,9 @@ private fun LimudPanel(
     open: (LibraryPlace) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val items = remember(state.selectedDate, state.inIsrael, shown) { limudOfDay(state.selectedDate, state.inIsrael, shown) }
+    val day = state.shownDate
+    val inIsrael = state.inIsrael
+    val items = rememberOffMain(day, inIsrael, shown) { limudOfDay(day, inIsrael, shown) }
     val accent = rememberAccentColor(JewelTheme.isDark)
     PanelCard(modifier) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -357,9 +360,13 @@ internal object UpcomingEventsWidget : HomeWidget {
         modifier: Modifier,
     ) {
         val location = state.location
+        val day = state.shownDate
+        val opinion = state.zmanimOpinion
+        val cityLabel = state.cityLabel
+        val inIsrael = state.inIsrael
         val events =
-            remember(state.selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael) {
-                upcomingEvents(state.selectedDate, location, state.zmanimOpinion, state.cityLabel, state.inIsrael, limit = 14)
+            rememberOffMain(day, location, opinion, cityLabel, inIsrael) {
+                upcomingEvents(day, location, opinion, cityLabel, inIsrael, limit = 14)
             }
         val clock = rememberClock(location.timeZone)
         PanelCard(modifier) {
@@ -429,10 +436,10 @@ internal object TefilaWidget : HomeWidget {
         modifier: Modifier,
     ) {
         // ponytail: the civil day's tefila; tonight's maariv already belongs to tomorrow's
-        val lines = remember(state.selectedDate, state.inIsrael) { tefilaOfDay(state.selectedDate, state.inIsrael) }
+        val lines = remember(state.shownDate, state.inIsrael) { tefilaOfDay(state.shownDate, state.inIsrael) }
         val hebrewDate =
-            remember(state.selectedDate, state.inIsrael) {
-                hebrewFormatter.format(JewishCalendar(state.selectedDate.toKotlinLocalDate(), state.inIsrael))
+            remember(state.shownDate, state.inIsrael) {
+                hebrewFormatter.format(JewishCalendar(state.shownDate.toKotlinLocalDate(), state.inIsrael))
             }
         val accent = rememberAccentColor(JewelTheme.isDark)
         PanelCard(modifier) {
@@ -492,10 +499,11 @@ internal object MoladWidget : HomeWidget {
         modifier: Modifier,
     ) {
         val now = rememberMinute()
-        val molad =
-            remember(now, state.selectedDate, state.inIsrael, state.kiddushLevanaEarliest, state.kiddushLevanaLatest) {
-                moladInfo(now, state.selectedDate, state.inIsrael, state.kiddushLevanaEarliest, state.kiddushLevanaLatest)
-            }
+        val day = state.shownDate
+        val inIsrael = state.inIsrael
+        val earliest = state.kiddushLevanaEarliest
+        val latest = state.kiddushLevanaLatest
+        val molad = rememberOffMain(now, day, inIsrael, earliest, latest) { moladInfo(now, day, inIsrael, earliest, latest) }
         val zone = state.location.timeZone
         val moment = remember(zone) { SimpleDateFormat("d.M · HH:mm").apply { timeZone = zone } }
         val accent = rememberAccentColor(JewelTheme.isDark)

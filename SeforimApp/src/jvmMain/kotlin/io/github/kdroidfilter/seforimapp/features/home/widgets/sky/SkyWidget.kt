@@ -41,6 +41,8 @@ internal object SkyWidget : HomeWidget {
                     latitude = state.location.latitude,
                     longitude = state.location.longitude,
                     timeMillis = state.skyTimeMillis,
+                    // Following the solar system's play frame by frame: no glide between frames
+                    glide = state.playingMillis == null,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

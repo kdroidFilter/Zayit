@@ -85,7 +85,7 @@ class TabsViewModel internal constructor(
         when (event) {
             is TabsEvents.OnClose -> ids.getOrNull(event.index)?.let(session.workspace::close)
             is TabsEvents.OnSelect -> ids.getOrNull(event.index)?.let(session.workspace::select)
-            TabsEvents.OnAdd -> openTab(freshHome())
+            TabsEvents.OnAdd -> session.addTab(freshHome(), groupId, index = 0)
             is TabsEvents.OnReorder -> ids.getOrNull(event.fromIndex)?.let { session.workspace.reorder(it, event.toIndex) }
             // Chrome-like: the window keeps one fresh Home tab, which replaces the others once it is in.
             TabsEvents.CloseAll -> {
@@ -110,8 +110,9 @@ class TabsViewModel internal constructor(
         }
     }
 
+    /** A tab opened from another one lands next to it, on the + side of the strip (the current one moves over). */
     fun openTab(destination: TabsDestination) {
-        session.addTab(destination, groupId, index = 0)
+        session.addTab(destination, groupId, index = ids().indexOf(currentId()).coerceAtLeast(0))
     }
 
     /** Navigates the selected tab to [destination], keeping the tab (and its ViewModels). */

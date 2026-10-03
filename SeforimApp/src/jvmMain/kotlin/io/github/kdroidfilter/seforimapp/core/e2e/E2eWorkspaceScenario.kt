@@ -42,6 +42,17 @@ object E2eWorkspaceScenario {
         check(dm.windows.value.size == 1) { "expected one window, got ${dm.windows.value.size}" }
 
         val main = dm.windows.value.single()
+        // A tab opened from another one lands next to it, on its leading side, not at an end of the strip.
+        main.tabsViewModel.onEvent(TabsEvents.OnSelect(1))
+        sc.step("20c-second-selected")
+        val from = main.group()!!.selectedId
+        val opened = UUID.randomUUID().toString()
+        main.tabsViewModel.openTab(TabsDestination.BookContent(bookId = -1, tabId = opened))
+        sc.step("20d-opened-next")
+        check(main.group()!!.ids.indexOf(opened) == 1) { "opened tab at ${main.group()!!.ids.indexOf(opened)}, expected 1" }
+        check(main.group()!!.ids.indexOf(from) == 2) { "source tab at ${main.group()!!.ids.indexOf(from)}, expected 2" }
+        main.tabsViewModel.onEvent(TabsEvents.OnClose(1))
+        sc.step("20e-closed")
         repeat(2) { main.tabsViewModel.openTab(TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())) }
         sc.step("21-four-tabs")
 

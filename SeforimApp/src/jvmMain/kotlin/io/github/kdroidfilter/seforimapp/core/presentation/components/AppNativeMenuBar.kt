@@ -29,9 +29,12 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.availableTools
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
+import io.github.kdroidfilter.seforimapp.features.siddur.installedSiddur
+import io.github.kdroidfilter.seforimapp.features.siddur.openSiddurTab
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.*
+import seforimapp.seforimapp.generated.resources.siddur_title
 import java.util.UUID
 
 @Composable
@@ -160,6 +163,7 @@ fun AppNativeMenuBar(
     val menuZoomIn = stringResource(Res.string.menu_zoom_in)
     val menuZoomOut = stringResource(Res.string.menu_zoom_out)
     val menuGoHome = stringResource(Res.string.menu_go_home)
+    val menuSiddur = stringResource(Res.string.siddur_title)
     val menuPreferences = stringResource(Res.string.settings)
     val menuAbout = stringResource(Res.string.settings_category_about)
     val menuConditions = stringResource(Res.string.settings_category_conditions)
@@ -434,6 +438,11 @@ fun AppNativeMenuBar(
         }
 
         Menu(menuTools) {
+            if (installedSiddur != null) {
+                Item(text = menuSiddur, icon = NsMenuItemImage.SystemSymbol("text.book.closed")) {
+                    openSiddurTab(tabsViewModel)
+                }
+            }
             tools.forEach { (tool, title) ->
                 Item(text = title, icon = tool.toolSymbol?.let(NsMenuItemImage::SystemSymbol)) { toolWindows.open(tool) }
             }

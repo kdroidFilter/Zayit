@@ -63,7 +63,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.Pane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
@@ -1195,11 +1194,7 @@ private fun rememberCommentariesLayoutConfig(
     val commentaryFontCode by appSettings.commentaryFontCodeFlow.collectAsState()
     val commentaryFontFamily = FontCatalog.familyFor(commentaryFontCode)
     val maxCommentatorsPerPage by appSettings.maxCommentatorsPerPageFlow.collectAsState()
-    val boldScaleForPlatform =
-        remember(commentaryFontCode) {
-            val lacksBold = commentaryFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
-        }
+    val boldScaleForPlatform = FontCatalog.boldScaleFor(commentaryFontCode)
 
     return remember(
         selectedCommentators,

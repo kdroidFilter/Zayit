@@ -171,7 +171,7 @@ Zayit welcomes contributions from the community: bug fixes and features listed i
 
 **Note:** PRs introducing new features not listed in the roadmap will likely be declined.
 
-Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. In short: contributions are licensed under the same terms as the project (AGPL v3 + the §7b attribution term), you keep your copyright, and every commit must be signed off (`git commit -s`, DCO).
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. In short: contributions are licensed under the same terms as the project (AGPL v3 + the §7b attribution term), you keep your copyright, you sign the [CLA](CLA.md) once (the bot asks on your first pull request), and every commit must be signed off (`git commit -s`, DCO).
 
 ### Getting started
 
@@ -256,8 +256,27 @@ Sharing is encouraged - it is a good deed.
 
 This applies to every form of use of the source code or any portion thereof, **including its ingestion, processing, or reuse by an automated system, a machine-learning model, or a large language model (LLM)**. Any output or derivative produced with the help of such a system that incorporates or is based on this code must carry the attribution above. See the top of [`LICENSE`](LICENSE) for the full text.
 
+## Open core
+Zayit is **open core**. Everything in this repository is free and open source under the AGPL v3 (with the §7b term
+above), and builds into a complete application.
+
+The **official builds** (the releases of this repository and of [zayitapp.com](https://zayitapp.com/)) also include
+proprietary modules, which are not open source and live in private repositories:
+
+- **The smart siddur** (סידור חכם): the tefilot of every day, complete, after the user's nusach and place
+  (`io.github.kdroidfilter:seforim-siddur`, from the private SeforimSiddur repository). Its screen is in
+  `SeforimApp/src/jvmSiddur`.
+
+A build without access to these modules (any build from this repository by default) leaves them out: the menus do not
+show them and everything else works the same (`SeforimApp/src/jvmNoSiddur`). A build includes the smart siddur when
+it can read its package: with `siddur.token` in `~/.gradle/gradle.properties`, the `SEFORIM_SIDDUR_TOKEN` variable
+(CI), or a `gh` CLI logged in to an account that can see the repository (with the `read:packages` scope); or from its
+sources beside Zayit's, with `-Psiddur.local=true` (`../SeforimSiddur`).
+
+Contributions go into the open core; the [CLA](CLA.md) lets them ship in the official builds as well.
+
 ---
 
-Zayit is free and open source. For license details, see `LICENSE`.
+Zayit's core is free and open source. For license details, see `LICENSE`.
 
 <p align="center">Built with love by Elie Gambache ❤️</p>

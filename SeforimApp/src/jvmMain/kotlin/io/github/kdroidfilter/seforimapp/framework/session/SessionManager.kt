@@ -234,6 +234,10 @@ class SessionManager(
                 is TabsDestination.Notes -> {
                     // No-op: the Notes screen localizes its own title.
                 }
+
+                is TabsDestination.Siddur -> {
+                    // No-op: the Siddur screen localizes its own title.
+                }
             }
         }
         return titles

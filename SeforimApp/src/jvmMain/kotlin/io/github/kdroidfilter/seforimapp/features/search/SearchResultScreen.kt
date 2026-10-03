@@ -56,7 +56,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -664,11 +663,7 @@ private fun rememberSnippetDisplay(
     bookFontCode: String,
 ): AnnotatedString {
     // On macOS, some Hebrew fonts lack bold faces; scale slightly to keep emphasis visible.
-    val boldScaleForPlatform =
-        remember(bookFontCode) {
-            val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
-        }
+    val boldScaleForPlatform = FontCatalog.boldScaleFor(bookFontCode)
     val boldColor = giltColor()
     val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
     val annotated =

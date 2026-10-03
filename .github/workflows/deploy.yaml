@@ -9,6 +9,13 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    # The official builds include the smart siddur (open core): its private package, which grants this repository read
+    # access (package settings > Manage Actions access)
+    permissions:
+      contents: read
+      packages: read
+    env:
+      SEFORIM_SIDDUR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     strategy:
       fail-fast: false
       matrix:

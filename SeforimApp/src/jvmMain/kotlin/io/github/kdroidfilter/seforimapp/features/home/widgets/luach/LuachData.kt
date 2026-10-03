@@ -327,6 +327,19 @@ internal data class MoladInfo(
     val kiddushLevanaEnd: Date,
 )
 
+/** The month's Kiddush Levana window, from its first time to its last after the opinions. */
+internal fun JewishCalendar.kiddushLevanaWindow(
+    earliest: KiddushLevanaEarliestOpinion,
+    latest: KiddushLevanaLatestOpinion,
+) = when (earliest) {
+    KiddushLevanaEarliestOpinion.DAYS_3 -> tchilasZmanKidushLevana3Days
+    KiddushLevanaEarliestOpinion.DAYS_7 -> tchilasZmanKidushLevana7Days
+} to
+    when (latest) {
+        KiddushLevanaLatestOpinion.BETWEEN_MOLDOS -> sofZmanKidushLevanaBetweenMoldos
+        KiddushLevanaLatestOpinion.DAYS_15 -> sofZmanKidushLevana15Days
+    }
+
 /**
  * The molad of the coming month, and the Kiddush Levana window still open or next to open after [now] — this
  * month's until it closes, then the coming month's.
@@ -344,18 +357,9 @@ internal fun moladInfo(
         }
     val coming = JewishCalendar(current.gregorianLocalDate.plus(current.daysInJewishMonth, DateTimeUnit.DAY), inIsrael)
     val molad = coming.molad
-
-    fun JewishCalendar.window() =
-        when (earliest) {
-            KiddushLevanaEarliestOpinion.DAYS_3 -> tchilasZmanKidushLevana3Days
-            KiddushLevanaEarliestOpinion.DAYS_7 -> tchilasZmanKidushLevana7Days
-        } to
-            when (latest) {
-                KiddushLevanaLatestOpinion.BETWEEN_MOLDOS -> sofZmanKidushLevanaBetweenMoldos
-                KiddushLevanaLatestOpinion.DAYS_15 -> sofZmanKidushLevana15Days
-            }
-    val thisMonth = current.window()
-    val (start, end) = if (thisMonth.second.toEpochMilliseconds() > now.time) thisMonth else coming.window()
+    val thisMonth = current.kiddushLevanaWindow(earliest, latest)
+    val (start, end) =
+        if (thisMonth.second.toEpochMilliseconds() > now.time) thisMonth else coming.kiddushLevanaWindow(earliest, latest)
 
     return MoladInfo(
         month = hebrewFormatter.formatMonth(coming),

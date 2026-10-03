@@ -245,6 +245,7 @@ class DesktopSession internal constructor(
                 is TabsDestination.History -> TabType.HISTORY
                 is TabsDestination.Favorites -> TabType.FAVORITES
                 is TabsDestination.Notes -> TabType.NOTES
+                is TabsDestination.Siddur -> TabType.SIDDUR
             }
 
         fun stripEphemeral(destination: TabsDestination): TabsDestination =

@@ -2912,6 +2912,9 @@
         },
         {
             "bundle": "sun.util.logging.resources.logging"
+        },
+        {
+            "glob": "siddur/**"
         }
     ]
 }

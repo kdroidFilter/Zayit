@@ -37,6 +37,10 @@ sentry {
     authToken = System.getenv("SENTRY_AUTH_TOKEN")
 }
 
+// The smart siddur is in the official builds only (open core): with its package's token or its sources beside
+// (settings.gradle.kts); a community build has none and src/jvmNoSiddur says so
+val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
+
 kotlin {
 //    androidTarget {
 //        // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
@@ -127,6 +131,12 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.compose.ui.test)
         }
+
+        jvmMain {
+            kotlin.srcDir(if (withSiddur) "src/jvmSiddur/kotlin" else "src/jvmNoSiddur/kotlin")
+            if (withSiddur) dependencies { implementation(libs.seforim.siddur) }
+        }
+        if (withSiddur) jvmTest { kotlin.srcDir("src/jvmSiddurTest/kotlin") }
 
         jvmTest.dependencies {
             implementation(libs.mockk)

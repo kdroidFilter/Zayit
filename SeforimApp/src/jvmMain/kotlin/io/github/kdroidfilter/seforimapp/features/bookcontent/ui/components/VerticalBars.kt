@@ -68,15 +68,6 @@ fun EndVerticalBar(
     onEvent: (BookContentEvent) -> Unit,
     showDiacritics: Boolean,
 ) {
-    val appSettings = LocalAppGraph.current.appSettings
-    // Collect current text size from settings
-    val rawTextSize by appSettings.textSizeFlow.collectAsState()
-
-    // Determine if zoom buttons should be selected based on text size
-    // Also check if we've reached min/max limits to disable buttons appropriately
-    val canZoomIn = rawTextSize < AppSettings.MAX_TEXT_SIZE
-    val canZoomOut = rawTextSize > AppSettings.MIN_TEXT_SIZE
-
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
     val selectedLine = uiState.content.primaryLine
@@ -116,56 +107,15 @@ fun EndVerticalBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
-            // Platform-specific shortcut hint for Zoom In
-            SelectableIconButtonWithToolip(
-                toolTipText =
-                    if (canZoomIn) {
-                        stringResource(Res.string.zoom_in_tooltip)
-                    } else {
-                        stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
-                    },
-                onClick = { appSettings.increaseTextSize() },
-                isSelected = false,
-                enabled = canZoomIn,
-                icon = ZoomIn,
-                iconDescription = stringResource(Res.string.zoom_in),
-                label = stringResource(Res.string.zoom_in),
-                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText =
-                    if (canZoomOut) {
-                        stringResource(Res.string.zoom_out_tooltip)
-                    } else {
-                        stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
-                    },
-                onClick = { appSettings.decreaseTextSize() },
-                isSelected = false,
-                enabled = canZoomOut,
-                icon = ZoomOut,
-                iconDescription = stringResource(Res.string.zoom_out),
-                label = stringResource(Res.string.zoom_out),
-                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
-            )
+            ZoomButtons()
 
             // Diacritics toggle button - only when a book is selected and has nekudot/teamim
             if (!noBookSelected) {
                 val bookHasDiacritics = selectedBook.hasNekudot || selectedBook.hasTeamim
                 if (bookHasDiacritics) {
-                    SelectableIconButtonWithToolip(
-                        toolTipText =
-                            stringResource(
-                                if (showDiacritics) {
-                                    Res.string.hide_diacritics_tooltip
-                                } else {
-                                    Res.string.show_diacritics_tooltip
-                                },
-                            ),
+                    DiacriticsButton(
+                        showDiacritics = showDiacritics,
                         onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
-                        isSelected = showDiacritics,
-                        icon = TextDiacritics,
-                        iconDescription = stringResource(Res.string.toggle_diacritics),
-                        label = stringResource(Res.string.toggle_diacritics),
                         shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
                     )
                 }
@@ -297,3 +247,60 @@ private data class LineResourceAvailability(
     val commentariesAvailable: Boolean? = null,
     val sourcesAvailable: Boolean? = null,
 )
+
+/** The text's zoom in and out, shared by the reading screens' end bars. */
+@Composable
+fun ZoomButtons() {
+    val appSettings = LocalAppGraph.current.appSettings
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
+    val canZoomIn = rawTextSize < AppSettings.MAX_TEXT_SIZE
+    val canZoomOut = rawTextSize > AppSettings.MIN_TEXT_SIZE
+    SelectableIconButtonWithToolip(
+        toolTipText =
+            if (canZoomIn) {
+                stringResource(Res.string.zoom_in_tooltip)
+            } else {
+                stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
+            },
+        onClick = { appSettings.increaseTextSize() },
+        isSelected = false,
+        enabled = canZoomIn,
+        icon = ZoomIn,
+        iconDescription = stringResource(Res.string.zoom_in),
+        label = stringResource(Res.string.zoom_in),
+        shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
+    )
+    SelectableIconButtonWithToolip(
+        toolTipText =
+            if (canZoomOut) {
+                stringResource(Res.string.zoom_out_tooltip)
+            } else {
+                stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
+            },
+        onClick = { appSettings.decreaseTextSize() },
+        isSelected = false,
+        enabled = canZoomOut,
+        icon = ZoomOut,
+        iconDescription = stringResource(Res.string.zoom_out),
+        label = stringResource(Res.string.zoom_out),
+        shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
+    )
+}
+
+/** Shows or hides the nikud and teamim. */
+@Composable
+fun DiacriticsButton(
+    showDiacritics: Boolean,
+    onClick: () -> Unit,
+    shortcutHint: String? = null,
+) {
+    SelectableIconButtonWithToolip(
+        toolTipText = stringResource(if (showDiacritics) Res.string.hide_diacritics_tooltip else Res.string.show_diacritics_tooltip),
+        onClick = onClick,
+        isSelected = showDiacritics,
+        icon = TextDiacritics,
+        iconDescription = stringResource(Res.string.toggle_diacritics),
+        label = stringResource(Res.string.toggle_diacritics),
+        shortcutHint = shortcutHint,
+    )
+}

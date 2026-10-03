@@ -380,6 +380,37 @@ class AppSettings(
         _userCommunityCodeFlow.value = getUserCommunityCode()
     }
 
+    // Siddur: the nusach (null follows the community), and whether the user davens with a minyan
+    private val _siddurNusachFlow = MutableStateFlow(getSiddurNusachCode())
+    val siddurNusachFlow: StateFlow<String?> = _siddurNusachFlow.asStateFlow()
+
+    fun getSiddurNusachCode(): String? = settings[KEY_SIDDUR_NUSACH, ""].ifBlank { null }
+
+    fun setSiddurNusachCode(value: String?) {
+        settings[KEY_SIDDUR_NUSACH] = value.orEmpty()
+        _siddurNusachFlow.value = getSiddurNusachCode()
+    }
+
+    private val _siddurMinyanFlow = MutableStateFlow(isSiddurMinyan())
+    val siddurMinyanFlow: StateFlow<Boolean> = _siddurMinyanFlow.asStateFlow()
+
+    fun isSiddurMinyan(): Boolean = settings[KEY_SIDDUR_MINYAN, true]
+
+    fun setSiddurMinyan(value: Boolean) {
+        settings[KEY_SIDDUR_MINYAN] = value
+        _siddurMinyanFlow.value = value
+    }
+
+    private val _siddurBeitAvelFlow = MutableStateFlow(isSiddurBeitAvel())
+    val siddurBeitAvelFlow: StateFlow<Boolean> = _siddurBeitAvelFlow.asStateFlow()
+
+    fun isSiddurBeitAvel(): Boolean = settings[KEY_SIDDUR_BEIT_AVEL, false]
+
+    fun setSiddurBeitAvel(value: Boolean) {
+        settings[KEY_SIDDUR_BEIT_AVEL] = value
+        _siddurBeitAvelFlow.value = value
+    }
+
     // Theme mode (Light/Dark/System) setting
     fun getThemeMode(): IntUiThemes {
         val storedValue: String = settings[KEY_THEME_MODE, IntUiThemes.System.name]
@@ -530,6 +561,9 @@ class AppSettings(
         // User profile keys
         private const val KEY_USER_FIRST_NAME = "user_first_name"
         private const val KEY_USER_LAST_NAME = "user_last_name"
+        private const val KEY_SIDDUR_NUSACH = "siddur_nusach"
+        private const val KEY_SIDDUR_MINYAN = "siddur_minyan"
+        private const val KEY_SIDDUR_BEIT_AVEL = "siddur_beit_avel"
         private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
 
         // Theme configuration

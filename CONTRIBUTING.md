@@ -11,18 +11,35 @@ technologies that drive Zayit — https://zayitapp.com/" requirement). See
 [`LICENSE`](LICENSE) for the full text.
 
 By submitting a contribution (pull request, patch, or any other form), you agree
-that your contribution is licensed under **exactly the same terms as the
-project**, namely the GNU AGPL v3 **and** the additional attribution term under
-Section 7(b).
+that your contribution is licensed under the same terms as the project, namely
+the GNU AGPL v3 **and** the additional attribution term under Section 7(b), and
+under the Contributor License Agreement below.
 
-You **retain the copyright** on your contribution — there is no copyright
-assignment and no Contributor License Agreement. You simply license your work
-under the project's terms, and the attribution requirement continues to apply to
-your contribution and to any work derived from it.
+## Contributor License Agreement (CLA)
+
+Zayit is **open core** (see "Open core" in the [README](README.MD)): its core is
+free under the AGPL v3, and its official builds also include proprietary modules,
+such as the smart siddur. So that your contribution can be part of those builds,
+you sign the [Zayit Contributor License Agreement](CLA.md) once:
+
+- You **keep the copyright** on your contribution — there is no copyright
+  assignment.
+- You grant the maintainer a broad license on it, which allows distributing it
+  under other terms too (including with proprietary modules), and a patent
+  license.
+
+On your first pull request, the CLA bot asks you to sign by commenting:
+
+```
+I have read the CLA Document and I hereby sign the CLA
+```
+
+Your signature covers all your later pull requests. A CI check blocks a pull
+request until all its authors have signed.
 
 ## Developer Certificate of Origin (DCO)
 
-We do not use a CLA. Instead, every commit must be signed off under the
+Every commit must also be signed off under the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/). By
 signing off, you certify that you wrote the code or otherwise have the right to
 submit it under the project's license.

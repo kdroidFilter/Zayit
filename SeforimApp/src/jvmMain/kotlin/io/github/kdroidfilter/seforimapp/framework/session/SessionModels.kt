@@ -28,6 +28,23 @@ data class SavedSessionV2(
 data class TabPersistedState(
     val bookContent: BookContentPersistedState = BookContentPersistedState(),
     val search: SearchPersistedState? = null,
+    // Appended last: the session is ProtoBuf, numbered by declaration order
+    val siddur: SiddurPersistedState? = null,
+)
+
+/** A siddur tab's day, part and choices, and where it was read: restored with the session. */
+@Serializable
+data class SiddurPersistedState(
+    val epochDay: Long? = null,
+    val part: String? = null,
+    val showAll: Boolean = false,
+    val options: String = "",
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+    val tocVisible: Boolean = true,
+    val showDiacritics: Boolean = true,
+    /** The table of contents' open entries (a tefila's name, or name/heading/index). */
+    val tocExpanded: String = "",
 )
 
 @Serializable

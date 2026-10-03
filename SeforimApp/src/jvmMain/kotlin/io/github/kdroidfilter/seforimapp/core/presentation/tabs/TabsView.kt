@@ -75,6 +75,7 @@ import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.CloseAll
+import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
 import io.github.kdroidfilter.seforimapp.icons.Link
 import io.github.kdroidfilter.seforimapp.icons.NotebookPen
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
@@ -198,6 +199,8 @@ private fun TabStripScope.DefaultTabShowcase(
                                             iconProvider.getPainter(Stateful(tabState)).value
                                         } else if (tabItem.tabType == TabType.NOTES) {
                                             rememberVectorPainter(NotebookPen)
+                                        } else if (tabItem.tabType == TabType.SIDDUR) {
+                                            rememberVectorPainter(JournalBookmark)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -282,6 +285,8 @@ private fun TabStripScope.DefaultTabShowcase(
                                             iconProvider.getPainter(Stateful(tabState)).value
                                         } else if (tabItem.tabType == TabType.NOTES) {
                                             rememberVectorPainter(NotebookPen)
+                                        } else if (tabItem.tabType == TabType.SIDDUR) {
+                                            rememberVectorPainter(JournalBookmark)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(

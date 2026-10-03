@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets.calendar
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -42,9 +43,9 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.isoDayNumber
@@ -56,12 +57,14 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_calendar_next_month
 import seforimapp.seforimapp.generated.resources.home_calendar_previous_month
 import seforimapp.seforimapp.generated.resources.home_calendar_swap
+import seforimapp.seforimapp.generated.resources.home_calendar_today
 import seforimapp.seforimapp.generated.resources.home_widget_name_calendar
 import java.time.LocalDate
 
@@ -87,56 +90,83 @@ internal object CalendarWidget : HomeWidget {
     ) {
         val selected = state.shownDateHere()
         val today = remember(selected, state.location) { LocalDate.now(state.location.timeZone.toZoneId()) }
-        // Any day of the month on show; follows the date picked elsewhere (a zman card, the Earth orbit)
-        var shown by remember(selected) { mutableStateOf(selected) }
         val civil = state.optionsOf(this) == CIVIL_OPTION
-        val month =
-            remember(shown, civil, state.inIsrael) {
-                if (civil) civilMonth(shown, state.inIsrael) else calendarMonth(shown, state.inIsrael)
-            }
-        val accent = rememberAccentColor(JewelTheme.isDark)
-
         PanelCard(modifier) {
-            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                MonthHeader(
-                    month = month,
-                    onPrevious = { shown = month.first.minusDays(1) },
-                    onNext = { shown = month.last.plusDays(1) },
-                    onSwap = { state.setOptions(this@CalendarWidget, if (civil) null else CIVIL_OPTION) },
-                )
-                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
-                    // Holiday names only where a cell can hold a word
-                    val showTags = maxWidth / 7 >= 56.dp
-                    // Too narrow for both dates side by side: the Gregorian one goes under the Hebrew one
-                    val stacked = maxWidth / 7 < 56.dp
-                    Column(Modifier.fillMaxSize()) {
-                        Row(Modifier.fillMaxWidth()) {
-                            WEEKDAY_INITIALS.forEach { name ->
-                                Text(
-                                    text = name,
-                                    fontSize = 11.sp,
-                                    color = JewelTheme.globalColors.text.info,
-                                    modifier = Modifier.weight(1f).padding(bottom = 4.dp),
-                                    textAlign = TextAlign.Center,
-                                )
-                            }
-                        }
-                        month.weeks.forEach { week ->
-                            Row(Modifier.fillMaxWidth().weight(1f)) {
-                                week.forEach { day ->
-                                    DayCell(
-                                        day = day,
-                                        isToday = day?.date == today,
-                                        isSelected = day?.date == selected,
-                                        showTag = showTags,
-                                        stacked = stacked,
-                                        civil = civil,
-                                        accent = accent,
-                                        onClick = { day?.let { state.selectDate(it.date) } },
-                                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                                    )
-                                }
-                            }
+            LuachMonth(
+                selected = selected,
+                today = today,
+                inIsrael = state.inIsrael,
+                civil = civil,
+                onSwap = { state.setOptions(this@CalendarWidget, if (civil) null else CIVIL_OPTION) },
+                onSelect = state::selectDate,
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+            )
+        }
+    }
+}
+
+/**
+ * A month of the luach, Hebrew or civil ([civil], swapped by [onSwap]), with [selected] marked: its arrows page
+ * through the months, a click on a day picks it. The Calendar widget's, and the siddur's day picker.
+ */
+@Composable
+internal fun LuachMonth(
+    selected: LocalDate,
+    today: LocalDate,
+    inIsrael: Boolean,
+    civil: Boolean,
+    onSwap: () -> Unit,
+    onSelect: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier,
+    /** Shown as a header button that brings the pick back to today. */
+    onToday: (() -> Unit)? = null,
+) {
+    // Any day of the month on show; follows the date picked elsewhere (a zman card, the Earth orbit)
+    var shown by remember(selected) { mutableStateOf(selected) }
+    val month =
+        remember(shown, civil, inIsrael) {
+            if (civil) civilMonth(shown, inIsrael) else calendarMonth(shown, inIsrael)
+        }
+    val accent = rememberAccentColor(JewelTheme.isDark)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        MonthHeader(
+            month = month,
+            onPrevious = { shown = month.first.minusDays(1) },
+            onNext = { shown = month.last.plusDays(1) },
+            onSwap = onSwap,
+            onToday = onToday,
+        )
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            // Holiday names only where a cell can hold a word
+            val showTags = maxWidth / 7 >= 56.dp
+            // Too narrow for both dates side by side: the Gregorian one goes under the Hebrew one
+            val stacked = maxWidth / 7 < 56.dp
+            Column(Modifier.fillMaxSize()) {
+                Row(Modifier.fillMaxWidth()) {
+                    WEEKDAY_INITIALS.forEach { name ->
+                        Text(
+                            text = name,
+                            fontSize = 11.sp,
+                            color = JewelTheme.globalColors.text.info,
+                            modifier = Modifier.weight(1f).padding(bottom = 4.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+                month.weeks.forEach { week ->
+                    Row(Modifier.fillMaxWidth().weight(1f)) {
+                        week.forEach { day ->
+                            DayCell(
+                                day = day,
+                                isToday = day?.date == today,
+                                isSelected = day?.date == selected,
+                                showTag = showTags,
+                                stacked = stacked,
+                                civil = civil,
+                                accent = accent,
+                                onClick = { day?.let { onSelect(it.date) } },
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
                         }
                     }
                 }
@@ -272,6 +302,7 @@ private fun MonthHeader(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onSwap: () -> Unit,
+    onToday: (() -> Unit)?,
 ) {
     // The earlier month sits at the start of the reading direction; Jewel icons don't mirror themselves
     val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
@@ -283,26 +314,30 @@ private fun MonthHeader(
             Text(month.title, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
             Text(month.subtitle, fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1)
         }
+        onToday?.let { StepButton(AllIconsKeys.General.Locate, stringResource(Res.string.home_calendar_today), it) }
         StepButton(AllIconsKeys.Actions.SwapPanels, stringResource(Res.string.home_calendar_swap), onSwap)
         StepButton(towardsEnd, stringResource(Res.string.home_calendar_next_month), onNext)
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StepButton(
     icon: IconKey,
     description: String,
     onClick: () -> Unit,
 ) {
-    Box(
-        Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .pointerHoverIcon(PointerIcon.Hand),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(key = icon, contentDescription = description)
+    Tooltip(tooltip = { Text(description) }) {
+        Box(
+            Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .pointerHoverIcon(PointerIcon.Hand),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(key = icon, contentDescription = description)
+        }
     }
 }
 

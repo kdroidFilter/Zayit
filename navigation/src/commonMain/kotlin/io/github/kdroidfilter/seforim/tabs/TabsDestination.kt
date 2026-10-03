@@ -56,4 +56,17 @@ sealed interface TabsDestination {
     data class Notes(
         override val tabId: String,
     ) : TabsDestination
+
+    /**
+     * The smart siddur, opened on [part] (a SiddurPart name) of the Jewish day [epochDay], or on the tefila of the
+     * hour; scrolled to the first [heading] that has these words.
+     */
+    @Serializable
+    @Immutable
+    data class Siddur(
+        override val tabId: String,
+        val part: String? = null,
+        val epochDay: Long? = null,
+        val heading: String? = null,
+    ) : TabsDestination
 }

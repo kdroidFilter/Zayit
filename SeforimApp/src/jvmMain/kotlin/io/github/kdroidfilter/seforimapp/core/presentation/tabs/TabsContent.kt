@@ -53,6 +53,7 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEve
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
+import io.github.kdroidfilter.seforimapp.features.siddur.installedSiddur
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
@@ -78,11 +79,12 @@ private fun TabsDestination.typeKey(): String =
         is TabsDestination.History -> "history"
         is TabsDestination.Favorites -> "favorites"
         is TabsDestination.Notes -> "notes"
+        is TabsDestination.Siddur -> "siddur"
     }
 
 private fun saveableKeyFor(destination: TabsDestination): String = "${destination.tabId}:${destination.typeKey()}"
 
-private fun saveableKeysFor(tabId: String): List<String> = listOf("$tabId:home", "$tabId:search", "$tabId:book")
+private fun saveableKeysFor(tabId: String): List<String> = listOf("$tabId:home", "$tabId:search", "$tabId:book", "$tabId:siddur")
 
 /**
  * The text of every tab of the current window, the centre of its dock layout.
@@ -285,6 +287,11 @@ fun TabsContent() {
 
                                 is TabsDestination.Notes -> {
                                     NotesTabContent(tabId = tabId)
+                                }
+
+                                is TabsDestination.Siddur -> {
+                                    // ponytail: a siddur tab restored in a community build stays empty
+                                    installedSiddur?.TabContent(tabId, destination)
                                 }
                             }
                         }

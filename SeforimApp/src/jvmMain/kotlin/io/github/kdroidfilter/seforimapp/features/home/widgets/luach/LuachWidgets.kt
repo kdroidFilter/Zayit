@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,6 +52,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.siddur.installedSiddur
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -63,6 +66,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CheckboxRow
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
+import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
@@ -72,6 +76,7 @@ import seforimapp.seforimapp.generated.resources.home_widget_name_molad
 import seforimapp.seforimapp.generated.resources.home_widget_name_next_zman
 import seforimapp.seforimapp.generated.resources.home_widget_name_tefila
 import seforimapp.seforimapp.generated.resources.home_widgets_options
+import seforimapp.seforimapp.generated.resources.siddur_open_siddur
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.TimeZone
@@ -449,6 +454,13 @@ internal object TefilaWidget : HomeWidget {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     Text("תפילת היום", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.weight(1f))
                     Text(hebrewDate, fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1)
+                    Spacer(Modifier.width(8.dp))
+                    if (installedSiddur != null) {
+                        Link(
+                            stringResource(Res.string.siddur_open_siddur),
+                            onClick = { state.openTab(TabsDestination.Siddur(tabId = UUID.randomUUID().toString())) },
+                        )
+                    }
                 }
                 BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
                     // The lines share the card's height, but never further apart than reads as one list
@@ -606,17 +618,25 @@ private fun rememberMinute(): Date {
 internal fun rememberOpenInLibrary(
     state: HomeWidgetsState,
     shnayimMikra: Boolean = false,
+): (LibraryPlace) -> Unit = rememberOpenInLibrary(openTab = { state.openTab(it) }, shnayimMikra = shnayimMikra)
+
+/** Opens a [LibraryPlace] with [openTab]; does nothing if the library doesn't have the book. */
+@Composable
+internal fun rememberOpenInLibrary(
+    openTab: (TabsDestination) -> Unit,
+    shnayimMikra: Boolean = false,
 ): (LibraryPlace) -> Unit {
     val graph = LocalAppGraph.current
     val scope = rememberCoroutineScope()
-    return remember(graph, state, scope, shnayimMikra) {
+    val currentOpenTab by rememberUpdatedState(openTab)
+    return remember(graph, scope, shnayimMikra) {
         { place ->
             scope.launch {
                 // Read on click: the books DB is opened when first needed, never by showing the card
                 val repository = graph.repository
                 val book = repository.getBookByTitle(place.bookTitle) ?: return@launch
                 val (lineId, endLineId) = repository.linesOf(book, place)
-                state.openTab(
+                currentOpenTab(
                     TabsDestination.BookContent(
                         bookId = book.id,
                         tabId = UUID.randomUUID().toString(),

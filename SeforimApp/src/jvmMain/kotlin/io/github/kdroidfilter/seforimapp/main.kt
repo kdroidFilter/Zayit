@@ -41,6 +41,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.features.siddur.installedSiddur
 import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
 import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
@@ -458,6 +459,7 @@ fun main(args: Array<String>) {
                                         E2eFilamentScenario.run(it)
                                         E2eSolarPerfScenario.run(it)
                                         E2eNotesScenario.run(it)
+                                        installedSiddur?.runE2e(it)
                                     }) { exitApplication() }
                                 }
                             }

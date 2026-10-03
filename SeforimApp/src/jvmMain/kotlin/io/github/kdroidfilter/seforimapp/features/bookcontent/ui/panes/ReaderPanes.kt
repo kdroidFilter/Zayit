@@ -308,7 +308,12 @@ private fun PaneSync(
                 }
                 applied = wanted
                 appliedRegistered = frame.registered
-                return@collect
+                // Nothing moved (a tab with the same panes at the same sizes): no new frame will come, so go on to
+                // mark the tab ready now — waiting would leave its text on the loader for good.
+                val unchanged =
+                    frame.open == planned &&
+                        (sizes == null || layout == null || sized.all { (pane, px) -> frame.extents[pane] == px })
+                if (!unchanged) return@collect
             }
             val expected = current.panes intersect frame.registered
             if (frame.open != expected) {

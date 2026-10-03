@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.RenderVectorGroup
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondary
@@ -198,9 +200,9 @@ private fun TabStripScope.DefaultTabShowcase(
                                             val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Nodes.Favorite)
                                             iconProvider.getPainter(Stateful(tabState)).value
                                         } else if (tabItem.tabType == TabType.NOTES) {
-                                            rememberVectorPainter(NotebookPen)
+                                            rememberTintedVectorPainter(NotebookPen, JewelTheme.contentColor)
                                         } else if (tabItem.tabType == TabType.SIDDUR) {
-                                            rememberVectorPainter(JournalBookmark)
+                                            rememberTintedVectorPainter(JournalBookmark, JewelTheme.contentColor)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -284,9 +286,9 @@ private fun TabStripScope.DefaultTabShowcase(
                                             val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Nodes.Favorite)
                                             iconProvider.getPainter(Stateful(tabState)).value
                                         } else if (tabItem.tabType == TabType.NOTES) {
-                                            rememberVectorPainter(NotebookPen)
+                                            rememberTintedVectorPainter(NotebookPen, JewelTheme.globalColors.text.normal)
                                         } else if (tabItem.tabType == TabType.SIDDUR) {
-                                            rememberVectorPainter(JournalBookmark)
+                                            rememberTintedVectorPainter(JournalBookmark, JewelTheme.globalColors.text.normal)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -1212,3 +1214,20 @@ private fun MenuScope.tabContextMenuItem(
         }
     }
 }
+
+/** The icon sets are drawn in black: tint them so they follow the theme (dark mode). */
+@Composable
+private fun rememberTintedVectorPainter(
+    image: ImageVector,
+    tint: Color,
+): Painter =
+    rememberVectorPainter(
+        defaultWidth = image.defaultWidth,
+        defaultHeight = image.defaultHeight,
+        viewportWidth = image.viewportWidth,
+        viewportHeight = image.viewportHeight,
+        name = image.name,
+        tintColor = tint,
+        tintBlendMode = BlendMode.SrcIn,
+        autoMirror = image.autoMirror,
+    ) { _, _ -> RenderVectorGroup(group = image.root) }

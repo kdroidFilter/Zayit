@@ -69,9 +69,8 @@ object ThemeUtils {
     }
 
     /**
-     * Builds a Jewel theme definition driven by three axes:
+     * Builds a Jewel theme definition driven by two axes:
      * - theme mode (Light / Dark / System) — controls brightness
-     * - theme style (Classic / Islands) — controls the color palette
      * - accent color — optionally overrides the primary accent
      */
     @Composable
@@ -79,72 +78,41 @@ object ThemeUtils {
         run {
             val mainAppState = LocalAppGraph.current.mainAppState
             val isDark = isDarkTheme()
-            val themeStyle = mainAppState.themeStyle.collectAsState().value
             val accentColor = mainAppState.accentColor.collectAsState().value
             val accent = accentColor.resolveColor(isDark)
             val disabledValues = if (isDark) DisabledAppearanceValues.dark() else DisabledAppearanceValues.light()
             val iconData = accentIconData(accent, isDark)
 
-            when (themeStyle) {
-                ThemeStyle.Islands ->
-                    if (isDark) {
-                        JewelTheme.darkThemeDefinition(
-                            colors = islandsDarkGlobalColors(accent),
-                            iconData = iconData,
-                            defaultTextStyle = defaultTextStyle(),
-                            disabledAppearanceValues = disabledValues,
-                        )
-                    } else {
-                        JewelTheme.lightThemeDefinition(
-                            colors = lightIslandsGlobalColors(accent),
-                            iconData = iconData,
-                            defaultTextStyle = defaultTextStyle(),
-                            disabledAppearanceValues = disabledValues,
-                        )
-                    }
-                ThemeStyle.Classic ->
-                    if (isDark) {
-                        JewelTheme.darkThemeDefinition(
-                            colors = classicDarkGlobalColors(accent),
-                            iconData = iconData,
-                            defaultTextStyle = defaultTextStyle(),
-                            disabledAppearanceValues = disabledValues,
-                        )
-                    } else {
-                        JewelTheme.lightThemeDefinition(
-                            colors = classicLightGlobalColors(accent),
-                            iconData = iconData,
-                            defaultTextStyle = defaultTextStyle(),
-                            disabledAppearanceValues = disabledValues,
-                        )
-                    }
+            if (isDark) {
+                JewelTheme.darkThemeDefinition(
+                    colors = islandsDarkGlobalColors(accent),
+                    iconData = iconData,
+                    defaultTextStyle = defaultTextStyle(),
+                    disabledAppearanceValues = disabledValues,
+                )
+            } else {
+                JewelTheme.lightThemeDefinition(
+                    colors = lightIslandsGlobalColors(accent),
+                    iconData = iconData,
+                    defaultTextStyle = defaultTextStyle(),
+                    disabledAppearanceValues = disabledValues,
+                )
             }
         }
 
     /**
-     * Builds the [ComponentStyling] matching the current theme style and accent color.
+     * Builds the [ComponentStyling] matching the current accent color.
      */
     @Composable
     fun buildComponentStyling(): ComponentStyling {
         val mainAppState = LocalAppGraph.current.mainAppState
         val isDark = isDarkTheme()
-        val themeStyle = mainAppState.themeStyle.collectAsState().value
         val accent =
             mainAppState.accentColor
                 .collectAsState()
                 .value
                 .resolveColor(isDark)
-        return when (themeStyle) {
-            ThemeStyle.Islands -> islandsComponentStyling(isDark, accent)
-            ThemeStyle.Classic -> classicComponentStyling(isDark, accent)
-        }
-    }
-
-    /** Returns true if the Islands style is active. */
-    @Composable
-    fun isIslandsStyle(): Boolean {
-        val mainAppState = LocalAppGraph.current.mainAppState
-        return mainAppState.themeStyle.collectAsState().value == ThemeStyle.Islands
+        return islandsComponentStyling(isDark, accent)
     }
 
     /** GlobalColors for the dark variant of the "Islands Dark" VS Code theme. */
@@ -196,34 +164,6 @@ object ThemeUtils {
                     focused = accent,
                 ),
             toolwindowBackground = Color(0xFFE8E9EB),
-        )
-
-    /** GlobalColors for Classic dark with a custom accent override. */
-    private fun classicDarkGlobalColors(accent: Color): GlobalColors =
-        GlobalColors.dark(
-            borders = BorderColors.dark(focused = accent),
-            outlines =
-                OutlineColors.dark(
-                    focused = accent,
-                    focusedWarning = Color(0xFFE8A33E),
-                    focusedError = Color(0xFFF75464),
-                    warning = Color(0xFFE8A33E),
-                    error = Color(0xFFF75464),
-                ),
-        )
-
-    /** GlobalColors for Classic light with a custom accent override. */
-    private fun classicLightGlobalColors(accent: Color): GlobalColors =
-        GlobalColors.light(
-            borders = BorderColors.light(focused = accent),
-            outlines =
-                OutlineColors.light(
-                    focused = accent,
-                    focusedWarning = Color(0xFFE8A33E),
-                    focusedError = Color(0xFFF75464),
-                    warning = Color(0xFFE8A33E),
-                    error = Color(0xFFF75464),
-                ),
         )
 
     /**

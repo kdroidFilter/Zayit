@@ -19,8 +19,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
-import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
@@ -66,17 +64,12 @@ fun BookContentPanel(
     noteDraft: NoteDraftAnchor? = null,
     tabUi: BookTabUi? = null,
 ) {
-    val isIslands = ThemeUtils.isIslandsStyle()
     val homeCardModifier =
-        if (isIslands) {
-            Modifier
-                .fillMaxSize()
-                .padding(vertical = 6.dp, horizontal = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-        } else {
-            Modifier.fillMaxSize()
-        }
+        Modifier
+            .fillMaxSize()
+            .padding(vertical = 6.dp, horizontal = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(JewelTheme.globalColors.panelBackground)
     Box(modifier = modifier.fillMaxSize()) {
         when {
             // If no book is selected
@@ -168,16 +161,11 @@ private fun BookContentPanelContent(
         providers.prefetchCommentaries(lineId, openCommentatorIds)
     }
 
-    val isIslands = ThemeUtils.isIslandsStyle()
     val hasBottomPane = uiState.content.showCommentaries || uiState.content.showSources
     val panelBackground = JewelTheme.globalColors.panelBackground
     val paneCardModifier =
-        remember(isIslands, hasBottomPane, panelBackground) {
-            if (hasBottomPane) {
-                islandsCardModifier(isIslands, panelBackground, bottom = 3.dp)
-            } else {
-                islandsCardModifier(isIslands, panelBackground)
-            }
+        remember(hasBottomPane, panelBackground) {
+            islandsCardModifier(panelBackground, bottom = if (hasBottomPane) 3.dp else 6.dp)
         }
 
     // Collect paging data here to keep BookContentView skippable
@@ -248,7 +236,6 @@ fun BookBreadcrumb(
         uiState = uiState,
         onEvent = onEvent,
         verticalPadding = 8.dp,
-        isIslands = ThemeUtils.isIslandsStyle(),
     )
 }
 
@@ -329,20 +316,14 @@ private fun BreadcrumbSection(
     onEvent: (BookContentEvent) -> Unit,
     verticalPadding: Dp,
     modifier: Modifier = Modifier,
-    isIslands: Boolean = false,
 ) {
     val sectionModifier =
-        if (isIslands) {
-            modifier
-                .fillMaxWidth()
-                .padding(bottom = 6.dp, start = 4.dp, end = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-        } else {
-            modifier.fillMaxWidth().background(JewelTheme.globalColors.panelBackground)
-        }
+        modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp, start = 4.dp, end = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(JewelTheme.globalColors.panelBackground)
     Column(modifier = sectionModifier) {
-        if (!isIslands) HorizontalDivider()
         Row(
             modifier = Modifier.fillMaxWidth().padding(vertical = verticalPadding, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -358,17 +339,12 @@ private fun BreadcrumbSection(
 }
 
 private fun islandsCardModifier(
-    isIslands: Boolean,
     panelBackground: androidx.compose.ui.graphics.Color,
     top: Dp = 6.dp,
     bottom: Dp = 6.dp,
 ): Modifier =
-    if (isIslands) {
-        Modifier
-            .fillMaxSize()
-            .padding(top = top, bottom = bottom, start = 4.dp, end = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(panelBackground)
-    } else {
-        Modifier
-    }
+    Modifier
+        .fillMaxSize()
+        .padding(top = top, bottom = bottom, start = 4.dp, end = 4.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .background(panelBackground)

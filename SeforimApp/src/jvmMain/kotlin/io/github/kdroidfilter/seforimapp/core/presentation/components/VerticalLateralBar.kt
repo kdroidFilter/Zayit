@@ -26,7 +26,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
@@ -54,40 +53,26 @@ fun VerticalLateralBar(
             .padding(4.dp)
     val lazyColumnVerticalArrangement = Arrangement.spacedBy(4.dp)
 
-    val isIslands = ThemeUtils.isIslandsStyle()
     val compactMode by appSettings.compactModeFlow.collectAsState()
     val barWidth = if (compactMode) 48.dp else 64.dp
-    val outerModifier =
-        if (isIslands) {
-            val horizontalPadding =
-                when (position) {
-                    VerticalLateralBarPosition.Start -> PaddingValues(start = 6.dp, end = 4.dp)
-                    VerticalLateralBarPosition.End -> PaddingValues(start = 4.dp, end = 6.dp)
-                }
-            modifier
-                .width(barWidth)
-                .fillMaxHeight()
-                .padding(vertical = 6.dp)
-                .padding(horizontalPadding)
-        } else {
-            modifier.width(barWidth).fillMaxHeight()
+    val horizontalPadding =
+        when (position) {
+            VerticalLateralBarPosition.Start -> PaddingValues(start = 6.dp, end = 4.dp)
+            VerticalLateralBarPosition.End -> PaddingValues(start = 4.dp, end = 6.dp)
         }
+    val outerModifier =
+        modifier
+            .width(barWidth)
+            .fillMaxHeight()
+            .padding(vertical = 6.dp)
+            .padding(horizontalPadding)
     CompositionLocalProvider(LocalVerticalBarPosition provides position) {
         Row(modifier = outerModifier) {
-            if (!isIslands && position == VerticalLateralBarPosition.End) {
-                Column {
-                    VerticalDivider()
-                }
-            }
             val innerModifier =
-                if (isIslands) {
-                    Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(JewelTheme.globalColors.panelBackground)
-                } else {
-                    Modifier.weight(1f)
-                }
+                Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(JewelTheme.globalColors.panelBackground)
             Column(modifier = innerModifier) {
                 Box(
                     modifier = boxModifier,
@@ -145,11 +130,6 @@ fun VerticalLateralBar(
                             }
                         }
                     }
-                }
-            }
-            if (!isIslands && position == VerticalLateralBarPosition.Start) {
-                Column {
-                    VerticalDivider()
                 }
             }
         }

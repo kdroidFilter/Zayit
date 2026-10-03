@@ -8,7 +8,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.nucleusframework.core.runtime.Platform
@@ -28,7 +27,7 @@ import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
 fun DecoratedWindowScope.MainTitleBar(modifier: Modifier = Modifier) {
     JewelTitleBar(
         modifier = modifier.newFullscreenControls().macOSLargeCornerRadius(),
-        gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+        gradientStartColor = ThemeUtils.titleBarGradientColor(),
         controlButtonsDirection = ControlButtonsDirection.SystemNative,
     ) {
         // Window control buttons (close/maximize/minimize) are Compose-based on Linux and

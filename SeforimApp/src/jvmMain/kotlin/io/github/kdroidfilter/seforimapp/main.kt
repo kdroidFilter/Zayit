@@ -263,8 +263,6 @@ fun main(args: Array<String>) {
             }
         }
 
-        // themeStyle is already initialized from AppSettings in MainAppState, no separate LaunchedEffect needed
-
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,

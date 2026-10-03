@@ -24,7 +24,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupPositionProvider
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ActionButton
@@ -51,14 +50,8 @@ fun SelectableIconButtonWithToolip(
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     val compactMode by appSettings.compactModeFlow.collectAsState()
-    val isIslands = ThemeUtils.isIslandsStyle()
     val iconSize = if (compactMode) 22.dp else 24.dp
-    val buttonPadding =
-        when {
-            compactMode -> 2.dp
-            isIslands -> 2.dp
-            else -> 4.dp
-        }
+    val buttonPadding = 2.dp
 
     val barPosition = LocalVerticalBarPosition.current
     val density = LocalDensity.current

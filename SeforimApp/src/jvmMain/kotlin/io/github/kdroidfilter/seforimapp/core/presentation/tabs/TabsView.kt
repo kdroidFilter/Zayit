@@ -26,12 +26,9 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
@@ -71,7 +68,6 @@ import dev.nucleusframework.window.tao.tabStripGrip
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -706,21 +702,13 @@ private fun RtlAwareTab(
         targetValue = if (isDragging) 0.7f else 1f,
         animationSpec = tween(durationMillis = 150),
     )
-    val isIslands = ThemeUtils.isIslandsStyle()
-    val lineColor by tabStyle.colors.underlineFor(tabState)
-    val lineThickness = tabStyle.metrics.underlineThickness
-    val defaultBg by tabStyle.colors.backgroundFor(state = tabState)
     val accent = JewelTheme.globalColors.outlines.focused
     val backgroundColor =
-        if (isIslands) {
-            when {
-                tabState.isSelected -> accent.copy(alpha = 0.20f)
-                tabState.isPressed -> accent.copy(alpha = 0.18f)
-                tabState.isHovered -> accent.copy(alpha = 0.10f)
-                else -> Color.Transparent
-            }
-        } else {
-            defaultBg
+        when {
+            tabState.isSelected -> accent.copy(alpha = 0.20f)
+            tabState.isPressed -> accent.copy(alpha = 0.18f)
+            tabState.isHovered -> accent.copy(alpha = 0.10f)
+            else -> Color.Transparent
         }
     val resolvedContentColor =
         tabStyle.colors
@@ -761,13 +749,9 @@ private fun RtlAwareTab(
                 modifier
                     .height(tabStyle.metrics.tabHeight)
                     .width(widthForThisTab)
-                    .let { m ->
-                        if (isIslands) {
-                            m.padding(horizontal = 2.dp, vertical = 4.dp).clip(RoundedCornerShape(8.dp))
-                        } else {
-                            m
-                        }
-                    }.background(backgroundColor)
+                    .padding(horizontal = 2.dp, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(backgroundColor)
                     .alpha(dragAlpha)
                     .onGloballyPositioned { coords ->
                         val pos = coords.positionInWindow()
@@ -779,26 +763,7 @@ private fun RtlAwareTab(
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Tab,
-                    ).let { m ->
-                        if (isIslands) {
-                            m
-                        } else {
-                            m.drawBehind {
-                                val strokeThickness = lineThickness.toPx()
-                                val startY = size.height - (strokeThickness / 2f)
-                                val endX = size.width
-                                val capDxFix = strokeThickness / 2f
-
-                                drawLine(
-                                    brush = SolidColor(lineColor),
-                                    start = Offset(0 + capDxFix, startY),
-                                    end = Offset(endX - capDxFix, startY),
-                                    strokeWidth = strokeThickness,
-                                    cap = StrokeCap.Round,
-                                )
-                            }
-                        }
-                    }.padding(tabStyle.metrics.tabPadding)
+                    ).padding(tabStyle.metrics.tabPadding)
                     .onPointerEvent(PointerEventType.Release) { ev ->
                         // Middle-click closes tab (Chrome-like)
                         if (ev.button.isTertiary) onClose()

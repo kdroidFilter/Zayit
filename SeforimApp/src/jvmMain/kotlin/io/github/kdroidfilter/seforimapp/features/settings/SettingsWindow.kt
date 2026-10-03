@@ -7,7 +7,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
@@ -81,7 +80,7 @@ private fun NucleusApplicationScope.SettingsWindowView(
             ) {
                 JewelDialogTitleBar(
                     modifier = Modifier.newFullscreenControls(),
-                    gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+                    gradientStartColor = ThemeUtils.titleBarGradientColor(),
                     controlButtonsDirection = ControlButtonsDirection.SystemNative,
                 ) {
                     Row(

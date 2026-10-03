@@ -7,7 +7,6 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -425,20 +424,6 @@ class AppSettings(
         settings[KEY_THEME_MODE] = theme.name
     }
 
-    // Theme style (Classic / Islands)
-    fun getThemeStyle(): ThemeStyle {
-        val storedValue: String = settings[KEY_THEME_STYLE, ThemeStyle.Islands.name]
-        return try {
-            ThemeStyle.valueOf(storedValue)
-        } catch (_: IllegalArgumentException) {
-            ThemeStyle.Islands
-        }
-    }
-
-    fun setThemeStyle(style: ThemeStyle) {
-        settings[KEY_THEME_STYLE] = style.name
-    }
-
     // Accent color preset
     fun getAccentColor(): AccentColor {
         val storedValue: String = settings[KEY_ACCENT_COLOR, AccentColor.Gold.name]
@@ -568,7 +553,6 @@ class AppSettings(
 
         // Theme configuration
         private const val KEY_THEME_MODE = "theme_mode"
-        private const val KEY_THEME_STYLE = "theme_style"
         private const val KEY_ACCENT_COLOR = "accent_color"
 
         // Zmanim widgets visibility

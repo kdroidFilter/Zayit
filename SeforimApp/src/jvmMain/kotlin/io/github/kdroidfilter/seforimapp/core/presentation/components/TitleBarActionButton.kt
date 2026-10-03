@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
@@ -42,9 +41,8 @@ fun TitleBarActionButton(
 ) {
     val accent = JewelTheme.globalColors.outlines.focused
     val baseStyle = JewelTheme.iconButtonStyle
-    val isIslands = ThemeUtils.isIslandsStyle()
     val style =
-        remember(accent, baseStyle, isIslands) {
+        remember(accent, baseStyle) {
             val c = baseStyle.colors
             IconButtonStyle(
                 colors =
@@ -66,25 +64,16 @@ fun TitleBarActionButton(
                         borderHovered = Color.Transparent,
                     ),
                 metrics =
-                    if (isIslands) {
-                        IconButtonMetrics(
-                            cornerSize = CornerSize(8.dp),
-                            borderWidth = baseStyle.metrics.borderWidth,
-                            padding = baseStyle.metrics.padding,
-                            minSize = baseStyle.metrics.minSize,
-                        )
-                    } else {
-                        baseStyle.metrics
-                    },
+                    IconButtonMetrics(
+                        cornerSize = CornerSize(8.dp),
+                        borderWidth = baseStyle.metrics.borderWidth,
+                        padding = baseStyle.metrics.padding,
+                        minSize = baseStyle.metrics.minSize,
+                    ),
             )
         }
 
-    val buttonModifier =
-        if (isIslands) {
-            Modifier.width(40.dp).fillMaxHeight().padding(horizontal = 2.dp, vertical = 4.dp)
-        } else {
-            Modifier.width(40.dp).fillMaxHeight()
-        }
+    val buttonModifier = Modifier.width(40.dp).fillMaxHeight().padding(horizontal = 2.dp, vertical = 4.dp)
 
     val belowAnchorPlacement =
         remember {

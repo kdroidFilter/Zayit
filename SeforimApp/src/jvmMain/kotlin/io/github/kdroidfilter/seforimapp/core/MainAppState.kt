@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.core
 import androidx.compose.runtime.Stable
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,14 +22,6 @@ class MainAppState(
     fun setTheme(theme: IntUiThemes) {
         _theme.value = theme
         appSettings.setThemeMode(theme)
-    }
-
-    private val _themeStyle = MutableStateFlow(appSettings.getThemeStyle())
-    val themeStyle: StateFlow<ThemeStyle> = _themeStyle.asStateFlow()
-
-    fun setThemeStyle(style: ThemeStyle) {
-        _themeStyle.value = style
-        appSettings.setThemeStyle(style)
     }
 
     private val _accentColor = MutableStateFlow(appSettings.getAccentColor())

@@ -11,7 +11,6 @@ import dev.nucleusframework.window.tao.TabDragOrigin
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.ReaderPane
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellRect
@@ -377,11 +376,7 @@ object E2eTortureScenario {
             }
             20 -> {
                 val state = sc.graph().mainAppState
-                if (random.nextBoolean()) {
-                    state.setTheme(listOf(IntUiThemes.Light, IntUiThemes.Dark).random(random))
-                } else {
-                    state.setThemeStyle(ThemeStyle.entries.random(random))
-                }
+                state.setTheme(listOf(IntUiThemes.Light, IntUiThemes.Dark).random(random))
                 "theme"
             }
             21 -> {

@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -10,6 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.paging.compose.LazyPagingItems
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.E2ePerf
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
@@ -86,6 +89,9 @@ fun ContentScrollbar(
     // visibleLines` → 1. Numerator and denominator scale with the same `avgItemSize`
     // so the ratio reaches the boundaries exactly, no pinning required, no flicker.
     val position = computeBookPosition(listState, lazyPagingItems, counts.size, cumPx, totalContentPx).coerceIn(0f, 1f)
+
+    if (E2e.enabled) SideEffect { E2e.bookScrollbar = listState to position }
+    E2ePerf.Record()
 
     val listStateRef = rememberUpdatedState(listState)
     val pagingRef = rememberUpdatedState(lazyPagingItems)

@@ -23,6 +23,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2eFilamentScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eSolarPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eNotesScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eRestoreScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eScrollbarScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eWidgetsScenario
@@ -461,6 +462,7 @@ fun main(args: Array<String>) {
                                         E2eSolarPerfScenario.run(it)
                                         E2eNotesScenario.run(it)
                                         E2eRestoreScenario.run(it)
+                                        E2eScrollbarScenario.run(it)
                                         installedSiddur?.runE2e(it)
                                     }) { exitApplication() }
                                 }

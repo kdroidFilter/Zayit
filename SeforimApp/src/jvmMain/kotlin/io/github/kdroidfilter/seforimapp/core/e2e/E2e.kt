@@ -68,6 +68,17 @@ object E2e {
 
     fun bookViewModel(tabId: String): BookContentViewModel? = bookViewModels[tabId]
 
+    /** The book scrollbar on screen: its list and the thumb position it last drew, for [E2eScrollbarScenario]. */
+    @Volatile
+    var bookScrollbar: Pair<androidx.compose.foundation.lazy.LazyListState, Float>? = null
+        set(value) {
+            field = value
+            value?.let { bookScrollbarTrace.add(it.second) }
+        }
+
+    /** Every thumb position the book scrollbar drew. */
+    val bookScrollbarTrace: MutableList<Float> = java.util.Collections.synchronizedList(ArrayList())
+
     /** The widgets of the Home on screen, for [E2eWidgetsScenario] to open and close their gallery. */
     @Volatile
     var homeWidgets: HomeWidgetsState? = null

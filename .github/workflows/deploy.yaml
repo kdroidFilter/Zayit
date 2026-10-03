@@ -9,13 +9,10 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    # The official builds include the smart siddur (open core): its private package, which grants this repository read
-    # access (package settings > Manage Actions access)
-    permissions:
-      contents: read
-      packages: read
+    # The official builds include the smart siddur (open core): its private Maven package is readable only with the
+    # access of its own repository, so a classic token with read:packages (GITHUB_TOKEN cannot reach it)
     env:
-      SEFORIM_SIDDUR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      SEFORIM_SIDDUR_TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
     strategy:
       fail-fast: false
       matrix:

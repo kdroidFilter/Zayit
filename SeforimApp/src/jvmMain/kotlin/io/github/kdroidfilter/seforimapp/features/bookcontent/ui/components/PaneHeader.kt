@@ -28,7 +28,6 @@ import dev.nucleusframework.window.ExperimentalNucleusApi
 import dev.nucleusframework.window.tao.SatelliteScope
 import dev.nucleusframework.window.tao.satelliteDragHandle
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
@@ -59,13 +58,7 @@ fun PaneHeader(
     // Touch has no persistent hover, so reveal the actions whenever the user is
     // interacting by touch (see [LocalIsTouchMode]).
     val isTouchMode = LocalIsTouchMode.current
-    val isIslands = ThemeUtils.isIslandsStyle()
-    val headerBackground =
-        if (isIslands) {
-            JewelTheme.globalColors.toolwindowBackground.copy(alpha = 0.15f)
-        } else {
-            JewelTheme.globalColors.panelBackground
-        }
+    val headerBackground = JewelTheme.globalColors.toolwindowBackground.copy(alpha = 0.15f)
 
     val satellite = LocalPaneSatellite.current
     Column(

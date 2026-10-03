@@ -40,7 +40,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.rememberSearchSh
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.tabBookViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.tabSearchViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.tabUi
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookTextMenus
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -235,7 +234,7 @@ private fun PaneSync(
     groupId: String,
 ) {
     val demand = rememberUpdatedState(selectedTabDemand(session, groupId))
-    val splitterDp = if (ThemeUtils.isIslandsStyle()) 0f else 1f
+    val splitterDp = 0f
     LaunchedEffect(window, session, groupId, splitterDp) {
         val effectScope = this
         var saveJob: Job? = null
@@ -654,15 +653,13 @@ private fun SearchTocPane(
 }
 
 /**
- * The reader's splitter, as the split panes drew it: a 1 dp divider (none in the Islands style,
- * where the cards' gaps are the dividers) carrying a 5 dp grip.
+ * The reader's splitter: no visible line (the cards' gaps are the dividers), just a 5 dp grip.
  */
 @Composable
 fun DockSplitterScope.ReaderSplitter() {
     val horizontal = orientation == Orientation.Horizontal
-    val thickness = if (ThemeUtils.isIslandsStyle()) 0.dp else 1.dp
-    val line = if (horizontal) Modifier.fillMaxHeight().width(thickness) else Modifier.fillMaxWidth().height(thickness)
-    Box(line.background(JewelTheme.globalColors.borders.disabled), contentAlignment = Alignment.Center) {
+    val line = if (horizontal) Modifier.fillMaxHeight().width(0.dp) else Modifier.fillMaxWidth().height(0.dp)
+    Box(line, contentAlignment = Alignment.Center) {
         val grip =
             if (horizontal) {
                 Modifier
@@ -677,9 +674,8 @@ fun DockSplitterScope.ReaderSplitter() {
 }
 
 /**
- * The frame of a docked pane (and of the text), as the split panes had it: flush in Classic; in
- * Islands a rounded card, 3 dp from a neighbour above or below (the vertical split's gap) and 6 dp
- * from the window edge.
+ * The frame of a docked pane (and of the text): a rounded card, 3 dp from a neighbour above or
+ * below (the vertical split's gap) and 6 dp from the window edge.
  */
 @Composable
 fun PaneCard(
@@ -688,15 +684,11 @@ fun PaneCard(
     content: @Composable () -> Unit,
 ) {
     val modifier =
-        if (ThemeUtils.isIslandsStyle()) {
-            Modifier
-                .fillMaxSize()
-                .padding(top = top, bottom = bottom, start = 4.dp, end = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-        } else {
-            Modifier.fillMaxSize()
-        }
+        Modifier
+            .fillMaxSize()
+            .padding(top = top, bottom = bottom, start = 4.dp, end = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(JewelTheme.globalColors.panelBackground)
     Box(modifier) { content() }
 }
 

@@ -39,7 +39,6 @@ import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
@@ -205,13 +204,7 @@ fun TabsContent() {
         }
     }
 
-    val isIslands = ThemeUtils.isIslandsStyle()
-    val canvasBg =
-        if (isIslands) {
-            JewelTheme.globalColors.toolwindowBackground
-        } else {
-            JewelTheme.globalColors.panelBackground
-        }
+    val canvasBg = JewelTheme.globalColors.toolwindowBackground
 
     Box(
         modifier =

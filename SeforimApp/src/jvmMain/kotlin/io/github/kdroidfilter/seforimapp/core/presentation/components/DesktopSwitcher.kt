@@ -55,7 +55,6 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import com.kdroid.gematria.converter.toHebrewNumeral
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsDesktop_landscape
@@ -139,22 +138,15 @@ private fun DesktopSwitcherTrigger(
     val isHovered by interactionSource.collectIsHoveredAsState()
     val accent = JewelTheme.globalColors.outlines.focused
     val hoverBg = if (isHovered) accent.copy(alpha = 0.08f) else Color.Transparent
-    val isIslands = ThemeUtils.isIslandsStyle()
-    val cornerRadius = if (isIslands) 8.dp else 4.dp
 
     Row(
         modifier =
             Modifier
                 .width(DESKTOP_SWITCHER_WIDTH)
                 .fillMaxHeight()
-                .then(
-                    if (isIslands) {
-                        Modifier.padding(horizontal = 2.dp, vertical = 4.dp)
-                    } else {
-                        Modifier
-                    },
-                ).hoverable(interactionSource)
-                .background(hoverBg, RoundedCornerShape(cornerRadius))
+                .padding(horizontal = 2.dp, vertical = 4.dp)
+                .hoverable(interactionSource)
+                .background(hoverBg, RoundedCornerShape(8.dp))
                 .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
                 .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,

@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.catalog.CatalogPresets
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CatalogDropdown
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -24,7 +23,7 @@ fun CatalogRow(
     modifier: Modifier = Modifier,
     spacing: Dp = 8.dp,
 ) {
-    val outerPadding = if (ThemeUtils.isIslandsStyle()) 12.dp else 6.dp
+    val outerPadding = 12.dp
     Box(
         modifier =
             modifier

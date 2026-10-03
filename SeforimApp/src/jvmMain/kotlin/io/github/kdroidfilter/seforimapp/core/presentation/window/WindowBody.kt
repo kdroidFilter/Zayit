@@ -29,7 +29,6 @@ import dev.nucleusframework.window.tao.SatellitePlacement
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.TabsContent
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.tabBookViewModel
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.features.bookcontent.handleBookShortcut
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
@@ -155,5 +154,4 @@ private fun ReaderBar(
 }
 
 @Composable
-internal fun canvasBackground() =
-    if (ThemeUtils.isIslandsStyle()) JewelTheme.globalColors.toolwindowBackground else JewelTheme.globalColors.panelBackground
+internal fun canvasBackground() = JewelTheme.globalColors.toolwindowBackground

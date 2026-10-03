@@ -48,7 +48,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomTogg
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -190,17 +189,12 @@ fun SearchResultInBookShellMvi(
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
 
-    val isIslands = ThemeUtils.isIslandsStyle()
     val panelCardModifier =
-        if (isIslands) {
-            Modifier
-                .fillMaxSize()
-                .padding(vertical = 6.dp, horizontal = 4.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-        } else {
-            Modifier
-        }
+        Modifier
+            .fillMaxSize()
+            .padding(vertical = 6.dp, horizontal = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(JewelTheme.globalColors.panelBackground)
 
     val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
     if (showBookContent) {

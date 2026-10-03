@@ -24,7 +24,6 @@ import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.features.home.widgets.availableTools
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
@@ -46,7 +45,6 @@ fun AppNativeMenuBar(
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     val theme by mainAppState.theme.collectAsState()
-    val themeStyle by mainAppState.themeStyle.collectAsState()
     val accentColor by mainAppState.accentColor.collectAsState()
     val compactMode by appSettings.compactModeFlow.collectAsState()
     val persistSession by appSettings.persistSessionFlow.collectAsState()
@@ -155,9 +153,6 @@ fun AppNativeMenuBar(
     val lightTheme = stringResource(Res.string.light_theme)
     val darkTheme = stringResource(Res.string.dark_theme)
     val systemTheme = stringResource(Res.string.system_theme)
-    val menuThemeStyle = stringResource(Res.string.menu_theme_style)
-    val themeClassic = stringResource(Res.string.settings_theme_style_classic)
-    val themeIslands = stringResource(Res.string.settings_theme_style_islands)
     val menuAppearance = stringResource(Res.string.menu_appearance)
     val compactModeLabel = stringResource(Res.string.settings_compact_mode)
     val menuZoomIn = stringResource(Res.string.menu_zoom_in)
@@ -266,16 +261,6 @@ fun AppNativeMenuBar(
                 })
                 RadioButtonItem(systemTheme, selected = theme == IntUiThemes.System, onClick = {
                     mainAppState.setTheme(IntUiThemes.System)
-                })
-            }
-
-            // Theme style submenu
-            Menu(text = menuThemeStyle) {
-                RadioButtonItem(themeClassic, selected = themeStyle == ThemeStyle.Classic, onClick = {
-                    mainAppState.setThemeStyle(ThemeStyle.Classic)
-                })
-                RadioButtonItem(themeIslands, selected = themeStyle == ThemeStyle.Islands, onClick = {
-                    mainAppState.setThemeStyle(ThemeStyle.Islands)
                 })
             }
 

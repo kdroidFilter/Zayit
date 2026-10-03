@@ -255,7 +255,7 @@ private fun CommentariesContent(
         splitPaneState = splitState.asStable(),
         firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
         showSplitter = isCommentatorsListVisible,
-        dividerVisibleInIslands = true,
+        showDivider = true,
         firstContent = {
             if (isCommentatorsListVisible) {
                 CommentatorsList(
@@ -365,7 +365,7 @@ private fun MultiLineCommentariesContent(
         splitPaneState = splitState.asStable(),
         firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
         showSplitter = isCommentatorsListVisible,
-        dividerVisibleInIslands = true,
+        showDivider = true,
         firstContent = {
             if (isCommentatorsListVisible) {
                 CommentatorsList(

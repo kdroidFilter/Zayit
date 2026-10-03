@@ -15,7 +15,6 @@ import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberWindowState
@@ -128,7 +127,7 @@ internal fun DefaultToolWindow(
             }
             JewelTitleBar(
                 modifier = Modifier.newFullscreenControls(),
-                gradientStartColor = if (ThemeUtils.isIslandsStyle()) ThemeUtils.titleBarGradientColor() else Color.Unspecified,
+                gradientStartColor = ThemeUtils.titleBarGradientColor(),
                 controlButtonsDirection = ControlButtonsDirection.SystemNative,
             ) {
                 Text(title)

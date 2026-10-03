@@ -4,7 +4,6 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
@@ -36,7 +35,6 @@ object E2eScenario {
         graph = appGraph
         val state = appGraph.mainAppState
         val theme = state.theme.value
-        val style = state.themeStyle.value
         val textSize = graph.appSettings.getTextSize()
         // Every run starts from the same reading settings, whatever the machine was left at.
         graph.appSettings.setTextSize(E2E_TEXT_SIZE)
@@ -47,7 +45,6 @@ object E2eScenario {
             note("FAILED: $t\n${t.stackTraceToString()}")
         } finally {
             state.setTheme(theme)
-            state.setThemeStyle(style)
             graph.appSettings.setTextSize(textSize)
             E2e.outDir?.let { File(it, "log.txt").writeText(synchronized(log) { log.toString() }) }
             quit()
@@ -101,7 +98,6 @@ object E2eScenario {
     private suspend fun runCommon() {
         val state = graph.mainAppState
         state.setTheme(IntUiThemes.Light)
-        state.setThemeStyle(ThemeStyle.Classic)
         val bereshit = graph.repository.getBookByTitle("בראשית")?.id ?: error("book not found")
         val desktop = "e2e-a"
         dm.restoreFromDesktopsState(
@@ -170,8 +166,6 @@ object E2eScenario {
             }
         window().tabsViewModel.onEvent(TabsEvents.OnSelect(bookIndex))
         step("13-back-to-book")
-        state.setThemeStyle(ThemeStyle.Islands)
-        step("14-islands")
         state.setTheme(IntUiThemes.Dark)
         step("15-dark")
 

@@ -25,6 +25,11 @@ kotlin {
                 exclude(group = "org.jetbrains.compose.material")
             }
             implementation(libs.kosherkotlin)
+            implementation(libs.kotlinx.datetime)
+        }
+
+        jvmTest.dependencies {
+            implementation(kotlin("test"))
         }
     }
 }

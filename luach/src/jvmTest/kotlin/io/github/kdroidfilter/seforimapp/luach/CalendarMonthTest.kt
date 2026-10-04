@@ -1,4 +1,4 @@
-package io.github.kdroidfilter.seforimapp.features.home.widgets.calendar
+package io.github.kdroidfilter.seforimapp.luach
 
 import java.time.DayOfWeek
 import java.time.LocalDate

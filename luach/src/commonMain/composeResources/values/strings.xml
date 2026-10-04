@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="luach_previous_month">החודש הקודם</string>
+    <string name="luach_next_month">החודש הבא</string>
+    <string name="luach_swap">החלפה בין לוח עברי ללוח לועזי</string>
+    <string name="luach_today">חזרה להיום</string>
+</resources>

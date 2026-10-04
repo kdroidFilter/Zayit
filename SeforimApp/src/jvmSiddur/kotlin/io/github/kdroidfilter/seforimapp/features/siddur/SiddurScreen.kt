@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.siddur
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.layout.Arrangement
@@ -55,8 +54,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -82,7 +79,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocView
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.PaneCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocationViewModel
-import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.LuachMonth
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.hebrewFormatter
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.hebrewWeekday
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.moladInfo
@@ -93,6 +89,7 @@ import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SiddurPersistedState
 import io.github.kdroidfilter.seforimapp.icons.TableOfContents
+import io.github.kdroidfilter.seforimapp.luach.LuachPopup
 import io.github.kdroidfilter.seforimapp.siddur.*
 import io.github.kdroidfilter.seforimapp.siddur.pirkeiAvos
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -717,7 +714,6 @@ private fun BookHeader(
         }
         // The day: a click opens the luach to pick another, or come back to today
         var picking by remember { mutableStateOf(false) }
-        var civil by remember { mutableStateOf(false) }
         Box {
             Text(
                 if (occasion.isEmpty()) dayLabel else "$dayLabel · $occasion",
@@ -732,30 +728,15 @@ private fun BookHeader(
                         .padding(horizontal = 6.dp, vertical = 2.dp),
             )
             if (picking) {
-                Popup(onDismissRequest = { picking = false }, properties = PopupProperties(focusable = true)) {
-                    LuachMonth(
-                        selected = date.toJavaLocalDate(),
-                        today = today.toJavaLocalDate(),
-                        inIsrael = inIsrael,
-                        civil = civil,
-                        onSwap = { civil = !civil },
-                        onSelect = {
-                            onDay(it.toKotlinLocalDate())
-                            picking = false
-                        },
-                        onToday = {
-                            onToday()
-                            picking = false
-                        },
-                        modifier =
-                            Modifier
-                                .size(420.dp, 380.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(JewelTheme.globalColors.panelBackground)
-                                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
-                                .padding(12.dp),
-                    )
-                }
+                LuachPopup(
+                    selected = date.toJavaLocalDate(),
+                    today = today.toJavaLocalDate(),
+                    inIsrael = inIsrael,
+                    accent = rememberAccentColor(JewelTheme.isDark),
+                    onSelect = { onDay(it.toKotlinLocalDate()) },
+                    onToday = onToday,
+                    onDismiss = { picking = false },
+                )
             }
         }
         IconButton(onClick = { onDay(date.plus(1, DateTimeUnit.DAY)) }) {

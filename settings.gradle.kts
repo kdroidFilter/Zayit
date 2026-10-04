@@ -48,7 +48,9 @@ fun ghOutput(vararg args: String): String? =
 val siddurToken: String? =
     providers.gradleProperty("siddur.token").orNull
         ?: providers.environmentVariable("SEFORIM_SIDDUR_TOKEN").orNull
-        ?: ghOutput("api", "users/kdroidFilter/packages/maven/io.github.kdroidfilter.seforim-siddur", "--jq", ".name")?.let { ghOutput("auth", "token") }
+        ?: ghOutput("api", "users/kdroidFilter/packages/maven/io.github.kdroidfilter.seforim-siddur", "--jq", ".name")?.let {
+            ghOutput("auth", "token")
+        }
 gradle.extensions.extraProperties["siddurEnabled"] = siddurToken != null || providers.gradleProperty("siddur.local").orNull == "true"
 
 dependencyResolutionManagement {
@@ -93,7 +95,7 @@ include((":htmlparser"))
 include(":navigation")
 include(":icons")
 include(":earthwidget")
-include(":hebrewcalendar")
+include(":luach")
 include(":pagination")
 include(":logger")
 include(":texteffects")

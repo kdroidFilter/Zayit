@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.EarthPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.features.home.widgets.LocalFollowsPlay
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
@@ -85,6 +86,11 @@ internal object EarthWidget : HomeWidget {
                             targetDateEpochDay = state.shownDateHere().toEpochDay().takeIf { playMillis == null },
                             followClock = playMillis != null,
                             onDateSelect = state::selectDate,
+                            inIsrael = state.inIsrael,
+                            // The widget's chrome, its date picker included, is always dark
+                            accentColor = rememberAccentColor(isDark = true),
+                            // In the solar system's full window, whose own picker sets the day
+                            showDatePicker = !LocalFollowsPlay.current,
                             onLocationSelect = state::selectLocation,
                             containerBackground = Color.Transparent,
                             showOrbitLabels = true,

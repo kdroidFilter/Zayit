@@ -70,6 +70,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.LocalFollowsPlay
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
+import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -167,6 +168,8 @@ internal fun SolarSystemWindow(
                             inIsrael = state.userInIsrael,
                             fullWindow = true,
                             onDateSelect = state::selectDate,
+                            // The window's chrome, its date picker included, is dark
+                            accentColor = rememberAccentColor(isDark = true),
                             onOptions = { optionsShown = !optionsShown },
                             playMillis = state.playingMillis,
                             onPlayToggle = state::togglePlay,

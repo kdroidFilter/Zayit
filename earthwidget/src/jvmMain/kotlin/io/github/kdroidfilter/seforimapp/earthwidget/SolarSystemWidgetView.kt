@@ -61,7 +61,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupPositionProvider
-import io.github.erkko68.filament.compose.rememberFilamentEngine
+import io.github.erkko68.filament.compose.rememberFilamentEngineAsync
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
@@ -448,17 +448,21 @@ fun SolarSystemWidgetView(
                 kiddushLevanaStartDegrees = kiddushLevanaLongitudes.first,
                 kiddushLevanaEndDegrees = kiddushLevanaLongitudes.second,
             )
-        val engine = rememberFilamentEngine()
-        val textures = rememberWidgetTextures(engine)
+        // Null while the engine is being created, off the UI thread: a loader meanwhile
+        val engine = rememberFilamentEngineAsync()
 
         Box(modifier = Modifier.fillMaxSize().orbitCameraGestures(camera) { 180f / widthPx }) {
-            SolarSystemSceneView(
-                state = state,
-                engine = engine,
-                textures = textures,
-                modifier = Modifier.matchParentSize(),
-                animated = pointerOver || playing,
-            )
+            if (engine == null) {
+                WidgetLoader(Modifier.matchParentSize())
+            } else {
+                SolarSystemSceneView(
+                    state = state,
+                    engine = engine,
+                    textures = rememberWidgetTextures(engine),
+                    modifier = Modifier.matchParentSize(),
+                    animated = pointerOver || playing,
+                )
+            }
             SolarEventMarkers(
                 state = state,
                 events = events,

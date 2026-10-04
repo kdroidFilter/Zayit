@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateSetOf
@@ -170,14 +171,40 @@ private fun WidgetCells(
     state: HomeWidgetsState,
     widgets: List<WidgetPlacement>,
 ) {
+    val revealed = rememberRevealedWidgets(widgets)
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         if (maxWidth < COMPACT_GRID_WIDTH) {
-            CompactWidgets(state, widgets, maxWidth)
+            CompactWidgets(state, widgets, maxWidth, revealed)
         } else {
-            CellArea(state, widgets, maxWidth)
+            CellArea(state, widgets, maxWidth, revealed)
         }
     }
 }
+
+/**
+ * The widgets of a Home composed from scratch (a new tab) come in after the tab's opening animation, one per frame, in
+ * reading order: composing and first drawing them all at once (their 3D views, calendars, pictures) took some 150 ms of
+ * the animation's frames. Until then each keeps its place, empty. Null once all are in: every widget shows.
+ */
+@Composable
+private fun rememberRevealedWidgets(widgets: List<WidgetPlacement>): Set<String>? {
+    val order = widgets.sortedWith(compareBy({ it.cell.y }, { it.cell.x })).map { it.widget.id }
+    val currentOrder by rememberUpdatedState(order)
+    var count by remember { mutableIntStateOf(0) }
+    var done by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        delay(WIDGET_REVEAL_DELAY_MS)
+        while (count < currentOrder.size) {
+            withFrameNanos { }
+            count++
+        }
+        done = true
+    }
+    return if (done) null else order.take(count).toSet()
+}
+
+/** The tab strip's opening animation (TabsView), which the widgets wait out. */
+private const val WIDGET_REVEAL_DELAY_MS = 200L
 
 /** Too narrow a window for the grid: the widgets one per row, in reading order, as they are (no moving them). */
 @Composable
@@ -185,6 +212,7 @@ private fun CompactWidgets(
     state: HomeWidgetsState,
     widgets: List<WidgetPlacement>,
     width: Dp,
+    revealed: Set<String>?,
 ) {
     val pitch = CellPitch(width)
     // No grid to place it on: a widget let go from the gallery is added as a click would
@@ -195,7 +223,13 @@ private fun CompactWidgets(
             .sortedWith(compareBy({ it.cell.y }, { it.cell.x }))
             .forEach { placement ->
                 val height = maxOf(pitch.height(placement.cell.h), placement.widget.heightAt(width) ?: 0.dp)
-                WidgetFrame(placement, state, movable = false, modifier = Modifier.fillMaxWidth().height(height))
+                WidgetFrame(
+                    placement,
+                    state,
+                    movable = false,
+                    revealed = revealed == null || placement.widget.id in revealed,
+                    modifier = Modifier.fillMaxWidth().height(height),
+                )
             }
     }
 }
@@ -214,6 +248,7 @@ private fun CellArea(
     state: HomeWidgetsState,
     widgets: List<WidgetPlacement>,
     gridWidth: Dp,
+    revealed: Set<String>?,
 ) {
     val drag = state.drag
     val density = LocalDensity.current
@@ -372,6 +407,7 @@ private fun CellArea(
                 WidgetFrame(
                     placement = placement,
                     state = state,
+                    revealed = revealed == null || id in revealed,
                     picture = pictures.getOrPut(id) { graphics.createGraphicsLayer() },
                     appearing = id in appearing,
                     onAppear = { appearing -= id },

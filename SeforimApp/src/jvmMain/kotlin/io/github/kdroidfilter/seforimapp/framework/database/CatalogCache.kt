@@ -14,6 +14,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.extractCategoryChildren
 import io.github.kdroidfilter.seforimlibrary.core.models.extractRootCategories
 import io.github.kdroidfilter.seforimlibrary.dao.CatalogLoader
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * App-scoped holder for the precomputed catalog and its extracted data.
@@ -132,15 +134,18 @@ class CatalogCache(
      */
     suspend fun getAllBooksWithAltFlags(repository: SeforimRepository): Set<Book>? {
         _allBooksWithAltFlags?.let { return it }
-        val books = getAllBooks() ?: return null
-        val altFlags = repository.getAllBookAltFlags()
-        val merged =
-            books
-                .map { book ->
-                    altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
-                }.toSet()
-        _allBooksWithAltFlags = merged
-        return merged
+        // Every book of the catalog: off the caller's thread, the UI's when a book tab opens
+        return withContext(Dispatchers.Default) {
+            val books = getAllBooks() ?: return@withContext null
+            val altFlags = repository.getAllBookAltFlags()
+            val merged =
+                books
+                    .map { book ->
+                        altFlags[book.id]?.let { book.copy(hasAltStructures = it) } ?: book
+                    }.toSet()
+            _allBooksWithAltFlags = merged
+            merged
+        }
     }
 
     /**

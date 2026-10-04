@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,6 +39,7 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -88,12 +90,18 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
+import org.jetbrains.compose.resources.decodeToImageBitmap
+import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.rememberResourceEnvironment
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -102,6 +110,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.Cursor
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
@@ -190,13 +199,15 @@ fun HomeView(
                         else -> Res.drawable.homepage_wallpaper_large
                     }
                 }
-            // Layer 1: Wallpaper background
-            Image(
-                painter = painterResource(wallpaper),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
-            )
+            // Layer 1: Wallpaper background, decoded off the UI thread (a new tab's first frame is its opening animation's)
+            rememberDecodedImage(wallpaper)?.let { image ->
+                Image(
+                    bitmap = image,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop,
+                )
+            }
 
             // Layer 2: Smooth horizontal vignette — image blends into background atmosphere
             Box(
@@ -1928,3 +1939,16 @@ private fun HomeViewPreview() {
         )
     }
 }
+
+/** [resource] decoded on the IO dispatcher, once for the app: null until then. */
+@Composable
+private fun rememberDecodedImage(resource: DrawableResource): ImageBitmap? {
+    val environment = rememberResourceEnvironment()
+    return produceState(decodedImages[resource], resource, environment) {
+        value = decodedImages[resource]
+            ?: withContext(Dispatchers.IO) { getDrawableResourceBytes(environment, resource).decodeToImageBitmap() }
+                .also { decodedImages[resource] = it }
+    }.value
+}
+
+private val decodedImages = ConcurrentHashMap<DrawableResource, ImageBitmap>()

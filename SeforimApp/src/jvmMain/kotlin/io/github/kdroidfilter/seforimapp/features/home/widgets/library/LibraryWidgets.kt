@@ -288,7 +288,12 @@ private fun ListCard(
                     Tooltip(
                         tooltip = { Text(showAllLabel) },
                         // Centred above the button, not under the cursor
-                        tooltipPlacement = TooltipPlacement.ComponentRect(Alignment.TopCenter, Alignment.TopCenter, DpOffset(0.dp, (-8).dp)),
+                        tooltipPlacement =
+                            TooltipPlacement.ComponentRect(
+                                Alignment.TopCenter,
+                                Alignment.TopCenter,
+                                DpOffset(0.dp, (-8).dp),
+                            ),
                     ) {
                         IconButton(onClick = onShowAll, modifier = Modifier.size(22.dp)) {
                             Icon(AllIconsKeys.Actions.OpenNewTab, showAllLabel, tint = JewelTheme.globalColors.text.info)

@@ -8,6 +8,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.encodeLayout
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemOptions
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.setSolarSystemOptions
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.coroutines.delay
 import java.io.File
 import java.time.LocalDate
@@ -45,7 +46,14 @@ object E2eSolarPerfScenario {
             state.setSolarSystemOptions(SolarSystemOptions(daysPerSecond = 1f))
             // A fixed instant: the same picture on every run
             state.selectDate(LocalDate.of(2026, 3, 20))
-            state.targetTime = Date.from(LocalDate.of(2026, 3, 20).atTime(9, 0).atZone(ZoneId.of("Asia/Jerusalem")).toInstant())
+            state.targetTime =
+                Date.from(
+                    LocalDate
+                        .of(2026, 3, 20)
+                        .atTime(9, 0)
+                        .atZone(ZoneId.of("Asia/Jerusalem"))
+                        .toInstant(),
+                )
             state.solarSystemFullscreen = true
             delay(6000)
             screenshot(sc, "solar-fixed")
@@ -81,12 +89,24 @@ object E2eSolarPerfScenario {
         delay(MEASURE_MS - 2000)
     }
 
-    /** The screen (or the full window alone, see below), through macOS' own `screencapture`. */
-    private fun screenshot(
+    /**
+     * The screen (or the full window alone, see below), through macOS' own `screencapture`; elsewhere the first
+     * window's own export.
+     */
+    private suspend fun screenshot(
         sc: E2eScenario,
         name: String,
     ) {
         val dir = E2e.outDir ?: return
+        if (!PlatformInfo.isMacOS) {
+            val window =
+                sc
+                    .graph()
+                    .desktopManager.windows.value
+                    .first()
+            if (!E2e.capture(window.id, name)) sc.note("$name: no capture")
+            return
+        }
         dir.mkdirs()
         // With ZAYIT_E2E_WINID (a tool printing a process' frontmost largest window id), that window alone, even under
         // others: the comparison then doesn't depend on what is on screen

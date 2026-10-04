@@ -217,18 +217,18 @@ class HomeWidgetsState internal constructor(
 }
 
 /**
- * [compute] for [keys], run off the UI thread: the last value stays shown until the new one is ready, so a widget
- * following the solar system's play (a new day 6 times a second) never stalls a frame. Computed in place the first
- * time, so the card never opens empty.
+ * [compute] for [keys], run off the UI thread, the first time too: null until that first value is ready (the card shows
+ * [WidgetCardLoading] meanwhile), so opening the Home never waits for its calendars. Then the last value stays shown
+ * until the new one is ready, so a widget following the solar system's play (a new day 6 times a second) never stalls
+ * a frame.
  */
 @Composable
-internal fun <T> rememberOffMain(
+internal fun <T : Any> rememberOffMain(
     vararg keys: Any?,
     compute: () -> T,
-): T {
-    val first = remember { compute() }
+): T? {
     val latest by rememberUpdatedState(compute)
-    return produceState(first, *keys) { value = withContext(Dispatchers.Default) { latest() } }.value
+    return produceState<T?>(null, *keys) { value = withContext(Dispatchers.Default) { latest() } }.value
 }
 
 private const val DAY_MILLIS = 86_400_000.0

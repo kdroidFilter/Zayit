@@ -20,11 +20,11 @@ import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eFilamentScenario
-import io.github.kdroidfilter.seforimapp.core.e2e.E2eSolarPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eNotesScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eRestoreScenario
-import io.github.kdroidfilter.seforimapp.core.e2e.E2eScrollbarScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eScrollbarScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eSolarPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eWidgetsScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eWorkspaceScenario
@@ -175,7 +175,7 @@ fun main(args: Array<String>) {
         }
 
         // Create the application graph via Metro and expose via CompositionLocal
-        val appGraph = remember { createGraph<AppGraph>() }
+        val appGraph = remember { createGraph<AppGraph>().also(::warmCatalog) }
 
         // Register the AWT-level keyboard shortcuts here (instead of in main()) so they can read
         // from the DI-provided SelectionContext. The DisposableEffect re-runs only if the graph
@@ -477,4 +477,15 @@ fun main(args: Array<String>) {
             }
         }
     }
+}
+
+/**
+ * Reads catalog.pb and builds its display indices on a thread of their own as the app starts, so the Home's first
+ * composition (its catalog dropdowns) finds them ready instead of building them on the UI thread.
+ */
+private fun warmCatalog(graph: AppGraph) {
+    Thread({
+        graph.catalogCache.getCatalog()
+        graph.catalogAccess.warm()
+    }, "catalog-warmup").apply { isDaemon = true }.start()
 }

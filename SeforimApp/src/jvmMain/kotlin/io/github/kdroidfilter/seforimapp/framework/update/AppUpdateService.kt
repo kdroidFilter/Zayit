@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -225,6 +226,8 @@ class AppUpdateService(
         if (config.fakeState != null) return // state pre-seeded by initialFakeState()
         if (_state.value != UpdateUiState.Idle) return
         _state.value = UpdateUiState.Checking
+        // Building the updater reads the system trust store: not on the UI thread this startup check is called from
+        val updater = withContext(Dispatchers.IO) { updater }
         when (val result = updater.checkForUpdates()) {
             is UpdateResult.NotAvailable -> _state.value = UpdateUiState.UpToDate
             is UpdateResult.Error -> {

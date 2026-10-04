@@ -25,7 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.erkko68.filament.compose.rememberFilamentEngine
+import io.github.erkko68.filament.compose.rememberFilamentEngineAsync
 import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
 import io.github.kdroidfilter.kosherkotlin.Zman
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
@@ -638,7 +638,8 @@ fun EarthWidgetMoonSkyView(
             )
         }
 
-    val engine = rememberFilamentEngine()
+    // Null while the engine is being created, off the UI thread
+    val engine = rememberFilamentEngineAsync() ?: return WidgetLoader(modifier.size(sphereSize))
     MoonFromMarkerSceneView(
         state = moonState,
         engine = engine,

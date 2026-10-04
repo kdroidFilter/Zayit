@@ -128,7 +128,11 @@ object E2eScrollbarScenario {
         lineIndex: Int,
         indexOf: Map<Long, Int>,
     ): Boolean {
-        val visible = E2e.bookScrollbar?.first?.layoutInfo?.visibleItemsInfo ?: return false
+        val visible =
+            E2e.bookScrollbar
+                ?.first
+                ?.layoutInfo
+                ?.visibleItemsInfo ?: return false
         return visible.any { item ->
             val index = (item.key as? Long)?.let(indexOf::get) ?: return@any false
             abs(index - lineIndex) <= NEAR

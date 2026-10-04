@@ -20,7 +20,14 @@ class ShnayimMikraStore(
     suspend fun read(
         year: Long,
         parsha: String,
-    ): Set<Int> = withContext(Dispatchers.IO) { queries.selectRead(year, parsha).executeAsList().map { it.toInt() }.toSet() }
+    ): Set<Int> =
+        withContext(Dispatchers.IO) {
+            queries
+                .selectRead(year, parsha)
+                .executeAsList()
+                .map { it.toInt() }
+                .toSet()
+        }
 
     suspend fun setRead(
         year: Long,

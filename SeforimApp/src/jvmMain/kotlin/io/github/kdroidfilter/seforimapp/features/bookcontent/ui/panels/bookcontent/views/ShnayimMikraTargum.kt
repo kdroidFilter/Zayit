@@ -48,11 +48,13 @@ internal fun rememberShnayimMikraTargum(
         val prefix = "${book.title} "
         // ponytail: the targum's every line (≈1,500 for a Chumash book), mapped once per tab
         value =
-            repository.getLines(targumBook.id, 0, targumBook.totalLines - 1).mapNotNull { line ->
-                val ref = line.heRef?.let(::normalized) ?: return@mapNotNull null
-                val start = ref.indexOf(prefix).takeIf { it >= 0 } ?: return@mapNotNull null
-                ref.substring(start) to line.content
-            }.toMap()
+            repository
+                .getLines(targumBook.id, 0, targumBook.totalLines - 1)
+                .mapNotNull { line ->
+                    val ref = line.heRef?.let(::normalized) ?: return@mapNotNull null
+                    val start = ref.indexOf(prefix).takeIf { it >= 0 } ?: return@mapNotNull null
+                    ref.substring(start) to line.content
+                }.toMap()
     }
     return targum
 }

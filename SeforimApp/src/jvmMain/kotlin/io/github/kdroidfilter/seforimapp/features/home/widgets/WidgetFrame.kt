@@ -80,6 +80,7 @@ internal fun WidgetFrame(
     state: HomeWidgetsState,
     modifier: Modifier = Modifier,
     movable: Boolean = true,
+    revealed: Boolean = true,
     picture: GraphicsLayer = rememberGraphicsLayer(),
     appearing: Boolean = false,
     onAppear: () -> Unit = {},
@@ -172,7 +173,8 @@ internal fun WidgetFrame(
                 // Not clipped: the "−" badge and the resize handles stick out of the widget, lifted or not
                 .shadow(elevation, shape, clip = false),
     ) {
-        widget.Content(state, Modifier)
+        // Not yet in (a Home composed from scratch, see rememberRevealedWidgets): its place, empty
+        if (revealed) widget.Content(state, Modifier) else PanelCard(Modifier.fillMaxSize()) {}
         // matchParentSize: the handles take the widget's size instead of passing it their min constraints
         Box(Modifier.matchParentSize()) {
             if (editing) {

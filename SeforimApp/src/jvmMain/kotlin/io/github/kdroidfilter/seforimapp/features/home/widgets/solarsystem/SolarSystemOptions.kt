@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.PLAY_DAYS_PER_SECOND
 import io.github.kdroidfilter.seforimapp.earthwidget.PLAY_SPIN_SECONDS_PER_TURN
 import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import org.jetbrains.compose.resources.stringResource
@@ -84,9 +85,17 @@ internal data class SolarSystemOptions(
 
         // ponytail: an unreadable value (older format, hand edit) falls back to the defaults
         fun decode(options: String?): SolarSystemOptions =
-            options?.let { runCatching { json.decodeFromString(serializer(), it) }.getOrNull() } ?: SolarSystemOptions()
+            (options?.let { runCatching { json.decodeFromString(serializer(), it) }.getOrNull() } ?: SolarSystemOptions())
+                .let { if (it.antiAliasing in AvailableAntiAliasing) it else it.copy(antiAliasing = WidgetAntiAliasing.OFF) }
     }
 }
+
+/**
+ * The anti-aliasing modes offered here. Not TAA on Linux: Filament's GL backend runs its mobile shaders there, and
+ * NVIDIA's GLES compiler rejects TAA's (the engine then aborts).
+ */
+internal val AvailableAntiAliasing: List<WidgetAntiAliasing> =
+    WidgetAntiAliasing.entries.filter { it != WidgetAntiAliasing.TAA || !PlatformInfo.isLinux }
 
 /** Decoded once per change: read several times a frame while the solar system plays. */
 @Composable
@@ -159,9 +168,9 @@ internal fun SolarSystemOptionsPage(
         if (advancedShown) {
             Text(stringResource(Res.string.home_solar_options_antialiasing), fontSize = 13.sp)
             ListComboBox(
-                items = WidgetAntiAliasing.entries.map { antiAliasingLabel(it) },
-                selectedIndex = options.antiAliasing.ordinal,
-                onSelectedItemChange = { save(options.copy(antiAliasing = WidgetAntiAliasing.entries[it])) },
+                items = AvailableAntiAliasing.map { antiAliasingLabel(it) },
+                selectedIndex = AvailableAntiAliasing.indexOf(options.antiAliasing),
+                onSelectedItemChange = { save(options.copy(antiAliasing = AvailableAntiAliasing[it])) },
                 modifier = Modifier.fillMaxWidth(),
             )
             CheckboxRow(

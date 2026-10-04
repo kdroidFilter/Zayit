@@ -51,6 +51,8 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -63,11 +65,20 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import dev.nucleusframework.application.share
+import dev.nucleusframework.application.shareAnchor
+import dev.nucleusframework.share.ShareAnchor
+import dev.nucleusframework.share.ShareException
+import dev.nucleusframework.share.ShareSheet
+import dev.nucleusframework.share.shareRequest
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Link
+import io.github.kdroidfilter.seforimapp.icons.Share
+import io.github.kdroidfilter.seforimapp.logger.warnln
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -79,6 +90,7 @@ import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.breadcrumb_copy_link
+import seforimapp.seforimapp.generated.resources.breadcrumb_share
 import seforimapp.seforimapp.generated.resources.favorites_add
 import seforimapp.seforimapp.generated.resources.favorites_edit
 import seforimapp.seforimapp.generated.resources.favorites_folder_name_placeholder
@@ -89,13 +101,19 @@ import java.awt.datatransfer.StringSelection
 
 /**
  * Action buttons at the end of the breadcrumb bar (Chrome omnibox-like): copy a deep link to
- * the current position, and star/unstar it as a favorite with a folder-picking popup.
+ * the current position, share it through the system share sheet, and star/unstar it as a
+ * favorite with a folder-picking popup.
  */
 @Composable
 fun BreadcrumbActionsView(uiState: BookContentState) {
     val book = uiState.navigation.selectedBook ?: return
     val toc = uiState.toc.breadcrumbPath.lastOrNull()
     val lineId = uiState.content.primaryLine?.id ?: toc?.lineId
+    val title =
+        toc
+            ?.text
+            ?.takeIf { it.isNotBlank() && it != book.title }
+            ?.let { "${book.title} - $it" } ?: book.title
 
     val aboveAnchorPlacement =
         remember {
@@ -128,15 +146,19 @@ fun BreadcrumbActionsView(uiState: BookContentState) {
             lineId = lineId,
             tooltipPlacement = aboveAnchorPlacement,
         )
+        if (ShareSheet.isSupported) {
+            ShareButton(
+                bookId = book.id,
+                lineId = lineId,
+                title = title,
+                tooltipPlacement = aboveAnchorPlacement,
+            )
+        }
         FavoriteStarButton(
             bookId = book.id,
             tocEntryId = toc?.id,
             lineId = lineId,
-            title =
-                toc
-                    ?.text
-                    ?.takeIf { it.isNotBlank() && it != book.title }
-                    ?.let { "${book.title} - $it" } ?: book.title,
+            title = title,
             tooltipPlacement = aboveAnchorPlacement,
         )
     }
@@ -181,6 +203,54 @@ private fun CopyLinkButton(
                     colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ShareButton(
+    bookId: Long,
+    lineId: Long?,
+    title: String,
+    tooltipPlacement: TooltipPlacement,
+) {
+    val nucleusWindow = LocalOpenWindow.current.nucleusWindow
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    var anchor by remember { mutableStateOf<ShareAnchor?>(null) }
+    val label = stringResource(Res.string.breadcrumb_share)
+    Tooltip(
+        tooltip = { Text(label, fontSize = 13.sp) },
+        tooltipPlacement = tooltipPlacement,
+    ) {
+        IconButton(
+            onClick = {
+                val request =
+                    shareRequest {
+                        this.title = title
+                        text(title)
+                        url(bookShareLink(bookId, lineId))
+                    }
+                scope.launch {
+                    try {
+                        // Attached to this window (macOS picker points at the button); frontmost window otherwise
+                        nucleusWindow?.share(request, anchor) ?: ShareSheet.share(request)
+                    } catch (e: ShareException) {
+                        warnln { "[Share] Could not open the share sheet: ${e.message}" }
+                    }
+                }
+            },
+            modifier =
+                Modifier
+                    .size(24.dp)
+                    .onGloballyPositioned { anchor = it.shareAnchor(density) },
+        ) {
+            Image(
+                painter = rememberVectorPainter(Share),
+                contentDescription = label,
+                modifier = Modifier.size(16.dp),
+                colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+            )
         }
     }
 }

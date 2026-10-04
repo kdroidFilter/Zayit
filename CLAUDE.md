@@ -138,6 +138,7 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - `icons`: Application icons and resources
 - `jewel`: Jetbrains Jewel desktop UI components
 - `logger`: Logging utilities
+- `luach`: The luach month (`LuachMonth`) and its date picker (`LuachPopup`, `LuachDateButton`), shared by the Calendar widget, the siddur, the Earth widget and the solar system's full window
 - `navigation`: Navigation helpers and utilities
 - `pagination`: Pagination support for large datasets
 - `texteffects`: Text rendering effects and styling

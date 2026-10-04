@@ -153,6 +153,7 @@ kotlin {
             implementation(libs.hebrew.numerals)
             api(project(":jewel"))
             implementation(project(":earthwidget"))
+            implementation(project(":luach"))
             implementation(libs.nucleus.system.color)
             implementation(libs.nucleus.decorated.window.core)
             implementation(libs.nucleus.decorated.window.tao)

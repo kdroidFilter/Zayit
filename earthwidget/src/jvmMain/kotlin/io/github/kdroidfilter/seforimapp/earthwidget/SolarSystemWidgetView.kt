@@ -65,8 +65,7 @@ import io.github.erkko68.filament.compose.rememberFilamentEngineAsync
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton
+import io.github.kdroidfilter.seforimapp.luach.LuachDateButton
 import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
@@ -81,7 +80,6 @@ import org.jetbrains.jewel.ui.component.styling.TooltipMetrics
 import org.jetbrains.jewel.ui.component.styling.TooltipStyle
 import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.earthwidget.generated.resources.Res
 import seforimapp.earthwidget.generated.resources.earthwidget_kiddush_levana_legend
 import seforimapp.earthwidget.generated.resources.earthwidget_solar_title
@@ -307,6 +305,8 @@ fun SolarSystemWidgetView(
     fullWindow: Boolean = false,
     /** Shows a date picker (as on the Earth widget) that reports the chosen day; null on the Home card. */
     onDateSelect: ((LocalDate) -> Unit)? = null,
+    /** The date picker's accent (today, the selection); the theme's focus colour by default. */
+    accentColor: Color? = null,
     kiddushLevanaEarliestOpinion: KiddushLevanaEarliestOpinion = KiddushLevanaEarliestOpinion.DAYS_3,
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     /**
@@ -319,8 +319,6 @@ fun SolarSystemWidgetView(
     /** Keeps the header and caption clear of the window's own controls; the 3D scene still fills the view. */
     chromePadding: PaddingValues = PaddingValues(0.dp),
 ) {
-    // Captured outside the dark theme below, like the Earth widget: the menu keeps the app's own style
-    val appMenuStyle = JewelTheme.menuStyle
     val today = remember(timeZone) { LocalDate.now(timeZone.toZoneId()) }
     val baseDate = date ?: today
     val playing = playMillis != null
@@ -502,19 +500,19 @@ fun SolarSystemWidgetView(
                         // widget; its calendar picks the year too, so no separate year selector
                         if (onDateSelect != null) {
                             IntUiTheme(isDark = true) {
-                                DateSelectionSplitButton(
+                                LuachDateButton(
                                     label =
-                                        remember(
-                                            displayedDate,
-                                        ) {
+                                        remember(displayedDate) {
                                             HebrewDateFormatter().apply { isHebrewFormat = true }.format(
                                                 JewishCalendar(displayedDate.toKotlinLocalDate()),
                                             )
                                         },
-                                    selectedDate = displayedDate,
-                                    onDateSelect = onDateSelect,
-                                    initialMode = CalendarMode.HEBREW,
-                                    menuStyle = appMenuStyle,
+                                    selected = displayedDate,
+                                    inIsrael = inIsrael,
+                                    accent = accentColor ?: JewelTheme.globalColors.outlines.focused,
+                                    onSelect = onDateSelect,
+                                    today = today,
+                                    onToday = { onDateSelect(today) },
                                 )
                             }
                         }

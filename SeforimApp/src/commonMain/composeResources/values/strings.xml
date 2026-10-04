@@ -381,10 +381,6 @@
     <string name="home_dictionary_failed">חלק מהמילונים לא נטענו</string>
     <string name="home_dictionary_retry">לנסות שוב</string>
     <string name="home_dictionary_options_title">המילונים לחיפוש</string>
-    <string name="home_calendar_previous_month">החודש הקודם</string>
-    <string name="home_calendar_next_month">החודש הבא</string>
-    <string name="home_calendar_swap">החלפה בין לוח עברי ללוח לועזי</string>
-    <string name="home_calendar_today">חזרה להיום</string>
     <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>
     <string name="home_temple_subtitle">והראנו בבנינו ושמחנו בתיקונו, והשב שכינתך לתוכו.</string>
     <string name="home_temple_years">שנים</string>

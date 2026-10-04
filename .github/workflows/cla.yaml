@@ -24,7 +24,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          path-to-document: https://github.com/kdroidFilter/Zayit/blob/master/CLA.md
+          path-to-document: https://github.com/kdroidFilter/Zayit/blob/dev/CLA.md
           path-to-signatures: signatures/version1/cla.json
           branch: cla-signatures
           allowlist: kdroidFilter,dependabot[bot],github-actions[bot]

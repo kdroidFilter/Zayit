@@ -28,7 +28,7 @@ kotlin {
 
         jvmMain.dependencies {
             api(project(":jewel"))
-            api(project(":hebrewcalendar"))
+            implementation(project(":luach"))
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }

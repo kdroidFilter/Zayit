@@ -34,7 +34,7 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
 import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
 import io.github.kdroidfilter.kosherkotlin.util.ItimLabinaCalculator
 import io.github.kdroidfilter.kosherkotlin.util.NOAACalculator
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
+import io.github.kdroidfilter.seforimapp.luach.LuachDateButton
 import kotlinx.datetime.toJavaLocalDate
 import kotlinx.datetime.toKotlinLocalDate
 import kotlinx.datetime.toKotlinTimeZone
@@ -191,6 +191,12 @@ fun EarthWidgetZmanimView(
     /** [targetTimeMillis] is a running clock (a moment per frame): the scene follows it as is, without easing. */
     followClock: Boolean = false,
     onDateSelect: ((LocalDate) -> Unit)? = null,
+    /** Whether the luach of the date picker follows the holidays of the Land of Israel. */
+    inIsrael: Boolean = false,
+    /** The date picker's accent (today, the selection); the theme's focus colour by default. */
+    accentColor: Color? = null,
+    /** Shows the date picker; off where the host already has one (the solar system's full window). */
+    showDatePicker: Boolean = true,
     onLocationSelect: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     containerBackground: Color? = null,
     contentPadding: Dp = 0.dp,
@@ -420,7 +426,7 @@ fun EarthWidgetZmanimView(
             val dateFormatter =
                 HebrewDateFormatter().apply {
                     isHebrewFormat = true
-                    isUseGershGershayim = false
+                    isUseGershGershayim = true
                 }
             val dayOfMonth = dateFormatter.formatHebrewNumber(jewishDate.jewishDayOfMonth)
             val month = dateFormatter.formatMonth(jewishDate)
@@ -539,17 +545,22 @@ fun EarthWidgetZmanimView(
                 )
             }
         }
-        IntUiTheme(isDark = true) {
-            DateSelectionSplitButton(
-                label = hebrewDateLabel,
-                selectedDate = selectedDate,
-                onDateSelect = onCalendarDateSelected,
-                menuStyle = globalMenuStyle,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 8.dp),
-            )
+        if (showDatePicker) {
+            IntUiTheme(isDark = true) {
+                LuachDateButton(
+                    label = hebrewDateLabel,
+                    selected = selectedDate,
+                    today = LocalDate.now(timeZone.toZoneId()),
+                    inIsrael = inIsrael,
+                    accent = accentColor ?: JewelTheme.globalColors.outlines.focused,
+                    onSelect = onCalendarDateSelected,
+                    onToday = onResetDateTimeCallback,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 8.dp, top = 8.dp),
+                )
+            }
         }
         if (resolvedLocationLabel != null) {
             IntUiTheme(isDark = true) {
@@ -819,24 +830,6 @@ private fun KiddushLevanaLegend(
 }
 
 @Composable
-private fun DateSelectionSplitButton(
-    label: String,
-    selectedDate: LocalDate,
-    onDateSelect: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier,
-    menuStyle: MenuStyle = JewelTheme.menuStyle,
-) {
-    io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton(
-        label = label,
-        selectedDate = selectedDate,
-        onDateSelect = onDateSelect,
-        initialMode = CalendarMode.HEBREW,
-        menuStyle = menuStyle,
-        modifier = modifier,
-    )
-}
-
-@Composable
 private fun LocationSelectionSplitButton(
     label: String,
     locations: Map<String, Map<String, EarthWidgetLocation>>,
@@ -1084,7 +1077,7 @@ private fun computeHebrewMonthOrbitLabels(
     val formatter =
         HebrewDateFormatter().apply {
             isHebrewFormat = true
-            isUseGershGershayim = false
+            isUseGershGershayim = true
         }
 
     val stepDegrees = 360f / daysInMonth.toFloat()

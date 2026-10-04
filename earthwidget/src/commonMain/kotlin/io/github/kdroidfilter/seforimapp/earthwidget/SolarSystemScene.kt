@@ -34,7 +34,6 @@ import io.github.erkko68.filament.compose.scene.rememberCameraState
 import io.github.erkko68.filament.compose.scene.rememberEmissiveMaterialInstance
 import io.github.erkko68.filament.compose.scene.rememberGltfAsset
 import io.github.erkko68.filament.compose.scene.rememberIndirectLightState
-import io.github.erkko68.filament.compose.scene.rememberTexturedMaterialInstance
 import io.github.erkko68.filament.compose.scene.rememberUnlitColorMaterialInstance
 import io.github.erkko68.filament.compose.scene.toLinearColor
 import seforimapp.earthwidget.generated.resources.Res
@@ -168,7 +167,6 @@ internal fun azimuthFacingLongitude(longitudeDegrees: Float): Float =
 internal fun SolarSystemSceneView(
     state: SolarRenderState,
     engine: Engine,
-    textures: WidgetTextures,
     modifier: Modifier = Modifier,
     /**
      * Whether the Sun's glare breathes: only while the widget is in use, or its endless animation keeps the window
@@ -271,11 +269,12 @@ internal fun SolarSystemSceneView(
         Starfield(Modifier.matchParentSize())
         // NASA's Sun model (science.nasa.gov, public domain): a spherified cube with an emissive photosphere texture
         val sunModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/sun.glb") }
-        // NASA's Earth (Blue Marble cube map + normal map), textures re-encoded as JPEG to keep the app light
-        val earthModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/earth.glb") }
-        // A model only shows once its textures are uploaded: until then the stand-ins below do
+        val earthModel = rememberEarthModel(engine)
+        val moonModel = rememberMoonModel(engine)
+        // A model only shows once its textures are uploaded: until then the Sun's stand-in below does
         val sunReady = sunModel?.isReady == true
         val earthReady = earthModel?.isReady == true
+        val moonReady = moonModel?.isReady == true
         val sunCenter = Offset(geometry.halfWidth, geometry.halfHeight - geometry.liftY * state.viewZoom)
         // Sun animation clock (0..1 over SUN_ANIMATION_MS), read only while drawing: no recomposition per frame.
         // Not composed at all while idle: an infinite transition ticks the frame clock as long as it exists.
@@ -305,7 +304,7 @@ internal fun SolarSystemSceneView(
             )
         }
         // The glare above animates on its own Canvas; the 3D image only changes with the scene
-        val rendering = rememberRenderOnChange(listOf(state, sunReady, earthReady, textures.earth, textures.moon))
+        val rendering = rememberRenderOnChange(listOf(state, sunReady, earthReady, moonReady))
         FilamentSceneView(
             modifier = Modifier.matchParentSize(),
             engine = engine,
@@ -347,32 +346,18 @@ internal fun SolarSystemSceneView(
                     receiveShadows = false,
                 )
             }
-            val earthRotation = view * earthToWorld(state.siderealDegrees, state.obliquityDegrees)
             if (earthModel != null && earthReady) {
-                GltfInstance(
-                    asset = earthModel,
+                Earth(
+                    earthModel,
+                    geometry.earthRadius,
+                    rotation = view * earthToWorld(state.siderealDegrees, state.obliquityDegrees),
                     position = Position(earthPos.x, earthPos.y, earthPos.z),
-                    rotation = earthRotation * EarthModelToBody,
-                    scale = Scale(geometry.earthRadius / EARTH_MODEL_RADIUS),
-                    castShadows = false,
-                    receiveShadows = false,
                 )
-            } else {
-                textures.earth?.let { texture ->
-                    MeshNode(
-                        material = rememberTexturedMaterialInstance(texture, roughness = 0.7f, sampler = BilinearRepeat),
-                        mesh = UnitSphereMesh,
-                        scale = geometry.earthRadius,
-                        position = Position(earthPos.x, earthPos.y, earthPos.z),
-                        rotation = earthRotation,
-                    )
-                }
             }
-            textures.moon?.let { texture ->
-                MeshNode(
-                    material = rememberTexturedMaterialInstance(texture, roughness = 1f, sampler = BilinearRepeat),
-                    mesh = UnitSphereMesh,
-                    scale = geometry.moonRadius,
+            if (moonModel != null && moonReady) {
+                Moon(
+                    moonModel,
+                    geometry.moonRadius,
                     position = Position(moonPos.x, moonPos.y, moonPos.z),
                     // Tidally locked: the near side (body +Z) faces the Earth.
                     rotation = view * Rotation.axisAngle(Direction.Up, atan2(-moonDir.x, -moonDir.z) * RAD_TO_DEG_F),
@@ -440,15 +425,6 @@ private const val SUN_ANIMATION_MS = 90_000
 
 /** Glare breaths per animation turn (~6 s each). */
 private const val CORONA_PULSES = 15
-
-/** Radius of NASA's earth.glb (a spherified ±500 cube). */
-private const val EARTH_MODEL_RADIUS = 500f
-
-/**
- * earth.glb has north at +Y and Greenwich at −Z (90°E at −X); the body frame of [latLonToUnitVector] puts
- * Greenwich at +Z and 90°E at +X: a half turn about the pole.
- */
-private val EarthModelToBody = Rotation.axisAngle(Direction.Up, 180f)
 
 /** Radius of NASA's sun.glb: its ±0.5 cube, spherified, under the node's ×1000 scale. */
 private const val SUN_MODEL_RADIUS = 500f

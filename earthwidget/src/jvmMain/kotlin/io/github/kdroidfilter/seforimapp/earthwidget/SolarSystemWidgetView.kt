@@ -458,7 +458,6 @@ fun SolarSystemWidgetView(
                 SolarSystemSceneView(
                     state = state,
                     engine = engine,
-                    textures = rememberWidgetTextures(engine),
                     modifier = Modifier.matchParentSize(),
                     animated = pointerOver || playing,
                 )

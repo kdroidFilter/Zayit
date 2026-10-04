@@ -640,7 +640,6 @@ fun EarthWidgetMoonSkyView(
     MoonFromMarkerSceneView(
         state = moonState,
         engine = engine,
-        moonTexture = rememberWidgetTextures(engine).moon,
         modifier = modifier.size(sphereSize),
     )
 }

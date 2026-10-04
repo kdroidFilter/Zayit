@@ -7,8 +7,8 @@ filekitCore = "0.16.0"
 hebrewNumerals = "0.2.6"
 jsoup = "1.23.2"
 jvmToolchain = "25"
-nucleus = "2.6.0-dev-202610041014"
-nucleusPlugin = "2.6.0-dev-202610041014"
+nucleus = "2.6.0-dev-202610041310"
+nucleusPlugin = "2.6.0-dev-202610041310"
 koalaplotCore = "0.12.1"
 kotlin = "2.4.20"
 compose = "1.12.1"
@@ -86,6 +86,7 @@ nucleus-launcher-windows = { module = "dev.nucleusframework:nucleus.launcher-win
 nucleus-launcher-linux = { module = "dev.nucleusframework:nucleus.launcher-linux", version.ref = "nucleus" }
 nucleus-menu-macos = { module = "dev.nucleusframework:nucleus.menu-macos", version.ref = "nucleus" }
 nucleus-sf-symbols = { module = "dev.nucleusframework:nucleus.sf-symbols", version.ref = "nucleus" }
+nucleus-share = { module = "dev.nucleusframework:nucleus.share", version.ref = "nucleus" }
 koalaplot-core = { module = "io.github.koalaplot:koalaplot-core", version.ref = "koalaplotCore" }
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }

@@ -166,6 +166,7 @@ kotlin {
             implementation(libs.nucleus.launcher.linux)
             implementation(libs.nucleus.menu.macos)
             implementation(libs.nucleus.sf.symbols)
+            implementation(libs.nucleus.share)
             implementation(libs.nucleus.taskbar.progress.tao)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")

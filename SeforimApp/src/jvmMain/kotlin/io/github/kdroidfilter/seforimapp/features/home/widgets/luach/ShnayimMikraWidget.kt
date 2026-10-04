@@ -33,10 +33,10 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.launch
 import kotlinx.datetime.toKotlinLocalDate
@@ -171,6 +171,7 @@ internal data class Verse(
 /** [parsha]'s seven aliyos, each from its first verse to its last. */
 internal fun aliyosOf(parsha: Parsha): List<Pair<Verse, Verse>> {
     val table = DOUBLE_ALIYOS[parsha] ?: SINGLE_ALIYOS[parsha.ordinal - 1]
+
     fun verse(cv: String) = Verse(cv.substringBefore(':').toInt(), cv.substringAfter(':').toInt())
     return table.split(' ').map { verse(it.substringBefore('-')) to verse(it.substringAfter('-')) }
 }
@@ -192,6 +193,7 @@ internal fun aliyaPlace(
 ): LibraryPlace {
     val book = checkNotNull(parshaPlace(parsha)).bookTitle
     val (from, to) = aliyosOf(parsha)[aliya]
+
     fun ref(v: Verse) = "$book ${hebrewNumeral(v.chapter)}, ${hebrewNumeral(v.verse)}"
     return LibraryPlace(book, ref = ref(from), endRefs = listOf(ref(to)))
 }

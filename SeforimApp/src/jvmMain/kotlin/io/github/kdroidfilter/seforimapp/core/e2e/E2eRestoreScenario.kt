@@ -24,7 +24,10 @@ object E2eRestoreScenario {
             listOf("בראשית", "שמות", "ויקרא", "במדבר", "דברים", "יהושע")
                 .mapNotNull { graph.repository.getBookByTitle(it)?.id }
                 .take(TABS)
-        val tabs = dm.windows.value.first().tabsViewModel
+        val tabs =
+            dm.windows.value
+                .first()
+                .tabsViewModel
         books.forEach { tabs.openTab(TabsDestination.BookContent(bookId = it, tabId = UUID.randomUUID().toString())) }
         sc.step("r0-opened", 6000)
 
@@ -34,7 +37,9 @@ object E2eRestoreScenario {
             // Selected at once, as a user clicking through the restored tabs would
             delay(if (round % 2 == 0) 0 else 400)
             val w = dm.windows.value.first()
-            val ids = w.tabsViewModel.state.value.tabs.map { it.destination }
+            val ids =
+                w.tabsViewModel.state.value.tabs
+                    .map { it.destination }
             ids.forEachIndexed { i, dest ->
                 if (dest !is TabsDestination.BookContent || dest.bookId <= 0) return@forEachIndexed
                 w.tabsViewModel.onEvent(TabsEvents.OnSelect(i))
@@ -45,7 +50,11 @@ object E2eRestoreScenario {
                 }
                 if (!loaded(dest.tabId, w)) {
                     stuck++
-                    sc.note("STUCK round $round tab $i book ${dest.bookId}: ${describe(dest.tabId)} switching=${w.isSwitching.value} panesReadyFor=${w.panesReadyFor}")
+                    sc.note(
+                        "STUCK round $round tab $i book ${dest.bookId}: ${describe(
+                            dest.tabId,
+                        )} switching=${w.isSwitching.value} panesReadyFor=${w.panesReadyFor}",
+                    )
                     sc.step("r$round-stuck-$i", 0)
                 }
             }

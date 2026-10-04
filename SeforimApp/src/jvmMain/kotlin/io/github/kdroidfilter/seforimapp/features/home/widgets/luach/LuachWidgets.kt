@@ -48,6 +48,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCardLoading
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
@@ -189,7 +190,7 @@ private fun LimudPanel(
 ) {
     val day = state.shownDateHere()
     val inIsrael = state.inIsrael
-    val items = rememberOffMain(day, inIsrael, shown) { limudOfDay(day, inIsrael, shown) }
+    val items = rememberOffMain(day, inIsrael, shown) { limudOfDay(day, inIsrael, shown) } ?: return WidgetCardLoading(modifier)
     val accent = rememberAccentColor(JewelTheme.isDark)
     PanelCard(modifier) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -373,7 +374,7 @@ internal object UpcomingEventsWidget : HomeWidget {
         val events =
             rememberOffMain(day, location, opinion, cityLabel, inIsrael) {
                 upcomingEvents(day, location, opinion, cityLabel, inIsrael, limit = 14)
-            }
+            } ?: return WidgetCardLoading(modifier)
         val clock = rememberClock(location.timeZone)
         PanelCard(modifier) {
             Column(Modifier.fillMaxSize().padding(8.dp)) {
@@ -518,25 +519,35 @@ internal object MoladWidget : HomeWidget {
         val earliest = state.kiddushLevanaEarliest
         val latest = state.kiddushLevanaLatest
         val molad = rememberOffMain(now, day, inIsrael, earliest, latest) { moladInfo(now, day, inIsrael, earliest, latest) }
-        val zone = state.location.timeZone
-        val moment = remember(zone) { SimpleDateFormat("d.M · HH:mm").apply { timeZone = zone } }
-        val accent = rememberAccentColor(JewelTheme.isDark)
-        // Kiddush Levana can be said now: its dates in the accent
-        val open = now.after(molad.kiddushLevanaStart)
-        PanelCard(modifier) {
-            Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
-                Text("מולד חודש ${molad.month}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Column(
-                    Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
-                ) {
-                    LabeledRow(
-                        TefilaLine("מולד", "${molad.weekday} · ${molad.time.ltr()} · ${molad.chalakim} ח׳", special = true),
-                        accent,
-                    )
-                    LabeledRow(TefilaLine("קידוש לבנה", "מ־ ${moment.format(molad.kiddushLevanaStart).ltr()}", special = open), accent)
-                    LabeledRow(TefilaLine("", "עד ${moment.format(molad.kiddushLevanaEnd).ltr()}", special = open), accent)
-                }
+        if (molad == null) WidgetCardLoading(modifier) else MoladPanel(molad, now, state, modifier)
+    }
+}
+
+@Composable
+private fun MoladPanel(
+    molad: MoladInfo,
+    now: Date,
+    state: HomeWidgetsState,
+    modifier: Modifier = Modifier,
+) {
+    val zone = state.location.timeZone
+    val moment = remember(zone) { SimpleDateFormat("d.M · HH:mm").apply { timeZone = zone } }
+    val accent = rememberAccentColor(JewelTheme.isDark)
+    // Kiddush Levana can be said now: its dates in the accent
+    val open = now.after(molad.kiddushLevanaStart)
+    PanelCard(modifier) {
+        Column(Modifier.fillMaxSize().padding(horizontal = 12.dp, vertical = 10.dp)) {
+            Text("מולד חודש ${molad.month}", fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            Column(
+                Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
+            ) {
+                LabeledRow(
+                    TefilaLine("מולד", "${molad.weekday} · ${molad.time.ltr()} · ${molad.chalakim} ח׳", special = true),
+                    accent,
+                )
+                LabeledRow(TefilaLine("קידוש לבנה", "מ־ ${moment.format(molad.kiddushLevanaStart).ltr()}", special = open), accent)
+                LabeledRow(TefilaLine("", "עד ${moment.format(molad.kiddushLevanaEnd).ltr()}", special = open), accent)
             }
         }
     }

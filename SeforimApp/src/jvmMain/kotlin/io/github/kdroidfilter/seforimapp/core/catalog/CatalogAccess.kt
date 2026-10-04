@@ -27,6 +27,13 @@ class CatalogAccess(
     @Volatile
     private var indices: Indices? = null
 
+    /** Builds the indices now, off the UI thread, before a first lookup from composition would. */
+    fun warm() {
+        resolve()
+    }
+
+    // Synchronized: a lookup racing the warm-up waits for it rather than building the indices a second time
+    @Synchronized
     private fun resolve(): Indices? {
         val catalog = catalogProvider() ?: return null
         val current = indices

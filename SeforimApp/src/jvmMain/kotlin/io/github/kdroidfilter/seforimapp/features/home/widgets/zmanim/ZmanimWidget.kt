@@ -57,9 +57,10 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
-import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCardLoading
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
+import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -243,6 +244,7 @@ internal object ZmanimWidget : HomeWidget {
             rememberOffMain(selectedDate, location, opinion, cityLabel, inIsrael) {
                 computeShabbatTimes(selectedDate, location, opinion, cityLabel, inIsrael)
             }
+        if (zmanimTimes == null || shabbatTimes == null) return WidgetCardLoading(modifier)
         val timeFormatter =
             remember(timeZone) {
                 SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone }

@@ -2,7 +2,12 @@ package io.github.kdroidfilter.seforimapp.core.e2e
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
+import kotlinx.coroutines.flow.collectLatest
 import java.lang.management.ManagementFactory
 
 /**
@@ -13,12 +18,17 @@ object E2ePerf {
     @Volatile
     private var frames: MutableList<Long>? = null
 
+    /** Whether a [measure] runs: only then does [Record] wait on frames, which otherwise asks the window for one each vsync. */
+    private var measuring by mutableStateOf(false)
+
     /** Records this composition's frames while measuring; nothing unless the harness is on. */
     @Composable
     fun Record() {
         if (!E2e.enabled) return
         LaunchedEffect(Unit) {
-            while (true) withFrameNanos { now -> frames?.let { synchronized(it) { it.add(now) } } }
+            snapshotFlow { measuring }.collectLatest { on ->
+                if (on) while (true) withFrameNanos { now -> frames?.let { synchronized(it) { it.add(now) } } }
+            }
         }
     }
 
@@ -32,12 +42,15 @@ object E2ePerf {
         val cpu0 = os.processCpuTime
         val wall0 = System.nanoTime()
         frames = list
+        measuring = true
         block()
+        measuring = false
         frames = null
         val wall = System.nanoTime() - wall0
         val cpu = os.processCpuTime - cpu0
         val gaps = synchronized(list) { list.zipWithNext { a, b -> (b - a) / 1e6 } }.sorted()
         if (gaps.isEmpty()) return "$label: no frame"
+
         fun pct(p: Double) = gaps[((gaps.size - 1) * p).toInt()]
         return "%s: fps=%.1f frame avg=%.2fms p50=%.2f p95=%.2f p99=%.2f max=%.2f cpu=%.0f%%".format(
             label,

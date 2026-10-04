@@ -42,7 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.erkko68.filament.compose.rememberFilamentEngine
+import io.github.erkko68.filament.compose.rememberFilamentEngineAsync
 import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.roundToInt
@@ -247,8 +247,9 @@ fun EarthWidgetScene(
             rememberSmoothAnimatedAngle(targetValue = it, normalize = ::normalizeAngle360, instant = followClock)
         }
 
-    val engine = rememberFilamentEngine()
-    val textures = rememberWidgetTextures(engine)
+    // Null while the engine is being created, off the UI thread: the scenes show a loader meanwhile
+    val engine = rememberFilamentEngineAsync()
+    val textures = engine?.let { rememberWidgetTextures(it) }
 
     val moonViewSize = sphereSize * MOON_VIEW_SIZE_RATIO
     val resolvedEarthRenderSize = renderSizePx.coerceAtLeast(MIN_RENDER_SIZE_PX)
@@ -290,13 +291,17 @@ fun EarthWidgetScene(
     val earthContent: @Composable () -> Unit = {
         // Clipped: zoomed-in labels must not spill over the rest of the widget
         Box(modifier = Modifier.size(sphereSize).clipToBounds()) {
-            EarthMoonSceneView(
-                state = sceneState,
-                engine = engine,
-                textures = textures,
-                showMoon = showMoonInOrbit,
-                modifier = Modifier.size(sphereSize),
-            )
+            if (engine == null || textures == null) {
+                WidgetLoader(Modifier.size(sphereSize))
+            } else {
+                EarthMoonSceneView(
+                    state = sceneState,
+                    engine = engine,
+                    textures = textures,
+                    showMoon = showMoonInOrbit,
+                    modifier = Modifier.size(sphereSize),
+                )
+            }
             if (showOrbitPath && orbitLabels.isNotEmpty()) {
                 OrbitDayLabelsOverlay(
                     state = sceneState,
@@ -331,12 +336,16 @@ fun EarthWidgetScene(
             )
         // Moon-from-marker view uses the actual marker longitude (not the visual Earth rotation)
         // This ensures the moon phase is always calculated from the marker's real position
-        MoonFromMarkerSceneView(
-            state = moonState,
-            engine = engine,
-            moonTexture = textures.moon,
-            modifier = Modifier.size(moonViewSize),
-        )
+        if (engine == null || textures == null) {
+            WidgetLoader(Modifier.size(moonViewSize))
+        } else {
+            MoonFromMarkerSceneView(
+                state = moonState,
+                engine = engine,
+                moonTexture = textures.moon,
+                modifier = Modifier.size(moonViewSize),
+            )
+        }
     }
 
     val spacing = 16.dp

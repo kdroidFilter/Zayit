@@ -20,6 +20,7 @@ import dev.nucleusframework.window.tao.TaoGpuRenderContext
 import dev.nucleusframework.window.tao.rememberTaoGpuRenderContext
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -66,7 +67,7 @@ fun rememberTabThumbnails(openWindow: OpenWindow): Modifier {
 }
 
 @Suppress("TooGenericExceptionCaught")
-private fun reducedPicture(
+private suspend fun reducedPicture(
     source: GraphicsLayer,
     into: GraphicsLayer,
     density: Density,
@@ -81,6 +82,8 @@ private fun reducedPicture(
     return try {
         into.record(density, direction, target) { scale(factor, factor, Offset.Zero) { drawLayer(source) } }
         into.toImageBitmapOn(gpu)
+    } catch (e: CancellationException) {
+        throw e
     } catch (_: Exception) {
         null
     }

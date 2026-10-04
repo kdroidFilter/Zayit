@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.core.e2e
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.asSkiaBitmap
@@ -16,12 +17,15 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.CoroutineContext
 
 /**
  * End-to-end harness, off unless `ZAYIT_E2E_OUT` names an output directory: a scripted scenario
@@ -36,8 +40,18 @@ object E2e {
     /** Suffix of a window's title-bar layer, exported as `<name>-title`. */
     const val TITLE_BAR = "#title"
 
-    /** Each window's recorded layer, with the GPU context it is rasterized under ([toImageBitmapOn]). */
-    private val layers = ConcurrentHashMap<String, Pair<GraphicsLayer, TaoGpuRenderContext?>>()
+    /**
+     * Each window's recorded layer, with the GPU context it is rasterized under ([toImageBitmapOn]) and the
+     * window's composition context, whose frame clock that waits on.
+     */
+    private val layers = ConcurrentHashMap<String, CapturedLayer>()
+
+    private class CapturedLayer(
+        val layer: GraphicsLayer,
+        val gpu: TaoGpuRenderContext?,
+        val composition: CoroutineContext,
+    )
+
     private val bookViewModels = ConcurrentHashMap<String, BookContentViewModel>()
 
     fun registerBookViewModel(
@@ -83,14 +97,19 @@ object E2e {
     @Volatile
     var homeWidgets: HomeWidgetsState? = null
 
-    internal fun layer(windowId: String): GraphicsLayer? = layers[windowId]?.first
+    internal fun layer(windowId: String): GraphicsLayer? = layers[windowId]?.layer
 
     internal fun registerLayer(
         windowId: String,
-        layer: GraphicsLayer?,
-        gpu: TaoGpuRenderContext? = null,
+        layer: GraphicsLayer,
+        gpu: TaoGpuRenderContext?,
+        composition: CoroutineContext,
     ) {
-        if (layer == null) layers.remove(windowId) else layers[windowId] = layer to gpu
+        layers[windowId] = CapturedLayer(layer, gpu, composition)
+    }
+
+    internal fun unregisterLayer(windowId: String) {
+        layers.remove(windowId)
     }
 
     /** Writes [bitmap] to `<out>/<name>.png`. */
@@ -110,8 +129,10 @@ object E2e {
         name: String,
     ): Boolean {
         val dir = outDir ?: return false
-        val (layer, gpu) = layers[windowId] ?: return false
-        val bitmap = layer.toImageBitmapOn(gpu)
+        val captured = layers[windowId] ?: return false
+        val bitmap =
+            withContext(captured.composition.minusKey(Job)) { captured.layer.toImageBitmapOn(captured.gpu) }
+                ?: return false
         val data = Image.makeFromBitmap(bitmap.asSkiaBitmap()).encodeToData(EncodedImageFormat.PNG) ?: return false
         dir.mkdirs()
         File(dir, "$name.png").writeBytes(data.bytes)
@@ -125,9 +146,10 @@ fun Modifier.e2eCapture(windowId: String): Modifier {
     if (!E2e.enabled) return this
     val layer = rememberGraphicsLayer()
     val gpu = rememberTaoGpuRenderContext()
-    DisposableEffect(windowId, layer, gpu) {
-        E2e.registerLayer(windowId, layer, gpu)
-        onDispose { if (E2e.layer(windowId) === layer) E2e.registerLayer(windowId, null) }
+    val composition = rememberCoroutineScope().coroutineContext
+    DisposableEffect(windowId, layer, gpu, composition) {
+        E2e.registerLayer(windowId, layer, gpu, composition)
+        onDispose { if (E2e.layer(windowId) === layer) E2e.unregisterLayer(windowId) }
     }
     return drawWithContent {
         layer.record { this@drawWithContent.drawContent() }

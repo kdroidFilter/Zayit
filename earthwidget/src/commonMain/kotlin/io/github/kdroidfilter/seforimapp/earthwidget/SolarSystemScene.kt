@@ -273,6 +273,9 @@ internal fun SolarSystemSceneView(
         val sunModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/sun.glb") }
         // NASA's Earth (Blue Marble cube map + normal map), textures re-encoded as JPEG to keep the app light
         val earthModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/earth.glb") }
+        // A model only shows once its textures are uploaded: until then the stand-ins below do
+        val sunReady = sunModel?.isReady == true
+        val earthReady = earthModel?.isReady == true
         val sunCenter = Offset(geometry.halfWidth, geometry.halfHeight - geometry.liftY * state.viewZoom)
         // Sun animation clock (0..1 over SUN_ANIMATION_MS), read only while drawing: no recomposition per frame.
         // Not composed at all while idle: an infinite transition ticks the frame clock as long as it exists.
@@ -302,7 +305,7 @@ internal fun SolarSystemSceneView(
             )
         }
         // The glare above animates on its own Canvas; the 3D image only changes with the scene
-        val rendering = rememberRenderOnChange(listOf(state, sunModel, earthModel, textures.earth, textures.moon))
+        val rendering = rememberRenderOnChange(listOf(state, sunReady, earthReady, textures.earth, textures.moon))
         FilamentSceneView(
             modifier = Modifier.matchParentSize(),
             engine = engine,
@@ -322,7 +325,7 @@ internal fun SolarSystemSceneView(
                 // A touch stronger than the Earth widget's: the globe is small here
                 intensity = LightIntensity.LuminousPower(DEFAULT_DIFFUSE_STRENGTH * 1.2f * LUX_PER_DIFFUSE_UNIT),
             )
-            if (sunModel != null) {
+            if (sunModel != null && sunReady) {
                 GltfInstance(
                     asset = sunModel,
                     rotation = view * Rotation.axisAngle(Direction.Up, state.sunRotationDegrees),
@@ -331,7 +334,7 @@ internal fun SolarSystemSceneView(
                     receiveShadows = false,
                 )
             } else {
-                // While the model loads
+                // While the model loads, and until its textures are up
                 Sphere(
                     // Emissive at 1.2 undoes the exposure's 1/1.2 (see UnitExposure): full brightness
                     material =
@@ -345,7 +348,7 @@ internal fun SolarSystemSceneView(
                 )
             }
             val earthRotation = view * earthToWorld(state.siderealDegrees, state.obliquityDegrees)
-            if (earthModel != null) {
+            if (earthModel != null && earthReady) {
                 GltfInstance(
                     asset = earthModel,
                     position = Position(earthPos.x, earthPos.y, earthPos.z),

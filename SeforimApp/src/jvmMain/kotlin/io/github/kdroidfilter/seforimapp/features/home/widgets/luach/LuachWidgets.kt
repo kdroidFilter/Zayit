@@ -432,6 +432,7 @@ internal object TefilaWidget : HomeWidget {
     override val defaultSpan = CellSpan(5, 3)
     override val minSpan = CellSpan(5, 3)
     override val toolWindowSize = DpSize(380.dp, 320.dp)
+    override val toolWindowMinSize = DpSize(320.dp, 280.dp)
     override val toolSymbol = "text.book.closed"
 
     // Seven short lines at most: more room would only spread them apart
@@ -505,6 +506,7 @@ internal object MoladWidget : HomeWidget {
     override val defaultSpan = CellSpan(5, 2)
     override val minSpan = CellSpan(5, 2)
     override val toolWindowSize = DpSize(280.dp, 200.dp)
+    override val toolWindowMinSize = DpSize(260.dp, 180.dp)
     override val toolSymbol = "moon.stars"
     override val maxSpan = CellSpan(5, 2)
 

@@ -293,6 +293,7 @@ internal object DictionaryWidget : HomeWidget {
     override val title = Res.string.home_widget_name_dictionary
     override val defaultSpan = CellSpan(6, 5)
     override val toolWindowSize = DpSize(460.dp, 560.dp)
+    override val toolWindowMinSize = DpSize(340.dp, 380.dp)
     override val toolSymbol = "character.book.closed"
     override val minSpan = CellSpan(4, 4)
     override val maxSpan = CellSpan(10, 10)

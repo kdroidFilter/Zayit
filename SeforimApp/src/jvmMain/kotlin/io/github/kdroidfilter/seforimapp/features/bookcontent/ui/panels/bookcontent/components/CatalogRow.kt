@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.catalog.CatalogPresets
@@ -28,6 +29,10 @@ fun CatalogRow(
         modifier =
             modifier
                 .fillMaxWidth()
+                // Its own clipped layer: a button's hover then repaints this row only. Unclipped, its damage
+                // fell back to the home page's whole viewport, a full-window repaint per hover change.
+                // The padding stays inside the clip, so the buttons' focus outlines are not cut.
+                .graphicsLayer { clip = true }
                 .padding(outerPadding),
         contentAlignment = Alignment.TopStart,
     ) {

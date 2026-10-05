@@ -221,6 +221,7 @@ internal object ZmanimWidget : HomeWidget {
     override val defaultSpan = CellSpan(13, 4)
     override val minSpan = CellSpan(8, 4)
     override val toolWindowSize = DpSize(700.dp, 360.dp)
+    override val toolWindowMinSize = DpSize(480.dp, 200.dp)
     override val toolSymbol = "clock"
 
     // Its cards are a fixed height: the grid gives it the rows they need at each width (minRows), never more

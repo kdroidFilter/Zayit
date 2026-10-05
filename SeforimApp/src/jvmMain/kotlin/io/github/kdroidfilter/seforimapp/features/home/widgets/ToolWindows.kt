@@ -109,7 +109,12 @@ internal fun DefaultToolWindow(
     val title = stringResource(tool.title)
     val windowState = rememberWindowState(position = WindowPosition(Alignment.Center), size = tool.toolWindowSize!!)
     with(LocalNucleusApplicationScope.current) {
-        JewelDecoratedWindow(onCloseRequest = onClose, title = title, state = windowState) {
+        JewelDecoratedWindow(
+            onCloseRequest = onClose,
+            title = title,
+            state = windowState,
+            minimumSize = tool.toolWindowMinSize,
+        ) {
             val window = nucleusWindow
             LaunchedEffect(reopened) {
                 if (reopened == 0) return@LaunchedEffect

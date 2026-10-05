@@ -23,6 +23,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -205,6 +206,9 @@ internal object ShnayimMikraWidget : HomeWidget {
     override val defaultSpan = CellSpan(4, 4)
     override val minSpan = CellSpan(4, 4)
     override val maxSpan = CellSpan(6, 4)
+    override val toolWindowSize = DpSize(320.dp, 360.dp)
+    override val toolWindowMinSize = DpSize(280.dp, 320.dp)
+    override val toolSymbol = "checklist"
 
     @Composable
     override fun Content(

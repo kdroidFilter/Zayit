@@ -248,7 +248,7 @@ fun EarthWidgetScene(
         }
 
     // Null while the engine is being created, off the UI thread: the scenes show a loader meanwhile
-    val engine = rememberFilamentEngineAsync()
+    val engine = rememberFilamentEngineAsync(config = widgetEngineConfig())
 
     val moonViewSize = sphereSize * MOON_VIEW_SIZE_RATIO
     val resolvedEarthRenderSize = renderSizePx.coerceAtLeast(MIN_RENDER_SIZE_PX)

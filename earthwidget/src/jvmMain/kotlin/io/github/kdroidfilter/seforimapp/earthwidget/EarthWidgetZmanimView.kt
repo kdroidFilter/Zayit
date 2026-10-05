@@ -647,7 +647,7 @@ fun EarthWidgetMoonSkyView(
         }
 
     // Null while the engine is being created, off the UI thread
-    val engine = rememberFilamentEngineAsync() ?: return WidgetLoader(modifier.size(sphereSize))
+    val engine = rememberFilamentEngineAsync(config = widgetEngineConfig()) ?: return WidgetLoader(modifier.size(sphereSize))
     MoonFromMarkerSceneView(
         state = moonState,
         engine = engine,

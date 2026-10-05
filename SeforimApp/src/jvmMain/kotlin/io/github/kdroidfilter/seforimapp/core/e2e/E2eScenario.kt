@@ -38,6 +38,7 @@ object E2eScenario {
         val textSize = graph.appSettings.getTextSize()
         // Every run starts from the same reading settings, whatever the machine was left at.
         graph.appSettings.setTextSize(E2E_TEXT_SIZE)
+        val restoreLayout = E2eMemoryScenario.withoutWidgets(appGraph)
         try {
             runCommon()
             extra(this)
@@ -46,12 +47,16 @@ object E2eScenario {
         } finally {
             state.setTheme(theme)
             graph.appSettings.setTextSize(textSize)
+            restoreLayout()
             E2e.outDir?.let { File(it, "log.txt").writeText(synchronized(log) { log.toString() }) }
             quit()
         }
     }
 
     fun graph(): AppGraph = graph
+
+    /** Whether the run opens on Bereshit rather than the Home (`ZAYIT_E2E_START_BOOK=1`), for [E2eMemoryScenario]. */
+    val startsOnBook: Boolean = System.getenv("ZAYIT_E2E_START_BOOK") == "1"
 
     /** Thread-safe: the torture's watchdog notes from its own thread. */
     fun note(line: String) {
@@ -113,7 +118,10 @@ object E2eScenario {
                                         WindowSnapshot(
                                             destinations =
                                                 listOf(
-                                                    TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString()),
+                                                    TabsDestination.BookContent(
+                                                        bookId = if (startsOnBook) bereshit else -1,
+                                                        tabId = UUID.randomUUID().toString(),
+                                                    ),
                                                 ),
                                             geometry =
                                                 SavedGeometry(

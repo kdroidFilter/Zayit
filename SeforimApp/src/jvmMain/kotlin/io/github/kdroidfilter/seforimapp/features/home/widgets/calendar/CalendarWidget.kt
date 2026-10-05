@@ -31,6 +31,7 @@ internal object CalendarWidget : HomeWidget {
     override val title = Res.string.home_widget_name_calendar
     override val defaultSpan = CellSpan(7, 5)
     override val toolWindowSize = DpSize(420.dp, 460.dp)
+    override val toolWindowMinSize = DpSize(360.dp, 400.dp)
     override val toolSymbol = "calendar"
     override val minSpan = CellSpan(7, 5)
 

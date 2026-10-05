@@ -153,6 +153,22 @@ internal val WidgetPostProcessing =
         colorGrade = ColorGrade(toneMapping = ToneMapping.Linear),
     )
 
+/**
+ * The widgets' engine: a few small views (a globe, the Sun and two bodies) need a fraction of Filament's defaults, sized
+ * for a full-screen scene. One job thread, small command and handle arenas, no parallel shader compilation.
+ */
+internal fun widgetEngineConfig() =
+    Engine.Config().apply {
+        jobSystemThreadCount = 1
+        driverHandleArenaSizeMB = 1
+        commandBufferSizeMB = 1
+        minCommandBufferSizeMB = 1
+        perRenderPassArenaSizeMB = 1
+        perFrameCommandsSizeMB = 1
+        resourceAllocatorCacheSizeMB = 4
+        disableParallelShaderCompile = true
+    }
+
 /** How the widgets' 3D views smooth their edges: sharper and dearer down the list (TAA trails a moving scene). */
 enum class WidgetAntiAliasing(
     internal val config: AntiAliasing,

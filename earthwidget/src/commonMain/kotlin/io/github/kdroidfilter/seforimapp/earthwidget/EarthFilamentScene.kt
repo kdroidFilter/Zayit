@@ -349,9 +349,16 @@ internal fun FilamentSceneScope.MeshNode(
     receiveShadows = false,
 )
 
-/** NASA's Earth (Blue Marble cube map + normal map), textures re-encoded as JPEG to keep the app light. */
+/**
+ * NASA's Earth (Blue Marble cube map + normal map), textures re-encoded as KTX2 (Basis Universal, transcoded to a
+ * GPU-compressed format on load). [detailed] picks the 2048 px textures for a full window; the widgets get the 1024 px
+ * ones, a quarter of the memory.
+ */
 @Composable
-internal fun rememberEarthModel(engine: Engine): GltfAsset? = rememberGltfAsset(engine = engine) { Res.readBytes("files/earth.glb") }
+internal fun rememberEarthModel(
+    engine: Engine,
+    detailed: Boolean = false,
+): GltfAsset? = rememberBodyModel(engine, "earth", detailed)
 
 /** NASA's Earth model at [radius]; show it only once its textures are uploaded ([GltfAsset.isReady]). */
 @Composable
@@ -369,9 +376,23 @@ internal fun FilamentSceneScope.Earth(
     receiveShadows = false,
 )
 
-/** NASA's Moon (LRO cube map), texture re-encoded as JPEG to keep the app light. */
+/** NASA's Moon (LRO cube map), texture re-encoded as KTX2. [detailed] as for [rememberEarthModel]. */
 @Composable
-internal fun rememberMoonModel(engine: Engine): GltfAsset? = rememberGltfAsset(engine = engine) { Res.readBytes("files/moon.glb") }
+internal fun rememberMoonModel(
+    engine: Engine,
+    detailed: Boolean = false,
+): GltfAsset? = rememberBodyModel(engine, "moon", detailed)
+
+/** files/[name].glb when [detailed], else its downscaled-texture twin files/[name]_lite.glb (same mesh and frame). */
+@Composable
+internal fun rememberBodyModel(
+    engine: Engine,
+    name: String,
+    detailed: Boolean,
+): GltfAsset? {
+    val path = if (detailed) "files/$name.glb" else "files/${name}_lite.glb"
+    return rememberGltfAsset(key = path, engine = engine) { Res.readBytes(path) }
+}
 
 /**
  * NASA's Moon model at [radius]; show it only once its textures are uploaded ([GltfAsset.isReady]). moon.glb already

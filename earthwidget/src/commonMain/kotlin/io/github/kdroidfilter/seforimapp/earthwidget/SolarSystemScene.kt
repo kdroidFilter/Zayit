@@ -32,11 +32,9 @@ import io.github.erkko68.filament.compose.scene.Vignette
 import io.github.erkko68.filament.compose.scene.primitives.Sphere
 import io.github.erkko68.filament.compose.scene.rememberCameraState
 import io.github.erkko68.filament.compose.scene.rememberEmissiveMaterialInstance
-import io.github.erkko68.filament.compose.scene.rememberGltfAsset
 import io.github.erkko68.filament.compose.scene.rememberIndirectLightState
 import io.github.erkko68.filament.compose.scene.rememberUnlitColorMaterialInstance
 import io.github.erkko68.filament.compose.scene.toLinearColor
-import seforimapp.earthwidget.generated.resources.Res
 import kotlin.math.PI
 import kotlin.math.atan
 import kotlin.math.atan2
@@ -268,9 +266,9 @@ internal fun SolarSystemSceneView(
     Box(modifier) {
         Starfield(Modifier.matchParentSize())
         // NASA's Sun model (science.nasa.gov, public domain): a spherified cube with an emissive photosphere texture
-        val sunModel = rememberGltfAsset(engine = engine) { Res.readBytes("files/sun.glb") }
-        val earthModel = rememberEarthModel(engine)
-        val moonModel = rememberMoonModel(engine)
+        val sunModel = rememberBodyModel(engine, "sun", state.detailed)
+        val earthModel = rememberEarthModel(engine, state.detailed)
+        val moonModel = rememberMoonModel(engine, state.detailed)
         // A model only shows once its textures are uploaded: until then the Sun's stand-in below does
         val sunReady = sunModel?.isReady == true
         val earthReady = earthModel?.isReady == true

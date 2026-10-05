@@ -49,6 +49,9 @@ interface HomeWidget {
      */
     val toolWindowSize: DpSize? get() = null
 
+    /** How small the user can make its tool window; its [toolWindowSize] by default, so its content is never cut. */
+    val toolWindowMinSize: DpSize? get() = toolWindowSize
+
     /** Its icon in the macOS Tools menu: an SF Symbol's name. */
     val toolSymbol: String? get() = null
 

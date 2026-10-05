@@ -35,6 +35,7 @@ internal object SolarSystemWidget : HomeWidget {
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
     override val isSupported get() = isEarthWidgetSupported
     override val toolWindowSize = DpSize(1200.dp, 720.dp)
+    override val toolWindowMinSize = DpSize(800.dp, 500.dp)
     override val toolSymbol = "sun.max"
 
     @Composable

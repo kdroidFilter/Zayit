@@ -114,7 +114,12 @@ internal fun SolarSystemWindow(
             )
         }
     with(LocalNucleusApplicationScope.current) {
-        JewelDecoratedWindow(onCloseRequest = onClose, title = title, state = windowState) {
+        JewelDecoratedWindow(
+            onCloseRequest = onClose,
+            title = title,
+            state = windowState,
+            minimumSize = SolarSystemWidget.toolWindowMinSize,
+        ) {
             // No title bar chrome: the scene fills the whole window and the widget's own header sits in the title bar
             // band — an empty, click-through overlay whose height centres the traffic lights on that header. The
             // header row drags the window; black behind, so a live resize never flashes white.

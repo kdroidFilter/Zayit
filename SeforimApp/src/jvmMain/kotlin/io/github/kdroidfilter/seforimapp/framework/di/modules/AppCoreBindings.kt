@@ -34,6 +34,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
+import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.HybridSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
@@ -42,12 +43,18 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
+import io.ktor.client.HttpClient
 import java.io.File
 import java.nio.file.Paths
 
 @ContributesTo(AppScope::class)
 @BindingContainer
 object AppCoreBindings {
+    /** The app's single HTTP client, trusting the OS certificate stores. */
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideHttpClient(): HttpClient = KtorConfig.createHttpClient()
+
     @Provides
     @SingleIn(AppScope::class)
     fun provideMainAppState(appSettings: AppSettings): MainAppState = MainAppState(appSettings)

@@ -9,7 +9,6 @@ import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseCleanu
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
-import io.github.kdroidfilter.seforimapp.features.onboarding.data.databaseFetcher
 import io.github.kdroidfilter.seforimapp.features.onboarding.diskspace.AvailableDiskSpaceUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadUseCase
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractUseCase
@@ -18,6 +17,8 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfig
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileUseCase
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
+import io.ktor.client.HttpClient
 
 @ContributesTo(AppScope::class)
 @BindingContainer
@@ -28,9 +29,9 @@ object OnboardingBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideDownloadUseCase(): DownloadUseCase =
+    fun provideDownloadUseCase(httpClient: HttpClient): DownloadUseCase =
         DownloadUseCase(
-            gitHubReleaseFetcher = databaseFetcher,
+            gitHubReleaseFetcher = GitHubReleaseFetcher(owner = "kdroidFilter", repo = "SeforimLibrary", httpClient = httpClient),
         )
 
     @Provides

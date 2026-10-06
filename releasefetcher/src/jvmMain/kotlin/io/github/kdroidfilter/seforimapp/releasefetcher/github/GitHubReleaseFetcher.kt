@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.releasefetcher.github
 
-import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import io.github.kdroidfilter.seforimapp.releasefetcher.github.model.Release
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -10,15 +9,13 @@ import io.ktor.http.HttpStatusCode
 import kotlinx.serialization.json.Json
 
 /**
- * Fetches GitHub releases over a Ktor client backed by Nucleus native SSL.
- *
- * The default [httpClient] uses the OS certificate stores via [KtorConfig], so HTTPS
- * calls trust the same roots as the host platform.
+ * Fetches GitHub releases over the given Ktor [httpClient] (the app's shared one, backed by
+ * Nucleus native SSL so HTTPS calls trust the host platform's roots).
  */
 class GitHubReleaseFetcher(
     private val owner: String,
     private val repo: String,
-    private val httpClient: HttpClient = KtorConfig.createHttpClient(),
+    private val httpClient: HttpClient,
 ) {
     private val json =
         Json {

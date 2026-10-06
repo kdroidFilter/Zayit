@@ -12,7 +12,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.unit.sp
-import java.util.concurrent.ConcurrentHashMap
 import org.jetbrains.skia.Image as SkiaImage
 
 /**
@@ -27,7 +26,8 @@ import org.jetbrains.skia.Image as SkiaImage
  * glyphs when the UI is in dark mode). The lambda is re-invoked on every recomposition of the
  * text, so it can read theme [androidx.compose.runtime.CompositionLocal]s.
  *
- * A small identity-keyed cache avoids re-decoding the same byte array on recomposition.
+ * A bounded LRU cache keyed by content avoids re-decoding the same image on recomposition or when
+ * the same HTML is parsed again (each parse yields a new byte array).
  */
 object SkiaHtmlImageBuilder {
     /** 4x5 color matrix that inverts RGB while keeping alpha intact. */
@@ -59,16 +59,36 @@ object SkiaHtmlImageBuilder {
             ),
         )
 
-    private val bitmapCache = ConcurrentHashMap<ByteArray, ImageBitmap>()
+    private const val MAX_CACHED_BITMAPS = 64
+
+    /** Content-based key: [ByteArray] equality is by identity. */
+    private class ImageKey(
+        val bytes: ByteArray,
+    ) {
+        private val hash = bytes.contentHashCode()
+
+        override fun equals(other: Any?): Boolean = other is ImageKey && other.hash == hash && other.bytes.contentEquals(bytes)
+
+        override fun hashCode(): Int = hash
+    }
+
+    private val bitmapCache =
+        object : LinkedHashMap<ImageKey, ImageBitmap>(16, 0.75f, true) {
+            override fun removeEldestEntry(eldest: MutableMap.MutableEntry<ImageKey, ImageBitmap>): Boolean = size > MAX_CACHED_BITMAPS
+        }
+
+    private fun decode(bytes: ByteArray): ImageBitmap? {
+        val key = ImageKey(bytes)
+        synchronized(bitmapCache) { bitmapCache[key] }?.let { return it }
+        val bitmap = runCatching { SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap() }.getOrNull() ?: return null
+        synchronized(bitmapCache) { bitmapCache[key] = bitmap }
+        return bitmap
+    }
 
     fun build(imageColorFilter: @Composable () -> ColorFilter? = { null }): HtmlImageContentBuilder =
         builder@{ element, _ ->
             val bytes = element.imageBytes ?: return@builder null
-            val bitmap =
-                bitmapCache.getOrPut(bytes) {
-                    runCatching { SkiaImage.makeFromEncoded(bytes).toComposeImageBitmap() }
-                        .getOrNull() ?: return@builder null
-                }
+            val bitmap = decode(bytes) ?: return@builder null
 
             val widthPx = (element.imageWidth ?: bitmap.width).coerceAtLeast(1)
             val heightPx = (element.imageHeight ?: bitmap.height).coerceAtLeast(1)

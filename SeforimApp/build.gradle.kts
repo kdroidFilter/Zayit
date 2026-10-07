@@ -38,7 +38,7 @@ sentry {
 }
 
 // The smart siddur is in the official builds only (open core): with its package's token or its sources beside
-// (settings.gradle.kts); a community build has none and src/jvmNoSiddur says so
+// (settings.gradle.kts); a community build has none and addons/siddur/disabled says so
 val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
 
 kotlin {
@@ -129,10 +129,10 @@ kotlin {
         }
 
         jvmMain {
-            kotlin.srcDir(if (withSiddur) "src/jvmSiddur/kotlin" else "src/jvmNoSiddur/kotlin")
+            kotlin.srcDir(if (withSiddur) "addons/siddur/enabled/kotlin" else "addons/siddur/disabled/kotlin")
             if (withSiddur) dependencies { implementation(libs.seforim.siddur) }
         }
-        if (withSiddur) jvmTest { kotlin.srcDir("src/jvmSiddurTest/kotlin") }
+        if (withSiddur) jvmTest { kotlin.srcDir("addons/siddur/test/kotlin") }
 
         jvmTest.dependencies {
             implementation(libs.mockk)

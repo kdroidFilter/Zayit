@@ -5,8 +5,8 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 
 /**
- * The smart siddur, in Zayit's official builds only (open core): its screen is in src/jvmSiddur, built with the
- * SeforimSiddur package; a community build compiles src/jvmNoSiddur instead, where [installedSiddur] is null.
+ * The smart siddur, in Zayit's official builds only (open core): its screen is in addons/siddur/enabled, built with the
+ * SeforimSiddur package; a community build compiles addons/siddur/disabled instead, where [installedSiddur] is null.
  */
 interface SiddurFeature {
     @Composable

@@ -126,6 +126,12 @@
 -dontwarn org.apache.lucene.**
 
 
+# Semantic search (official builds): ONNX Runtime and the DJL tokenizer are called back from JNI
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+-keep class ai.djl.** { *; }
+-dontwarn ai.djl.**
+
 # Lucene analyzer factories discovered via SPI or reflection
 -keep class org.apache.lucene.analysis.util.*Factory { *; }
 

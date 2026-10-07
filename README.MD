@@ -266,12 +266,20 @@ proprietary modules, which are not open source and live in private repositories:
 - **The smart siddur** (סידור חכם): the tefilot of every day, complete, after the user's nusach and place
   (`io.github.kdroidfilter:seforim-siddur`, from the private SeforimSiddur repository). Its screen is in
   `SeforimApp/addons/siddur/enabled`.
+- **The semantic search**: Zayit's own embedding model, which finds passages by meaning and not only by their words
+  (`io.github.kdroidfilter:seforim-semantic` and its model, from the private SeforimEmbedding repository). Its engine is
+  in `SeforimApp/addons/semantic/enabled`; the model is inside that package, never in the library's database.
 
 A build without access to these modules (any build from this repository by default) leaves them out: the menus do not
-show them and everything else works the same (`SeforimApp/addons/siddur/disabled`). A build includes the smart siddur when
+show them, the search is lexical only, and everything else works the same (`SeforimApp/addons/*/disabled`). A
+database you generate yourself has no dense vectors either. A build includes the smart siddur when
 it can read its package: with `siddur.token` in `~/.gradle/gradle.properties`, the `SEFORIM_SIDDUR_TOKEN` variable
 (CI), or a `gh` CLI logged in to an account that can see the repository (with the `read:packages` scope); or from its
 sources beside Zayit's, with `-Psiddur.local=true` (`../SeforimSiddur`).
+The semantic search likewise, with the siddur's token (or `semantic.token`, `SEFORIM_SEMANTIC_TOKEN`, `gh`), or with
+`-Psemantic.local=true` (`../SeforimEmbedding/semantic`). With that token, SeforimLibrary's generator also embeds the
+corpus into the search index's dense vectors (`:searchindex:embedCorpus`, on an NVIDIA GPU); without it, the index it
+builds is lexical only.
 
 With `gh`, the default login has no `read:packages` scope; add it once, then check the package is readable (it prints
 `seforim-siddur`) and re-sync Gradle:

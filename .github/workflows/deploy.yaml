@@ -9,8 +9,9 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
-    # The official builds include the smart siddur (open core): its private Maven package is readable only with the
-    # access of its own repository, so a classic token with read:packages (GITHUB_TOKEN cannot reach it)
+    # The official builds include the smart siddur and the semantic search (open core): their private Maven packages
+    # are readable only with the access of their own repositories, so a classic token with read:packages (GITHUB_TOKEN
+    # cannot reach them); the semantic search uses the siddur's token too
     env:
       SEFORIM_SIDDUR_TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}

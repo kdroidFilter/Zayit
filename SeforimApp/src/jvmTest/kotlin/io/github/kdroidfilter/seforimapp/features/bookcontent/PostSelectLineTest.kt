@@ -115,7 +115,7 @@ class PostSelectLineTest {
                 every { createContentUseCase(any()) } returns contentUseCase
                 every { createCommentariesUseCase(any(), any()) } returns commentariesUseCase
                 every { createAltTocUseCase(any()) } returns altTocUseCase
-                every { createTocUseCase(any()) } returns tocUseCase
+                every { createTocUseCase(any(), any()) } returns tocUseCase
                 every { createNotesUseCase(any()) } returns notesUseCase
                 every { createCategoryDisplaySettingsUseCase() } returns categoryDisplaySettingsUseCase
             }

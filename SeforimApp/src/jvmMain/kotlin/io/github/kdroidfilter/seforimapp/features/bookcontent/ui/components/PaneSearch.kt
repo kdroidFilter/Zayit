@@ -1,13 +1,16 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +36,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.onEach
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
@@ -41,23 +45,46 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 private const val SEARCH_DEBOUNCE_MS = 120L
 
+/**
+ * Whether the search field should take the focus: set when the user opens the bar, consumed
+ * by the field. A bar rebuilt on its own (tab switch, re-docked pane) leaves the focus alone.
+ */
+@Stable
+class PaneSearchFocus {
+    internal var requested by mutableStateOf(false)
+}
+
+@Composable
+fun rememberPaneSearchFocus(): PaneSearchFocus = remember { PaneSearchFocus() }
+
 /** Header action showing or hiding the search bar of a pane. */
 @Composable
 fun PaneSearchButton(
+    isOpen: Boolean,
+    focus: PaneSearchFocus,
     onClick: () -> Unit,
     contentDescription: String,
 ) {
-    IconActionButton(key = AllIconsKeys.Actions.Find, onClick = onClick, contentDescription = contentDescription)
+    IconActionButton(
+        key = AllIconsKeys.Actions.Find,
+        onClick = {
+            focus.requested = !isOpen
+            onClick()
+        },
+        contentDescription = contentDescription,
+    )
 }
 
 /**
- * The search bar of a side pane, focused on open, above its tree: [regular] (the regular tree)
- * while the query is shorter than [minQueryLength], [results] otherwise. Enter opens the
- * active match ([onSelect]), ↑/↓ move it, Escape closes the bar.
+ * A side pane's tree under its optional search bar ([search] null: hidden): [regular] (the
+ * regular tree) while the query is shorter than [minQueryLength], [results] otherwise. The
+ * regular tree keeps one place in the composition, so opening or closing the bar leaves its
+ * scroll alone. Enter opens the active match ([onSelect]), ↑/↓ move it, Escape closes the bar.
  */
 @Composable
-fun <T : PaneSearchResult> PaneSearch(
-    search: PaneSearchState<T>,
+fun <T : PaneSearchResult> PaneSearchLayout(
+    search: PaneSearchState<T>?,
+    focus: PaneSearchFocus,
     placeholder: String,
     noResults: String,
     onQueryChange: (String) -> Unit,
@@ -68,56 +95,74 @@ fun <T : PaneSearchResult> PaneSearch(
     minQueryLength: Int = 1,
     results: @Composable (result: T, activeId: Long?) -> Unit,
 ) {
-    val result = search.result
+    val result = search?.result
     var activeId by remember(result) { mutableStateOf(result?.bestMatchId) }
-    // Enter hit before the result of the typed text arrived: open its best match once it does
+    // Enter hit before the result of the typed text arrived: open its best match once it does,
+    // unless the text changed meanwhile
     var pendingSubmit by remember { mutableStateOf<String?>(null) }
     val currentOnSelect by rememberUpdatedState(onSelect)
-    LaunchedEffect(search.resultQuery, result) {
+    LaunchedEffect(search?.resultQuery, result) {
         val pending = pendingSubmit ?: return@LaunchedEffect
-        if (search.resultQuery == pending) {
+        if (search?.resultQuery == pending) {
             pendingSubmit = null
             result?.bestMatchId?.let(currentOnSelect)
         }
     }
 
     Column(modifier = modifier) {
-        PaneSearchField(
-            query = search.query,
-            placeholder = placeholder,
-            onQueryChange = onQueryChange,
-            onSubmit = { text ->
-                if (search.resultQuery == text) {
-                    activeId?.let(onSelect)
-                } else {
-                    pendingSubmit = text
-                    // Skip the debounce
-                    if (search.query != text) onQueryChange(text)
-                }
-            },
-            onMove = { delta ->
-                val ids = result?.matchIds.orEmpty()
-                if (ids.isNotEmpty()) activeId = ids[(ids.indexOf(activeId) + delta).coerceIn(0, ids.lastIndex)]
-            },
-            onClose = onClose,
-            modifier = Modifier.padding(vertical = 6.dp),
-        )
+        if (search != null) {
+            PaneSearchField(
+                query = search.query,
+                focus = focus,
+                placeholder = placeholder,
+                onTextChange = { text -> if (text != pendingSubmit) pendingSubmit = null },
+                onQueryChange = onQueryChange,
+                onSubmit = { text ->
+                    if (search.resultQuery == text) {
+                        activeId?.let(onSelect)
+                    } else {
+                        pendingSubmit = text
+                        // Skip the debounce
+                        if (search.query != text) onQueryChange(text)
+                    }
+                },
+                onMove = { delta ->
+                    val ids = result?.matchIds.orEmpty()
+                    if (ids.isNotEmpty()) activeId = ids[(ids.indexOf(activeId) + delta).coerceIn(0, ids.lastIndex)]
+                },
+                onClose = onClose,
+                modifier = Modifier.padding(vertical = 6.dp),
+            )
+        }
         Box(modifier = Modifier.weight(1f)) {
-            when {
-                search.query.trim().length < minQueryLength -> regular()
-                // First result still computing
-                result == null -> Unit
-                // Only claim "nothing found" for the query actually typed
-                result.matchIds.isEmpty() && search.resultQuery == search.query ->
-                    Text(
-                        text = noResults,
-                        color = JewelTheme.globalColors.text.disabled,
-                        modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
-                    )
-                result.matchIds.isEmpty() -> Unit
-                else -> results(result, activeId)
+            if (search == null || search.query.trim().length < minQueryLength) {
+                regular()
+            } else {
+                when {
+                    // First result still computing
+                    result == null -> Unit
+                    result.matchIds.isNotEmpty() -> results(result, activeId)
+                    // Only claim "nothing found" for the query actually typed
+                    search.resultQuery == search.query ->
+                        Text(
+                            text = noResults,
+                            color = JewelTheme.globalColors.text.disabled,
+                            modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp),
+                        )
+                }
             }
         }
+    }
+}
+
+/** Scrolls the least needed to show item [index] whole; not at all when it already is. */
+suspend fun LazyListState.revealItem(index: Int) {
+    val info = layoutInfo
+    val item = info.visibleItemsInfo.firstOrNull { it.index == index }
+    when {
+        item == null || item.offset < info.viewportStartOffset -> scrollToItem(index)
+        item.offset + item.size > info.viewportEndOffset ->
+            scrollBy((item.offset + item.size - info.viewportEndOffset).toFloat())
     }
 }
 
@@ -125,7 +170,9 @@ fun <T : PaneSearchResult> PaneSearch(
 @Composable
 private fun PaneSearchField(
     query: String,
+    focus: PaneSearchFocus,
     placeholder: String,
+    onTextChange: (String) -> Unit,
     onQueryChange: (String) -> Unit,
     onSubmit: (text: String) -> Unit,
     onMove: (Int) -> Unit,
@@ -134,16 +181,21 @@ private fun PaneSearchField(
 ) {
     val fieldState = rememberTextFieldState(query)
     val focusRequester = remember { FocusRequester() }
+    val currentOnTextChange by rememberUpdatedState(onTextChange)
     val currentOnQueryChange by rememberUpdatedState(onQueryChange)
 
-    // Focus a freshly opened bar only: a bar rebuilt with its query (tab switch) must not
-    // steal the focus from the reader
-    LaunchedEffect(Unit) { if (query.isEmpty()) focusRequester.requestFocus() }
+    LaunchedEffect(focus.requested) {
+        if (focus.requested) {
+            focusRequester.requestFocus()
+            focus.requested = false
+        }
+    }
     // Edits are debounced; clearing is immediate
     LaunchedEffect(fieldState) {
         snapshotFlow { fieldState.text.toString() }
             .distinctUntilChanged()
             .drop(1)
+            .onEach { currentOnTextChange(it) }
             .debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
             .collect { currentOnQueryChange(it) }
     }

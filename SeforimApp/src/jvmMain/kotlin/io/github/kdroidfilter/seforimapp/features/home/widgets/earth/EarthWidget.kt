@@ -13,7 +13,6 @@ import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
 import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
-import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.EarthPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -62,7 +61,7 @@ internal object EarthWidget : HomeWidget {
                             latitude = place.lat,
                             longitude = place.lng,
                             elevationMeters = place.elevation,
-                            timeZone = timeZoneForLocation(place.lat, place.lng),
+                            timeZone = place.timeZone,
                         )
                     }
                 }

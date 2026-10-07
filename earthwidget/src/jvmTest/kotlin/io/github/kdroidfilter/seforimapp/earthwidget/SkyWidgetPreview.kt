@@ -23,6 +23,7 @@ import java.awt.Rectangle
 import java.awt.Robot
 import java.awt.image.BufferedImage
 import java.io.File
+import java.util.TimeZone
 import javax.imageio.ImageIO
 import kotlin.test.Test
 
@@ -54,6 +55,7 @@ class SkyWidgetPreview {
                                 SkyWidgetView(
                                     latitude = 31.7683,
                                     longitude = 35.2137,
+                                    timeZone = TimeZone.getTimeZone("Asia/Jerusalem"),
                                     modifier = Modifier.fillMaxSize(),
                                     timeMillis =
                                         System.getenv("SKY_PREVIEW_HOURS")?.let {

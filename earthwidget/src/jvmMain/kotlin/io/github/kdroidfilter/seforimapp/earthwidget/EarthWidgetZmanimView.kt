@@ -76,25 +76,8 @@ private const val DEFAULT_EARTH_TILT_DEGREES = 23.44f
  */
 private const val LUNAR_CYCLE_MILLIS = 29.0 * 86_400_000.0 + 12.0 * 3_600_000.0 + 793.0 * 10_000.0 / 3.0
 
-/** Degrees per hour for GMT offset calculation. */
-private const val DEGREES_PER_HOUR = 15.0
-
-/** Israel latitude bounds (south to north). */
-private const val ISRAEL_LAT_MIN = 29.0
-private const val ISRAEL_LAT_MAX = 34.8
-
 private val LOCATION_MENU_WIDTH = 320.dp
 private val LOCATION_MENU_HEIGHT = 260.dp
-
-/** Israel longitude bounds (west to east). */
-private const val ISRAEL_LON_MIN = 34.0
-private const val ISRAEL_LON_MAX = 36.6
-
-/** Minimum GMT offset in hours. */
-private const val MIN_GMT_OFFSET = -12
-
-/** Maximum GMT offset in hours. */
-private const val MAX_GMT_OFFSET = 14
 
 private val KIDDUSH_LEVANA_LEGEND_COLOR = Color(0xFFFFD700)
 
@@ -1317,37 +1300,6 @@ private fun resolveInitialLocationSelection(
     val fallbackCountry = locations.keys.firstOrNull() ?: return null
     val fallbackCity = locations[fallbackCountry]?.keys?.firstOrNull() ?: return null
     return LocationSelection(fallbackCountry, fallbackCity)
-}
-
-/**
- * Determines timezone for a given location.
- *
- * Uses Asia/Jerusalem for coordinates within Israel, otherwise
- * calculates a GMT offset based on longitude.
- *
- * @param latitude Location latitude.
- * @param longitude Location longitude.
- * @return Appropriate timezone.
- */
-fun timeZoneForLocation(
-    latitude: Double,
-    longitude: Double,
-): TimeZone {
-    // Use Israel timezone for coordinates within Israel
-    if (latitude in ISRAEL_LAT_MIN..ISRAEL_LAT_MAX &&
-        longitude in ISRAEL_LON_MIN..ISRAEL_LON_MAX
-    ) {
-        return TimeZone.getTimeZone("Asia/Jerusalem")
-    }
-
-    // Calculate GMT offset from longitude
-    val offsetHours =
-        (longitude / DEGREES_PER_HOUR)
-            .roundToInt()
-            .coerceIn(MIN_GMT_OFFSET, MAX_GMT_OFFSET)
-    val zoneId = if (offsetHours >= 0) "GMT+$offsetHours" else "GMT$offsetHours"
-
-    return TimeZone.getTimeZone(zoneId)
 }
 
 // ============================================================================

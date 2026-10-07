@@ -8,7 +8,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class HomeUserLocationTest {
-    private val testPlace = Place(lat = 48.8566, lng = 2.3522, elevation = 35.0)
+    private val testPlace = Place(lat = 48.8566, lng = 2.3522, elevation = 35.0, zoneId = "Europe/Paris")
 
     @Test
     fun `state stores userPlace`() {

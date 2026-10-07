@@ -1,5 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.zmanim.data
 
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -8,7 +11,7 @@ import kotlin.test.assertTrue
 class CitiesTest {
     @Test
     fun `Place data class stores coordinates correctly`() {
-        val place = Place(lat = 31.7683, lng = 35.2137, elevation = 800.0)
+        val place = Place(lat = 31.7683, lng = 35.2137, elevation = 800.0, zoneId = "Asia/Jerusalem")
 
         assertEquals(31.7683, place.lat)
         assertEquals(35.2137, place.lng)
@@ -17,9 +20,9 @@ class CitiesTest {
 
     @Test
     fun `Place equals works correctly`() {
-        val place1 = Place(31.0, 35.0, 100.0)
-        val place2 = Place(31.0, 35.0, 100.0)
-        val place3 = Place(32.0, 35.0, 100.0)
+        val place1 = Place(31.0, 35.0, 100.0, "Asia/Jerusalem")
+        val place2 = Place(31.0, 35.0, 100.0, "Asia/Jerusalem")
+        val place3 = Place(32.0, 35.0, 100.0, "Asia/Jerusalem")
 
         assertEquals(place1, place2)
         assertTrue(place1 != place3)
@@ -108,6 +111,34 @@ class CitiesTest {
                 "Longitude ${place.lng} should be between -180 and 180",
             )
         }
+    }
+
+    @Test
+    fun `all places have a known IANA zone`() {
+        worldPlaces.values.flatMap { it.values }.forEach { place ->
+            // ZoneId.of throws on an unknown id, where TimeZone.getTimeZone silently falls back to GMT
+            assertEquals(place.zoneId, ZoneId.of(place.zoneId).id)
+        }
+    }
+
+    @Test
+    fun `New York follows daylight saving time`() {
+        assertEquals(ZoneOffset.ofHours(-4), offsetAt("ארצות הברית", "ניו יורק", LocalDateTime.of(2026, 8, 30, 12, 0)))
+        assertEquals(ZoneOffset.ofHours(-5), offsetAt("ארצות הברית", "ניו יורק", LocalDateTime.of(2026, 1, 15, 12, 0)))
+    }
+
+    @Test
+    fun `Paris keeps its legal zone rather than its longitude's`() {
+        assertEquals(ZoneOffset.ofHours(1), offsetAt("צרפת", "פריז", LocalDateTime.of(2026, 1, 15, 12, 0)))
+    }
+
+    private fun offsetAt(
+        country: String,
+        city: String,
+        time: LocalDateTime,
+    ): ZoneOffset {
+        val place = worldPlaces.getValue(country).getValue(city)
+        return ZoneId.of(place.zoneId).rules.getOffset(time)
     }
 
     @Test

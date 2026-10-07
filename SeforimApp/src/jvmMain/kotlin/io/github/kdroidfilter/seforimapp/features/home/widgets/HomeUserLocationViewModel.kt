@@ -28,7 +28,7 @@ data class HomeUserLocation(
     }
 }
 
-private val DEFAULT_PLACE = Place(31.7683, 35.2137, 800.0)
+private val DEFAULT_PLACE = Place(31.7683, 35.2137, 800.0, "Asia/Jerusalem")
 
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey

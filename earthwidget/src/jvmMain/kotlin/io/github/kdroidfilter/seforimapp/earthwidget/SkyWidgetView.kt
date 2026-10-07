@@ -49,6 +49,7 @@ import seforimapp.earthwidget.generated.resources.earthwidget_sky_sunrise
 import seforimapp.earthwidget.generated.resources.earthwidget_sky_sunset
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.TimeZone
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
@@ -422,6 +423,8 @@ private fun DrawScope.drawPass(
 fun SkyWidgetView(
     latitude: Double,
     longitude: Double,
+    /** The place's civil time zone, for the rise/set clock times. */
+    timeZone: TimeZone,
     modifier: Modifier = Modifier,
     /** The moment to show (the Earth widget's); null follows now. */
     timeMillis: Long? = null,
@@ -487,7 +490,7 @@ fun SkyWidgetView(
                 }
             }
         }
-    val clock = remember(latitude, longitude) { SimpleDateFormat("HH:mm").apply { timeZone = timeZoneForLocation(latitude, longitude) } }
+    val clock = remember(timeZone) { SimpleDateFormat("HH:mm").apply { this.timeZone = timeZone } }
 
     // The Sun while any of its light is left in the sky (down to 18° under: alos, netz, shkia, tzeis all look at
     // its side); in full night the Moon if it is up, close in so its phase reads; else the south

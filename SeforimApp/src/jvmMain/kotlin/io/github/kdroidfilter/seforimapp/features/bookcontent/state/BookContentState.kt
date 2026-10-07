@@ -101,7 +101,21 @@ data class NavigationState(
     val isVisible: Boolean = true,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
+    // Search bar under the header (not persisted): null while hidden
+    val search: PaneSearchState<BookFilterResult>? = null,
 )
+
+/** The book tree narrowed to the books suggested for the query, with their categories. */
+@Immutable
+data class BookFilterResult(
+    val roots: List<Category> = emptyList(),
+    val children: Map<Long, List<Category>> = emptyMap(),
+    val books: Set<Book> = emptySet(),
+    /** Every category of the filtered tree, all shown expanded. */
+    val categoryIds: Set<Long> = emptySet(),
+    override val matchIds: List<Long> = emptyList(),
+    override val bestMatchId: Long? = null,
+) : PaneSearchResult
 
 @Immutable
 data class TocState(
@@ -115,7 +129,37 @@ data class TocState(
     val isVisible: Boolean = false,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
+    // Search bar under the header (not persisted): null while hidden
+    val search: PaneSearchState<TocFilterResult>? = null,
 )
+
+/** What a pane search found: [matchIds] in display order, [bestMatchId] the one Enter opens. */
+interface PaneSearchResult {
+    val matchIds: List<Long>
+    val bestMatchId: Long?
+}
+
+/**
+ * The search bar of a side pane: the typed [query] and the last computed [result], which
+ * answers [resultQuery] and may lag behind [query] while the next one is computed.
+ */
+@Immutable
+data class PaneSearchState<T : PaneSearchResult>(
+    val query: String = "",
+    val result: T? = null,
+    val resultQuery: String? = null,
+)
+
+/** The TOC narrowed to the entries whose title matches the query, plus their ancestors. */
+@Immutable
+data class TocFilterResult(
+    val roots: List<TocEntry> = emptyList(),
+    val children: Map<Long, List<TocEntry>> = emptyMap(),
+    override val matchIds: List<Long> = emptyList(),
+    /** Ranges of the title to highlight, per matching entry. */
+    val highlights: Map<Long, List<IntRange>> = emptyMap(),
+    override val bestMatchId: Long? = null,
+) : PaneSearchResult
 
 @Immutable
 data class NotesState(

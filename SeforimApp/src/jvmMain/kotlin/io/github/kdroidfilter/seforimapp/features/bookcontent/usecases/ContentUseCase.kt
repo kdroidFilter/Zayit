@@ -289,15 +289,29 @@ class ContentUseCase(
      * Met à jour la position de scroll du contenu
      */
     fun updateContentScrollPosition(
+        bookId: Long,
         anchorId: Long,
         anchorIndex: Int,
         scrollIndex: Int,
         scrollOffset: Int,
     ) {
-        // Ignore scroll saves while a (re)load is in progress. During a same-tab book switch the
-        // outgoing book's LazyColumn emits a final scroll update; without this guard it overwrites
-        // the freshly-reset anchor with a line from the previous book, so the new book opens at the
-        // wrong position and stalls ~1.5s on the missing-anchor lookup in the restore effect.
+        // Reject saves coming from a list that no longer shows the selected book. During a
+        // same-tab book switch the outgoing book's LazyColumn emits a final scroll update on
+        // teardown; the event is handled asynchronously, so an isLoading check alone is racy —
+        // if it lands after the load completes it overwrites the freshly-reset anchor with a
+        // line from the previous book, and the new book's restore effect then stalls ~1.5s on
+        // a missing-anchor lookup (with the content hidden). Matching on bookId is
+        // deterministic regardless of when the event is processed.
+        val currentBookId =
+            stateManager.state.value.navigation.selectedBook
+                ?.id
+        if (currentBookId != bookId) {
+            debugln { "Dropping stale scroll save from book $bookId (selected book: $currentBookId)" }
+            return
+        }
+
+        // Also ignore saves while a (re)load is in progress (e.g. a same-book anchor jump
+        // rebuilding the pager): a transient emission would overwrite the target anchor.
         if (stateManager.state.value.isLoading) {
             return
         }

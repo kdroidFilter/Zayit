@@ -119,6 +119,7 @@ sealed interface BookContentEvent {
     data object ToggleDiacritics : BookContentEvent
 
     data class ContentScrolled(
+        val bookId: Long,
         val anchorId: Long,
         val anchorIndex: Int,
         val scrollIndex: Int,

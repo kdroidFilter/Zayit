@@ -114,6 +114,14 @@ or with `-Psiddur.local=true` (includes `../SeforimSiddur` as a composite build)
 `addons/siddur/disabled`, where `installedSiddur` is null and the app hides the siddur. Core code reaches the siddur only
 through `SiddurFeature`/`installedSiddur`, never by importing `addons/siddur` code.
 
+The semantic search (own embedding model, dense KNN fused with lexical search by RRF) follows the same pattern: the
+private `io.github.kdroidfilter:seforim-semantic` package (module `semantic/` of the private `SeforimEmbedding` repo,
+read with the siddur's token by default, or `semantic.token`/`SEFORIM_SEMANTIC_TOKEN`/`gh`, or `-Psemantic.local=true`),
+whose jar carries the int8 model as a resource (never in the DB bundle). `addons/semantic/enabled` holds the
+`HybridSearchEngine`; `disabled` makes `installedSemanticSearch` null and the app uses `LuceneSearchEngine` alone. Core
+code reaches it only through `SemanticSearchFeature`/`installedSemanticSearch`. With the same token, SeforimLibrary's
+generator embeds the corpus into the index's vectors (`:searchindex:embedCorpus`, GPU via CUDA, no Python).
+
 ### Memory-Efficient Tab System
 See `TAB_SYSTEM_README.md` for complete details. Key points:
 - Each tab owns its own `SimpleTabViewModelOwner` (ViewModel lifecycle), which stays alive while the tab exists

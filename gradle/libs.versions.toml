@@ -38,6 +38,7 @@ sqlDelight = "2.3.2"
 adaptiveNavigation = "1.2.0"
 kosherkotlin = "3.0.4"
 seforimSiddur = "0.2.1"
+seforimSemantic = "0.3.0"
 zstdJni = "1.5.7-10"
 metro = "1.4.5"
 lucene = "10.4.0"
@@ -138,6 +139,7 @@ split-pane-desktop = { module = "org.jetbrains.compose.components:components-spl
 sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "sqlDelight" }
 kosherkotlin = { module = "io.github.kdroidfilter:kosherkotlin", version.ref = "kosherkotlin" }
 seforim-siddur = { module = "io.github.kdroidfilter:seforim-siddur", version.ref = "seforimSiddur" }
+seforim-semantic = { module = "io.github.kdroidfilter:seforim-semantic", version.ref = "seforimSemantic" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }

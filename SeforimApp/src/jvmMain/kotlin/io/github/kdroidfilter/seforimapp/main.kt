@@ -123,6 +123,10 @@ private fun initializeSentry() {
         options.environment = sentryEnvironment
         options.release = NucleusApp.version
         options.isDebug = isDevEnv
+        // Otherwise the UncaughtExceptionHandlerIntegration captures the crash and swallows it:
+        // in the GraalVM native image the envelope upload also fails (no CA trust store), so the
+        // real stack trace is lost entirely. Printing it keeps it visible on the console.
+        options.setPrintUncaughtStackTrace(true)
     }
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }
 }

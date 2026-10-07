@@ -13,6 +13,7 @@ jobs:
     # access of its own repository, so a classic token with read:packages (GITHUB_TOKEN cannot reach it)
     env:
       SEFORIM_SIDDUR_TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
     strategy:
       fail-fast: false
       matrix:

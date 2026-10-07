@@ -318,6 +318,10 @@ tasks.withType<ComposeHotRun>().configureEach {
 
 buildConfig {
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
+    packageName("io.github.kdroidfilter.seforimapp")
+    // Official builds get the DSN from the SENTRY_DSN CI secret; without it crash reporting is disabled
+    val sentryDsn = providers.environmentVariable("SENTRY_DSN").orElse(providers.gradleProperty("sentry.dsn")).orElse("")
+    buildConfigField("SENTRY_DSN", sentryDsn)
 }
 
 // Jewel's icons-api pulls IntelliJ's coroutines fork, which duplicates kotlinx-coroutines-core-jvm classes

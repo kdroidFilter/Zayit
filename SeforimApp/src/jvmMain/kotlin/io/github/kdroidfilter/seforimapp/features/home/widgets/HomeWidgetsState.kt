@@ -17,7 +17,6 @@ import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
-import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +50,7 @@ class HomeWidgetsState internal constructor(
             latitude = user.userPlace.lat,
             longitude = user.userPlace.lng,
             elevationMeters = user.userPlace.elevation,
-            timeZone = timeZoneForLocation(user.userPlace.lat, user.userPlace.lng),
+            timeZone = user.userPlace.timeZone,
         )
 
     private class PickedLocation(

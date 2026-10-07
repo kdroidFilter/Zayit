@@ -85,6 +85,7 @@ class BookContentEventTest {
     fun `ContentScrolled stores all scroll parameters`() {
         val event =
             BookContentEvent.ContentScrolled(
+                bookId = 1L,
                 anchorId = 100L,
                 anchorIndex = 5,
                 scrollIndex = 10,

@@ -6,6 +6,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsSt
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.CoroutineScope
 
@@ -22,6 +23,7 @@ class BookContentUseCaseFactory(
     private val repository: SeforimRepository,
     private val categoryDisplaySettingsStore: CategoryDisplaySettingsStore,
     private val catalogCache: CatalogCache,
+    private val lookup: LuceneLookupSearchService,
 ) {
     /**
      * Creates a [TocUseCase] for managing table of contents.
@@ -42,7 +44,7 @@ class BookContentUseCaseFactory(
      * Creates a [NavigationUseCase] for managing category/book tree navigation.
      */
     fun createNavigationUseCase(stateManager: BookContentStateManager): NavigationUseCase =
-        NavigationUseCase(repository, stateManager, catalogCache)
+        NavigationUseCase(repository, stateManager, catalogCache, lookup)
 
     /**
      * Creates an [AltTocUseCase] for managing alternative TOC structures.

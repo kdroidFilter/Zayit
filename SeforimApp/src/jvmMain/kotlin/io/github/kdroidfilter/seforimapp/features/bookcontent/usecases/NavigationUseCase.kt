@@ -5,15 +5,21 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+
+private const val BOOK_SEARCH_LIMIT = 120
 
 /**
  * Use case to manage navigation in the categories and books tree
@@ -22,6 +28,7 @@ class NavigationUseCase(
     private val repository: SeforimRepository,
     private val stateManager: BookContentStateManager,
     private val catalogCache: CatalogCache,
+    private val lookup: LuceneLookupSearchService,
 ) {
     /**
      * Load the root categories and the full tree from the precomputed catalog.
@@ -88,6 +95,46 @@ class NavigationUseCase(
         stateManager.updateNavigation {
             copy(searchText = text)
         }
+    }
+
+    /** Shows or hides the search bar. */
+    fun toggleSearch() {
+        stateManager.updateNavigation(save = false) { copy(search = search.toggled()) }
+    }
+
+    fun closeSearch() {
+        stateManager.updateNavigation(save = false) { copy(search = null) }
+    }
+
+    /** Narrows the tree to the books suggested for [query], as the home search bar does. */
+    suspend fun search(query: String) =
+        runPaneSearch(
+            query = query,
+            update = { transform -> stateManager.updateNavigation(save = false) { copy(search = search?.let(transform)) } },
+        ) {
+            if (query.trim().length < MIN_BOOK_QUERY_LENGTH) return@runPaneSearch null
+            val hits =
+                withContext(Dispatchers.IO) {
+                    runSuspendCatching { lookup.suggestBooks(query, BOOK_SEARCH_LIMIT) }.getOrElse { emptyList() }
+                }
+            val navigation = stateManager.state.value.navigation
+            withContext(Dispatchers.Default) {
+                buildBookFilter(
+                    hitIds = hits.map { it.id },
+                    rootCategories = navigation.rootCategories,
+                    categoryChildren = navigation.categoryChildren,
+                    books = navigation.booksInCategory,
+                )
+            }
+        }
+
+    /** Hides the search bar and returns the catalog book [bookId], to open. */
+    fun selectSearchBook(bookId: Long): Book? {
+        // Already closed: a repeated Enter or click must not open twice
+        if (stateManager.state.value.navigation.search == null) return null
+        stateManager.updateNavigation(save = false) { copy(search = null) }
+        return stateManager.state.value.navigation.booksInCategory
+            .firstOrNull { it.id == bookId }
     }
 
     /**

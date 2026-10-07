@@ -8,25 +8,22 @@ import androidx.compose.animation.core.VectorConverter
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridScope
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -88,27 +85,28 @@ private const val REORDER_TIMEOUT_MS = 200L
 fun HomeWidgetsGrid(
     state: HomeWidgetsState,
     widgets: List<WidgetPlacement>,
-    gridState: LazyGridState,
+    scrollState: ScrollState,
     modifier: Modifier = Modifier,
-    header: LazyGridScope.() -> Unit = {},
+    header: @Composable ColumnScope.() -> Unit = {},
 ) {
-    AutoScroll(state, gridState)
+    AutoScroll(state, scrollState)
     BoxWithConstraints(modifier) {
         val side = ((maxWidth - MAX_GRID_WIDTH) / 2).coerceAtLeast(0.dp)
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(1),
-            state = gridState,
-            modifier = Modifier.onGloballyPositioned { state.drag.viewport = it.boundsInRoot() },
-            // Top: room for the "−" badges, which stick out of the first row
-            contentPadding = PaddingValues(start = side, top = 8.dp, end = side, bottom = 16.dp),
+        Column(
+            modifier =
+                Modifier
+                    .onGloballyPositioned { state.drag.viewport = it.boundsInRoot() }
+                    .verticalScroll(scrollState)
+                    // Top: room for the "−" badges, which stick out of the first row
+                    .padding(start = side, top = 8.dp, end = side, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(GRID_GAP),
         ) {
             header()
             // The search sections were 16 dp apart and 32 dp above the widgets: keep that rhythm
-            fullWidthItem { Spacer(Modifier.height(4.dp)) }
-            fullWidthItem { WidgetCells(state, widgets) }
+            Spacer(Modifier.height(4.dp))
+            WidgetCells(state, widgets)
             // Lets the last widgets scroll above the gallery panel
-            if (state.editingWidgets) fullWidthItem { Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT)) }
+            if (state.editingWidgets) Spacer(Modifier.height(WIDGET_GALLERY_HEIGHT))
         }
     }
 }
@@ -124,7 +122,7 @@ private val AUTO_SCROLL_SPEED = 14.dp
 @Composable
 private fun AutoScroll(
     state: HomeWidgetsState,
-    gridState: LazyGridState,
+    scrollState: ScrollState,
 ) {
     val drag = state.drag
     val density = LocalDensity.current
@@ -151,19 +149,20 @@ private fun AutoScroll(
                 val direction = towards()
                 if (direction == 0f) break
                 var scrolled = 0f
-                withFrameNanos { scrolled = gridState.dispatchRawDelta(direction * speed) }
+                withFrameNanos { scrolled = scrollState.dispatchRawDelta(direction * speed) }
                 if (scrolled == 0f) break
             }
         }
     }
 }
 
-/** An item across the whole grid, as the Home's search sections are ([gapAfter] adds to the grid's own gap). */
-fun LazyGridScope.fullWidthItem(
+/** A section across the whole page, as the Home's search sections are ([gapAfter] adds to the page's own gap). */
+@Composable
+fun FullWidthSection(
     gapAfter: Dp = 0.dp,
     content: @Composable () -> Unit,
-) = item(span = { GridItemSpan(maxLineSpan) }) {
-    Box(Modifier.padding(bottom = gapAfter)) { content() }
+) {
+    Box(Modifier.fillMaxWidth().padding(bottom = gapAfter)) { content() }
 }
 
 @Composable

@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -19,7 +20,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
@@ -68,6 +68,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.components.CatalogRow
+import io.github.kdroidfilter.seforimapp.features.home.widgets.FullWidthSection
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocation
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeUserLocationViewModel
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsGrid
@@ -75,7 +76,6 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsLayout
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsOverlay
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
-import io.github.kdroidfilter.seforimapp.features.home.widgets.fullWidthItem
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
@@ -275,7 +275,7 @@ fun HomeView(
  *
  * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
  * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
- * through the Metro DI graph and kept outside of the LazyColumn to avoid losing focus or
+ * through the Metro DI graph and kept outside of the page's sections to avoid losing focus or
  * field contents during recomposition.
  */
 @OptIn(ExperimentalJewelApi::class, ExperimentalLayoutApi::class)
@@ -306,22 +306,23 @@ private fun HomeBody(
     val tabs = LocalOpenWindow.current.tabsViewModel
     SideEffect { widgetsState.openTab = tabs::openTab }
     if (E2e.enabled && LocalTabSelected.current) SideEffect { E2e.homeWidgets = widgetsState }
-    // Composed here, outside the LazyColumn, so scrolling a card away doesn't close its window
+    // Composed here, outside the page, so a card's window doesn't depend on the page's composition
     val widgetsLayoutRaw by appSettings.homeWidgetsLayoutFlow.collectAsState()
     val widgetsLayout = remember(widgetsLayoutRaw) { decodeLayout(widgetsLayoutRaw) }
     widgetsLayout.forEach { it.widget.Detached(widgetsState) }
 
-    val listState = rememberLazyGridState()
+    val scrollState = rememberScrollState()
 
     Box(Modifier.fillMaxSize()) {
+        // The page owns its verticalScroll (HomeWidgetsGrid): this container only draws the scrollbar
         VerticallyScrollableContainer(
-            scrollState = listState,
+            scrollState = scrollState as ScrollableState,
         ) {
             Box(
                 modifier = Modifier.fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                // Keep state outside LazyColumn so it persists across item recompositions
+                // Keep state outside the sections so it persists across their recompositions
                 val scope = rememberCoroutineScope()
 
                 fun focusAfterDelay(
@@ -400,12 +401,12 @@ private fun HomeBody(
                     HomeWidgetsGrid(
                         state = widgetsState,
                         widgets = widgetsLayout,
-                        gridState = listState,
+                        scrollState = scrollState,
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         // Scrolls with the page instead of floating over the widgets
-                        fullWidthItem(gapAfter = 4.dp) { CatalogRow(onEvent = onEvent) }
-                        fullWidthItem(gapAfter = 4.dp) {
+                        FullWidthSection(gapAfter = 4.dp) { CatalogRow(onEvent = onEvent) }
+                        FullWidthSection(gapAfter = 4.dp) {
                             BoxWithConstraints(
                                 Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.Center,
@@ -415,7 +416,7 @@ private fun HomeBody(
                                 LogoImage(modifier = Modifier.width(logoWidth))
                             }
                         }
-                        fullWidthItem(gapAfter = 4.dp) {
+                        FullWidthSection(gapAfter = 4.dp) {
                             Box(
                                 Modifier.fillMaxWidth(),
                                 contentAlignment = Alignment.Center,
@@ -566,7 +567,7 @@ private fun HomeBody(
                                 }
                             }
                         }
-                        fullWidthItem(gapAfter = 4.dp) {
+                        FullWidthSection(gapAfter = 4.dp) {
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 Box(homeContentModifier) {
                                     if (searchUi.selectedFilter == SearchFilter.REFERENCE) {

@@ -22,12 +22,14 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -536,7 +538,11 @@ fun SkyWidgetView(
     }
     BoxWithConstraints(
         modifier =
-            modifier.clipToBounds(),
+            modifier
+                .clipToBounds()
+                // The shaders draw into their own layer, under the same clip wherever the card is: cut by the edge of a
+                // scrolling page, they would otherwise need new GPU programs, compiled there and then (a ~100 ms frame)
+                .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen },
     ) {
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.toPx() }.toInt().coerceAtLeast(1)

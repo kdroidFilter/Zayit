@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toAwtImage
@@ -95,7 +95,7 @@ class HomeWidgetsScreenshotTest {
                             .width(width.dp)
                             .height(if (editing) 760.dp else 900.dp),
                     ) {
-                        HomeWidgetsGrid(state = state, widgets = widgets, gridState = rememberLazyGridState())
+                        HomeWidgetsGrid(state = state, widgets = widgets, scrollState = rememberScrollState())
                         HomeWidgetsOverlay(state, widgets)
                     }
                 }

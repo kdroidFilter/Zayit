@@ -4,11 +4,12 @@
 
 -dontwarn kotlinx.coroutines.debug.*
 
--keep class kotlin.** { *; }
+# ProGuard 7.10 return-type specialization emits invalid bytecode (VerifyError in
+# androidx.compose.ui.text.ParagraphKt: narrows the return to SkiaParagraph but keeps a Paragraph checkcast)
+-optimizations !method/specialization/returntype
+
 -keep class kotlinx.** { *; }
 -keep class kotlinx.coroutines.** { *; }
--keep class org.jetbrains.skia.** { *; }
--keep class org.jetbrains.skiko.** { *; }
 -keep class com.sun.jna.** { *; }
 -keep class * implements com.sun.jna.** { *; }
 -keepclassmembers class * extends com.sun.jna.* { public *; }
@@ -20,39 +21,6 @@
 -keep class com.sun.jna.win32.** { *; }
 -dontwarn com.sun.jna.platform.**
 
-
--assumenosideeffects public class androidx.compose.runtime.ComposerKt {
-    void sourceInformation(androidx.compose.runtime.Composer,java.lang.String);
-    void sourceInformationMarkerStart(androidx.compose.runtime.Composer,int,java.lang.String);
-    void sourceInformationMarkerEnd(androidx.compose.runtime.Composer);
-}
-
-# Keep `Companion` object fields of serializable classes.
-# This avoids serializer lookup through `getDeclaredClasses` as done for named companion objects.
--if @kotlinx.serialization.Serializable class **
--keepclassmembers class <1> {
-    static <1>$Companion Companion;
-}
-
-# Keep `serializer()` on companion objects (both default and named) of serializable classes.
--if @kotlinx.serialization.Serializable class ** {
-    static **$* *;
-}
--keepclassmembers class <2>$<3> {
-    kotlinx.serialization.KSerializer serializer(...);
-}
-
-# Keep `INSTANCE.serializer()` of serializable objects.
--if @kotlinx.serialization.Serializable class ** {
-    public static ** INSTANCE;
-}
--keepclassmembers class <1> {
-    public static <1> INSTANCE;
-    kotlinx.serialization.KSerializer serializer(...);
-}
-
-# @Serializable and @Polymorphic are used at runtime for polymorphic serialization.
--keepattributes RuntimeVisibleAnnotations,AnnotationDefault
 
 -keepattributes *Annotation*, InnerClasses
 -dontnote kotlinx.serialization.AnnotationsKt # core serialization annotations
@@ -109,12 +77,6 @@
 
 -keep class sun.misc.Unsafe { *; }
 -dontnote sun.misc.Unsafe
-
--keep class com.jetbrains.JBR* { *; }
--dontnote com.jetbrains.JBR*
--keep class com.jetbrains.** { *; }
--dontwarn com.jetbrains.**
--dontnote com.jetbrains.**
 
 -keep class com.sun.jna** { *; }
 -dontnote com.sun.jna**
@@ -222,81 +184,13 @@
 -keep enum io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community { *; }
 
 
-# =============================================================================
-# Nucleus JNI keep rules (must be added manually because Zayit overrides the
-# default ProGuard config via configurationFiles.from(...), which prevents the
-# Nucleus plugin from auto-injecting its own rules)
-# =============================================================================
+# Filament JNI: filament-c resolves classes, methods and fields by name in JNI_OnLoad
+# (e.g. FilaCallback.invoke(JJ)V), so nothing in the bindings may be shrunk or optimized away
+-keep class io.github.erkko68.filament.** { *; }
 
-# Nucleus decorated-window JNI (macOS)
--keep class dev.nucleusframework.window.utils.macos.NativeMacBridge {
-    native <methods>;
-}
--keep class dev.nucleusframework.window.** { *; }
-
-# Nucleus darkmode-detector JNI (macOS)
-# NativeDarkModeBridge is looked up by name from native code (FindClass + GetStaticMethodID)
--keep class dev.nucleusframework.darkmodedetector.mac.NativeDarkModeBridge {
-    native <methods>;
-    static void onThemeChanged(boolean);
-}
-
-# Nucleus darkmode-detector JNI (Linux)
-# NativeLinuxBridge is looked up by name from native code (FindClass + GetStaticMethodID)
--keep class dev.nucleusframework.darkmodedetector.linux.NativeLinuxBridge {
-    native <methods>;
-    static void onThemeChanged(boolean);
-}
-
-# Nucleus darkmode-detector JNI (Windows)
--keep class dev.nucleusframework.darkmodedetector.windows.NativeWindowsBridge {
-    native <methods>;
-}
--keep class dev.nucleusframework.darkmodedetector.** { *; }
-
-# Nucleus native-ssl JNI (macOS)
--keep class dev.nucleusframework.nativessl.mac.NativeSslBridge {
-    native <methods>;
-}
-
-# Nucleus native-ssl JNI (Windows)
--keep class dev.nucleusframework.nativessl.windows.WindowsSslBridge {
-    native <methods>;
-}
-
-# Nucleus launcher-windows JNI (jump list)
--keep class dev.nucleusframework.launcher.windows.NativeWindowsJumpListBridge {
-    native <methods>;
-}
+# Nucleus launchers: not covered by the plugin's default rules (launcher-linux goes through D-Bus reflection)
 -keep class dev.nucleusframework.launcher.windows.** { *; }
-
-# Nucleus launcher-linux D-Bus (quicklist)
 -keep class dev.nucleusframework.launcher.linux.** { *; }
-
--keep class dev.nucleusframework.energymanager.** { *; }
-
-# macOS
--keep class dev.nucleusframework.systemcolor.mac.NativeMacSystemColorBridge {
-    native <methods>;
-    static void onAccentColorChanged(float, float, float);
-    static void onContrastChanged(boolean);
-}
-
-# Windows
--keep class dev.nucleusframework.systemcolor.windows.NativeWindowsSystemColorBridge {
-    native <methods>;
-    static void onAccentColorChanged(int, int, int);
-    static void onHighContrastChanged(boolean);
-}
-
-# Linux
--keep class dev.nucleusframework.systemcolor.linux.NativeLinuxSystemColorBridge {
-    native <methods>;
-    static void onAccentColorChanged(float, float, float);
-    static void onHighContrastChanged(boolean);
-}
-
--keep class dev.nucleusframework.systemcolor.** { *; }
 
 # --- Fix: panel resize cursor (PointerIcon backed by AWT Cursor) not applied in release ---
 # ComposeSceneMediator.setPointerIcon checks `pointerIcon instanceof AwtCursor` and then

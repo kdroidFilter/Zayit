@@ -111,6 +111,10 @@ private fun computeStartupState(appGraph: AppGraph): StartupState =
     }
 
 private fun initializeSentry() {
+    if (BuildConfig.SENTRY_DSN.isBlank()) {
+        infoln { "Sentry DSN not configured; crash reporting disabled." }
+        return
+    }
     val sentryEnvironment =
         System
             .getenv("SENTRY_ENVIRONMENT")
@@ -119,7 +123,7 @@ private fun initializeSentry() {
             ?: "development"
 
     Sentry.init { options ->
-        options.dsn = "https://09cbadaf522c567b431dd4384c8f080b@o4510855773093888.ingest.de.sentry.io/4510857007726672"
+        options.dsn = BuildConfig.SENTRY_DSN
         options.environment = sentryEnvironment
         options.release = NucleusApp.version
         options.isDebug = isDevEnv

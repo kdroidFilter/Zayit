@@ -156,6 +156,10 @@
     <string name="books">ספרים</string>
     <string name="book_content">תוכן הספר</string>
     <string name="table_of_contents">תוכן עניינים</string>
+    <string name="toc_search">חיפוש כותרת</string>
+    <string name="book_search">חיפוש ספר</string>
+    <string name="book_search_no_results">לא נמצאו ספרים</string>
+    <string name="toc_search_no_results">לא נמצאו כותרות</string>
     <string name="personal">אישי</string>
     <string name="my_bookmarks">הסימניות שלי</string>
     <string name="bookmarks">סימניות</string>

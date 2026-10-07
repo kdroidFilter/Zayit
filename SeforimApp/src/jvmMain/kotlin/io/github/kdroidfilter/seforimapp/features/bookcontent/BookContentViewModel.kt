@@ -437,6 +437,18 @@ class BookContentViewModel(
                 is BookContentEvent.BookTreeScrolled ->
                     navigationUseCase.updateBookTreeScrollPosition(event.index, event.offset)
 
+                BookContentEvent.ToggleBookTreeSearch ->
+                    navigationUseCase.toggleSearch()
+
+                BookContentEvent.CloseBookTreeSearch ->
+                    navigationUseCase.closeSearch()
+
+                is BookContentEvent.BookTreeSearchQueryChanged ->
+                    navigationUseCase.search(event.query)
+
+                is BookContentEvent.BookTreeSearchBookSelected ->
+                    navigationUseCase.selectSearchBook(event.bookId)?.let { loadBook(it) }
+
                 // TOC
                 is BookContentEvent.TocEntryExpanded ->
                     tocUseCase.toggleTocEntry(event.entry)
@@ -446,6 +458,18 @@ class BookContentViewModel(
 
                 is BookContentEvent.TocScrolled ->
                     tocUseCase.updateTocScrollPosition(event.index, event.offset)
+
+                BookContentEvent.ToggleTocSearch ->
+                    tocUseCase.toggleSearch()
+
+                BookContentEvent.CloseTocSearch ->
+                    tocUseCase.closeSearch()
+
+                is BookContentEvent.TocSearchQueryChanged ->
+                    tocUseCase.search(event.query)
+
+                is BookContentEvent.TocSearchEntrySelected ->
+                    tocUseCase.selectSearchEntry(event.tocId)?.let { loadAndSelectLine(it) }
 
                 BookContentEvent.ToggleNotes ->
                     notesUseCase.toggleNotes()

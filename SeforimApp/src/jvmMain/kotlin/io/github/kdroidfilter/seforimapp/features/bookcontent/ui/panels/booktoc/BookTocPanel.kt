@@ -10,6 +10,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Horizontal
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneSearch
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneSearchButton
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -21,6 +23,8 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.no_alt_toc_available
 import seforimapp.seforimapp.generated.resources.select_book_for_toc
 import seforimapp.seforimapp.generated.resources.table_of_contents
+import seforimapp.seforimapp.generated.resources.toc_search
+import seforimapp.seforimapp.generated.resources.toc_search_no_results
 
 @Composable
 fun BookTocPanel(
@@ -43,6 +47,14 @@ fun BookTocPanel(
             label = stringResource(Res.string.table_of_contents),
             interactionSource = paneHoverSource,
             onHide = { onEvent(BookContentEvent.ToggleToc) },
+            actions = {
+                if (uiState.navigation.selectedBook != null) {
+                    PaneSearchButton(
+                        onClick = { onEvent(BookContentEvent.ToggleTocSearch) },
+                        contentDescription = stringResource(Res.string.toc_search),
+                    )
+                }
+            },
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
             when {
@@ -56,12 +68,39 @@ fun BookTocPanel(
                 }
                 else -> {
                     val hasAlt = uiState.navigation.selectedBook.hasAltStructures
+                    val search = uiState.toc.search
                     Column(modifier = Modifier.fillMaxHeight()) {
-                        BookTocView(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            modifier = if (hasAlt) Modifier.weight(1f) else Modifier.fillMaxHeight(),
-                        )
+                        val tocModifier = if (hasAlt) Modifier.weight(1f) else Modifier.fillMaxHeight()
+                        if (search == null) {
+                            BookTocView(uiState = uiState, onEvent = onEvent, modifier = tocModifier)
+                        } else {
+                            PaneSearch(
+                                search = search,
+                                placeholder = stringResource(Res.string.toc_search),
+                                noResults = stringResource(Res.string.toc_search_no_results),
+                                onQueryChange = { onEvent(BookContentEvent.TocSearchQueryChanged(it)) },
+                                onSelect = { onEvent(BookContentEvent.TocSearchEntrySelected(it)) },
+                                onClose = { onEvent(BookContentEvent.CloseTocSearch) },
+                                modifier = tocModifier,
+                                regular = { BookTocView(uiState = uiState, onEvent = onEvent, modifier = Modifier.fillMaxHeight()) },
+                            ) { result, activeId ->
+                                val select = { entry: TocEntry -> onEvent(BookContentEvent.TocSearchEntrySelected(entry.id)) }
+                                BookTocView(
+                                    tocEntries = result.roots.toImmutableList(),
+                                    expandedEntries = result.children.keys,
+                                    tocChildren = result.children,
+                                    scrollIndex = 0,
+                                    scrollOffset = 0,
+                                    onEntryClick = select,
+                                    // Every row of the filtered tree is a destination: parents open too
+                                    onEntryExpand = select,
+                                    onScroll = { _, _ -> },
+                                    selectedTocEntryId = activeId,
+                                    modifier = Modifier.fillMaxHeight(),
+                                    highlights = result.highlights,
+                                )
+                            }
+                        }
                         if (hasAlt) {
                             Box(modifier = Modifier.padding(vertical = 8.dp)) {
                                 HorizontalDivider()

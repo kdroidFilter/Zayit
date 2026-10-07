@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalContextMenuRepresentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -24,11 +23,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.LocalTextContextMenu
 import androidx.compose.foundation.text.input.clearText
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -58,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.PlainTextMenus
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -85,8 +83,6 @@ import seforimapp.seforimapp.generated.resources.notes_pane
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import org.jetbrains.jewel.ui.component.ContextMenuRepresentation as JewelContextMenuRepresentation
-import org.jetbrains.jewel.ui.component.TextContextMenu as JewelTextContextMenu
 
 /**
  * A pending (not-yet-persisted) note anchored to a resolved character range. Created from the
@@ -445,13 +441,7 @@ private fun NoteEditor(
             .collect { currentOnPersist(it) }
     }
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Restore Jewel's default text context menu (copy/cut/paste, with icons and shortcuts):
-        // inside the editor the book-content menu (highlight, add-note…) is irrelevant. Both the
-        // items and the representation are reset, since the screen overrides both.
-        CompositionLocalProvider(
-            LocalTextContextMenu provides JewelTextContextMenu,
-            LocalContextMenuRepresentation provides JewelContextMenuRepresentation,
-        ) {
+        PlainTextMenus {
             TextArea(
                 state = state,
                 placeholder = { Text(stringResource(Res.string.note_body_placeholder)) },

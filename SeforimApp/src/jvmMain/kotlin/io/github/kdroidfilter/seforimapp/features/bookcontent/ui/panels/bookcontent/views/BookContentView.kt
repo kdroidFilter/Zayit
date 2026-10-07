@@ -123,7 +123,7 @@ fun BookContentView(
     anchorIndex: Int = 0,
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
-    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    onScroll: (Long, Long, Int, Int, Int) -> Unit = { _, _, _, _, _ -> },
     altHeadingsByLineId: StableAltHeadings = StableAltHeadings.Empty,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
@@ -469,7 +469,11 @@ fun BookContentView(
         val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
         val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
 
-        onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+        // Tag the save with the book this list belongs to. `bookId` is captured from the
+        // composition that created this list: the teardown save of an outgoing book (fired
+        // while a new book is loading) carries the OLD id and is rejected by the ViewModel,
+        // so it can never overwrite the new book's freshly-reset anchor.
+        onScrollUpdated(bookId, stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
     }
 
     DisposableEffect(listState, lazyPagingItems) {

@@ -559,6 +559,7 @@ class BookContentViewModel(
 
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
+                        event.bookId,
                         event.anchorId,
                         event.anchorIndex,
                         event.scrollIndex,
@@ -774,12 +775,11 @@ class BookContentViewModel(
         val resolvedBook = repository.getBookCore(book.id) ?: book
         val previousBook = stateManager.state.value.navigation.selectedBook
 
-        // On a book change, flip to loading BEFORE selecting the new book. selectBook() triggers a
-        // recomposition that tears down the previous book's LazyColumn, which emits one last scroll
-        // update; with isLoading already true, updateContentScrollPosition() drops that stale write
-        // (otherwise it would overwrite the reset anchor with a line from the previous book and stall
-        // the restore on a ~1.5s missing-anchor lookup). It also shows the loader, which remounts the
-        // content fresh once the new pager is ready.
+        // On a book change, flip to loading BEFORE selecting the new book so the loader shows
+        // and the content remounts fresh once the new pager is ready. The teardown of the
+        // previous book's LazyColumn emits one last scroll update; that stale write is rejected
+        // in updateContentScrollPosition() by its bookId tag (the isLoading flag alone is racy:
+        // the event is handled asynchronously and can land after loading completes).
         if (previousBook?.id != resolvedBook.id) {
             stateManager.setLoading(true)
         }
@@ -835,10 +835,23 @@ class BookContentViewModel(
                 runSuspendCatching { commentariesUseCase.applyDefaultCommentatorsForBook(book.id) }
 
                 val state = stateManager.state.value
-                // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
-                val shouldUseAnchor = state.content.anchorId != -1L
+                // Always prefer an explicit anchor when present (e.g., opening from a commentary link) —
+                // but only if it actually belongs to this book. A stale anchor leaked from a previously
+                // displayed book (and possibly persisted with the tab) would otherwise keep the content
+                // hidden while the restore effect waits 1.5s for a line that can never appear here.
+                val persistedAnchorId = state.content.anchorId
+                val shouldUseAnchor =
+                    persistedAnchorId != -1L &&
+                        runSuspendCatching { repository.getLine(persistedAnchorId)?.bookId }.getOrNull() == book.id
+                val anchorWasStale = persistedAnchorId != -1L && !shouldUseAnchor
+                if (anchorWasStale) {
+                    debugln { "Dropping stale content anchor $persistedAnchorId (not in book ${book.id})" }
+                    stateManager.updateContent {
+                        copy(anchorId = -1L, anchorIndex = 0, scrollIndex = 0, scrollOffset = 0)
+                    }
+                }
                 val savedScrollAnchorId =
-                    if (!shouldUseAnchor && state.content.scrollIndex > 0) {
+                    if (!shouldUseAnchor && !anchorWasStale && state.content.scrollIndex > 0) {
                         runSuspendCatching { repository.getLineByIndex(book.id, state.content.scrollIndex)?.id }
                             .getOrNull()
                     } else {

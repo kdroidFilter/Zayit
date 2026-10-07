@@ -204,9 +204,10 @@ private fun BookContentPanelContent(
                     anchorIndex = uiState.content.anchorIndex,
                     topAnchorLineId = uiState.content.topAnchorLineId,
                     topAnchorTimestamp = uiState.content.topAnchorRequestTimestamp,
-                    onScroll = { anchorId, anchorIndex, scrollIndex, scrollOffset ->
+                    onScroll = { bookId, anchorId, anchorIndex, scrollIndex, scrollOffset ->
                         onEvent(
                             BookContentEvent.ContentScrolled(
+                                bookId = bookId,
                                 anchorId = anchorId,
                                 anchorIndex = anchorIndex,
                                 scrollIndex = scrollIndex,

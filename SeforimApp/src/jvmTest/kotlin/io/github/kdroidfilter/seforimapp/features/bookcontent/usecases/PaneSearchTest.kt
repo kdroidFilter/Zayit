@@ -8,6 +8,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class PaneSearchTest {
     private data class Result(
@@ -17,15 +18,28 @@ class PaneSearchTest {
     }
 
     private var state: PaneSearchState<Result>? = PaneSearchState()
-    private val update: ((PaneSearchState<Result>) -> PaneSearchState<Result>) -> Unit = { t -> state = state?.let(t) }
+    private val runner = PaneSearchRunner<Result> { t -> state = state?.let(t) }
+
+    @Test
+    fun `a new search cancels the one still running`() =
+        runTest {
+            val slow = CompletableDeferred<Result>()
+            val first = launch { runner.run("ab") { slow.await() } }
+            testScheduler.runCurrent()
+            runner.run("abc") { Result(listOf(2)) }
+            assertTrue(first.isCancelled)
+            assertEquals("abc", state?.resultQuery)
+            assertEquals(listOf(2L), state?.result?.matchIds)
+        }
 
     @Test
     fun `a superseded query never overwrites the newer one`() =
         runTest {
+            // The older search outlives the newer one, e.g. running in another scope
             val slow = CompletableDeferred<Result>()
-            val first = launch { runPaneSearch("ab", update) { slow.await() } }
+            val first = launch { PaneSearchRunner<Result> { t -> state = state?.let(t) }.run("ab") { slow.await() } }
             testScheduler.runCurrent()
-            runPaneSearch("abc", update) { Result(listOf(2)) }
+            runner.run("abc") { Result(listOf(2)) }
             slow.complete(Result(listOf(1)))
             first.join()
             assertEquals("abc", state?.query)
@@ -36,9 +50,9 @@ class PaneSearchTest {
     @Test
     fun `the previous result stays shown while the next one computes`() =
         runTest {
-            runPaneSearch("ab", update) { Result(listOf(1)) }
+            runner.run("ab") { Result(listOf(1)) }
             val slow = CompletableDeferred<Result>()
-            val next = launch { runPaneSearch("abc", update) { slow.await() } }
+            val next = launch { runner.run("abc") { slow.await() } }
             testScheduler.runCurrent()
             assertEquals("abc", state?.query)
             assertEquals("ab", state?.resultQuery)
@@ -51,7 +65,7 @@ class PaneSearchTest {
     fun `closing the bar while searching keeps it closed`() =
         runTest {
             val slow = CompletableDeferred<Result>()
-            val search = launch { runPaneSearch("ab", update) { slow.await() } }
+            val search = launch { runner.run("ab") { slow.await() } }
             testScheduler.runCurrent()
             state = null
             slow.complete(Result(listOf(1)))
@@ -62,8 +76,8 @@ class PaneSearchTest {
     @Test
     fun `a blank query clears the result`() =
         runTest {
-            runPaneSearch("ab", update) { Result(listOf(1)) }
-            runPaneSearch(" ", update) { error("must not compute") }
+            runner.run("ab") { Result(listOf(1)) }
+            runner.run(" ") { error("must not compute") }
             assertNull(state?.result)
             assertEquals(" ", state?.resultQuery)
         }

@@ -4,6 +4,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookFilterResult
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
@@ -30,6 +31,11 @@ class NavigationUseCase(
     private val catalogCache: CatalogCache,
     private val lookup: LuceneLookupSearchService,
 ) {
+    private val searchRunner =
+        PaneSearchRunner<BookFilterResult> { transform ->
+            stateManager.updateNavigation(save = false) { copy(search = search?.let(transform)) }
+        }
+
     /**
      * Load the root categories and the full tree from the precomputed catalog.
      * The catalog MUST be available, otherwise nothing is loaded.
@@ -108,11 +114,8 @@ class NavigationUseCase(
 
     /** Narrows the tree to the books suggested for [query], as the home search bar does. */
     suspend fun search(query: String) =
-        runPaneSearch(
-            query = query,
-            update = { transform -> stateManager.updateNavigation(save = false) { copy(search = search?.let(transform)) } },
-        ) {
-            if (query.trim().length < MIN_BOOK_QUERY_LENGTH) return@runPaneSearch null
+        searchRunner.run(query) {
+            if (query.trim().length < MIN_BOOK_QUERY_LENGTH) return@run null
             val hits =
                 withContext(Dispatchers.IO) {
                     runSuspendCatching { lookup.suggestBooks(query, BOOK_SEARCH_LIMIT) }.getOrElse { emptyList() }

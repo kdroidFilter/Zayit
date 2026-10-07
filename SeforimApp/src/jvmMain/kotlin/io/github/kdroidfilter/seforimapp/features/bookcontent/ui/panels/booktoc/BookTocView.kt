@@ -21,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.SearchHighlightC
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.revealItem
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -114,7 +115,8 @@ fun BookTocView(
             }
             val idx = visibleEntries.indexOfFirst { it.entry.id == selId }
             if (idx >= 0) {
-                listState.scrollToItem(idx, 0)
+                // Moving through search results: scroll only when the match is out of view
+                if (highlights != null) listState.revealItem(idx) else listState.scrollToItem(idx, 0)
                 didAutoCenter = true
             }
         }

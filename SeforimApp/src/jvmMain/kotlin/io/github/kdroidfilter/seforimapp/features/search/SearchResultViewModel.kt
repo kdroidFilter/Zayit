@@ -58,6 +58,9 @@ private const val LAZY_PAGE_SIZE = 25
 @Stable
 data class SearchUiState(
     val query: String = "",
+    // The query the current results were actually searched with (frozen at search time). Used for
+    // the embedding highlight, so typing in the field WITHOUT pressing Enter never re-highlights.
+    val executedQuery: String = "",
     val globalExtended: Boolean = false,
     val baseBooksHadNoResults: Boolean = false,
     val isLoading: Boolean = false,
@@ -669,6 +672,7 @@ class SearchResultViewModel(
             _uiState.value =
                 _uiState.value.copy(
                     results = cached.results,
+                    executedQuery = initialQuery,
                     isLoading = false,
                     hasMore = cached.hasMore,
                     progressCurrent = cached.results.size,
@@ -1024,6 +1028,7 @@ class SearchResultViewModel(
                     _uiState.value =
                         _uiState.value.copy(
                             results = results,
+                            executedQuery = q,
                             hasMore = !firstPage.isLastPage,
                             progressCurrent = results.size,
                             progressTotal = firstPage.totalHits,
@@ -1475,6 +1480,7 @@ class SearchResultViewModel(
                     _uiState.value =
                         _uiState.value.copy(
                             results = results,
+                            executedQuery = q,
                             hasMore = !firstPage.isLastPage,
                             progressCurrent = results.size,
                         )
@@ -1692,6 +1698,7 @@ class SearchResultViewModel(
                     _uiState.value =
                         _uiState.value.copy(
                             results = results,
+                            executedQuery = q,
                             hasMore = !firstPage.isLastPage,
                             progressCurrent = results.size,
                             scrollIndex = 0,

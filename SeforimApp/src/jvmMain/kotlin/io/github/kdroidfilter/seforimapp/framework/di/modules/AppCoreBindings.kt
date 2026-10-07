@@ -21,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsSt
 import io.github.kdroidfilter.seforimapp.core.shnayimmikra.ShnayimMikraStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.features.search.semantic.installedSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriver
@@ -36,7 +37,6 @@ import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimlibrary.search.HybridSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
@@ -128,14 +128,8 @@ object AppCoreBindings {
     }
 
     /**
-     * The app's search engine. Returns a HYBRID engine (lexical BM25 + MagicDictionary
-     * FUSED with dense semantic search via the v5 embedding model, RRF) over a SINGLE
-     * Lucene index that holds both the text fields and the dense vectors.
-     * It implements [SearchEngine], so the rest of the app uses it transparently.
-     *
-     * Degrades gracefully to pure lexical if the embedding model is absent (the app
-     * works with or without the model from the SeforimEmbedding project). The dense
-     * path uses the model bundled next to the DB (or `-DseforimEmbedModelDir`).
+     * The app's search engine: lexical (BM25 + MagicDictionary) over the text index, fused with dense semantic search
+     * in the official builds ([installedSemanticSearch], open core), whose vectors live in the same Lucene index.
      */
     @Provides
     @SingleIn(AppScope::class)
@@ -148,20 +142,12 @@ object AppCoreBindings {
         val dictionaryPath = indexPath.resolveSibling("lexical.db")
         val snippetProvider = RepositorySnippetSourceProvider(repository)
         val lexical = LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
-        // Single fused index: dense vectors live in the SAME Lucene index as the text
-        // (seforim.db.lucene), so the dense searcher opens that same directory.
-        // The embedding model is bundled next to the DB (extracted from the .tar.zst),
-        // so the embedder looks in the database directory.
-        val modelDir = Paths.get(dbPath).parent
-        return HybridSearchEngine.create(lexical, indexDir = indexPath, modelDir = modelDir) { lineId, _, query ->
-            val line = repository.getLine(lineId)
-            if (line == null) {
-                null
-            } else {
-                val title = repository.getBook(line.bookId)?.title ?: ""
+        val semantic = installedSemanticSearch ?: return lexical
+        return semantic.hybrid(lexical, indexPath) { lineId, query ->
+            repository.getLine(lineId)?.let { line ->
                 LineHit(
                     bookId = line.bookId,
-                    bookTitle = title,
+                    bookTitle = repository.getBook(line.bookId)?.title.orEmpty(),
                     lineId = lineId,
                     lineIndex = line.lineIndex,
                     snippet = lexical.buildSnippet(line.content, query, 5),

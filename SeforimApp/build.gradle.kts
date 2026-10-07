@@ -41,6 +41,10 @@ sentry {
 // (settings.gradle.kts); a community build has none and addons/siddur/disabled says so
 val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
 
+// The semantic search too (open core): its package (code + model) with its token or its sources beside; without
+// them, addons/semantic/disabled leaves the search lexical only
+val withSemantic = gradle.extensions.extraProperties["semanticEnabled"] == true
+
 kotlin {
 
     jvm()
@@ -133,6 +137,11 @@ kotlin {
             if (withSiddur) dependencies { implementation(libs.seforim.siddur) }
         }
         if (withSiddur) jvmTest { kotlin.srcDir("addons/siddur/test/kotlin") }
+
+        jvmMain {
+            kotlin.srcDir(if (withSemantic) "addons/semantic/enabled/kotlin" else "addons/semantic/disabled/kotlin")
+            if (withSemantic) dependencies { implementation(libs.seforim.semantic) }
+        }
 
         jvmTest.dependencies {
             implementation(libs.mockk)

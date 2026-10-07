@@ -42,6 +42,7 @@ internal object SkyWidget : HomeWidget {
                 SkyWidgetView(
                     latitude = state.location.latitude,
                     longitude = state.location.longitude,
+                    timeZone = state.location.timeZone,
                     timeMillis = state.skyTimeMillisHere(),
                     // Following the solar system's play frame by frame: no glide between frames
                     glide = state.playMillisHere() == null,

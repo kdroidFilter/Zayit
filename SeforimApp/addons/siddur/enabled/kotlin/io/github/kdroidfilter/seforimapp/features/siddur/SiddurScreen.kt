@@ -70,7 +70,6 @@ import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinio
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
-import io.github.kdroidfilter.seforimapp.earthwidget.timeZoneForLocation
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.DiacriticsButton
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
@@ -293,7 +292,7 @@ fun SiddurTabContent(
                 latitude = user.userPlace.lat,
                 longitude = user.userPlace.lng,
                 elevationMeters = user.userPlace.elevation,
-                timeZone = timeZoneForLocation(user.userPlace.lat, user.userPlace.lng),
+                timeZone = user.userPlace.timeZone,
             )
         }
     val communityCode by appSettings.userCommunityCodeFlow.collectAsState()

@@ -108,11 +108,11 @@ tab drag & drop. See `TAB_SYSTEM_README.md`.
 ### Open Core: the Smart Siddur
 The smart siddur (סידור חכם) is proprietary, in the official builds only. Its logic and texts are the private
 `kdroidFilter/SeforimSiddur` repo, published to GitHub Packages as `io.github.kdroidfilter:seforim-siddur`
-(`libs.seforim.siddur`). Its screen is in `SeforimApp/src/jvmSiddur`, which the build compiles only when it can read
+(`libs.seforim.siddur`). Its screen is in `SeforimApp/addons/siddur/enabled`, which the build compiles only when it can read
 the package (`siddur.token` Gradle property, `SEFORIM_SIDDUR_TOKEN`, or a `gh` CLI with access and `read:packages`)
 or with `-Psiddur.local=true` (includes `../SeforimSiddur` as a composite build). Otherwise it compiles
-`src/jvmNoSiddur`, where `installedSiddur` is null and the app hides the siddur. Core code reaches the siddur only
-through `SiddurFeature`/`installedSiddur`, never by importing `jvmSiddur` code.
+`addons/siddur/disabled`, where `installedSiddur` is null and the app hides the siddur. Core code reaches the siddur only
+through `SiddurFeature`/`installedSiddur`, never by importing `addons/siddur` code.
 
 ### Memory-Efficient Tab System
 See `TAB_SYSTEM_README.md` for complete details. Key points:

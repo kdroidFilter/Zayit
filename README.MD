@@ -265,13 +265,21 @@ proprietary modules, which are not open source and live in private repositories:
 
 - **The smart siddur** (סידור חכם): the tefilot of every day, complete, after the user's nusach and place
   (`io.github.kdroidfilter:seforim-siddur`, from the private SeforimSiddur repository). Its screen is in
-  `SeforimApp/src/jvmSiddur`.
+  `SeforimApp/addons/siddur/enabled`.
 
 A build without access to these modules (any build from this repository by default) leaves them out: the menus do not
-show them and everything else works the same (`SeforimApp/src/jvmNoSiddur`). A build includes the smart siddur when
+show them and everything else works the same (`SeforimApp/addons/siddur/disabled`). A build includes the smart siddur when
 it can read its package: with `siddur.token` in `~/.gradle/gradle.properties`, the `SEFORIM_SIDDUR_TOKEN` variable
 (CI), or a `gh` CLI logged in to an account that can see the repository (with the `read:packages` scope); or from its
 sources beside Zayit's, with `-Psiddur.local=true` (`../SeforimSiddur`).
+
+With `gh`, the default login has no `read:packages` scope; add it once, then check the package is readable (it prints
+`seforim-siddur`) and re-sync Gradle:
+
+```bash
+gh auth refresh -h github.com -s read:packages
+gh api users/kdroidFilter/packages/maven/io.github.kdroidfilter.seforim-siddur --jq .name
+```
 
 Contributions go into the open core; the [CLA](CLA.md) lets them ship in the official builds as well.
 

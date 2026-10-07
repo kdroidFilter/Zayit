@@ -8,6 +8,7 @@ import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -125,7 +126,6 @@ class SearchHomeViewModel(
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
 
-    private val minBookPrefixLen = 2 // minimum characters before triggering book predictive queries
     private val minTocPrefixLen = 1 // minimum characters before triggering TOC predictive queries
     private val maxBookPredictive = 120 // tighter ceiling to avoid heavy allocations
     private val maxTocPredictive = 300 // TOC suggestions stay bounded
@@ -204,7 +204,6 @@ class SearchHomeViewModel(
                 .distinctUntilChanged()
                 .collectLatest { qRaw ->
                     val q = qRaw.trim()
-                    val qNorm = sanitizeHebrewForAcronym(q)
                     if (q.isBlank()) {
                         _uiState.value =
                             _uiState.value.copy(
@@ -214,7 +213,7 @@ class SearchHomeViewModel(
                                 suggestionsVisible = false,
                             )
                     } else {
-                        val startLoading = q.length >= minBookPrefixLen
+                        val startLoading = q.length >= MIN_BOOK_QUERY_LENGTH
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = startLoading,
@@ -274,29 +273,13 @@ class SearchHomeViewModel(
                                             }
                                         }
 
-                                    // Books: enforce 2-char minimum; if shorter, return empty suggestions for books
+                                    // Books: same acronym-aware suggestions as the book tree search
                                     val booksDeferred =
                                         async(Dispatchers.Default) {
-                                            if (q.length < minBookPrefixLen) {
-                                                emptyList<BookSuggestionDto>()
-                                            } else {
-                                                val bookHits = lookup.searchBooksWithScoring(qNorm, limit = maxBookPredictive)
-                                                bookHits
-                                                    // Already sorted by score in searchBooksWithScoring, no need to re-sort
-                                                    .take(maxBookPredictive)
-                                                    .map { hit ->
-                                                        val book =
-                                                            Book(
-                                                                id = hit.id,
-                                                                categoryId = hit.categoryId,
-                                                                sourceId = 0,
-                                                                title = hit.title,
-                                                                order = hit.orderIndex.toFloat(),
-                                                                isBaseBook = hit.isBaseBook,
-                                                            )
-                                                        val catPath = buildCategoryPathTitlesCached(book.categoryId)
-                                                        BookSuggestionDto(book, catPath + book.title)
-                                                    }
+                                            lookup.suggestBooks(q, limit = maxBookPredictive).map { hit ->
+                                                val book = hit.toBook()
+                                                val catPath = buildCategoryPathTitlesCached(book.categoryId)
+                                                BookSuggestionDto(book, catPath + book.title)
                                             }
                                         }
 
@@ -641,24 +624,6 @@ class SearchHomeViewModel(
             currentId = c.parentId
         }
         return path.asReversed()
-    }
-
-    // Sanitization aligned with the generator’s acronym normalization, but minimal and local to app
-    private fun sanitizeHebrewForAcronym(input: String): String {
-        if (input.isBlank()) return ""
-        var s = input.trim()
-        // Remove Hebrew diacritics: teamim U+0591–U+05AF
-        s = s.replace("[\u0591-\u05AF]".toRegex(), "")
-        // Remove nikud signs (set incl. meteg U+05BD and QAMATZ QATAN U+05C7)
-        val nikud = "[\u05B0\u05B1\u05B2\u05B3\u05B4\u05B5\u05B6\u05B7\u05B8\u05B9\u05BB\u05BC\u05BD\u05C1\u05C2\u05C7]".toRegex()
-        s = s.replace(nikud, "")
-        // Replace maqaf (U+05BE) with space
-        s = s.replace('\u05BE', ' ')
-        // Remove gershayim (U+05F4) and geresh (U+05F3)
-        s = s.replace("\u05F4", "").replace("\u05F3", "")
-        // Collapse whitespace
-        s = s.replace("\\s+".toRegex(), " ").trim()
-        return s
     }
 
     // Build an FTS5 MATCH string with prefix search, quoting tokens safely and

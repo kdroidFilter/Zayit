@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.search
 
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.index.IndexReader
@@ -84,7 +85,18 @@ class LuceneLookupSearchService(
         val orderIndex: Int,
         val score: Double,
         val matchedAcronyms: List<String>,
-    )
+    ) {
+        /** A lightweight [Book] for display; load the full one by [id] when opening it. */
+        fun toBook(): Book =
+            Book(
+                id = id,
+                categoryId = categoryId,
+                sourceId = 0,
+                title = title,
+                order = orderIndex.toFloat(),
+                isBaseBook = isBaseBook,
+            )
+    }
 
     fun close() {
         kotlin.runCatching { searcherManager.close() }
@@ -155,6 +167,19 @@ class LuceneLookupSearchService(
                 )
             }
         }
+    }
+
+    /**
+     * Book suggestions for a typed query, as in the home search bar: diacritics and geresh
+     * dropped, acronym-aware ranking. Empty below [MIN_BOOK_QUERY_LENGTH] characters.
+     */
+    fun suggestBooks(
+        raw: String,
+        limit: Int,
+    ): List<ScoredBookHit> {
+        val q = raw.trim()
+        if (q.length < MIN_BOOK_QUERY_LENGTH) return emptyList()
+        return searchBooksWithScoring(sanitizeHebrewForAcronym(q), limit)
     }
 
     /**
@@ -424,4 +449,25 @@ class LuceneLookupSearchService(
 
         return s
     }
+}
+
+/** Minimum length of a query before books are suggested. */
+const val MIN_BOOK_QUERY_LENGTH = 2
+
+// Sanitization aligned with the generator’s acronym normalization, but minimal and local to app
+private fun sanitizeHebrewForAcronym(input: String): String {
+    if (input.isBlank()) return ""
+    var s = input.trim()
+    // Remove Hebrew diacritics: teamim U+0591–U+05AF
+    s = s.replace("[\u0591-\u05AF]".toRegex(), "")
+    // Remove nikud signs (set incl. meteg U+05BD and QAMATZ QATAN U+05C7)
+    val nikud = "[\u05B0\u05B1\u05B2\u05B3\u05B4\u05B5\u05B6\u05B7\u05B8\u05B9\u05BB\u05BC\u05BD\u05C1\u05C2\u05C7]".toRegex()
+    s = s.replace(nikud, "")
+    // Replace maqaf (U+05BE) with space
+    s = s.replace('\u05BE', ' ')
+    // Remove gershayim (U+05F4) and geresh (U+05F3)
+    s = s.replace("\u05F4", "").replace("\u05F3", "")
+    // Collapse whitespace
+    s = s.replace("\\s+".toRegex(), " ").trim()
+    return s
 }

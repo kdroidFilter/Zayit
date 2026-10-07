@@ -5,6 +5,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 
+/** Background of in-text search matches. */
+val SearchHighlightColor = Color(0x66FFC107)
+
 /**
  * Returns a copy of [annotated] with background highlight applied to all
  * diacritic-insensitive occurrences of [query] (Hebrew-aware). Activates when
@@ -13,7 +16,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 fun highlightAnnotated(
     annotated: AnnotatedString,
     query: String?,
-    highlightColor: Color = Color(0x66FFC107),
+    highlightColor: Color = SearchHighlightColor,
 ): AnnotatedString {
     val q = query?.trim().orEmpty()
     if (q.length < 2) return annotated

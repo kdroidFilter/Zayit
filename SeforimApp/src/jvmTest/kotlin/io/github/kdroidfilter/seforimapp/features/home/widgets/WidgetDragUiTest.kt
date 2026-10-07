@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -103,9 +103,9 @@ class WidgetDragUiTest {
                             // the app, which a widget may be dragged over
                             Box(Modifier.padding(top = gridTop.dp)) {
                                 FreezableCenter(frozen = state.pageHeld) {
-                                    HomeWidgetsGrid(state = state, widgets = widgets(raw), gridState = rememberLazyGridState()) {
+                                    HomeWidgetsGrid(state = state, widgets = widgets(raw), scrollState = rememberScrollState()) {
                                         // The Home's search, above the widgets
-                                        if (header > 0) fullWidthItem { Box(Modifier.testTag("header").height(header.dp)) }
+                                        if (header > 0) FullWidthSection { Box(Modifier.testTag("header").height(header.dp)) }
                                     }
                                 }
                             }

@@ -45,6 +45,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -414,7 +415,15 @@ fun SolarSystemWidgetView(
                 .MutableInteractionSource()
         }
     val pointerOver by pointerSource.collectIsHoveredAsState()
-    BoxWithConstraints(modifier = modifier.clipToBounds().hoverable(pointerSource)) {
+    BoxWithConstraints(
+        modifier =
+            modifier
+                .clipToBounds()
+                // The card in its own layer, under the same clip wherever it is: cut by the edge of a scrolling page,
+                // its drawing would otherwise need new GPU programs, compiled there and then (a ~30 ms frame)
+                .then(if (fullWindow) Modifier else Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen })
+                .hoverable(pointerSource),
+    ) {
         val density = LocalDensity.current
         val widthPx = with(density) { maxWidth.toPx() }.roundToInt().coerceAtLeast(1)
         val heightPx = with(density) { maxHeight.toPx() }.roundToInt().coerceAtLeast(1)

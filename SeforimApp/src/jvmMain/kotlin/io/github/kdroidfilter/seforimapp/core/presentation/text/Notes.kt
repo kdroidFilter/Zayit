@@ -11,18 +11,18 @@ import kotlin.math.min
 
 /**
  * Maps user [notes] (offsets stored against the original, with-diacritics text) to character
- * ranges in the displayed text. When diacritics are hidden, [originalText] is used to remap
+ * ranges in the displayed text. When some diacritics are hidden, [originalText] is used to remap
  * offsets onto the stripped text. Returned ranges are `start until end`, clamped to [displayLength].
  */
 fun noteDisplayRanges(
     notes: List<UserNote>,
     originalText: String?,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     displayLength: Int,
 ): List<IntRange> {
     if (notes.isEmpty()) return emptyList()
     val originalToStrippedMap =
-        if (!showDiacritics && originalText != null) createOriginalToStrippedMap(originalText) else null
+        if (diacritics != DiacriticsMode.All && originalText != null) createOriginalToStrippedMap(originalText, diacritics) else null
     return notes.mapNotNull { note ->
         val start =
             if (originalToStrippedMap != null) mapOriginalToStripped(note.startOffset, originalToStrippedMap) else note.startOffset

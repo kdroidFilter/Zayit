@@ -173,7 +173,7 @@ class BookContentEventTest {
                 BookContentEvent.ToggleCommentaries,
                 BookContentEvent.ToggleTargum,
                 BookContentEvent.ToggleSources,
-                BookContentEvent.ToggleDiacritics,
+                BookContentEvent.CycleDiacritics,
                 BookContentEvent.SaveState,
                 BookContentEvent.NavigateToPreviousLine,
                 BookContentEvent.NavigateToNextLine,

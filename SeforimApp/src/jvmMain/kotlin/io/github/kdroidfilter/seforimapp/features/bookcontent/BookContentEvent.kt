@@ -142,7 +142,7 @@ sealed interface BookContentEvent {
 
     data object ToggleSources : BookContentEvent
 
-    data object ToggleDiacritics : BookContentEvent
+    data object CycleDiacritics : BookContentEvent
 
     data class ContentScrolled(
         val bookId: Long,

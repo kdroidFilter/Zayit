@@ -48,6 +48,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
@@ -65,7 +66,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asSt
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRightOff
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -96,7 +96,7 @@ private val CommentaryItemVerticalPaddingPerSide = 8.dp
 fun LineCommentsView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
 ) {
     val appSettings = LocalAppGraph.current.appSettings
@@ -167,7 +167,7 @@ fun LineCommentsView(
                         textSizes = textSizes,
                         findQueryText = activeQuery,
                         isCommentatorsListVisible = contentState.isCommentatorsListVisible,
-                        showDiacritics = showDiacritics,
+                        diacritics = diacritics,
                     )
                 }
 
@@ -185,7 +185,7 @@ fun LineCommentsView(
                         findQueryText = activeQuery,
                         isCommentatorsListVisible = contentState.isCommentatorsListVisible,
                         prefetchedGroups = prefetched,
-                        showDiacritics = showDiacritics,
+                        diacritics = diacritics,
                     )
                 }
             }
@@ -207,7 +207,7 @@ private fun CommentariesContent(
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
     prefetchedGroups: List<CommentatorGroup>?,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ) {
     val commentatorSelection =
         rememberCommentarySelectionData(
@@ -293,7 +293,7 @@ private fun CommentariesContent(
                 onEvent = onEvent,
                 textSizes = textSizes,
                 findQueryText = findQueryText,
-                showDiacritics = showDiacritics,
+                diacritics = diacritics,
             )
         },
     )
@@ -317,7 +317,7 @@ private fun MultiLineCommentariesContent(
     textSizes: AnimatedTextSizes,
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ) {
     val primaryLineId = primarySelectedLineId ?: selectedLineIds.firstOrNull() ?: return
 
@@ -401,7 +401,7 @@ private fun MultiLineCommentariesContent(
                 onEvent = onEvent,
                 textSizes = textSizes,
                 findQueryText = findQueryText,
-                showDiacritics = showDiacritics,
+                diacritics = diacritics,
             )
         },
     )
@@ -497,7 +497,7 @@ private fun CommentariesDisplay(
     onEvent: (BookContentEvent) -> Unit,
     textSizes: AnimatedTextSizes,
     findQueryText: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ) {
     if (selectedCommentators.isEmpty()) {
         CenteredMessage(
@@ -514,7 +514,7 @@ private fun CommentariesDisplay(
             selection = selection,
             textSizes = textSizes,
             findQueryText = findQueryText,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
             onEvent = onEvent,
         )
 
@@ -746,7 +746,7 @@ private fun CommentariesPagedList(
                             fontFamily = config.fontFamily,
                             boldScale = config.boldScale,
                             highlightQuery = config.highlightQuery,
-                            showDiacritics = config.showDiacritics,
+                            diacritics = config.diacritics,
                             annotationCache = annotationCache,
                             userHighlights = lineHighlights,
                             onSecondaryClick = {
@@ -799,7 +799,7 @@ private fun CommentaryItem(
     textSizes: AnimatedTextSizes,
     fontFamily: FontFamily,
     highlightQuery: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     annotationCache: StableAnnotatedCache,
     onClick: () -> Unit,
     boldScale: Float = 1.0f,
@@ -835,8 +835,8 @@ private fun CommentaryItem(
                 },
     ) {
         val processedText =
-            remember(linkId, targetText, showDiacritics) {
-                if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
+            remember(linkId, targetText, diacritics) {
+                diacritics.apply(targetText)
             }
 
         // Footnote marker color from theme
@@ -894,14 +894,14 @@ private fun CommentaryItem(
                 }
 
             val display: AnnotatedString =
-                remember(annotated, highlightQuery, userHighlights, showDiacritics, originalPlainText) {
+                remember(annotated, highlightQuery, userHighlights, diacritics, originalPlainText) {
                     // User highlights first, then search highlight on top.
                     val withUserHighlights =
                         applyUserHighlights(
                             annotated = annotated,
                             highlights = userHighlights,
                             originalText = originalPlainText,
-                            showDiacritics = showDiacritics,
+                            diacritics = diacritics,
                         )
                     if (highlightQuery.isBlank()) {
                         withUserHighlights
@@ -1175,7 +1175,7 @@ internal data class CommentariesLayoutConfig(
     val fontFamily: FontFamily,
     val boldScale: Float,
     val highlightQuery: String,
-    val showDiacritics: Boolean,
+    val diacritics: DiacriticsMode,
     val maxCommentatorsPerPage: Int,
 )
 
@@ -1186,7 +1186,7 @@ private fun rememberCommentariesLayoutConfig(
     selection: LineSelection,
     textSizes: AnimatedTextSizes,
     findQueryText: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     onEvent: (BookContentEvent) -> Unit,
 ): CommentariesLayoutConfig {
     val appSettings = LocalAppGraph.current.appSettings
@@ -1204,7 +1204,7 @@ private fun rememberCommentariesLayoutConfig(
         commentaryFontFamily,
         boldScaleForPlatform,
         findQueryText,
-        showDiacritics,
+        diacritics,
         maxCommentatorsPerPage,
     ) {
         CommentariesLayoutConfig(
@@ -1233,7 +1233,7 @@ private fun rememberCommentariesLayoutConfig(
             fontFamily = commentaryFontFamily,
             boldScale = boldScaleForPlatform,
             highlightQuery = findQueryText,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
             maxCommentatorsPerPage = maxCommentatorsPerPage,
         )
     }

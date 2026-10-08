@@ -143,6 +143,9 @@
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
     <string name="close_all_tabs">סגור את כל הלשוניות</string>
+    <string name="pin_tab">הצמד לשונית</string>
+    <string name="unpin_tab">בטל הצמדה</string>
+    <string name="close_pinned_tab_hint">לחץ שוב על %1$s כדי לסגור את הלשונית המוצמדת</string>
     <string name="close_other_tabs">סגור לשוניות אחרות</string>
     <!-- Reworded to "close towards the right" for consistency with RTL wording -->
     <string name="close_tabs_left">סגור את הלשוניות מימין</string>

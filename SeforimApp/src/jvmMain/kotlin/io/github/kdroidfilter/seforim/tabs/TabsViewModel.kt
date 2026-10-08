@@ -9,8 +9,10 @@ import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSession
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +55,14 @@ class TabsViewModel internal constructor(
     private val _skipNextAnimation = MutableStateFlow(true)
     val skipNextAnimation: StateFlow<Boolean> = _skipNextAnimation.asStateFlow()
 
+    /** True while the hint asking for a second Ctrl+W on a pinned tab is shown. */
+    private val _closePinnedHint = MutableStateFlow(false)
+    val closePinnedHint: StateFlow<Boolean> = _closePinnedHint.asStateFlow()
+    private var hintJob: Job? = null
+
+    // The pinned tab the hint was shown for: a second press only closes that one.
+    private var hintedTabId: String? = null
+
     fun consumeSkipAnimation() {
         _skipNextAnimation.value = false
     }
@@ -87,16 +97,66 @@ class TabsViewModel internal constructor(
             is TabsEvents.OnSelect -> ids.getOrNull(event.index)?.let(session.workspace::select)
             TabsEvents.OnAdd -> session.addTab(freshHome(), groupId, index = 0)
             is TabsEvents.OnReorder -> ids.getOrNull(event.fromIndex)?.let { session.workspace.reorder(it, event.toIndex) }
-            // Chrome-like: the window keeps one fresh Home tab, which replaces the others once it is in.
+            // Pinned tabs stay. Chrome-like: with none, the window keeps one fresh Home tab, which
+            // replaces the others once it is in.
             TabsEvents.CloseAll -> {
-                val home = freshHome()
-                session.addTab(home, groupId, index = 0)
-                closeWhenDeclared(home.tabId, ids)
+                if (ids.any(session::isPinned)) {
+                    ids.filterNot(session::isPinned).forEach(session.workspace::close)
+                } else {
+                    val home = freshHome()
+                    session.addTab(home, groupId, index = 0)
+                    closeWhenDeclared(home.tabId, ids)
+                }
             }
-            is TabsEvents.CloseOthers -> ids.filterIndexed { i, _ -> i != event.index }.forEach(session.workspace::close)
-            is TabsEvents.CloseLeft -> ids.take(event.index).forEach(session.workspace::close)
-            is TabsEvents.CloseRight -> ids.drop(event.index + 1).forEach(session.workspace::close)
+            is TabsEvents.CloseOthers -> ids.filterIndexed { i, _ -> i != event.index }.closeUnpinned()
+            is TabsEvents.CloseLeft -> ids.take(event.index).closeUnpinned()
+            is TabsEvents.CloseRight -> ids.drop(event.index + 1).closeUnpinned()
         }
+    }
+
+    // Chromium's GetTabsClosedByCommand: the bulk closes skip pinned tabs.
+    private fun List<String>.closeUnpinned() = filterNot(session::isPinned).forEach(session.workspace::close)
+
+    fun setPinned(
+        index: Int,
+        pinned: Boolean,
+    ) {
+        ids().getOrNull(index)?.let { session.setPinned(it, pinned) }
+    }
+
+    /**
+     * Ctrl+W (or the menu's Close Tab) on the selected tab. Chromium-like, a pinned tab only
+     * closes on a second press while the hint the first one showed is still up. A [repeat] of a
+     * held key closes the unpinned ones in a row but is never that second press.
+     */
+    fun closeSelectedTab(repeat: Boolean = false) {
+        val tabId = currentId() ?: return
+        if (session.isPinned(tabId)) {
+            val hinted = _closePinnedHint.value && hintedTabId == tabId
+            if (!hinted) showClosePinnedHint(tabId)
+            if (!hinted || repeat) return
+        }
+        hideClosePinnedHint()
+        session.workspace.close(tabId)
+    }
+
+    private fun showClosePinnedHint(
+        tabId: String,
+        @StructuredScope scope: CoroutineScope = this.scope,
+    ) {
+        hintJob?.cancel()
+        hintedTabId = tabId
+        _closePinnedHint.value = true
+        hintJob =
+            scope.launch {
+                delay(CLOSE_PINNED_HINT_MS)
+                _closePinnedHint.value = false
+            }
+    }
+
+    private fun hideClosePinnedHint() {
+        hintJob?.cancel()
+        _closePinnedHint.value = false
     }
 
     private fun closeWhenDeclared(
@@ -125,7 +185,14 @@ class TabsViewModel internal constructor(
     fun replaceCurrentTabWithNewTabId(destination: TabsDestination) {
         val tabId = currentId() ?: return
         val index = ids().indexOf(tabId).coerceAtLeast(0)
-        session.addTab(destination.withTabId(UUID.randomUUID().toString()), groupId, index = index, replacing = tabId)
+        // The pin goes with the tab, as through any navigation (Chrome).
+        session.addTab(
+            destination.withTabId(UUID.randomUUID().toString()),
+            groupId,
+            index = index,
+            replacing = tabId,
+            pinned = session.isPinned(tabId),
+        )
     }
 
     fun dispose() {
@@ -133,6 +200,10 @@ class TabsViewModel internal constructor(
     }
 
     private fun freshHome(): TabsDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+
+    private companion object {
+        const val CLOSE_PINNED_HINT_MS = 3000L
+    }
 }
 
 internal fun TabsDestination.withTabId(tabId: String): TabsDestination =

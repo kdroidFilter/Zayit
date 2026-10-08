@@ -36,6 +36,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.savedState
 import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
@@ -58,6 +59,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import org.jetbrains.jewel.foundation.modifier.trackActivation
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 
@@ -522,7 +524,11 @@ class SimpleTabViewModelOwner(
             savedState {
                 putString(StateKeys.TAB_ID, destination.tabId)
                 when (destination) {
-                    is TabsDestination.Search -> putString("searchQuery", destination.searchQuery)
+                    is TabsDestination.Search -> {
+                        putString("searchQuery", destination.searchQuery)
+                        putString(StateKeys.SEARCH_SCOPE, Json.encodeToString<SearchScope>(destination.scope))
+                        if (destination.globalExtended) putBoolean(StateKeys.SEARCH_GLOBAL_EXTENDED, true)
+                    }
                     is TabsDestination.BookContent -> {
                         if (destination.bookId > 0) putLong(StateKeys.BOOK_ID, destination.bookId)
                         destination.lineId?.let { putLong(StateKeys.LINE_ID, it) }

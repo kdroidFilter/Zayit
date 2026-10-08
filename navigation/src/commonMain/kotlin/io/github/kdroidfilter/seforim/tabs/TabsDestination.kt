@@ -20,6 +20,10 @@ sealed interface TabsDestination {
     data class Search(
         val searchQuery: String,
         override val tabId: String,
+        /** Where a fresh tab runs the search (a search reopened from history runs where it first ran). */
+        val scope: SearchScope = SearchScope.Global,
+        /** Searches all books rather than only the base ones. */
+        val globalExtended: Boolean = false,
     ) : TabsDestination
 
     @Serializable

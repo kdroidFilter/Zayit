@@ -3,6 +3,7 @@
 package io.github.kdroidfilter.seforimapp.framework.session
 
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
+import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
@@ -206,4 +207,45 @@ data class SearchPersistedState(
     // Full search snapshot (results + aggregates) for identical restore
     val snapshot: SearchTabCache.Snapshot? = null,
     val breadcrumbs: Map<Long, List<String>> = emptyMap(),
-)
+) {
+    /** The scope the search runs in: its fetch scope, else its view filter. */
+    val scope: SearchScope
+        get() {
+            val categoryId = fetchCategoryId.takeIf { it > 0 } ?: filterCategoryId.takeIf { it > 0 }
+            val bookId = fetchBookId.takeIf { it > 0 } ?: filterBookId.takeIf { it > 0 }
+            val tocId = fetchTocId.takeIf { it > 0 } ?: filterTocId.takeIf { it > 0 }
+            return when {
+                tocId != null && bookId != null -> SearchScope.Toc(bookId = bookId, tocId = tocId)
+                bookId != null -> SearchScope.Book(bookId)
+                categoryId != null -> SearchScope.Category(categoryId)
+                else -> SearchScope.Global
+            }
+        }
+
+    /** Runs the search in [scope]: both its fetch scope and its view filter. */
+    fun withScope(scope: SearchScope): SearchPersistedState {
+        val categoryId = (scope as? SearchScope.Category)?.categoryId ?: 0L
+        val bookId =
+            when (scope) {
+                is SearchScope.Book -> scope.bookId
+                is SearchScope.Toc -> scope.bookId
+                else -> 0L
+            }
+        val tocId = (scope as? SearchScope.Toc)?.tocId ?: 0L
+        return copy(
+            datasetScope =
+                when (scope) {
+                    SearchScope.Global -> "global"
+                    is SearchScope.Category -> "category"
+                    is SearchScope.Book -> "book"
+                    is SearchScope.Toc -> "toc"
+                },
+            filterCategoryId = categoryId,
+            filterBookId = bookId,
+            filterTocId = tocId,
+            fetchCategoryId = categoryId,
+            fetchBookId = bookId,
+            fetchTocId = tocId,
+        )
+    }
+}

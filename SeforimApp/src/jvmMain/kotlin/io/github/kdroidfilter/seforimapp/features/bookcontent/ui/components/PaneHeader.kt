@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -34,9 +35,14 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.Tooltip
+import org.jetbrains.jewel.ui.icon.IconKey
+import org.jetbrains.jewel.ui.icon.PathIconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.commentaries
+import seforimapp.seforimapp.generated.resources.pane_dock
+import seforimapp.seforimapp.generated.resources.pane_float
 
 /**
  * The dock satellite hosting the current pane, or null outside one. [PaneHeader] is then also the
@@ -96,6 +102,7 @@ fun PaneHeader(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     actions?.invoke(this)
+                    satellite?.let { PaneDockButton(it) }
                     IconActionButton(
                         key = AllIconsKeys.Windows.Minimize,
                         onClick = onHide,
@@ -106,6 +113,44 @@ fun PaneHeader(
         }
 
         HorizontalDivider()
+    }
+}
+
+/** Anchors [DockToWindowIcon]'s resource lookup to this module's class loader. */
+private object PaneHeaderIconAnchor
+
+// moveToWindow's frame with the arrow turned inward, so Dock reads as the reverse of Float at the same weight.
+private val DockToWindowIcon = PathIconKey("icons/dockToWindow.svg", PaneHeaderIconAnchor::class.java)
+
+/** Pulls a docked pane out into a window of its own, or puts a floating one back where it was docked. */
+@OptIn(ExperimentalNucleusApi::class)
+@Composable
+private fun PaneDockButton(satellite: SatelliteScope) {
+    val entry = satellite.satellite
+    when {
+        satellite.isDocked && entry.isFloatable ->
+            PaneHeaderAction(AllIconsKeys.Actions.MoveToWindow, stringResource(Res.string.pane_float), satellite::undock)
+        // Floating: a click docks it where it was, a drag takes it to the side it is dropped on.
+        !satellite.isDocked && entry.dockSides.isNotEmpty() ->
+            PaneHeaderAction(
+                key = DockToWindowIcon,
+                text = stringResource(Res.string.pane_dock),
+                onClick = { satellite.dock() },
+                modifier = Modifier.satelliteDragHandle(satellite),
+            )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun PaneHeaderAction(
+    key: IconKey,
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Tooltip({ Text(text) }) {
+        IconActionButton(key = key, onClick = onClick, contentDescription = text, modifier = modifier)
     }
 }
 

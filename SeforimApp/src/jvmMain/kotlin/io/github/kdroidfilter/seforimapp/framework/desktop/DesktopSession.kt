@@ -17,8 +17,15 @@ import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.SimpleTabViewModelOwner
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.WindowSnapshot
 import java.util.UUID
+
+/** A tab the user closed, with its reading state, kept so it can be reopened. */
+class ClosedTab(
+    val item: TabItem,
+    val state: TabPersistedState?,
+)
 
 /** The measured docks of a window, in px: the outer one's width, the inner one's width and height. */
 data class DockSizes(
@@ -53,6 +60,12 @@ class DesktopSession internal constructor(
 
     /** Tabs waiting for their first declaration: where they land, and the tab they replace. */
     private val pending = HashMap<String, Placement>()
+
+    /** Recently closed tabs, the last one on top. */
+    private val closedTabs = ArrayDeque<ClosedTab>()
+
+    /** Tabs leaving the workspace without being closed by the user (moved, replaced): not reopenable. */
+    private val discarded = HashSet<String>()
 
     private class Placement(
         val groupId: String,
@@ -107,7 +120,7 @@ class DesktopSession internal constructor(
         val placement = pending.remove(tabId) ?: return
         workspace.reorder(tabId, placement.index)
         workspace.select(placement.keepSelected ?: tabId)
-        placement.replacing?.let(workspace::close)
+        placement.replacing?.let(::discard)
     }
 
     /** Replaces the destination of [tabId] in place (same id, same window, same slot). */
@@ -132,8 +145,27 @@ class DesktopSession internal constructor(
         return true
     }
 
-    /** Drops a tab the workspace closed, with its ViewModels. */
-    fun forget(tabId: String) {
+    /** Closes [tabId] without making it reopenable (the tab lives on elsewhere, or was replaced). */
+    fun discard(tabId: String) {
+        // Only a tab still in: one already closed would stay marked and never be reopenable again.
+        if (workspace.tab(tabId) == null) return
+        discarded += tabId
+        workspace.close(tabId)
+    }
+
+    /**
+     * Drops a tab the workspace closed, with its ViewModels. Unless [discard]ed, it is remembered
+     * with [state] for [popClosedTab]; a Home tab (no title yet) is not worth reopening.
+     */
+    fun forget(
+        tabId: String,
+        state: TabPersistedState?,
+    ) {
+        val item = item(tabId)
+        if (!discarded.remove(tabId) && item != null && item.title.isNotEmpty()) {
+            closedTabs.addLast(ClosedTab(item, state))
+            if (closedTabs.size > MAX_CLOSED_TABS) closedTabs.removeFirst()
+        }
         tabs.removeAll { it.destination.tabId == tabId }
         pending.remove(tabId)
         owners.remove(tabId)?.clear()
@@ -145,9 +177,12 @@ class DesktopSession internal constructor(
         linePaneWorkspaces.remove(groupId)
     }
 
+    /** The last tab the user closed, taken off the stack; null when there is none. */
+    fun popClosedTab(): ClosedTab? = closedTabs.removeLastOrNull()
+
     /** Closes every tab (the windows follow); used when the desktop goes dormant. */
     internal fun closeAll() {
-        workspace.tabs.map { it.id }.forEach(workspace::close)
+        workspace.tabs.map { it.id }.forEach(::discard)
     }
 
     internal fun dispose() {
@@ -226,6 +261,7 @@ class DesktopSession internal constructor(
     companion object {
         private const val DEFAULT_WIDTH_DP = 1280
         private const val DEFAULT_HEIGHT_DP = 800
+        private const val MAX_CLOSED_TABS = 25
 
         // The workspace names tear-off groups "group-N" from a counter that restarts with the
         // process; restored and app-created groups use UUIDs so the two can never collide.

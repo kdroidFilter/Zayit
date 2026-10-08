@@ -183,7 +183,7 @@ class TocUseCase(
         tocLoad = null
     }
 
-    /** Filters the TOC of the open book by title. */
+    /** Filters the TOC and the alt TOC of the open book by title. */
     suspend fun search(query: String) {
         // A query flushed by a closing field, or arriving after Escape
         if (stateManager.state.value.toc.search == null) return
@@ -195,10 +195,30 @@ class TocUseCase(
                 tocLoad = null
                 return@run TocFilterResult()
             }
-            val result = withContext(Dispatchers.Default) { buildTocFilter(entries, query) }
+            // The alt TOC shown under the TOC, whose entries are all loaded with it
+            val altEntries =
+                stateManager.state.value.altToc
+                    .takeIf { it.bookId == bookId }
+                    ?.entriesById
+                    ?.values
+                    .orEmpty()
+            val result =
+                withContext(Dispatchers.Default) {
+                    val alt = buildTocFilter(altEntries.map { it.toSearchTocEntry(bookId) }, query)
+                    buildTocFilter(entries, query).withAlt(alt)
+                }
             // Drop the result if another book was opened meanwhile
             result.takeIf { openBookId() == bookId }
         }
+    }
+
+    /** Re-runs the shown search, once the alt TOC it also covers has loaded. */
+    suspend fun refreshSearch() {
+        val query =
+            stateManager.state.value.toc.search
+                ?.query
+                ?.takeIf { it.isNotBlank() } ?: return
+        search(query)
     }
 
     /** Hides the search bar and reveals the entry [tocId] in the tree. Returns the line to jump to. */

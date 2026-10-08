@@ -5,6 +5,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.normalizeQueryFo
 import io.github.kdroidfilter.seforimapp.core.presentation.text.replaceFinalsWithBase
 import io.github.kdroidfilter.seforimapp.core.presentation.text.stripDiacriticsWithMap
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.TocFilterResult
+import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 
 private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
@@ -135,3 +136,33 @@ internal fun buildTocFilter(
         bestMatchId = ordered.maxByOrNull { exactWords.getValue(it) },
     )
 }
+
+/** The TOC search filter of [this], over the TOC, extended with [alt], over the alt TOC. */
+internal fun TocFilterResult.withAlt(alt: TocFilterResult): TocFilterResult =
+    copy(
+        altRoots = alt.roots,
+        children = children + alt.children,
+        matchIds = matchIds + alt.matchIds,
+        highlights = highlights + alt.highlights,
+        // The TOC proper comes first
+        bestMatchId = bestMatchId ?: alt.bestMatchId,
+    )
+
+/** The alt TOC entry a TOC search match id stands for, if it is one (see [toSearchTocEntry]). */
+internal fun altTocIdOfSearchMatch(matchId: Long): Long? = if (matchId < 0) -matchId else null
+
+/** [this] as an entry of the TOC search, under its negated id so it cannot collide with a TOC entry. */
+internal fun AltTocEntry.toSearchTocEntry(bookId: Long): TocEntry = toTocEntry(bookId).copy(id = -id, parentId = parentId?.let { -it })
+
+internal fun AltTocEntry.toTocEntry(bookId: Long): TocEntry =
+    TocEntry(
+        id = id,
+        bookId = bookId,
+        parentId = parentId,
+        textId = textId,
+        text = text,
+        level = level,
+        lineId = lineId,
+        isLastChild = isLastChild,
+        hasChildren = hasChildren,
+    )

@@ -113,7 +113,9 @@ class NavigationUseCase(
     }
 
     /** Narrows the tree to the books suggested for [query], as the home search bar does. */
-    suspend fun search(query: String) =
+    suspend fun search(query: String) {
+        // A query flushed by a closing field, or arriving after Escape
+        if (stateManager.state.value.navigation.search == null) return
         searchRunner.run(query) {
             if (query.trim().length < MIN_BOOK_QUERY_LENGTH) return@run null
             val hits =
@@ -130,6 +132,7 @@ class NavigationUseCase(
                 )
             }
         }
+    }
 
     /** Hides the search bar and returns the catalog book [bookId], to open. */
     fun selectSearchBook(bookId: Long): Book? {

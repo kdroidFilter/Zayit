@@ -13,6 +13,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -36,12 +37,14 @@ import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.nucleusframework.window.tao.BindTabGroupWindow
 import dev.nucleusframework.window.tao.JoinSatelliteWorkspace
 import dev.nucleusframework.window.tao.TabGroupWindowPlacement
+import dev.nucleusframework.window.tao.isRepeat
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.e2eCapture
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.ClosePinnedTabHint
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
@@ -185,7 +188,7 @@ fun NucleusApplicationScope.MainAppWindow(
                     tabsVm.onEvent(TabsEvents.OnAdd)
                     true
                 } else if (isCtrlOrCmd && keyEvent.key == Key.W) {
-                    tabsVm.onEvent(TabsEvents.OnClose(currentIndex))
+                    tabsVm.closeSelectedTab(repeat = keyEvent.isRepeat)
                     true
                 } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
                     val count = currentTabs.size
@@ -331,7 +334,7 @@ fun NucleusApplicationScope.MainAppWindow(
                                     }
                                     // Ctrl/Cmd + W => close current tab
                                     isCtrlOrCmd && keyEvent.key == Key.W -> {
-                                        tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))
+                                        tabsVm.closeSelectedTab(repeat = keyEvent.isRepeat)
                                         true
                                     }
                                     // Ctrl/Cmd + Shift + Tab => previous tab
@@ -452,6 +455,7 @@ fun NucleusApplicationScope.MainAppWindow(
                 CompositionLocalProvider(LocalIsTouchMode provides isTouchMode) {
                     WindowBody(openWindow)
                 }
+                ClosePinnedTabHint(tabsVm, Modifier.align(Alignment.TopCenter))
             }
         }
     }

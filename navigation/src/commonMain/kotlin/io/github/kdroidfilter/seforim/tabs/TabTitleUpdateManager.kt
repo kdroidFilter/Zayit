@@ -22,11 +22,13 @@ enum class TabType {
  * @param tabId The ID of the tab to update
  * @param newTitle The new title for the tab
  * @param tabType The type of content in the tab
+ * @param shortTitle What the tab shows once pinned (a book's acronym); empty for its icon alone
  */
 data class TabTitleUpdate(
     val tabId: String,
     val newTitle: String,
     val tabType: TabType = TabType.SEARCH,
+    val shortTitle: String = "",
 )
 
 /**
@@ -44,11 +46,13 @@ class TabTitleUpdateManager {
      * @param tabId The ID of the tab to update
      * @param newTitle The new title for the tab
      * @param tabType The type of content in the tab
+     * @param shortTitle What the tab shows once pinned; empty for its icon alone
      * @return true if the update was successful, false otherwise
      */
     fun updateTabTitle(
         tabId: String,
         newTitle: String,
         tabType: TabType = TabType.SEARCH,
-    ): Boolean = _titleUpdates.tryEmit(TabTitleUpdate(tabId, newTitle, tabType))
+        shortTitle: String = "",
+    ): Boolean = _titleUpdates.tryEmit(TabTitleUpdate(tabId, newTitle, tabType, shortTitle))
 }

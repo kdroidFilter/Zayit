@@ -55,6 +55,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
+import io.github.kdroidfilter.seforimapp.core.history.destination
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -216,24 +217,7 @@ private fun TabSearchPopupContent(onDismiss: () -> Unit) {
                         label = entry.title,
                         tabType = if (entry.kind == VisitKind.BOOK) TabType.BOOK else TabType.SEARCH,
                         onClick = {
-                            val destination =
-                                when (entry.kind) {
-                                    VisitKind.BOOK ->
-                                        entry.bookId?.let {
-                                            TabsDestination.BookContent(
-                                                bookId = it,
-                                                tabId = UUID.randomUUID().toString(),
-                                                lineId = entry.lineId,
-                                            )
-                                        }
-                                    VisitKind.SEARCH ->
-                                        entry.searchQuery?.let {
-                                            TabsDestination.Search(searchQuery = it, tabId = UUID.randomUUID().toString())
-                                        }
-                                }
-                            if (destination != null) {
-                                currentWindow.tabsViewModel.openTab(destination)
-                            }
+                            entry.destination()?.let(currentWindow.tabsViewModel::openTab)
                             onDismiss()
                         },
                         onClose = null,

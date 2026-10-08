@@ -21,9 +21,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.TabType
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
+import io.github.kdroidfilter.seforimapp.core.history.destination
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CardSurface
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ConfirmPopup
 import io.github.kdroidfilter.seforimapp.core.presentation.components.EmptyState
@@ -60,7 +60,6 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-import java.util.UUID
 
 private const val HISTORY_PAGE_LIMIT = 500
 
@@ -89,17 +88,7 @@ fun HistoryTabContent(tabId: String) {
     }
 
     fun openEntry(entry: VisitEntry) {
-        val destination =
-            when (entry.kind) {
-                VisitKind.BOOK ->
-                    entry.bookId?.let {
-                        TabsDestination.BookContent(bookId = it, tabId = UUID.randomUUID().toString(), lineId = entry.lineId)
-                    }
-                VisitKind.SEARCH ->
-                    entry.searchQuery?.let {
-                        TabsDestination.Search(searchQuery = it, tabId = UUID.randomUUID().toString())
-                    }
-            } ?: return
+        val destination = entry.destination() ?: return
         debugln { "[History] open ${entry.key}" }
         // Chrome-like: clicking a history entry navigates in the current tab
         tabsViewModel.replaceCurrentTabWithNewTabId(destination)

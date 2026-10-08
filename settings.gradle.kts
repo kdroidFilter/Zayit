@@ -128,6 +128,8 @@ include(":pagination")
 include(":logger")
 include(":texteffects")
 include(":network")
+include(":backup")
+include(":backup-drive")
 include(":releasefetcher")
 includeBuild("SeforimLibrary")
 // The smart siddur's sources beside Zayit's (../SeforimSiddur), to work on both at once

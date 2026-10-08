@@ -46,6 +46,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.siddur.installedSiddur
 import io.github.kdroidfilter.seforimapp.features.update.UpdateDialog
+import io.github.kdroidfilter.seforimapp.framework.backup.PendingUserDataRestore
 import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -172,6 +173,10 @@ fun main(args: Array<String>) {
         // the DB, so a fresh install no longer needs the user to delete the old DB by hand.
         remember { PendingDbCleanup.runOnce() }
 
+        // Apply a backup restore staged by the previous run, before the graph opens the user
+        // database and reads the preferences.
+        remember { PendingUserDataRestore.runOnce() }
+
         val pendingDeepLink = remember { MutableStateFlow<String?>(null) }
 
         // Pick up the deep link CLI arg (cold-start) and any URI relayed by a second instance
@@ -185,6 +190,9 @@ fun main(args: Array<String>) {
 
         // Create the application graph via Metro and expose via CompositionLocal
         val appGraph = remember { createGraph<AppGraph>().also(::warmCatalog) }
+
+        // Daily Google Drive backup while the app runs (a no-op until an account is connected).
+        LaunchedEffect(appGraph) { if (!E2e.enabled) appGraph.googleDriveSync.runAutoBackup() }
 
         // Register the AWT-level keyboard shortcuts here (instead of in main()) so they can read
         // from the DI-provided SelectionContext. The DisposableEffect re-runs only if the graph
@@ -318,6 +326,7 @@ fun main(args: Array<String>) {
                             // installPendingOnClose() launches the installer and exits the process
                             // itself when a silent (Win/Mac PATCH) update is ready.
                             appGraph.sessionManager.saveIfEnabled()
+                            if (!E2e.enabled) appGraph.googleDriveSync.backupOnQuit()
                             appGraph.appUpdateService.installPendingOnClose()
                             exitApplication()
                         }
@@ -480,7 +489,10 @@ fun main(args: Array<String>) {
                         // A system quit (Dock → Quit) ends the app without asking the tab windows,
                         // which leave the session to their workspace: persist it on the way out.
                         DisposableEffect(Unit) {
-                            onDispose { appGraph.sessionManager.saveIfEnabled() }
+                            onDispose {
+                                appGraph.sessionManager.saveIfEnabled()
+                                if (!E2e.enabled) appGraph.googleDriveSync.backupOnQuit()
+                            }
                         }
                     }
                 }

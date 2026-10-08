@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
@@ -86,6 +85,7 @@ private fun SingleLineTargumView(
     initiallySelectedSourceIds: Set<Long> = emptySet(),
     onSelectedSourcesChange: (Set<Long>) -> Unit = {},
     onLinkClick: (CommentaryWithText) -> Unit = {},
+    onOpenBook: (BookContentEvent) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> },
     onHide: () -> Unit = {},
     highlightQuery: String = "",
@@ -309,12 +309,10 @@ private fun SingleLineTargumView(
                                 ) {
                                     sourceSections.forEach { section ->
                                         item(key = "header-${section.bookId}") {
-                                            Text(
-                                                text = section.title,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = (commentTextSize * 1.1f).sp,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier.fillMaxWidth(),
+                                            CommentatorHeader(
+                                                commentator = section.title,
+                                                commentTextSize = commentTextSize,
+                                                onClick = { onOpenBook(section.openBookEvent()) },
                                             )
                                         }
 
@@ -493,6 +491,7 @@ fun LineTargumView(
             initiallySelectedSourceIds = initiallySelectedIds,
             onSelectedSourcesChange = onSelectedSourcesChange,
             onLinkClick = onLinkClick,
+            onOpenBook = onEvent,
             onScroll = onScroll,
             onHide = onHide,
             highlightQuery = activeQuery,
@@ -706,12 +705,10 @@ private fun MultiLineTargumView(
                         ) {
                             sourceSections.forEach { section ->
                                 item(key = "header-${section.bookId}") {
-                                    Text(
-                                        text = section.title,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = (commentTextSize * 1.1f).sp,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth(),
+                                    CommentatorHeader(
+                                        commentator = section.title,
+                                        commentTextSize = commentTextSize,
+                                        onClick = { onEvent(section.openBookEvent()) },
                                     )
                                 }
 
@@ -797,6 +794,18 @@ private data class SourceSection(
     val bookId: Long,
     val items: LazyPagingItems<CommentaryWithText>,
 )
+
+/**
+ * Opens this section's book in a new tab, like a commentator title: at the line it links to
+ * for the displayed base line(s), or at the book's start when no link is loaded yet.
+ */
+private fun SourceSection.openBookEvent(): BookContentEvent =
+    items.itemSnapshotList.items
+        .firstOrNull()
+        ?.link
+        ?.targetLineId
+        ?.let { BookContentEvent.OpenCommentaryTarget(bookId = bookId, lineId = it) }
+        ?: BookContentEvent.OpenBookByIdInNewTab(bookId)
 
 private data class SourceMeta(
     val title: String,

@@ -8,8 +8,12 @@ import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
@@ -87,6 +91,15 @@ class AppSettings(
     private val findQueryFlowByTab = mutableMapOf<String, MutableStateFlow<String>>()
     private val findBarOpenFlowByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
     private val findSmartModeByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
+    private val findFocusRequestByTab = mutableMapOf<String, MutableStateFlow<Int>>()
+    private val findStepRequestsByTab = mutableMapOf<String, MutableSharedFlow<Boolean>>()
+
+    private fun focusRequestFlowFor(tabId: String): MutableStateFlow<Int> = findFocusRequestByTab.getOrPut(tabId) { MutableStateFlow(0) }
+
+    private fun stepRequestsFor(tabId: String): MutableSharedFlow<Boolean> =
+        findStepRequestsByTab.getOrPut(tabId) {
+            MutableSharedFlow(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        }
 
     private fun queryFlowFor(tabId: String): MutableStateFlow<String> = findQueryFlowByTab.getOrPut(tabId) { MutableStateFlow("") }
 
@@ -113,13 +126,35 @@ class AppSettings(
         findOpenFlowFor(tabId).value = false
     }
 
-    fun toggleFindBar(tabId: String) {
-        val flow = findOpenFlowFor(tabId)
-        flow.value = !flow.value
-        if (!flow.value) {
-            queryFlowFor(tabId).value = ""
-            smartModeFlowFor(tabId).value = false
-        }
+    /** Bumped each time the find field must take the focus with its text selected. */
+    fun findFocusRequestFlow(tabId: String): StateFlow<Int> = focusRequestFlowFor(tabId).asStateFlow()
+
+    /** Find next (true) / previous (false) requested from outside the find field. */
+    fun findStepRequests(tabId: String): SharedFlow<Boolean> = stepRequestsFor(tabId).asSharedFlow()
+
+    /**
+     * Ctrl/Cmd+F, as in Chromium: shows the find bar, or keeps it shown, and focuses its field
+     * with the text selected. A new session starts from [selection] when it's short enough.
+     */
+    fun showFindBar(
+        tabId: String,
+        selection: String = "",
+    ) {
+        val open = findOpenFlowFor(tabId)
+        // Spaces collapsed as the context menu's "find" does, so both give the same query
+        val prefill = selection.replace(WHITESPACE, " ").trim()
+        if (!open.value && prefill.length in 2..MAX_FIND_PREFILL_LENGTH) queryFlowFor(tabId).value = prefill
+        open.value = true
+        focusRequestFlowFor(tabId).value++
+    }
+
+    /** Ctrl/Cmd+G and F3, Shift going backwards, as in Chromium: shows the find bar and steps to the next match. */
+    fun findNext(
+        tabId: String,
+        forward: Boolean,
+    ) {
+        showFindBar(tabId)
+        stepRequestsFor(tabId).tryEmit(forward)
     }
 
     fun findSmartModeFlow(tabId: String): StateFlow<Boolean> = smartModeFlowFor(tabId).asStateFlow()
@@ -570,6 +605,10 @@ class AppSettings(
         const val TAB_FIXED_WIDTH_DP = 180
 
         // Settings keys
+        // Longest selection pre-filling a new find session, as Chromium's FindBarController
+        private const val MAX_FIND_PREFILL_LENGTH = 250
+        private val WHITESPACE = Regex("\\s+")
+
         private const val KEY_TEXT_SIZE = "text_size"
         private const val KEY_LINE_HEIGHT = "line_height"
         private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"

@@ -806,33 +806,6 @@ class CommentariesUseCase(
             )
     }
 
-    private fun sanitizeCommentatorName(
-        raw: String,
-        currentBookTitle: String,
-    ): String {
-        if (currentBookTitle.isBlank()) return raw
-
-        // Punctuation characters that can appear around/within the title
-        val punct = "[\\s,.\\-־–—:;'\"׳״!?()\\[\\]{}]*"
-
-        // Split title into words, ignoring punctuation
-        val titleWords =
-            currentBookTitle
-                .trim()
-                .split(Regex("[\\s,.\\-־–—:;'\"׳״!?()\\[\\]{}]+"))
-                .filter { it.isNotBlank() }
-
-        if (titleWords.isEmpty()) return raw
-
-        // Join words with flexible punctuation/whitespace pattern between them
-        val flexibleTitle = titleWords.joinToString(punct) { Regex.escape(it) }
-
-        // Build pattern for " על ספר <title>" or " על <title>" with flexible punctuation
-        val pattern = Regex(" על ספר$punct$flexibleTitle$punct| על\\s+$punct$flexibleTitle$punct")
-
-        return raw.replace(pattern, "").trim()
-    }
-
     private data class CommentatorEntry(
         val bookId: Long,
         val displayName: String,
@@ -1572,4 +1545,30 @@ class CommentariesUseCase(
             )
         }
     }
+}
+
+// Punctuation and spaces the title may be written with between its words ("שיר השירים", "שיר-השירים")
+private const val TITLE_GAP = "[\\s,.\\-־–—:;'\"׳״]*"
+private val TITLE_SEPARATORS = Regex("[\\s,.\\-־–—:;'\"׳״!?()\\[\\]{}]+")
+
+/**
+ * Drops " על <current book>" (or " על ספר <current book>") from a commentator's name: shown beside
+ * the book, "רש״י על בראשית" reads "רש״י". Only when the title ends the name or is followed by a
+ * separator, as "על שמות רבה" is about another book; what follows the title is kept.
+ */
+internal fun sanitizeCommentatorName(
+    raw: String,
+    currentBookTitle: String,
+): String {
+    val titleWords = currentBookTitle.trim().split(TITLE_SEPARATORS).filter { it.isNotBlank() }
+    if (titleWords.isEmpty()) return raw
+    val title = titleWords.joinToString(TITLE_GAP) { Regex.escape(it) }
+    val pattern = Regex(" על(?:\\s+ספר)?[\\s:'\"׳״]+$title['\"׳״]?(?=\\s*(?:$|[,.;:!?()\\[\\]{}\\-־–—]))")
+    val stripped = raw.replace(pattern, "")
+    if (stripped == raw) return raw.trim()
+    // A separator left dangling at the end ("X על שמות;", "X על שמות.") goes too
+    return stripped
+        .trim()
+        .trimEnd(',', ';', ':', '.', '!', '?', '-', '־', '–', '—')
+        .trim()
 }

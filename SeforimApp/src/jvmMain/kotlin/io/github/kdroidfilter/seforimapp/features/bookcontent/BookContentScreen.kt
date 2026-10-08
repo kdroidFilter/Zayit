@@ -482,7 +482,7 @@ fun BookTextMenus(
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
                     LaunchedEffect(textManager.selectedText.text) {
-                        selectionContext.setSelectedText(textManager.selectedText.text)
+                        selectionContext.setSelectedText(tabId, textManager.selectedText.text)
                     }
 
                     ContextMenuDataProvider(
@@ -587,7 +587,7 @@ fun BookTextMenus(
                                         if (query.isNotBlank()) {
                                             appSettings.setFindQuery(tabId, query)
                                         }
-                                        appSettings.openFindBar(tabId)
+                                        appSettings.showFindBar(tabId)
                                     },
                                 )
                                 // Add note (main pane only): anchors a note to the selected text,

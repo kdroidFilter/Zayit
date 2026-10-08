@@ -8,6 +8,9 @@ import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 /** Background of in-text search matches. */
 val SearchHighlightColor = Color(0x66FFC107)
 
+/** Background of the current find-in-page match, set apart from the others as in Chrome. */
+val CurrentFindMatchColor = Color(0xCCFF9632)
+
 /**
  * Returns a copy of [annotated] with background highlight applied to all
  * diacritic-insensitive occurrences of [query] (Hebrew-aware). Activates when
@@ -35,8 +38,9 @@ fun highlightAnnotated(
 }
 
 /**
- * Like [highlightAnnotated], but allows emphasizing a specific current match
- * range (by its start offset in original text) with a different color.
+ * Like [highlightAnnotated], but emphasizes the current match with a different color: the one
+ * starting at [currentStart] in [annotated]'s text, or the [currentIndex]-th one (from 0). The
+ * rank holds whatever diacritics are hidden, unlike an offset.
  */
 fun highlightAnnotatedWithCurrent(
     annotated: AnnotatedString,
@@ -45,6 +49,7 @@ fun highlightAnnotatedWithCurrent(
     currentLength: Int? = null, // kept for API compatibility; not required here
     baseColor: Color,
     currentColor: Color,
+    currentIndex: Int? = null,
 ): AnnotatedString {
     val q = query?.trim().orEmpty()
     if (q.length < 2) return annotated
@@ -54,10 +59,10 @@ fun highlightAnnotatedWithCurrent(
 
     val builder = AnnotatedString.Builder()
     builder.append(annotated)
-    for (r in ranges) {
+    ranges.forEachIndexed { i, r ->
         val start = r.first.coerceIn(0, annotated.length)
         val end = (r.last + 1).coerceAtMost(annotated.length)
-        val color = if (currentStart != null && start == currentStart) currentColor else baseColor
+        val color = if (start == currentStart || i == currentIndex) currentColor else baseColor
         if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
     }
     return builder.toAnnotatedString()
@@ -73,6 +78,7 @@ fun highlightAnnotatedWithTerms(
     currentStart: Int? = null,
     baseColor: Color,
     currentColor: Color,
+    currentIndex: Int? = null,
 ): AnnotatedString {
     if (terms.isEmpty()) return annotated
 
@@ -103,10 +109,10 @@ fun highlightAnnotatedWithTerms(
 
     val builder = AnnotatedString.Builder()
     builder.append(annotated)
-    for (r in merged) {
+    merged.forEachIndexed { i, r ->
         val start = r.first.coerceIn(0, annotated.length)
         val end = (r.last + 1).coerceAtMost(annotated.length)
-        val color = if (currentStart != null && start == currentStart) currentColor else baseColor
+        val color = if (start == currentStart || i == currentIndex) currentColor else baseColor
         if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
     }
     return builder.toAnnotatedString()

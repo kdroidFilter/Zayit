@@ -85,6 +85,11 @@ internal class HybridSearchEngine(
         near: Int,
     ): String = lexical.buildSnippet(rawText, query, near)
 
+    override fun findInBookCandidates(
+        query: String,
+        bookId: Long,
+    ): LongArray? = lexical.findInBookCandidates(query, bookId)
+
     override suspend fun semanticSpan(
         query: String,
         text: String,

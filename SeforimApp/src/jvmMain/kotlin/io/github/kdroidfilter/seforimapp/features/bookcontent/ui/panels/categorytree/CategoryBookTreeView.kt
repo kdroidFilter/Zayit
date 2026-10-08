@@ -67,6 +67,7 @@ fun CategoryBookTreeView(
     booksForCategoryOverride: Map<Long, List<Book>> = emptyMap(),
     // Scroll to the selected book only when out of view (moving through search results)
     revealSelectionOnly: Boolean = false,
+    onCategoryRevealComplete: () -> Unit = {},
 ) {
     /* ---------------------------------------------------------------------
      * Build the flat hierarchical list to display.
@@ -150,6 +151,17 @@ fun CategoryBookTreeView(
                 didAutoCenter = true
             }
         }
+    }
+
+    // 4) A category revealed from elsewhere (the breadcrumb) is scrolled into view, then the request consumed
+    val currentOnCategoryRevealComplete by rememberUpdatedState(onCategoryRevealComplete)
+    LaunchedEffect(navigationState.categoryReveal, treeItems, hasRestored) {
+        val reveal = navigationState.categoryReveal ?: return@LaunchedEffect
+        if (!hasRestored) return@LaunchedEffect
+        val idx = treeItems.indexOfFirst { it.id == "category_$reveal" }
+        if (idx >= 0) listState.revealItem(idx)
+        // Consumed even when missing, so that it never fires later out of the blue
+        currentOnCategoryRevealComplete()
     }
 
     /* ---------------------------------------------------------------------

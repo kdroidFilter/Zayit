@@ -20,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Selectable
 import io.github.kdroidfilter.seforimapp.core.presentation.text.SearchHighlightColor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.ROOT_TOC_KEY
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.revealItem
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -168,7 +169,7 @@ fun BookTocView(
     multiSelectIds: Set<Long> = emptySet(),
     onToggle: ((TocEntry, Boolean) -> Unit)? = null,
 ) {
-    val rootEntries = uiState.toc.children[-1L] ?: uiState.toc.entries
+    val rootEntries = uiState.toc.children[ROOT_TOC_KEY] ?: uiState.toc.entries
     var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
         mutableStateOf(rootEntries.ifEmpty { uiState.toc.entries })
     }

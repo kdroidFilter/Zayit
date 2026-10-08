@@ -26,9 +26,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
@@ -44,6 +47,7 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -131,7 +135,14 @@ private data class TabEntry(
 
 private val TabTooltipWidthThreshold = 140.dp
 private val CompactTabWidthThreshold = 50.dp
-private val HideCloseTabWidthThreshold = 80.dp
+
+// Chromium's kMinimumContentsWidthForCloseButtons: below it an inactive tab drops its close button,
+// so the title always keeps some room next to it.
+private val MinContentWidthForCloseButton = 68.dp
+private val TabOuterHorizontalPadding = 2.dp
+
+// Width of the fade replacing the ellipsis on a cut title (Chromium's FADE_TAIL).
+private val TitleFadeWidth = 24.dp
 
 /** When true, [SingleLineTabContent] hides the label and shows only the icon. */
 private val LocalCompactIconOnly = compositionLocalOf { false }
@@ -420,7 +431,18 @@ private fun TabStripScope.RtlAwareTabStripContent(
     TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
     // The last look at the selected tab before a click may leave it (see rememberTabThumbnails).
     val stripHovered by interactionSource.collectIsHoveredAsState()
-    LaunchedEffect(stripHovered) { openWindow.pointerOnStrip = stripHovered }
+    // Chromium's tab closing mode: closing tabs with the mouse keeps the others at their width, so the
+    // next close button lands under the pointer; they reflow once it leaves the strip or a tab is added.
+    var frozenTabWidth by remember { mutableStateOf<Dp?>(null) }
+    LaunchedEffect(stripHovered) {
+        openWindow.pointerOnStrip = stripHovered
+        if (!stripHovered) frozenTabWidth = null
+    }
+    var tabCount by remember { mutableIntStateOf(tabs.size) }
+    LaunchedEffect(tabs.size) {
+        if (tabs.size > tabCount) frozenTabWidth = null
+        tabCount = tabs.size
+    }
     // Chrome-like: the tab being dragged is selected.
     LaunchedEffect(tabDrag.held) { tabDrag.held?.let(workspace::select) }
     val skipAnimation by tabsViewModel.skipNextAnimation.collectAsState()
@@ -462,7 +484,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
         val maxTabWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
         val naturalTabWidth = (availableForTabs / tabsCount)
         val computedTabWidthTarget = naturalTabWidth.coerceAtMost(maxTabWidth)
-        val tabWidth = computedTabWidthTarget
+        val tabWidth = frozenTabWidth?.coerceAtMost(computedTabWidthTarget) ?: computedTabWidthTarget
 
         // The whole strip is the drop target of a tab dragged from another window (Chrome accepts
         // drops on the whole strip area). Published left to right: the tabs are laid out in their
@@ -568,6 +590,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                             labelProvider = tabEntry.labelProvider,
                                             onClick = tabEntry.onClick,
                                             onClose = {
+                                                if (stripHovered && frozenTabWidth == null) frozenTabWidth = tabWidth
                                                 if (!closingKeys.contains(tabEntry.key)) {
                                                     closingKeys = closingKeys + tabEntry.key
                                                     closeTabWithAnimation(
@@ -744,12 +767,18 @@ private fun RtlAwareTab(
         var contextMenuOpen by remember { mutableStateOf(false) }
         var contextClickOffset by remember { mutableStateOf(IntOffset.Zero) }
 
+        val tabPadding = tabStyle.metrics.tabPadding
+        val contentWidth =
+            tabWidth - TabOuterHorizontalPadding * 2 -
+                tabPadding.calculateLeftPadding(LayoutDirection.Ltr) - tabPadding.calculateRightPadding(LayoutDirection.Ltr)
+        val roomForCloseButton = contentWidth >= MinContentWidthForCloseButton
+
         val container: @Composable () -> Unit = {
             Row(
                 modifier
                     .height(tabStyle.metrics.tabHeight)
                     .width(widthForThisTab)
-                    .padding(horizontal = 2.dp, vertical = 4.dp)
+                    .padding(horizontal = TabOuterHorizontalPadding, vertical = 4.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(backgroundColor)
                     .alpha(dragAlpha)
@@ -776,7 +805,7 @@ private fun RtlAwareTab(
                         }
                     },
                 horizontalArrangement =
-                    if (tabWidth >= HideCloseTabWidthThreshold || tabData.selected) {
+                    if (roomForCloseButton || tabData.selected) {
                         Arrangement.spacedBy(tabStyle.metrics.closeContentGap)
                     } else {
                         Arrangement.spacedBy(0.dp)
@@ -786,8 +815,7 @@ private fun RtlAwareTab(
                 val isCompact = tabWidth < CompactTabWidthThreshold
                 val isSelected = tabData.selected
                 // Hide close for non-selected tabs when space is tight, always show for selected
-                val showCloseIcon =
-                    tabData.closable && (isSelected || tabWidth >= HideCloseTabWidthThreshold)
+                val showCloseIcon = tabData.closable && (isSelected || roomForCloseButton)
 
                 val closeIconComposable: @Composable () -> Unit = {
                     if (showCloseIcon) {
@@ -1059,13 +1087,33 @@ private fun SingleLineTabContent(
             )
         }
         if (!iconOnly) {
+            // The side the title is cut on: its paragraph's end, whatever the strip's direction.
+            var cutSide by remember { mutableStateOf<ResolvedTextDirection?>(null) }
             Text(
                 label,
-                modifier = Modifier.alpha(contentAlpha),
+                modifier = Modifier.alpha(contentAlpha).fadeCutEnd(cutSide),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                softWrap = false,
+                overflow = TextOverflow.Clip,
+                onTextLayout = { layout ->
+                    cutSide = if (layout.hasVisualOverflow) layout.getParagraphDirection(0) else null
+                },
             )
         }
+    }
+}
+
+/** Fades the last [TitleFadeWidth] of a cut title out instead of an ellipsis (Chromium's FADE_TAIL). */
+private fun Modifier.fadeCutEnd(direction: ResolvedTextDirection?): Modifier {
+    if (direction == null) return this
+    return graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+        drawContent()
+        val fade = TitleFadeWidth.toPx().coerceAtMost(size.width / 2)
+        val (startX, endX) = if (direction == ResolvedTextDirection.Rtl) fade to 0f else size.width - fade to size.width
+        drawRect(
+            brush = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = startX, endX = endX),
+            blendMode = BlendMode.DstIn,
+        )
     }
 }
 

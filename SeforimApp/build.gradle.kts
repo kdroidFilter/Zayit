@@ -6,6 +6,7 @@ import dev.nucleusframework.desktop.application.dsl.ReleaseType
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
 import io.github.kdroidfilter.buildsrc.Versioning
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.multiplatform)
@@ -114,6 +115,7 @@ kotlin {
             implementation(project(":pagination"))
             implementation(project(":texteffects"))
             implementation(project(":network"))
+            implementation(project(":backup-drive"))
 
             // Paging (AndroidX Paging 3)
             implementation(libs.androidx.paging.common)
@@ -325,12 +327,27 @@ tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("io.github.kdroidfilter.seforimapp.MainKt")
 }
 
+// A Gradle property, else the same key in the (git-ignored) local.properties of the root project
+fun driveProperty(key: String): Provider<String> =
+    providers.gradleProperty(key).orElse(
+        providers.fileContents(rootProject.layout.projectDirectory.file("local.properties")).asText.map { text ->
+            Properties().apply { load(text.reader()) }.getProperty(key).orEmpty()
+        },
+    )
+
 buildConfig {
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
     packageName("io.github.kdroidfilter.seforimapp")
     // Official builds get the DSN from the SENTRY_DSN CI secret; without it crash reporting is disabled
     val sentryDsn = providers.environmentVariable("SENTRY_DSN").orElse(providers.gradleProperty("sentry.dsn")).orElse("")
     buildConfigField("SENTRY_DSN", sentryDsn)
+    // Google Drive backup (Desktop OAuth client); without it the Drive sync is hidden
+    val driveClientId =
+        providers.environmentVariable("GOOGLE_DRIVE_CLIENT_ID").orElse(driveProperty("drive.clientId")).orElse("")
+    val driveClientSecret =
+        providers.environmentVariable("GOOGLE_DRIVE_CLIENT_SECRET").orElse(driveProperty("drive.clientSecret")).orElse("")
+    buildConfigField("GOOGLE_DRIVE_CLIENT_ID", driveClientId)
+    buildConfigField("GOOGLE_DRIVE_CLIENT_SECRET", driveClientSecret)
 }
 
 // Jewel's icons-api pulls IntelliJ's coroutines fork, which duplicates kotlinx-coroutines-core-jvm classes

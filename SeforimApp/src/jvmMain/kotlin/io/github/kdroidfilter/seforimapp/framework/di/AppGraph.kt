@@ -4,6 +4,7 @@ import com.russhwolf.settings.Settings
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metrox.viewmodel.ViewModelGraph
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforimapp.backup.drive.GoogleDriveSync
 import io.github.kdroidfilter.seforimapp.core.MainAppState
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
@@ -59,6 +60,7 @@ abstract class AppGraph : ViewModelGraph {
     abstract val searchEngine: SearchEngine
     abstract val desktopManager: DesktopManager
     abstract val sessionManager: SessionManager
+    abstract val googleDriveSync: GoogleDriveSync
 
     abstract val onboardingProcessRepository: OnboardingProcessRepository
     abstract val databaseCleanupUseCase: DatabaseCleanupUseCase

@@ -15,6 +15,8 @@ jobs:
     env:
       SEFORIM_SIDDUR_TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
       SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+      GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
     strategy:
       fail-fast: false
       matrix:

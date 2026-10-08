@@ -151,6 +151,8 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - `pagination`: Pagination support for large datasets
 - `texteffects`: Text rendering effects and styling
 - `network`: Network utilities and Ktor client setup
+- `backup`: Backup core, Android-BackupAgent/Transport style: `BackupSource` (what: the app's `UserDataBackup`, user DB + portable prefs), `BackupDestination` (where: `LocalFileDestination`, …), `BackupManager` (the only code linking both)
+- `backup-drive`: Google Drive `BackupDestination` + `GoogleDriveSync` (OAuth PKCE loopback, hidden `appDataFolder`, append-only with the 10 latest kept as IntelliJ settings sync, never restores without asking, on-quit + daily auto backup paused while a restore is pending)
 
 ## Key Technologies & Dependencies
 

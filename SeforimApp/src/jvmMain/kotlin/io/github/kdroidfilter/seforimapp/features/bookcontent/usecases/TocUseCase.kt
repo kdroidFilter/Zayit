@@ -28,7 +28,7 @@ class TocUseCase(
 ) {
     // The whole TOC of a book, loaded once per search session: shared by the searches of
     // successive keystrokes, which cancel each other but not the load
-    private var tocLoad: Pair<Long, Deferred<List<TocEntry>>>? = null
+    private var tocLoad: Pair<Long, Deferred<List<TocEntry>?>>? = null
     private var selectingSearchEntry = false
     private val searchRunner =
         PaneSearchRunner<TocFilterResult> { transform ->
@@ -171,7 +171,11 @@ class TocUseCase(
 
     /** Shows or hides the search bar. */
     fun toggleSearch() {
-        stateManager.updateToc(save = false) { copy(search = search.toggled()) }
+        if (stateManager.state.value.toc.search != null) {
+            closeSearch()
+        } else {
+            stateManager.updateToc(save = false) { copy(search = search.toggled()) }
+        }
     }
 
     fun closeSearch() {
@@ -186,6 +190,11 @@ class TocUseCase(
         searchRunner.run(query) {
             val bookId = openBookId() ?: return@run null
             val entries = bookToc(bookId).await()
+            if (entries == null) {
+                // Failed load: not kept, the next keystroke retries
+                tocLoad = null
+                return@run TocFilterResult()
+            }
             val result = withContext(Dispatchers.Default) { buildTocFilter(entries, query) }
             // Drop the result if another book was opened meanwhile
             result.takeIf { openBookId() == bookId }
@@ -213,10 +222,10 @@ class TocUseCase(
         stateManager.state.value.navigation.selectedBook
             ?.id
 
-    private fun bookToc(bookId: Long): Deferred<List<TocEntry>> =
+    private fun bookToc(bookId: Long): Deferred<List<TocEntry>?> =
         tocLoad?.takeIf { it.first == bookId }?.second
             ?: scope
-                .async { runSuspendCatching { repository.getBookToc(bookId) }.getOrElse { emptyList() } }
+                .async { runSuspendCatching { repository.getBookToc(bookId) }.getOrNull() }
                 .also { tocLoad = bookId to it }
 
     /**

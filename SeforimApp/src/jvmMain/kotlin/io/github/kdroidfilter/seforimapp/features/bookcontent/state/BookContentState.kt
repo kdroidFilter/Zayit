@@ -41,6 +41,9 @@ data class Providers(
     // (filtered by target-book id + connection type). Mirror the pager ordering.
     val getLinkCharCountsForLine: suspend (Long, Long, ConnectionType) -> List<Int>,
     val getLinkCharCountsForLines: suspend (List<Long>, Long, ConnectionType) -> List<Int>,
+    // The breadcrumb popups' TOC levels: children of an entry, root entries of a book
+    val loadTocChildren: suspend (Long) -> List<TocEntry> = { emptyList() },
+    val loadRootToc: suspend (Long) -> List<TocEntry> = { emptyList() },
 )
 
 /**
@@ -89,6 +92,9 @@ data class BookContentState
         val providers: Providers? = null,
     )
 
+/** Key of the root entries in the children maps of the TOC states. */
+const val ROOT_TOC_KEY = -1L
+
 @Immutable
 data class NavigationState(
     // Business
@@ -105,6 +111,10 @@ data class NavigationState(
     val scrollOffset: Int = 0,
     // Search bar under the header (not persisted): null while hidden
     val search: PaneSearchState<BookFilterResult>? = null,
+    // One-shot request to scroll the tree to this category, cleared once done (not persisted)
+    val categoryReveal: Long? = null,
+    // Every category of the catalog by id, built with it
+    val categoriesById: Map<Long, Category> = emptyMap(),
 )
 
 /** The book tree narrowed to the books suggested for the query, with their categories. */
@@ -232,6 +242,8 @@ data class ContentState(
     val selectedLinkSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
+    // Bumped to hand the keyboard focus back to the text, e.g. when a breadcrumb popup closes (not persisted)
+    val focusTextRequest: Int = 0,
     // Scrolling behavior control
     val shouldScrollToLine: Boolean = false,
     val scrollToLineTimestamp: Long = 0L,

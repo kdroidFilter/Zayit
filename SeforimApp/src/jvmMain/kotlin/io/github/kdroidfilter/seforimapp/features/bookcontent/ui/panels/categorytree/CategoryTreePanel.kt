@@ -73,6 +73,7 @@ fun CategoryTreePanel(
                             selectedBook = result.books.firstOrNull { it.id == activeId },
                             scrollIndex = 0,
                             scrollOffset = 0,
+                            categoryReveal = null,
                         ),
                     onCategoryClick = {},
                     onBookClick = bookClick(onEvent) { onEvent(BookContentEvent.BookTreeSearchBookSelected(it.id)) },
@@ -95,6 +96,7 @@ private fun NavigationTree(
         onCategoryClick = { onEvent(BookContentEvent.CategorySelected(it)) },
         onBookClick = bookClick(onEvent) { onEvent(BookContentEvent.BookSelected(it)) },
         onScroll = { index, offset -> onEvent(BookContentEvent.BookTreeScrolled(index, offset)) },
+        onCategoryRevealComplete = { onEvent(BookContentEvent.CategoryRevealed) },
     )
 }
 

@@ -1,144 +1,44 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.categoryAncestry
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
-import kotlin.collections.iterator
 
 /**
- * A breadcrumb component that displays the hierarchical path from the category root to the selected line.
- *
- * @param book The book being displayed
- * @param selectedLine The currently selected line
- * @param tocEntries All TOC entries for the book
- * @param tocChildren Map of parent ID to list of child TOC entries
- * @param rootCategories List of top-level categories
- * @param categoryChildren Map of category ID to list of child categories
- * @param onTocEntryClick Callback when a TOC entry in the breadcrumb is clicked
- * @param onCategoryClick Callback when a category in the breadcrumb is clicked
- * @param modifier Modifier for the breadcrumb
- */
-@Composable
-fun BreadcrumbView(
-    book: Book,
-    selectedLine: Line?,
-    tocEntries: List<TocEntry>,
-    tocChildren: Map<Long, List<TocEntry>>,
-    tocPath: List<TocEntry>,
-    rootCategories: List<Category>,
-    categoryChildren: Map<Long, List<Category>>,
-    onTocEntryClick: (TocEntry) -> Unit,
-    onCategoryClick: (Category) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    // Build the breadcrumb path from the category root through book to the owning TOC hierarchy
-    val breadcrumbPath =
-        remember(
-            book,
-            selectedLine?.id,
-            tocPath,
-            tocEntries,
-            tocChildren,
-            rootCategories,
-            categoryChildren,
-        ) {
-            val result = mutableListOf<BreadcrumbItem>()
-
-            // Categories path then book
-            result += buildCategoryPath(book.categoryId, rootCategories, categoryChildren)
-            result += BreadcrumbItem.BookItem(book)
-
-            // Append the TOC path computed by use case, deduplicating consecutive identical names anywhere
-            if (tocPath.isNotEmpty()) {
-                // If first TOC equals book title, drop it to avoid duplication with the book item
-                val adjustedToc = if (tocPath.first().text == book.title) tocPath.drop(1) else tocPath
-                result += adjustedToc.map { BreadcrumbItem.TocItem(it) }
-            }
-
-            result
-        }
-    val scrollState = rememberScrollState()
-    LaunchedEffect(breadcrumbPath) {
-        scrollState.scrollTo(Int.MAX_VALUE)
-    }
-    Row(
-        modifier = modifier.horizontalScroll(scrollState),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start,
-    ) {
-        // Display each item in the breadcrumb path
-        breadcrumbPath.forEachIndexed { index, item ->
-            if (index > 0) {
-                // Add separator between items
-                Text(
-                    text = " > ",
-                    modifier = Modifier.padding(horizontal = 4.dp),
-                    fontSize = 12.sp,
-                )
-            }
-
-            // Display the item based on its type
-            when (item) {
-                is BreadcrumbItem.CategoryItem -> {
-                    Text(
-                        text = item.category.title,
-                        fontWeight = if (index == breadcrumbPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                        modifier =
-                            Modifier
-                                .clickable { onCategoryClick(item.category) },
-                        fontSize = 12.sp,
-                    )
-                }
-                is BreadcrumbItem.BookItem -> {
-                    Text(
-                        text = item.book.title,
-                        fontWeight = if (index == breadcrumbPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                        fontSize = 12.sp,
-                    )
-                }
-                is BreadcrumbItem.TocItem -> {
-                    Text(
-                        text = item.tocEntry.text,
-                        fontWeight = if (index == breadcrumbPath.lastIndex) FontWeight.Bold else FontWeight.Normal,
-                        modifier =
-                            Modifier
-                                .clickable { onTocEntryClick(item.tocEntry) },
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/**
- * Builds a breadcrumb path from the category root through the book to the selected line.
- *
- * @param book The book being displayed
- * @param selectedLine The currently selected line
- * @param tocEntries All TOC entries for the book
- * @param tocChildren Map of parent ID to list of child TOC entries
- * @param rootCategories List of top-level categories
- * @param categoryChildren Map of category ID to list of child categories
- * @return A list of breadcrumb items representing the path from the category root to the selected line
+ * The path of the open book (categories, book, TOC headings), working as IntelliJ's navigation bar:
+ * a click on a segment opens a popup of its children to browse the library, a double click
+ * navigates to the segment itself.
  */
 @Composable
 fun BreadcrumbView(
@@ -147,92 +47,150 @@ fun BreadcrumbView(
     modifier: Modifier = Modifier,
 ) {
     val book = uiState.navigation.selectedBook ?: return
-    BreadcrumbView(
-        book = book,
-        selectedLine = uiState.content.primaryLine,
-        tocEntries = uiState.toc.entries,
-        tocChildren = uiState.toc.children,
-        tocPath = uiState.toc.breadcrumbPath,
-        rootCategories = uiState.navigation.rootCategories,
-        categoryChildren = uiState.navigation.categoryChildren,
-        onTocEntryClick = { entry ->
-            entry.lineId?.let { lineId ->
-                onEvent(BookContentEvent.LoadAndSelectLine(lineId))
+    val navigation = uiState.navigation
+    val toc = uiState.toc
+
+    val path =
+        remember(book, toc.breadcrumbPath, navigation.categoriesById) {
+            buildBreadcrumbPath(book, toc.breadcrumbPath, navigation.categoriesById)
+        }
+
+    // Grouped once per catalog, not on every TOC change
+    val booksByCategory = remember(navigation.booksInCategory) { CatalogBreadcrumbChildrenProvider.groupBooks(navigation.booksInCategory) }
+    val loadRootToc = uiState.providers?.loadRootToc ?: NoTocEntries
+    val loadTocChildren = uiState.providers?.loadTocChildren ?: NoTocEntries
+    val childrenProvider =
+        remember(navigation.categoryChildren, booksByCategory, loadRootToc, loadTocChildren) {
+            CatalogBreadcrumbChildrenProvider(navigation.categoryChildren, booksByCategory, loadRootToc, loadTocChildren)
+        }
+    val currentChildrenProvider by rememberUpdatedState(childrenProvider)
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    val currentBookId by rememberUpdatedState(book.id)
+
+    val scope = rememberCoroutineScope()
+    val navigator =
+        remember(scope) {
+            BreadcrumbNavigator(
+                scope = scope,
+                childrenProvider = { currentChildrenProvider.children(it) },
+                initialPath = path,
+                // The popup took the keyboard focus: the text gets it back
+                onReturnFocus = { currentOnEvent(BookContentEvent.FocusText) },
+                onNavigate = { node ->
+                    when (node) {
+                        is BreadcrumbNode.CategoryNode -> currentOnEvent(BookContentEvent.RevealCategory(node.category))
+                        is BreadcrumbNode.BookNode ->
+                            if (node.book.id != currentBookId) currentOnEvent(BookContentEvent.BookSelected(node.book))
+                        is BreadcrumbNode.TocNode ->
+                            node.entry.lineId?.let { currentOnEvent(BookContentEvent.LoadAndSelectLine(it)) }
+                    }
+                },
+            )
+        }
+    // Later paths (the initial one is passed at creation, to show it from the first frame)
+    LaunchedEffect(navigator, path) { navigator.updatePath(path) }
+
+    BreadcrumbBar(navigator = navigator, modifier = modifier)
+}
+
+@Composable
+private fun BreadcrumbBar(
+    navigator: BreadcrumbNavigator,
+    modifier: Modifier = Modifier,
+) {
+    val items = navigator.items
+    val selectedIndex = navigator.selectedIndex
+    val popup = navigator.popup
+
+    val scrollState = rememberScrollState()
+    LaunchedEffect(items) { scrollState.scrollTo(Int.MAX_VALUE) }
+
+    Row(
+        modifier = modifier.horizontalScroll(scrollState),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Start,
+    ) {
+        items.forEachIndexed { index, node ->
+            if (index > 0) {
+                Text(text = " > ", modifier = Modifier.padding(horizontal = 4.dp), fontSize = 12.sp)
             }
-        },
-        onCategoryClick = { category ->
-            onEvent(BookContentEvent.CategorySelected(category))
-        },
-        modifier = modifier,
+            key(node.key) {
+                Box {
+                    BreadcrumbSegment(
+                        title = node.title,
+                        isLast = index == items.lastIndex,
+                        isSelected = index == selectedIndex,
+                        // As in IntelliJ, segments past the selected one are dimmed
+                        isInactive = selectedIndex != -1 && index > selectedIndex,
+                        onClick = { navigator.onSegmentClick(node.key) },
+                        onDoubleClick = { navigator.onSegmentDoubleClick(node.key) },
+                    )
+                    if (popup != null && popup.anchorIndex == index) {
+                        BreadcrumbPopup(
+                            model = popup,
+                            onChoose = navigator::choose,
+                            onShift = navigator::shiftPopup,
+                            onDismiss = navigator::dismiss,
+                            onCancel = navigator::cancel,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BreadcrumbSegment(
+    title: String,
+    isLast: Boolean,
+    isSelected: Boolean,
+    isInactive: Boolean,
+    onClick: () -> Unit,
+    onDoubleClick: () -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val background = highlightBackground(interactionSource, isSelected)
+    // Double click detected by hand: combinedClickable would delay the single click by the double-tap timeout
+    val doubleClickTimeout = LocalViewConfiguration.current.doubleTapTimeoutMillis
+    var lastClickAt by remember { mutableLongStateOf(0L) }
+
+    Text(
+        text = title,
+        fontWeight = if (isLast) FontWeight.Bold else FontWeight.Normal,
+        fontSize = 12.sp,
+        color = if (isInactive) JewelTheme.globalColors.text.disabled else Color.Unspecified,
+        modifier =
+            Modifier
+                .pointerHoverIcon(PointerIcon.Hand)
+                .highlightClickable(interactionSource, background, SegmentShape) {
+                    // Second click within the timeout: a double click, as IntelliJ's clickCount == 2
+                    val now = System.currentTimeMillis()
+                    if (now - lastClickAt <= doubleClickTimeout) {
+                        lastClickAt = 0L
+                        onDoubleClick()
+                    } else {
+                        lastClickAt = now
+                        onClick()
+                    }
+                }.padding(horizontal = 4.dp, vertical = 1.dp),
     )
 }
 
-// Old recursive breadcrumb builder removed in favor of repository-backed mapping
+private val SegmentShape = RoundedCornerShape(4.dp)
 
-/**
- * Builds a path of categories from the root to the specified category.
- */
-private fun buildCategoryPath(
-    categoryId: Long,
-    rootCategories: List<Category>,
-    categoryChildren: Map<Long, List<Category>>,
-): List<BreadcrumbItem> {
-    // Find the category in the root categories
-    val rootCategory = rootCategories.find { it.id == categoryId }
-    if (rootCategory != null) {
-        return listOf(BreadcrumbItem.CategoryItem(rootCategory))
+private val NoTocEntries: suspend (Long) -> List<TocEntry> = { emptyList() }
+
+/** Categories from the root, then the book, then its TOC headings down to the selected line. */
+private fun buildBreadcrumbPath(
+    book: Book,
+    tocPath: List<TocEntry>,
+    categoriesById: Map<Long, Category>,
+): List<BreadcrumbNode> =
+    buildList {
+        addAll(categoryAncestry(book.categoryId, categoriesById).map(BreadcrumbNode::CategoryNode))
+        add(BreadcrumbNode.BookNode(book))
+        // A first TOC heading repeating the book title is dropped to avoid duplicating the book item
+        val adjustedToc = if (tocPath.firstOrNull()?.text == book.title) tocPath.drop(1) else tocPath
+        addAll(adjustedToc.map(BreadcrumbNode::TocNode))
     }
-
-    // Search for the category in the children
-    for (root in rootCategories) {
-        val path = findCategoryPath(root, categoryId, categoryChildren)
-        if (path.isNotEmpty()) {
-            return path
-        }
-    }
-
-    return emptyList()
-}
-
-/**
- * Recursively finds the path to a category.
- */
-private fun findCategoryPath(
-    current: Category,
-    targetId: Long,
-    categoryChildren: Map<Long, List<Category>>,
-): List<BreadcrumbItem> {
-    // If this is the target, return a path with just this category
-    if (current.id == targetId) {
-        return listOf(BreadcrumbItem.CategoryItem(current))
-    }
-
-    // Check children
-    val children = categoryChildren[current.id] ?: return emptyList()
-    for (child in children) {
-        val path = findCategoryPath(child, targetId, categoryChildren)
-        if (path.isNotEmpty()) {
-            // Found the target in this subtree, add current category to the path
-            return listOf(BreadcrumbItem.CategoryItem(current)) + path
-        }
-    }
-
-    return emptyList()
-}
-
-/**
- * Represents an item in the breadcrumb path.
- */
-sealed class BreadcrumbItem {
-    class CategoryItem(
-        val category: Category,
-    ) : BreadcrumbItem()
-
-    class BookItem(
-        val book: Book,
-    ) : BreadcrumbItem()
-
-    class TocItem(
-        val tocEntry: TocEntry,
-    ) : BreadcrumbItem()
-}

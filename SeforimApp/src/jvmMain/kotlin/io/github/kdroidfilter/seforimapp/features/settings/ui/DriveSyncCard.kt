@@ -58,10 +58,10 @@ import seforimapp.seforimapp.generated.resources.settings_reset_confirm_yes
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 private val backupDateFormatter =
-    DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT).withZone(ZoneId.systemDefault())
+    // Numeric, as the notes' dates: a localized style would follow the JVM locale, not the app's Hebrew
+    DateTimeFormatter.ofPattern("dd.MM.yy · HH:mm").withZone(ZoneId.systemDefault())
 
 private fun formatBackupDate(epochMs: Long): String = backupDateFormatter.format(Instant.ofEpochMilli(epochMs))
 

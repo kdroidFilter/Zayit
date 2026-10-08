@@ -58,7 +58,14 @@ interface SelectionContext {
      */
     val currentLineId: StateFlow<Long>
 
-    fun setSelectedText(text: String)
+    /** Publishes the text selected in the tab [tabId]. */
+    fun setSelectedText(
+        tabId: String,
+        text: String,
+    )
+
+    /** The text selected in the tab [tabId], empty when the last selection was made in another tab. */
+    fun selectedTextIn(tabId: String): String
 
     fun clearSelectedText()
 
@@ -99,6 +106,9 @@ class DefaultSelectionContext : SelectionContext {
     private val _selectedText = MutableStateFlow("")
     override val selectedText: StateFlow<String> = _selectedText.asStateFlow()
 
+    // Tab whose selection _selectedText holds
+    @Volatile private var selectedTextTabId: String? = null
+
     private val _activeBook = MutableStateFlow<ActiveBook?>(null)
     override val activeBook: StateFlow<ActiveBook?> = _activeBook.asStateFlow()
 
@@ -111,9 +121,15 @@ class DefaultSelectionContext : SelectionContext {
     private val _activeCommentaryColumn = MutableStateFlow<List<CommentaryLineRef>>(emptyList())
     override val activeCommentaryColumn: StateFlow<List<CommentaryLineRef>> = _activeCommentaryColumn.asStateFlow()
 
-    override fun setSelectedText(text: String) {
+    override fun setSelectedText(
+        tabId: String,
+        text: String,
+    ) {
+        selectedTextTabId = tabId
         _selectedText.value = text
     }
+
+    override fun selectedTextIn(tabId: String): String = if (selectedTextTabId == tabId) _selectedText.value else ""
 
     override fun setActiveCommentaryColumn(lines: List<CommentaryLineRef>) {
         _activeCommentaryColumn.value = lines

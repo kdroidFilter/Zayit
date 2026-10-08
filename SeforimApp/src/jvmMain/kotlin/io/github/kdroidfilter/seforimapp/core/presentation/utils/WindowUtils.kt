@@ -5,7 +5,10 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
+import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import java.awt.Toolkit
 
@@ -23,11 +26,22 @@ fun getCenteredWindowState(
     )
 }
 
+/** Whether this destination shows a find-in-page bar: the search results, and a book once one is open. */
+fun TabsDestination.hasFindInPage(store: TabPersistedStateStore): Boolean =
+    when (this) {
+        is TabsDestination.Search -> true
+        is TabsDestination.BookContent -> (store.get(tabId)?.bookContent?.selectedBookId ?: -1L) > 0L
+        else -> false
+    }
+
 fun processKeyShortcuts(
     keyEvent: KeyEvent,
     appSettings: AppSettings,
     onNavigateTo: (String) -> Unit,
     tabId: String = "",
+    // Whether the current tab has a find-in-page bar: find keys are left alone elsewhere
+    findAvailable: Boolean = true,
+    selectedText: (tabId: String) -> String = { "" },
 ): Boolean {
     // Only process key down events
     if (keyEvent.type != KeyEventType.KeyDown) return false
@@ -40,8 +54,14 @@ fun processKeyShortcuts(
     if (isCtrlOrCmdPressed) {
         when (keyEvent.key) {
             Key.F -> {
-                // Toggle Find-in-page bar scoped to the current tab
-                if (appSettings.findBarOpenFlow(tabId).value) appSettings.closeFindBar(tabId) else appSettings.openFindBar(tabId)
+                if (!findAvailable) return false
+                // Find-in-page of the current tab, as in Chromium: shows and focuses it, never closes it
+                appSettings.showFindBar(tabId, selectedText(tabId))
+                return true
+            }
+            Key.G -> {
+                if (!findAvailable) return false
+                appSettings.findNext(tabId, forward = !keyEvent.isShiftPressed)
                 return true
             }
             Key.Plus, Key.NumPadAdd -> {
@@ -61,6 +81,12 @@ fun processKeyShortcuts(
                 return true
             }
         }
+    }
+
+    // F3 / Shift+F3: find next / previous, outside macOS as in Chromium
+    if (findAvailable && keyEvent.key == Key.F3 && !isCtrlOrCmdPressed && !keyEvent.isAltPressed && !PlatformInfo.isMacOS) {
+        appSettings.findNext(tabId, forward = !keyEvent.isShiftPressed)
+        return true
     }
 
     // Process Alt key shortcuts for navigation

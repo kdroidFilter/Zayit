@@ -22,6 +22,17 @@ sealed interface BookContentEvent {
         val category: Category,
     ) : BookContentEvent
 
+    /** Reveals a category in the tree (expanding, never collapsing). */
+    data class RevealCategory(
+        val category: Category,
+    ) : BookContentEvent
+
+    /** Hands the keyboard focus back to the book text. */
+    data object FocusText : BookContentEvent
+
+    /** The tree scrolled to the revealed category. */
+    data object CategoryRevealed : BookContentEvent
+
     data class BookSelected(
         val book: Book,
     ) : BookContentEvent

@@ -130,6 +130,8 @@ fun BookContentView(
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
     onPointerZoomInProgressChange: (Boolean) -> Unit = {},
+    // Bumped to take the keyboard focus back (a breadcrumb popup closed)
+    focusRequest: Int = 0,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     // Don't use the saved scroll position initially if we have an anchor
@@ -751,6 +753,9 @@ fun BookContentView(
     // Request initial focus so arrow keys work as soon as the view appears
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(bookId) { focusRequester.requestFocus() }
+    LaunchedEffect(focusRequest) {
+        if (focusRequest > 0) focusRequester.requestFocus()
+    }
     LaunchedEffect(showFind) {
         if (!showFind) {
             focusRequester.requestFocus()

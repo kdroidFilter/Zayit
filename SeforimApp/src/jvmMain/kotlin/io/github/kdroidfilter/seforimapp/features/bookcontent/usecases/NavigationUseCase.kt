@@ -14,8 +14,6 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -44,6 +42,7 @@ class NavigationUseCase(
     suspend fun loadRootCategories() {
         val rootCategories = catalogCache.getRootCategories()
         val categoryChildren = catalogCache.getCategoryChildren()
+        val categoriesById = catalogCache.getCategoriesById().orEmpty()
         val booksWithFlags = catalogCache.getAllBooksWithAltFlags(repository)
 
         if (rootCategories == null || categoryChildren == null || booksWithFlags == null) {
@@ -58,6 +57,7 @@ class NavigationUseCase(
             copy(
                 rootCategories = rootCategories,
                 categoryChildren = categoryChildren,
+                categoriesById = categoriesById,
                 booksInCategory = booksWithFlags,
             )
         }
@@ -221,27 +221,29 @@ class NavigationUseCase(
     suspend fun expandPathToBook(
         book: Book,
         save: Boolean = true,
-    ) {
-        val leafCatId = book.categoryId
-        val path = mutableListOf<Category>()
-        var currentId: Long? = leafCatId
-        var guard = 0
+    ) = expandPathToCategory(book.categoryId, save)
 
+    /** Selects [category] and expands it with its ancestors, without collapsing anything; shows the tree if hidden. */
+    suspend fun revealCategory(category: Category) {
+        if (!stateManager.state.value.navigation.isVisible) toggleBookTree()
+        // The real tree, not the search results, shows the category
+        closeSearch()
+        expandPathToCategory(category.id, save = true)
+        stateManager.updateNavigation(save = false) { copy(categoryReveal = category.id) }
+    }
+
+    fun clearCategoryReveal() {
+        stateManager.updateNavigation(save = false) { copy(categoryReveal = null) }
+    }
+
+    private suspend fun expandPathToCategory(
+        leafCatId: Long,
+        save: Boolean,
+    ) {
         // Build the path using the data already loaded from the catalog
         val navState = stateManager.state.first().navigation
-        while (currentId != null && guard++ < 512) {
-            currentCoroutineContext().ensureActive()
-            val cat =
-                navState.run {
-                    rootCategories.find { it.id == currentId }
-                        ?: categoryChildren.values.flatten().find { it.id == currentId }
-                } ?: break
-            path += cat
-            currentId = cat.parentId
-        }
-
-        if (path.isEmpty()) return
-        val orderedPath = path.asReversed()
+        val orderedPath = categoryAncestry(leafCatId, navState.categoriesById)
+        if (orderedPath.isEmpty()) return
         val expandIds = orderedPath.map { it.id }.toSet()
 
         stateManager.updateNavigation(save = save) {

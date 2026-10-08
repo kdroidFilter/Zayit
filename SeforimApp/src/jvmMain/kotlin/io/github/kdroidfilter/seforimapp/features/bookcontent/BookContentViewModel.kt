@@ -175,6 +175,8 @@ class BookContentViewModel(
                             getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                             getLinkCharCountsForLine = commentariesUseCase::getLinkCharCountsForLine,
                             getLinkCharCountsForLines = commentariesUseCase::getLinkCharCountsForLines,
+                            loadTocChildren = tocUseCase::tocChildren,
+                            loadRootToc = tocUseCase::rootToc,
                         ),
                     content =
                         state.content.copy(
@@ -238,6 +240,8 @@ class BookContentViewModel(
                                 getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                                 getLinkCharCountsForLine = commentariesUseCase::getLinkCharCountsForLine,
                                 getLinkCharCountsForLines = commentariesUseCase::getLinkCharCountsForLines,
+                                loadTocChildren = tocUseCase::tocChildren,
+                                loadRootToc = tocUseCase::rootToc,
                             ),
                         content =
                             s.content.copy(
@@ -416,6 +420,15 @@ class BookContentViewModel(
                 // Navigation
                 is BookContentEvent.CategorySelected ->
                     navigationUseCase.selectCategory(event.category)
+
+                is BookContentEvent.RevealCategory ->
+                    navigationUseCase.revealCategory(event.category)
+
+                BookContentEvent.FocusText ->
+                    stateManager.updateContent(save = false) { copy(focusTextRequest = focusTextRequest + 1) }
+
+                BookContentEvent.CategoryRevealed ->
+                    navigationUseCase.clearCategoryReveal()
 
                 is BookContentEvent.BookSelected ->
                     loadBook(event.book)

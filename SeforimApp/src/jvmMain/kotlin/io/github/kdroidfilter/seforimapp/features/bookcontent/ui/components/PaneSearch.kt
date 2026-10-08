@@ -4,9 +4,10 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -22,14 +23,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SearchFieldDecoration
+import io.github.kdroidfilter.seforimapp.core.presentation.components.searchFieldTextStyle
 import io.github.kdroidfilter.seforimapp.features.bookcontent.PlainTextMenus
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.PaneSearchResult
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.PaneSearchState
@@ -41,7 +43,6 @@ import kotlinx.coroutines.flow.onEach
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.component.TextField
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 
 private const val SEARCH_DEBOUNCE_MS = 120L
@@ -210,12 +211,11 @@ private fun PaneSearchField(
 
     // The book text menu (copy link, highlight…) is inherited from the pane: not for a search field
     PlainTextMenus {
-        TextField(
+        BasicTextField(
             state = fieldState,
             modifier =
                 modifier
                     .fillMaxWidth()
-                    .height(30.dp)
                     .focusRequester(focusRequester)
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -233,8 +233,17 @@ private fun PaneSearchField(
                         }
                         true
                     },
-            placeholder = { Text(placeholder) },
-            textStyle = TextStyle(fontSize = 13.sp),
+            textStyle = searchFieldTextStyle(),
+            lineLimits = TextFieldLineLimits.SingleLine,
+            cursorBrush = SolidColor(JewelTheme.globalColors.outlines.focused),
+            // Same frame as the popup search fields
+            decorator = { innerTextField ->
+                SearchFieldDecoration(
+                    placeholder = placeholder,
+                    showPlaceholder = fieldState.text.isEmpty(),
+                    innerTextField = innerTextField,
+                )
+            },
         )
     }
 }

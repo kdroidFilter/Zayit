@@ -272,12 +272,35 @@ internal fun PopupSearchField(
     placeholder: String,
     focusRequester: FocusRequester,
 ) {
+    BasicTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        textStyle = searchFieldTextStyle(),
+        cursorBrush = SolidColor(JewelTheme.globalColors.outlines.focused),
+        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
+        decorationBox = { innerTextField ->
+            SearchFieldDecoration(placeholder = placeholder, showPlaceholder = query.isEmpty(), innerTextField = innerTextField)
+        },
+    )
+}
+
+@Composable
+internal fun searchFieldTextStyle(): TextStyle = TextStyle(fontSize = 13.sp, color = JewelTheme.globalColors.text.normal)
+
+/** The frame of the app's search fields: rounded border, magnifier, discreet placeholder. */
+@Composable
+internal fun SearchFieldDecoration(
+    placeholder: String,
+    showPlaceholder: Boolean,
+    innerTextField: @Composable () -> Unit,
+) {
     Row(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(6.dp))
-                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(6.dp))
+                .background(JewelTheme.globalColors.panelBackground, SearchFieldShape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, SearchFieldShape)
                 .padding(horizontal = 10.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -288,28 +311,21 @@ internal fun PopupSearchField(
             modifier = Modifier.size(14.dp),
             tint = JewelTheme.globalColors.text.info,
         )
-        BasicTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            singleLine = true,
-            textStyle = TextStyle(fontSize = 13.sp, color = JewelTheme.globalColors.text.normal),
-            cursorBrush = SolidColor(JewelTheme.globalColors.outlines.focused),
-            modifier = Modifier.weight(1f).focusRequester(focusRequester),
-            decorationBox = { innerTextField ->
-                Box {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = placeholder,
-                            fontSize = 13.sp,
-                            color = JewelTheme.globalColors.text.info,
-                        )
-                    }
-                    innerTextField()
-                }
-            },
-        )
+        Box(modifier = Modifier.weight(1f)) {
+            if (showPlaceholder) {
+                Text(
+                    text = placeholder,
+                    fontSize = 13.sp,
+                    color = JewelTheme.globalColors.text.info,
+                    maxLines = 1,
+                )
+            }
+            innerTextField()
+        }
     }
 }
+
+private val SearchFieldShape = RoundedCornerShape(6.dp)
 
 @Composable
 internal fun PopupSectionHeader(label: String) {

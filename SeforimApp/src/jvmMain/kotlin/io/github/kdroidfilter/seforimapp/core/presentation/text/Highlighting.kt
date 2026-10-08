@@ -38,15 +38,12 @@ fun highlightAnnotated(
 }
 
 /**
- * Like [highlightAnnotated], but emphasizes the current match with a different color: the one
- * starting at [currentStart] in [annotated]'s text, or the [currentIndex]-th one (from 0). The
- * rank holds whatever diacritics are hidden, unlike an offset.
+ * Like [highlightAnnotated], but emphasizes the [currentIndex]-th match (from 0) with a different
+ * color. A rank, unlike an offset, holds whatever diacritics are hidden.
  */
 fun highlightAnnotatedWithCurrent(
     annotated: AnnotatedString,
     query: String?,
-    currentStart: Int? = null,
-    currentLength: Int? = null, // kept for API compatibility; not required here
     baseColor: Color,
     currentColor: Color,
     currentIndex: Int? = null,
@@ -62,57 +59,7 @@ fun highlightAnnotatedWithCurrent(
     ranges.forEachIndexed { i, r ->
         val start = r.first.coerceIn(0, annotated.length)
         val end = (r.last + 1).coerceAtMost(annotated.length)
-        val color = if (start == currentStart || i == currentIndex) currentColor else baseColor
-        if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
-    }
-    return builder.toAnnotatedString()
-}
-
-/**
- * Like [highlightAnnotatedWithCurrent], but highlights multiple terms.
- * Used for smart mode highlighting with dictionary expansion.
- */
-fun highlightAnnotatedWithTerms(
-    annotated: AnnotatedString,
-    terms: List<String>,
-    currentStart: Int? = null,
-    baseColor: Color,
-    currentColor: Color,
-    currentIndex: Int? = null,
-): AnnotatedString {
-    if (terms.isEmpty()) return annotated
-
-    // Collect all ranges from all terms
-    val allRanges = mutableListOf<IntRange>()
-    for (term in terms) {
-        if (term.length >= 2) {
-            allRanges.addAll(findAllMatchesOriginal(annotated.text, term))
-        }
-    }
-    if (allRanges.isEmpty()) return annotated
-
-    // Merge overlapping ranges to avoid double highlighting
-    val sorted = allRanges.sortedBy { it.first }
-    val merged = mutableListOf<IntRange>()
-    var current = sorted.first()
-    for (i in 1 until sorted.size) {
-        val next = sorted[i]
-        current =
-            if (next.first <= current.last + 1) {
-                current.first..maxOf(current.last, next.last)
-            } else {
-                merged.add(current)
-                next
-            }
-    }
-    merged.add(current)
-
-    val builder = AnnotatedString.Builder()
-    builder.append(annotated)
-    merged.forEachIndexed { i, r ->
-        val start = r.first.coerceIn(0, annotated.length)
-        val end = (r.last + 1).coerceAtMost(annotated.length)
-        val color = if (start == currentStart || i == currentIndex) currentColor else baseColor
+        val color = if (i == currentIndex) currentColor else baseColor
         if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
     }
     return builder.toAnnotatedString()

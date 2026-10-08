@@ -1057,7 +1057,6 @@ fun BookContentView(
                                                 smartModeEnabled -> smartPassage
                                                 else -> findState.text.toString()
                                             },
-                                        highlightTerms = null,
                                         currentMatchOrdinal =
                                             liveMatch?.takeIf { showFind && it.lineId == line.id }?.ordinal,
                                         findMatchLocator =
@@ -1418,7 +1417,6 @@ private fun LineItem(
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
     highlightQuery: String? = null,
-    highlightTerms: List<String>? = null,
     currentMatchOrdinal: Int? = null,
     // Given to the line showing the current match only, which publishes where the match sits
     findMatchLocator: FindMatchLocator? = null,
@@ -1527,7 +1525,6 @@ private fun LineItem(
         remember(
             annotated,
             highlightQuery,
-            highlightTerms,
             currentMatchOrdinal,
             baseHl,
             currentHl,
@@ -1544,26 +1541,13 @@ private fun LineItem(
                     originalText = originalPlainText,
                     diacritics = diacritics,
                 )
-            if (!highlightTerms.isNullOrEmpty()) {
-                // Smart mode: highlight multiple terms from dictionary expansion
-                io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithTerms(
-                    annotated = withUserHighlights,
-                    terms = highlightTerms,
-                    currentIndex = currentMatchOrdinal,
-                    baseColor = baseHl,
-                    currentColor = currentHl,
-                )
-            } else {
-                // Normal mode: highlight single query
-                io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                    annotated = withUserHighlights,
-                    query = highlightQuery,
-                    currentIndex = currentMatchOrdinal,
-                    currentLength = highlightQuery?.length,
-                    baseColor = baseHl,
-                    currentColor = currentHl,
-                )
-            }
+            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+                annotated = withUserHighlights,
+                query = highlightQuery,
+                currentIndex = currentMatchOrdinal,
+                baseColor = baseHl,
+                currentColor = currentHl,
+            )
         }
 
     // Dotted grey underline marking the noted ranges (drawn from the text layout so it supports

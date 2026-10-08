@@ -676,6 +676,7 @@ private fun SiddurEndBar(
 private val TAGS = Regex("<[^>]+>")
 
 /** The book's day, a line above its text: the day and its occasion, the luach, today, and the user's choices. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BookHeader(
     date: LocalDate,
@@ -702,11 +703,45 @@ private fun BookHeader(
                 .distinct()
                 .joinToString(" · ")
         }
-    Row(
+    // On a narrow pane the choices wrap under the day instead of squeezing their labels
+    FlowRow(
         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
+        DayNavigator(date, inIsrael, today, onDay, onToday, dayLabel, occasion)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+            itemVerticalAlignment = Alignment.CenterVertically,
+        ) {
+            val nusachLabels = NUSACH_TITLES.map { stringResource(it.second) }
+            ListComboBox(
+                items = nusachLabels,
+                selectedIndex = NUSACH_TITLES.indexOfFirst { it.first == nusach },
+                onSelectedItemChange = { onNusach(NUSACH_TITLES[it].first) },
+                modifier = Modifier.width(140.dp),
+            )
+            CheckboxRow(text = stringResource(Res.string.siddur_minyan), checked = minyan, onCheckedChange = onMinyan)
+            CheckboxRow(text = stringResource(Res.string.siddur_option_beit_avel), checked = beitAvel, onCheckedChange = onBeitAvel)
+            CheckboxRow(text = stringResource(Res.string.siddur_show_all), checked = showAll, onCheckedChange = onShowAll)
+        }
+    }
+}
+
+/** The previous day, the day itself (a click opens the luach), and the next day. */
+@Composable
+private fun DayNavigator(
+    date: LocalDate,
+    inIsrael: Boolean,
+    today: LocalDate,
+    onDay: (LocalDate) -> Unit,
+    onToday: () -> Unit,
+    dayLabel: String,
+    occasion: String,
+) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         // In a right-to-left page the previous day is on the right
         IconButton(onClick = { onDay(date.minus(1, DateTimeUnit.DAY)) }) {
             Icon(AllIconsKeys.General.ChevronRight, contentDescription = stringResource(Res.string.siddur_previous_day))
@@ -741,17 +776,6 @@ private fun BookHeader(
         IconButton(onClick = { onDay(date.plus(1, DateTimeUnit.DAY)) }) {
             Icon(AllIconsKeys.General.ChevronLeft, contentDescription = stringResource(Res.string.siddur_next_day))
         }
-        Spacer(Modifier.weight(1f))
-        val nusachLabels = NUSACH_TITLES.map { stringResource(it.second) }
-        ListComboBox(
-            items = nusachLabels,
-            selectedIndex = NUSACH_TITLES.indexOfFirst { it.first == nusach },
-            onSelectedItemChange = { onNusach(NUSACH_TITLES[it].first) },
-            modifier = Modifier.width(140.dp),
-        )
-        CheckboxRow(text = stringResource(Res.string.siddur_minyan), checked = minyan, onCheckedChange = onMinyan)
-        CheckboxRow(text = stringResource(Res.string.siddur_option_beit_avel), checked = beitAvel, onCheckedChange = onBeitAvel)
-        CheckboxRow(text = stringResource(Res.string.siddur_show_all), checked = showAll, onCheckedChange = onShowAll)
     }
 }
 

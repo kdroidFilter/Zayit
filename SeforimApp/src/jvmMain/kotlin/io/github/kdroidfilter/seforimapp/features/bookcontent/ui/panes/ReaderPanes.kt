@@ -128,14 +128,14 @@ enum class ReaderPane(
     Comments(
         "comments",
         Res.string.commentaries,
-        SatellitePlacement.Docked(DockSide.Bottom, extent = 220.dp),
+        SatellitePlacement.Docked(DockSide.Bottom, extent = 220.dp, weight = 2f),
         toggle = BookContentEvent.ToggleCommentaries,
         navigation = false,
     ),
     Sources(
         "sources",
         Res.string.sources,
-        SatellitePlacement.Docked(DockSide.Bottom, extent = 120.dp),
+        SatellitePlacement.Docked(DockSide.Bottom, order = 1, extent = 120.dp),
         toggle = BookContentEvent.ToggleSources,
         navigation = false,
     ),
@@ -187,6 +187,8 @@ fun WindowPanes(window: OpenWindow) {
                 hideWhileOwnerFullscreenOrMaximized = false,
                 // The pane draws its own header (PaneHeader), which is also its grip.
                 header = {},
+                // On Wayland the floating bar moves the window; the pane docks from its header's Dock button.
+                floatingBarMovesWindow = true,
                 // The controls where the main window has them: the OS side, not the RTL content's.
                 controlButtonsDirection = ControlButtonsDirection.SystemNative,
             ) {
@@ -243,6 +245,11 @@ private fun PaneSync(
 
         fun entry(pane: ReaderPane) = workspace(pane).satellite(pane.idIn(groupId))
 
+        // The tab's split percentages size a line pane only on its home side: moved elsewhere, its size is the
+        // dock's own, else two panes sharing one percentage would resize each other.
+        fun sizedByTab(pane: ReaderPane): Boolean =
+            pane.navigation || (entry(pane)?.placement as? SatellitePlacement.Docked)?.side == pane.home.side
+
         fun extentDpOf(pane: ReaderPane): Float? {
             val docked = entry(pane)?.takeIf { it.isOpen }?.placement as? SatellitePlacement.Docked ?: return null
             // The navigation column is layered (each pane its own width); the inner sides are split.
@@ -266,6 +273,9 @@ private fun PaneSync(
         var applied: Pair<String?, Set<ReaderPane>>? = null
         var appliedRegistered = emptySet<ReaderPane>()
         var sized = HashMap<ReaderPane, Int>()
+        // The tab's panes the last follow-up was sent for: the toggles apply at once, but `demand` only catches up at
+        // the next recomposition, and every frame until then (the toggles move split states) would toggle back.
+        var followed: Set<ReaderPane>? = null
         window.panesReadyFor = null
         snapshotFlow {
             val registered = ReaderPane.entries.filter { entry(it) != null }.toSet()
@@ -299,7 +309,7 @@ private fun PaneSync(
                 window.panesReadyFor = null
                 val planned = current.panes intersect frame.registered
                 if (sizes != null && layout != null) {
-                    sized = HashMap(plannedExtents(layout, sizes, planned, splitter))
+                    sized = HashMap(plannedExtents(layout, sizes, planned.filter(::sizedByTab).toSet(), splitter))
                     sized.forEach { (pane, px) -> setExtent(pane, px, sizes.density) }
                 }
                 for (pane in frame.registered) {
@@ -316,15 +326,19 @@ private fun PaneSync(
             }
             val expected = current.panes intersect frame.registered
             if (frame.open != expected) {
-                // The user closed (or reopened) a pane from the dock: follow on the tab.
-                (frame.open - expected).plus(expected - frame.open).forEach { current.onEvent(it.toggle) }
+                // The user closed (or reopened) a pane from the dock: follow on the tab, once per tab state.
+                if (followed != current.panes) {
+                    followed = current.panes
+                    (frame.open - expected).plus(expected - frame.open).forEach { current.onEvent(it.toggle) }
+                }
                 return@collect
             }
+            followed = null
             if (sizes == null || layout == null) {
                 window.panesReadyFor = current.tabId
                 return@collect
             }
-            val targets = plannedExtents(layout, sizes, frame.open, splitter)
+            val targets = plannedExtents(layout, sizes, frame.open.filter(::sizedByTab).toSet(), splitter)
             var dragged = false
             var settled = true
             for (pane in frame.open) {
@@ -518,10 +532,8 @@ private fun desiredPanes(
         // The line panes exist only while a book is on screen.
         if (isBookTextShown(uiState)) {
             if (uiState.content.showTargum) add(ReaderPane.Targum)
-            when {
-                uiState.content.showCommentaries -> add(ReaderPane.Comments)
-                uiState.content.showSources -> add(ReaderPane.Sources)
-            }
+            if (uiState.content.showCommentaries) add(ReaderPane.Comments)
+            if (uiState.content.showSources) add(ReaderPane.Sources)
         }
     }
 

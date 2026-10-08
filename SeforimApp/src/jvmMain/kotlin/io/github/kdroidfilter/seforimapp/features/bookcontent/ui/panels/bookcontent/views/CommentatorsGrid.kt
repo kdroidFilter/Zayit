@@ -53,7 +53,7 @@ import org.jetbrains.jewel.ui.component.Text
 // Grid capacity thresholds at the reference commentary font size ([REFERENCE_TEXT_SIZE]).
 // At runtime the effective minimums scale with the user's chosen font size so the grid
 // widens when the text is enlarged and tightens when it shrinks.
-private val MIN_CELL_WIDTH_AT_REF = 320.dp
+internal val MIN_CELL_WIDTH_AT_REF = 320.dp
 private val MIN_CELL_HEIGHT_AT_REF = 150.dp
 private const val MAX_ROWS_PER_PAGE = 2
 

@@ -742,7 +742,10 @@ fun BookContentScreen(
     }
 }
 
-/** Book-view shortcuts: Ctrl/Cmd+B tree (Shift: contents), Ctrl/Cmd+K commentaries (Shift: links), Ctrl/Cmd+J nikud. */
+/**
+ * Book-view shortcuts: Ctrl/Cmd+B tree (Shift: contents), Ctrl/Cmd+K commentaries (Shift: links, Alt: sources),
+ * Ctrl/Cmd+J nikud.
+ */
 fun handleBookShortcut(
     keyEvent: KeyEvent,
     onEvent: (BookContentEvent) -> Unit,
@@ -753,7 +756,12 @@ fun handleBookShortcut(
     val event =
         when (keyEvent.key) {
             Key.B -> if (keyEvent.isShiftPressed) BookContentEvent.ToggleToc else BookContentEvent.ToggleBookTree
-            Key.K -> if (keyEvent.isShiftPressed) BookContentEvent.ToggleTargum else BookContentEvent.ToggleCommentaries
+            Key.K ->
+                when {
+                    keyEvent.isAltPressed -> BookContentEvent.ToggleSources
+                    keyEvent.isShiftPressed -> BookContentEvent.ToggleTargum
+                    else -> BookContentEvent.ToggleCommentaries
+                }
             Key.J -> BookContentEvent.CycleDiacritics
             else -> return false
         }

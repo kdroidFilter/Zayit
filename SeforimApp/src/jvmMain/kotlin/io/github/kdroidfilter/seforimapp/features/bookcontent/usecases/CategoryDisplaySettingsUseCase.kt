@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -13,32 +14,27 @@ class CategoryDisplaySettingsUseCase(
 ) {
     data class RootCategorySetting(
         val rootCategoryId: Long?,
-        val showDiacritics: Boolean,
+        val diacritics: DiacriticsMode,
     )
 
     val categoryChanges: SharedFlow<Long> = settingsStore.categoryChanges
 
-    suspend fun getShowDiacriticsForCategory(
+    suspend fun getDiacriticsForCategory(
         categoryId: Long,
         navigation: NavigationState,
     ): RootCategorySetting {
         val rootCategoryId = resolveRootCategoryId(categoryId, navigation)
-        val show =
-            if (rootCategoryId == null) {
-                true
-            } else {
-                settingsStore.getShowDiacritics(rootCategoryId)
-            }
-        return RootCategorySetting(rootCategoryId, show)
+        val diacritics = rootCategoryId?.let { settingsStore.getDiacritics(it) } ?: DiacriticsMode.All
+        return RootCategorySetting(rootCategoryId, diacritics)
     }
 
-    suspend fun toggleShowDiacriticsForCategory(
+    suspend fun cycleDiacriticsForCategory(
         categoryId: Long,
         navigation: NavigationState,
+        hasTeamim: Boolean,
     ): RootCategorySetting? {
         val rootCategoryId = resolveRootCategoryId(categoryId, navigation) ?: return null
-        val show = settingsStore.toggleShowDiacritics(rootCategoryId)
-        return RootCategorySetting(rootCategoryId, show)
+        return RootCategorySetting(rootCategoryId, settingsStore.cycleDiacritics(rootCategoryId, hasTeamim))
     }
 
     suspend fun resolveRootCategoryId(

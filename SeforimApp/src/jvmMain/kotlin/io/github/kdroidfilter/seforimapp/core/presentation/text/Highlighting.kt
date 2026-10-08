@@ -116,20 +116,20 @@ fun highlightAnnotatedWithTerms(
  * Applies persisted user [highlights] (belonging to a single line) to [annotated].
  *
  * Highlight offsets are stored relative to the original text (with diacritics). When
- * diacritics are hidden, [originalText] is used to remap offsets onto the stripped
+ * some diacritics are hidden, [originalText] is used to remap offsets onto the stripped
  * text that is actually displayed.
  */
 fun applyUserHighlights(
     annotated: AnnotatedString,
     highlights: List<UserHighlight>,
     originalText: String? = null,
-    showDiacritics: Boolean = true,
+    diacritics: DiacriticsMode = DiacriticsMode.All,
     highlightAlpha: Float = 0.4f,
 ): AnnotatedString {
     if (highlights.isEmpty()) return annotated
 
     val originalToStrippedMap =
-        if (!showDiacritics && originalText != null) createOriginalToStrippedMap(originalText) else null
+        if (diacritics != DiacriticsMode.All && originalText != null) createOriginalToStrippedMap(originalText, diacritics) else null
 
     val builder = AnnotatedString.Builder()
     builder.append(annotated)

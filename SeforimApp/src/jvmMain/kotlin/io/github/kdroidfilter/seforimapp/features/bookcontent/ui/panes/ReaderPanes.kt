@@ -553,12 +553,12 @@ private fun BookPaneBody(
     val owner = session.ownerOf(destination.tabId)
     val viewModel = tabBookViewModel(owner, destination)
     val uiState by viewModel.uiState.collectAsState()
-    val showDiacritics by viewModel.showDiacritics.collectAsState()
+    val diacritics by viewModel.diacritics.collectAsState()
     val onEvent = viewModel::onEvent
     val tabUi = tabUi(owner)
     val modifier = Modifier.fillMaxSize()
 
-    BookTextMenus(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics, tabUi = tabUi) {
+    BookTextMenus(uiState = uiState, onEvent = onEvent, diacritics = diacritics, tabUi = tabUi) {
         when (pane) {
             ReaderPane.Tree ->
                 if (search != null) {
@@ -588,9 +588,9 @@ private fun BookPaneBody(
                 val book = uiState.navigation.selectedBook ?: return@BookTextMenus
                 val connections = tabUi.connections(book.id)
                 when (pane) {
-                    ReaderPane.Targum -> TargumPane(uiState, onEvent, connections, showDiacritics, modifier)
-                    ReaderPane.Comments -> CommentsPane(uiState, onEvent, connections, showDiacritics, modifier)
-                    else -> SourcesPane(uiState, onEvent, connections, showDiacritics, modifier)
+                    ReaderPane.Targum -> TargumPane(uiState, onEvent, connections, diacritics, modifier)
+                    ReaderPane.Comments -> CommentsPane(uiState, onEvent, connections, diacritics, modifier)
+                    else -> SourcesPane(uiState, onEvent, connections, diacritics, modifier)
                 }
             }
         }

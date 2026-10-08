@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
@@ -43,7 +44,7 @@ val LocalBookTextReady = staticCompositionLocalOf<(String) -> Boolean> { { true 
 fun BookContentPanel(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
     isRestoringSession: Boolean = false,
     searchUi: SearchHomeUiState = SearchHomeUiState(),
@@ -99,7 +100,7 @@ fun BookContentPanel(
                 BookContentPanelContent(
                     uiState = uiState,
                     onEvent = onEvent,
-                    showDiacritics = showDiacritics,
+                    diacritics = diacritics,
                     isSelected = isSelected,
                     bookCharCounts = bookCharCounts,
                     noteDraft = noteDraft,
@@ -114,7 +115,7 @@ fun BookContentPanel(
 private fun BookContentPanelContent(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     isSelected: Boolean,
     bookCharCounts: IntArray?,
     noteDraft: NoteDraftAnchor?,
@@ -193,7 +194,7 @@ private fun BookContentPanelContent(
                     },
                     onEvent = onEvent,
                     tabId = uiState.tabId,
-                    showDiacritics = showDiacritics,
+                    diacritics = diacritics,
                     draftNote = noteDraft,
                     modifier = paneCardModifier,
                     preservedListState = bookListState,
@@ -261,7 +262,7 @@ fun CommentsPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -269,7 +270,7 @@ fun CommentsPane(
             uiState = uiState,
             onEvent = onEvent,
             lineConnections = lineConnections,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
         )
     }
 }
@@ -279,7 +280,7 @@ fun SourcesPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -288,7 +289,7 @@ fun SourcesPane(
             onEvent = onEvent,
             lineConnections = lineConnections,
             availabilityType = ConnectionType.SOURCE,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
         )
     }
 }
@@ -298,7 +299,7 @@ fun TargumPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     lineConnections: Map<Long, LineConnectionsSnapshot>,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -306,7 +307,7 @@ fun TargumPane(
             uiState = uiState,
             onEvent = onEvent,
             lineConnections = lineConnections,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
         )
     }
 }

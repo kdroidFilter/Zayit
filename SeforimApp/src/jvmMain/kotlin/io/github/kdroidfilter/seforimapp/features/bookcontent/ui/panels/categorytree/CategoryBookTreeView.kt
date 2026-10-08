@@ -65,8 +65,6 @@ fun CategoryBookTreeView(
     selectedBookIdOverride: Long? = null,
     showCounts: Boolean = false,
     booksForCategoryOverride: Map<Long, List<Book>> = emptyMap(),
-    // Scroll to the selected book only when out of view (moving through search results)
-    revealSelectionOnly: Boolean = false,
     onCategoryRevealComplete: () -> Unit = {},
 ) {
     /* ---------------------------------------------------------------------
@@ -140,20 +138,7 @@ fun CategoryBookTreeView(
         }
     }
 
-    // 3) After restoration, if a book is selected, ensure it's brought into view once.
-    var didAutoCenter by remember(navigationState.selectedBook?.id) { mutableStateOf(false) }
-    LaunchedEffect(navigationState.selectedBook?.id, treeItems.size, hasRestored, didAutoCenter) {
-        val selId = navigationState.selectedBook?.id ?: return@LaunchedEffect
-        if (!didAutoCenter && hasRestored && treeItems.isNotEmpty()) {
-            val idx = treeItems.indexOfFirst { it.id == "book_${'$'}selId" }
-            if (idx >= 0) {
-                if (revealSelectionOnly) listState.revealItem(idx) else listState.scrollToItem(idx, 0)
-                didAutoCenter = true
-            }
-        }
-    }
-
-    // 4) A category revealed from elsewhere (the breadcrumb) is scrolled into view, then the request consumed
+    // 3) A category revealed from elsewhere (the breadcrumb) is scrolled into view, then the request consumed
     val currentOnCategoryRevealComplete by rememberUpdatedState(onCategoryRevealComplete)
     LaunchedEffect(navigationState.categoryReveal, treeItems, hasRestored) {
         val reveal = navigationState.categoryReveal ?: return@LaunchedEffect

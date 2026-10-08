@@ -89,7 +89,7 @@ class BookContentViewModel(
     // UseCases - created via factory
     private val navigationUseCase = useCaseFactory.createNavigationUseCase(stateManager)
     private val contentUseCase = useCaseFactory.createContentUseCase(stateManager)
-    private val tocUseCase = useCaseFactory.createTocUseCase(stateManager)
+    private val tocUseCase = useCaseFactory.createTocUseCase(stateManager, viewModelScope)
     private val notesUseCase = useCaseFactory.createNotesUseCase(stateManager)
     private val altTocUseCase = useCaseFactory.createAltTocUseCase(stateManager)
     private val commentariesUseCase = useCaseFactory.createCommentariesUseCase(stateManager, viewModelScope)

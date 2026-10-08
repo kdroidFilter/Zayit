@@ -188,9 +188,7 @@
             "methods": [
                 {
                     "name": "<init>",
-                    "parameterTypes": [
-                        "int"
-                    ]
+                    "parameterTypes": []
                 }
             ]
         },

@@ -49,7 +49,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPage
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
-import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
+import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -678,19 +678,7 @@ private fun rememberSnippetDisplay(
     val baseHl =
         JewelTheme.globalColors.outlines.focused
             .copy(alpha = 0.12f)
-    val currentHl =
-        JewelTheme.globalColors.outlines.focused
-            .copy(alpha = 0.28f)
-    return remember(annotated, findQuery, baseHl, currentHl) {
-        highlightAnnotatedWithCurrent(
-            annotated = annotated,
-            query = findQuery,
-            currentStart = null,
-            currentLength = findQuery?.length,
-            baseColor = baseHl,
-            currentColor = currentHl,
-        )
-    }
+    return remember(annotated, findQuery, baseHl) { highlightAnnotated(annotated, findQuery, baseHl) }
 }
 
 /** Last breadcrumb piece (the TOC leaf) for a result, or null if not resolvable/cached. */

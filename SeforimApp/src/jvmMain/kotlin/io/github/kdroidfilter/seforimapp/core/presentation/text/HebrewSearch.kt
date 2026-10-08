@@ -135,8 +135,13 @@ fun mapOriginalToStripped(
 internal fun findAllMatchesOriginal(
     text: String,
     query: String,
+): List<IntRange> = findAllMatchesNormalized(text, normalizeQueryForHebrew(query))
+
+/** [findAllMatchesOriginal] for a query already through [normalizeQueryForHebrew]: scanning many lines normalizes it once. */
+internal fun findAllMatchesNormalized(
+    text: String,
+    q: String,
 ): List<IntRange> {
-    val q = normalizeQueryForHebrew(query)
     if (q.length < 2) return emptyList()
 
     val (plain, map) = stripDiacriticsWithMap(text)

@@ -380,7 +380,7 @@ class SearchHighlightingIntegrationTest {
             highlightAnnotatedWithCurrent(
                 annotated = original,
                 query = "test",
-                currentStart = 0, // First occurrence
+                currentIndex = 0, // First occurrence
                 baseColor = baseColor,
                 currentColor = currentColor,
             )
@@ -412,7 +412,7 @@ class SearchHighlightingIntegrationTest {
             highlightAnnotatedWithCurrent(
                 annotated = original,
                 query = "test",
-                currentStart = secondTestStart,
+                currentIndex = 1,
                 baseColor = baseColor,
                 currentColor = currentColor,
             )
@@ -454,7 +454,7 @@ class SearchHighlightingIntegrationTest {
             highlightAnnotatedWithCurrent(
                 annotated = original,
                 query = "t",
-                currentStart = 0,
+                currentIndex = 0,
                 baseColor = Color.Yellow,
                 currentColor = Color.Red,
             )

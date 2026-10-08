@@ -27,7 +27,8 @@ import org.jetbrains.jewel.ui.theme.scrollbarStyle
  * The total content height becomes
  * `totalContentPx = totalVisualLines × lineHeightPx + N × paddingPerItemPx`, which matches
  * what Compose actually lays out. Thumb size = `viewport / totalContentPx`, thumb position
- * = `scrollPx / (totalContentPx − viewport)`. No per-frame sampling, no latch heuristics.
+ * = `above / (above + below)` (see [computeModelScrollRatio]). No per-frame sampling, no
+ * latch heuristics.
  *
  * Drag is pixel-aware: a thumb ratio is converted to the target item by binary-searching
  * the `cumPx` prefix sum, so a 50 % drag on a list with one giant commentary and many
@@ -74,12 +75,12 @@ fun CommentariesScrollbar(
         ) ?: return
     if (latched.hidden) return
 
-    // Thumb **position** in pixel-space: `cumPx[firstIdx] + innerFraction × itemModelHeight`
-    // divided by `totalContentPx − viewport`. Uses cumPx (exact modelled weight of each
-    // preceding item) plus a real-pixel fraction remapped to cumPx units, so the thumb
-    // advances proportionally to the modelled weight of the current item.
+    // Thumb **position**, two-sided so both ends are exact on the real layout (see
+    // [computeModelScrollRatio]). Lazy index == model index here.
     val position =
-        computeScrollPosition(listState, cumPx, itemCount, totalContentPx).coerceIn(0f, 1f)
+        computeModelScrollRatio(listState.layoutInfo, cumPx, itemCount) { lazyIndex ->
+            if (lazyIndex in 0 until itemCount) lazyIndex else -1
+        }
 
     val listStateRef = rememberUpdatedState(listState)
     val cumPxRef = rememberUpdatedState(cumPx)
@@ -123,44 +124,4 @@ fun CommentariesScrollbar(
         onApplyTarget = applyTarget,
         modifier = modifier,
     )
-}
-
-/**
- * Pixel-space thumb position in `[0, 1]`.
- *
- * Formula: `scrolledPx = cumPx[firstIdx] + innerFraction × itemModelHeight`, divided
- * by `totalContentPx − viewport`. `cumPx[firstIdx]` exactly sums the modelled weight
- * of every item before the first visible one. `innerFraction = -offset / size` is the
- * proportion scrolled **through** the current item on real rendered pixels; multiplied
- * by `cumPx[firstIdx + 1] − cumPx[firstIdx]` it converts back into cumPx units so a
- * tall commentary moves the thumb more than a short one while scrolling through it.
- */
-private fun computeScrollPosition(
-    listState: LazyListState,
-    cumPx: LongArray,
-    itemCount: Int,
-    totalContentPx: Float,
-): Float {
-    if (itemCount == 0 || cumPx.size < itemCount + 1) return 0f
-    val info = listState.layoutInfo
-    // Guard against transient states where `visibleItemsInfo` contains indices outside
-    // our domain. Single-pass scan avoids a List allocation per scroll frame (60 Hz).
-    var firstInfo: androidx.compose.foundation.lazy.LazyListItemInfo? = null
-    val visibleList = info.visibleItemsInfo
-    for (i in visibleList.indices) {
-        val item = visibleList[i]
-        if (item.index in 0 until itemCount) {
-            firstInfo = item
-            break
-        }
-    }
-    if (firstInfo == null) return 0f
-    val firstIdx = firstInfo.index.coerceIn(0, itemCount - 1)
-    val firstSize = firstInfo.size.coerceAtLeast(1)
-    val innerFraction = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
-    val itemModelHeight = (cumPx[firstIdx + 1] - cumPx[firstIdx]).toFloat().coerceAtLeast(0f)
-    val scrolledPx = cumPx[firstIdx].toFloat() + innerFraction * itemModelHeight
-    val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-    val maxScroll = (totalContentPx - viewport).coerceAtLeast(1f)
-    return scrolledPx / maxScroll
 }

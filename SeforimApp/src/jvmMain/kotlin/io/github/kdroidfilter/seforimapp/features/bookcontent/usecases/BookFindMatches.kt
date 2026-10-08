@@ -1,8 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import androidx.compose.runtime.Immutable
-import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
-import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforim.htmlparser.plainTextFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesNormalized
 import io.github.kdroidfilter.seforimapp.core.presentation.text.normalizeQueryForHebrew
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -131,13 +131,15 @@ suspend fun findInBook(
                     debugln { "find-in-book: index query failed, scanning the book: $e" }
                     null
                 }
+        val normalizedQuery = normalizeQueryForHebrew(query)
         // (lineIndex, lineId, count) of each matching line, sorted once complete
         val found = ArrayList<Triple<Int, Long, Int>>()
 
         fun confirm(lines: List<Line>) {
             for (line in lines) {
                 ensureActive()
-                val count = findAllMatchesOriginal(buildAnnotatedFromHtml(line.content, FIND_TEXT_SIZE).text, query).size
+                // The displayed text, without building its styles
+                val count = findAllMatchesNormalized(plainTextFromHtml(line.content), normalizedQuery).size
                 if (count > 0) found += Triple(line.lineIndex, line.id, count)
             }
         }
@@ -173,6 +175,3 @@ fun queryNarrows(
 
 // Lines read per DB query: bounds memory, and stays under SQLite's bound-parameter limit
 private const val FIND_CHUNK = 500
-
-// The parsed text doesn't depend on the size; any value finds the matches the view highlights
-private const val FIND_TEXT_SIZE = 16f

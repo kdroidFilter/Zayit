@@ -7,6 +7,18 @@ import kotlin.test.assertTrue
 
 class HtmlParserTest {
     @Test
+    fun plainTextMatchesTheAnnotatedText() {
+        listOf(
+            "<div>שלום עולם</div>",
+            "<b>בראשית</b> ברא<br>אלהים",
+            """פי'<sup class="footnote-marker">34</sup> ועכשיו<span class="footnote">הערה</span> סוף""",
+            "<h2>כותרת</h2><small>הגה</small> <i>נטוי</i>",
+        ).forEach { html ->
+            assertEquals(buildAnnotatedFromHtml(html, 16f).text, plainTextFromHtml(html), html)
+        }
+    }
+
+    @Test
     fun parsesSimpleText() {
         val html = "<div>שלום עולם</div>"
         val result = HtmlParser().parse(html)

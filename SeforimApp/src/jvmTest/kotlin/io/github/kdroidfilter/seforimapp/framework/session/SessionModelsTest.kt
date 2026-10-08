@@ -1,6 +1,12 @@
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromByteArray
+import kotlinx.serialization.encodeToByteArray
+import kotlinx.serialization.protobuf.ProtoBuf
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -133,5 +139,22 @@ class SessionModelsTest {
 
         assertEquals(1, session.tabStates.size)
         assertEquals(42L, session.tabStates["tab1"]?.bookContent?.selectedBookId)
+    }
+
+    /** [SerializableTabTitle] as saved before tabs could be pinned. */
+    @Serializable
+    private data class LegacyTabTitle(
+        val title: String,
+        val tabType: TabType,
+    )
+
+    @OptIn(ExperimentalSerializationApi::class)
+    @Test
+    fun `a tab title saved before pinning reads back unpinned, and a pin round-trips`() {
+        val legacy = ProtoBuf.encodeToByteArray(LegacyTabTitle("Book", TabType.BOOK))
+        assertEquals(SerializableTabTitle("Book", TabType.BOOK), ProtoBuf.decodeFromByteArray<SerializableTabTitle>(legacy))
+
+        val pinned = SerializableTabTitle("Book", TabType.BOOK, pinned = true)
+        assertTrue(ProtoBuf.decodeFromByteArray<SerializableTabTitle>(ProtoBuf.encodeToByteArray(pinned)).pinned)
     }
 }

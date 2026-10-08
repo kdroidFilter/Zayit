@@ -77,13 +77,15 @@ private fun tabLabel(
     homeLabel: String,
 ): String = item.title.ifEmpty { homeLabel }
 
-/** The card under the pointer while a tab is dragged out of its strip. */
+/** The card under the pointer while a tab is dragged out of its strip, and in the slot it would drop into. */
 @Composable
-private fun TabDragGhostCard(title: String) {
+internal fun TabDragGhostCard(
+    title: String,
+    modifier: Modifier = Modifier.fillMaxSize(),
+) {
     Box(
         modifier =
-            Modifier
-                .fillMaxSize()
+            modifier
                 .background(JewelTheme.globalColors.panelBackground, RoundedCornerShape(10.dp))
                 .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
                 .padding(horizontal = 14.dp, vertical = 6.dp),

@@ -266,7 +266,14 @@ class SessionManager(
                             } else {
                                 val mergedTitles = windowSnapshot.titles.toMutableMap()
                                 computedTitles.forEach { (tabId, pair) ->
-                                    mergedTitles[tabId] = SerializableTabTitle(title = pair.first, tabType = pair.second)
+                                    val previous = mergedTitles[tabId]
+                                    mergedTitles[tabId] =
+                                        SerializableTabTitle(
+                                            title = pair.first,
+                                            tabType = pair.second,
+                                            pinned = previous?.pinned == true,
+                                            shortTitle = previous?.shortTitle.orEmpty(),
+                                        )
                                 }
                                 windowSnapshot.copy(titles = mergedTitles)
                             }

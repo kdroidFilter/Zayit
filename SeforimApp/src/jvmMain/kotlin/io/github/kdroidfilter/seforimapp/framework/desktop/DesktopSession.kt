@@ -106,10 +106,20 @@ class DesktopSession internal constructor(
         title: String = titleFor(destination),
         tabType: TabType = tabTypeFor(destination),
         select: Boolean = true,
+        pinned: Boolean = false,
+        shortTitle: String = "",
     ) {
         val target = groupId ?: activeGroupId() ?: newGroupId()
         pending[destination.tabId] = Placement(target, index, replacing, if (select) null else group(target)?.selectedId)
-        tabs += TabItem(id = nextItemId++, title = title, destination = destination, tabType = tabType)
+        tabs +=
+            TabItem(
+                id = nextItemId++,
+                title = title,
+                destination = destination,
+                tabType = tabType,
+                pinned = pinned,
+                shortTitle = shortTitle,
+            )
     }
 
     /** Group a tab joins on its first declaration; null once it is placed. */
@@ -130,19 +140,55 @@ class DesktopSession internal constructor(
     ) {
         val index = tabs.indexOfFirst { it.destination.tabId == tabId }
         if (index < 0) return
-        tabs[index] = tabs[index].copy(destination = destination, title = titleFor(destination), tabType = tabTypeFor(destination))
+        tabs[index] =
+            tabs[index].copy(destination = destination, title = titleFor(destination), tabType = tabTypeFor(destination), shortTitle = "")
     }
 
     fun updateTitle(
         tabId: String,
         title: String,
         tabType: TabType,
+        shortTitle: String = "",
     ): Boolean {
         val index = tabs.indexOfFirst { it.destination.tabId == tabId }
         if (index < 0) return false
         val current = tabs[index]
-        if (current.title != title || current.tabType != tabType) tabs[index] = current.copy(title = title, tabType = tabType)
+        if (current.title != title || current.tabType != tabType || current.shortTitle != shortTitle) {
+            tabs[index] = current.copy(title = title, tabType = tabType, shortTitle = shortTitle)
+        }
         return true
+    }
+
+    /**
+     * Pins or unpins [tabId]: a pinned tab joins the end of the pinned run at the start of its
+     * strip, an unpinned one the start of the others (Chromium's SetTabPinned).
+     */
+    fun setPinned(
+        tabId: String,
+        pinned: Boolean,
+    ) {
+        val index = tabs.indexOfFirst { it.destination.tabId == tabId }
+        if (index < 0 || tabs[index].pinned == pinned) return
+        tabs[index] = tabs[index].copy(pinned = pinned)
+        // Clamped by pinConstrained to the boundary of the two runs.
+        workspace.reorder(tabId, if (pinned) Int.MAX_VALUE else 0)
+    }
+
+    fun isPinned(tabId: String): Boolean = item(tabId)?.pinned == true
+
+    /**
+     * Where a tab may stand in [group] of this workspace: pinned tabs ahead of the others
+     * (Chromium's ConstrainMoveIndex). [pinned] is the tab's own state, which a tab dragged in
+     * from another desktop does not have here.
+     */
+    fun pinConstrained(
+        tabId: String,
+        pinned: Boolean,
+        group: TabWindowGroup,
+        index: Int,
+    ): Int {
+        val pinnedCount = group.ids.count { it != tabId && isPinned(it) }
+        return if (pinned) index.coerceAtMost(pinnedCount) else index.coerceAtLeast(pinnedCount)
     }
 
     /** Closes [tabId] without making it reopenable (the tab lives on elsewhere, or was replaced). */
@@ -205,16 +251,23 @@ class DesktopSession internal constructor(
      */
     fun restore(snapshots: List<WindowSnapshot>): List<String> {
         val groups =
-            snapshots.map { snapshot ->
+            snapshots.map { saved ->
+                // Pinned tabs first, whatever the file says: one moved into a dormant desktop was appended.
+                val selectedId = saved.destinations.getOrNull(saved.selectedIndex)?.tabId
+                val destinations = saved.destinations.sortedByDescending { saved.titles[it.tabId]?.pinned == true }
+                val selectedIndex = destinations.indexOfFirst { it.tabId == selectedId }.coerceAtLeast(0)
+                val snapshot = saved.copy(destinations = destinations, selectedIndex = selectedIndex)
                 val groupId = newGroupId()
                 snapshot.destinations.forEach { destination ->
-                    val saved = snapshot.titles[destination.tabId]
+                    val savedTitle = snapshot.titles[destination.tabId]
                     tabs +=
                         TabItem(
                             id = nextItemId++,
-                            title = saved?.title ?: titleFor(destination),
+                            title = savedTitle?.title ?: titleFor(destination),
                             destination = destination,
-                            tabType = saved?.tabType ?: tabTypeFor(destination),
+                            tabType = savedTitle?.tabType ?: tabTypeFor(destination),
+                            pinned = savedTitle?.pinned == true,
+                            shortTitle = savedTitle?.shortTitle.orEmpty(),
                         )
                 }
                 restoredByGroup[groupId] = snapshot
@@ -249,7 +302,7 @@ class DesktopSession internal constructor(
         return WindowSnapshot(
             destinations = items.map { stripEphemeral(it.destination) },
             selectedIndex = items.indexOfFirst { it.destination.tabId == group.selectedId }.coerceAtLeast(0),
-            titles = items.associate { it.destination.tabId to SerializableTabTitle(it.title, it.tabType) },
+            titles = items.associate { it.destination.tabId to SerializableTabTitle(it.title, it.tabType, it.pinned, it.shortTitle) },
         )
     }
 

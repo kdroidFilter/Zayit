@@ -93,6 +93,9 @@ class DesktopManager(
     private val _focusedWindowId = MutableStateFlow("")
     val focusedWindowId: StateFlow<String> = _focusedWindowId.asStateFlow()
 
+    // Window ids, the one focused last at the end: where a closed window's pinned tabs go.
+    private val focusHistory = ArrayDeque<String>()
+
     /** Desktop of the focused window. Kept for consumers that need "the" current desktop. */
     private val _activeDesktopId = MutableStateFlow(defaultDesktopId)
     val activeDesktopId: StateFlow<String> = _activeDesktopId.asStateFlow()
@@ -121,7 +124,7 @@ class DesktopManager(
     ) {
         scope.launch {
             titleUpdateManager.titleUpdates.collect { update ->
-                _sessions.value.firstOrNull { it.updateTitle(update.tabId, update.newTitle, update.tabType) }
+                _sessions.value.firstOrNull { it.updateTitle(update.tabId, update.newTitle, update.tabType, update.shortTitle) }
             }
         }
     }
@@ -171,6 +174,8 @@ class DesktopManager(
     fun onWindowFocused(windowId: String) {
         if (window(windowId) == null) return
         _focusedWindowId.value = windowId
+        focusHistory.remove(windowId)
+        focusHistory.addLast(windowId)
         refreshActiveDesktop()
     }
 
@@ -192,7 +197,15 @@ class DesktopManager(
         val destination = closed.item.destination
         closed.state?.let { tabPersistedStateStore.set(destination.tabId, it) }
         val index = win.group()?.let { it.ids.indexOf(it.selectedId) }?.coerceAtLeast(0) ?: 0
-        win.session.addTab(destination, win.groupId, index, title = closed.item.title, tabType = closed.item.tabType)
+        win.session.addTab(
+            destination,
+            win.groupId,
+            index,
+            title = closed.item.title,
+            tabType = closed.item.tabType,
+            pinned = closed.item.pinned,
+            shortTitle = closed.item.shortTitle,
+        )
     }
 
     // ---- Desktop switching ----
@@ -261,8 +274,10 @@ class DesktopManager(
 
     /**
      * Closes a window. If it was its desktop's last window, the desktop goes dormant (content
-     * preserved); otherwise the window's tabs are discarded (Chrome-like). The last window of the
-     * app is never closed here — that's the quit path, handled by the caller.
+     * preserved); otherwise the window's tabs are discarded (Chrome-like), except its pinned ones:
+     * like Arc's, a pinned tab belongs to the desktop, so they join the desktop's window focused
+     * last. The last window of the app is never closed here — that's the quit path, handled by the
+     * caller.
      */
     fun closeWindow(windowId: String) {
         val win = window(windowId) ?: return
@@ -271,10 +286,24 @@ class DesktopManager(
         if (windowsOf(session.desktopId).size == 1) {
             putDesktopDormant(session, keepWindow = null)
         } else {
-            val tabIds = session.group(win.groupId)?.ids.orEmpty()
+            val (pinned, others) =
+                session
+                    .group(win.groupId)
+                    ?.ids
+                    .orEmpty()
+                    .partition(session::isPinned)
+            val heir = windowsOf(session.desktopId).filter { it !== win }.maxByOrNull { focusHistory.indexOf(it.id) }
             removeWindow(win)
-            // Their states go with onTabClosed, which keeps them for a reopen.
-            tabIds.forEach(session.workspace::close)
+            val heirGroup = heir?.group()
+            if (heirGroup != null) {
+                val selected = heirGroup.selectedId
+                // Same ids: their ViewModels and states move along; constrained to the end of the pinned run.
+                pinned.forEach { session.workspace.move(it, heirGroup) }
+                selected?.let(session.workspace::select)
+            }
+            // Their states go with onTabClosed, which keeps them for a reopen. With no group to take them
+            // (the heir still awaiting its restore), the pinned ones go too rather than stay windowless.
+            (if (heirGroup != null) others else others + pinned).forEach(session.workspace::close)
         }
         refreshActiveDesktop()
     }
@@ -354,7 +383,7 @@ class DesktopManager(
             val moved =
                 first.copy(
                     destinations = first.destinations + destination,
-                    titles = first.titles + (newId to SerializableTabTitle(item.title, item.tabType)),
+                    titles = first.titles + (newId to SerializableTabTitle(item.title, item.tabType, item.pinned, item.shortTitle)),
                 )
             dormantSnapshots[desktopId] =
                 snapshot.copy(
@@ -385,6 +414,8 @@ class DesktopManager(
             title = item.title,
             tabType = item.tabType,
             select = select,
+            pinned = item.pinned,
+            shortTitle = item.shortTitle,
         )
     }
 
@@ -417,6 +448,10 @@ class DesktopManager(
                 for (session in open) {
                     session.workspace.linkedWorkspaces = open.filter { it !== session }.map { it.workspace }
                     session.workspace.onForeignDrop = { tab, into, target -> onForeignDrop(session, tab.id, into, target) }
+                    // A tab dragged in from another desktop is looked up there for its pin.
+                    session.workspace.constrainIndex = { tabId, group, index ->
+                        session.pinConstrained(tabId, open.any { it.isPinned(tabId) }, group, index)
+                    }
                 }
             }
         }
@@ -692,6 +727,7 @@ class DesktopManager(
     private fun removeWindow(w: OpenWindow) {
         if (w !in _windows.value) return
         _windows.update { it.removing(w) }
+        focusHistory.remove(w.id)
         w.session.forgetWindow(w.groupId)
         w.dispose()
         if (_focusedWindowId.value == w.id) {

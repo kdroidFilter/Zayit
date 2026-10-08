@@ -388,7 +388,7 @@ private fun VerticalPagerIndicator(
 }
 
 @Composable
-private fun CommentatorHeader(
+internal fun CommentatorHeader(
     commentator: String,
     commentTextSize: Float,
     isRecentlyAdded: Boolean = false,

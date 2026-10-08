@@ -57,6 +57,8 @@ data class VisibleTocEntry(
 
 @Immutable
 data class AltTocState(
+    // The book the structures belong to: kept until the next book's are loaded
+    val bookId: Long? = null,
     val structures: List<AltTocStructure> = emptyList(),
     val selectedStructureId: Long? = null,
     val entries: List<AltTocEntry> = emptyList(),
@@ -150,10 +152,15 @@ data class PaneSearchState<T : PaneSearchResult>(
     val resultQuery: String? = null,
 )
 
-/** The TOC narrowed to the entries whose title matches the query, plus their ancestors. */
+/**
+ * The TOC narrowed to the entries whose title matches the query, plus their ancestors; and
+ * likewise the shown alt TOC ([altRoots]), whose entries carry their negated id so the two
+ * trees share [children], [matchIds] and [highlights].
+ */
 @Immutable
 data class TocFilterResult(
     val roots: List<TocEntry> = emptyList(),
+    val altRoots: List<TocEntry> = emptyList(),
     val children: Map<Long, List<TocEntry>> = emptyMap(),
     override val matchIds: List<Long> = emptyList(),
     /** Ranges of the title to highlight, per matching entry. */

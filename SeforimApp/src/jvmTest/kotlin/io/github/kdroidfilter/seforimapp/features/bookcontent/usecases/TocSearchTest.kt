@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
+import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -88,5 +89,25 @@ class TocSearchTest {
     fun `no match or blank query yields an empty result`() {
         assertTrue(buildTocFilter(toc, "zzz").matchIds.isEmpty())
         assertTrue(buildTocFilter(toc, "  ").matchIds.isEmpty())
+    }
+
+    @Test
+    fun `alt TOC matches follow the TOC ones under negated ids`() {
+        // Same ids as the TOC entries: the search must keep them apart
+        val alt =
+            listOf(
+                AltTocEntry(id = 3, structureId = 1, parentId = null, text = "פרשת בראשית", level = 0, lineId = 30),
+                AltTocEntry(id = 4, structureId = 1, parentId = 3, text = "סימן א", level = 1, lineId = 40),
+            )
+        val altFilter = buildTocFilter(alt.map { it.toSearchTocEntry(bookId = 1) }, "סימן א")
+        val result = buildTocFilter(toc, "סימן א").withAlt(altFilter)
+
+        assertEquals(listOf(3L, 6L, -4L), result.matchIds)
+        assertEquals(3L, result.bestMatchId)
+        // The lone wrapping root is skipped, as in the TOC
+        assertEquals(listOf(-4L), result.altRoots.map { it.id })
+        assertTrue(-4L in result.highlights)
+        assertEquals(4L, altTocIdOfSearchMatch(-4L))
+        assertNull(altTocIdOfSearchMatch(3L))
     }
 }

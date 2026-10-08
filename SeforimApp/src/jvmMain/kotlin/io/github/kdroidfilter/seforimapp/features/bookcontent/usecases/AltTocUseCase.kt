@@ -55,6 +55,7 @@ class AltTocUseCase(
 
         stateManager.updateAltToc {
             AltTocState(
+                bookId = effectiveBook.id,
                 structures = structures,
                 selectedStructureId = targetStructureId,
                 entries = emptyList(),
@@ -168,6 +169,13 @@ class AltTocUseCase(
         }
         val lineIds = withContext(Dispatchers.IO) { repository.getLineIdsForAltTocEntry(entry.id) }
         return entry.lineId ?: lineIds.firstOrNull()
+    }
+
+    /** Selects the entry [entryId] of the shown structure and expands the tree down to it. Returns the line to jump to. */
+    suspend fun revealAltEntry(entryId: Long): Long? {
+        val entry = stateManager.state.value.altToc.entriesById[entryId] ?: return null
+        expandPathToAltEntry(entryId)
+        return selectAltEntry(entry)
     }
 
     suspend fun selectAltEntryForLine(lineId: Long) {

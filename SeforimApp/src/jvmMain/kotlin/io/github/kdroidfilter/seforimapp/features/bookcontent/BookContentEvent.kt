@@ -61,6 +61,7 @@ sealed interface BookContentEvent {
         val query: String,
     ) : BookContentEvent
 
+    // A TOC entry, or an alt TOC one by its negated id
     data class TocSearchEntrySelected(
         val tocId: Long,
     ) : BookContentEvent

@@ -5,6 +5,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.AltTocState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.ROOT_TOC_KEY
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocStructure
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -84,7 +85,7 @@ class AltTocUseCase(
             copy(
                 selectedStructureId = structureId,
                 entries = root,
-                children = mapOf(-1L to root),
+                children = mapOf(ROOT_TOC_KEY to root),
                 expandedEntries =
                     expandedEntries.ifEmpty {
                         root.firstOrNull()?.takeIf { it.hasChildren }?.let { setOf(it.id) } ?: emptySet()

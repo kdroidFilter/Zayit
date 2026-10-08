@@ -222,6 +222,7 @@ private fun BookContentPanelContent(
                     isSelected = isSelected,
                     bookCharCounts = bookCharCounts,
                     onPointerZoomInProgressChange = { isBookContentZoomInProgress = it },
+                    focusRequest = uiState.content.focusTextRequest,
                 )
             }
         }

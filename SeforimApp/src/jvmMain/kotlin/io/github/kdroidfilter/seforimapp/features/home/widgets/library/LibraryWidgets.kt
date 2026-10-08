@@ -40,6 +40,7 @@ import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteEntry
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
+import io.github.kdroidfilter.seforimapp.core.history.destination
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -115,12 +116,6 @@ internal object HistoryWidget : HomeWidget {
         }
     }
 }
-
-private fun VisitEntry.destination(): TabsDestination? =
-    when (kind) {
-        VisitKind.BOOK -> bookId?.let { TabsDestination.BookContent(bookId = it, tabId = UUID.randomUUID().toString(), lineId = lineId) }
-        VisitKind.SEARCH -> searchQuery?.let { TabsDestination.Search(searchQuery = it, tabId = UUID.randomUUID().toString()) }
-    }
 
 /** The user's favorites, by folder when there are folders; clicking one opens it where it was starred. */
 internal object FavoritesWidget : HomeWidget {

@@ -50,6 +50,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.serialization.json.Json
 import java.util.UUID
 import kotlin.collections.ArrayDeque
 
@@ -111,6 +112,31 @@ class SearchResultViewModel(
             current.copy(search = next)
         }
     }
+
+    private fun seedNavigationScope(savedStateHandle: SavedStateHandle) {
+        val scope =
+            savedStateHandle
+                .get<String>(StateKeys.SEARCH_SCOPE)
+                ?.let { runCatching { Json.decodeFromString<SearchScope>(it) }.getOrNull() }
+                ?: SearchScope.Global
+        val globalExtended = savedStateHandle.get<Boolean>(StateKeys.SEARCH_GLOBAL_EXTENDED) ?: false
+        if (scope == SearchScope.Global && !globalExtended) return
+        updatePersistedSearch { it.withScope(scope).copy(globalExtended = globalExtended) }
+    }
+
+    /** The name of the TOC entry, book or category the search is scoped to, shown in its history entry. */
+    private suspend fun scopeLabel(scope: SearchScope): String? =
+        runSuspendCatching {
+            when (scope) {
+                SearchScope.Global -> null
+                is SearchScope.Category -> repository.getCategory(scope.categoryId)?.title
+                is SearchScope.Book -> repository.getBookCore(scope.bookId)?.title
+                is SearchScope.Toc ->
+                    listOfNotNull(repository.getBookCore(scope.bookId)?.title, repository.getTocEntry(scope.tocId)?.text)
+                        .joinToString(", ")
+                        .ifBlank { null }
+            }
+        }.getOrNull()
 
     private val getBreadcrumbPieces = GetBreadcrumbPiecesUseCase(repository)
     private val buildSearchTreeUseCase = BuildSearchTreeUseCase(repository)
@@ -605,8 +631,10 @@ class SearchResultViewModel(
     private val tocBookCache: MutableMap<Long, Long> = mutableMapOf()
 
     init {
-        val persisted = persistedSearchState()
         val navQuery = savedStateHandle.get<String>("searchQuery") ?: ""
+        // A fresh tab opened with a scope (a search reopened from history) runs in that scope
+        if (persistedSearchState().query.isBlank()) seedNavigationScope(savedStateHandle)
+        val persisted = persistedSearchState()
         val initialQuery = persisted.query.takeIf { it.isNotBlank() } ?: navQuery
 
         if (initialQuery.isNotBlank() && persisted.query != initialQuery) {
@@ -824,8 +852,12 @@ class SearchResultViewModel(
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
-        // Record the executed search into the visit history (deduplicated by query)
-        viewModelScope.launch { historyStore.recordSearchVisit(q, System.currentTimeMillis()) }
+        // Record the executed search into the visit history (deduplicated by query and scope)
+        val persisted = persistedSearchState()
+        val scope = persisted.scope
+        viewModelScope.launch {
+            historyStore.recordSearchVisit(q, scope, persisted.globalExtended, scopeLabel(scope), System.currentTimeMillis())
+        }
         // New search: clear any previous streaming job and reset scroll/anchor state
         currentJob?.cancel()
         _breadcrumbs.value = persistentMapOf()

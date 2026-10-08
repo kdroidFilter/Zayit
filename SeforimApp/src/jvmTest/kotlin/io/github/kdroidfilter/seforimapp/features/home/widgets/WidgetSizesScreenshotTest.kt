@@ -14,6 +14,7 @@ import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.zacsweers.metro.createGraph
+import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
@@ -48,7 +49,7 @@ class WidgetSizesScreenshotTest {
             val now = System.currentTimeMillis()
             repeat(40) { i ->
                 if (i % 4 == 3) {
-                    graph.historyStore.recordSearchVisit(SEARCHES[i % SEARCHES.size], now - i * HOUR)
+                    graph.historyStore.recordSearchVisit(SEARCHES[i % SEARCHES.size], SearchScope.Global, false, null, now - i * HOUR)
                 } else {
                     graph.historyStore.recordBookVisit(1000L + i, TITLES[i % TITLES.size], now - i * HOUR)
                 }

@@ -10,8 +10,24 @@ import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 private val NON_WORD = Regex("[^\\p{L}\\p{N}]+")
 private val WORD = Regex("[\\p{L}\\p{N}]+")
 
+// ASCII stand-ins for gershayim/geresh, as most titles write them (קכ"א, ס'): part of a word
+// when between two letters
+private fun isInWordQuote(
+    text: CharSequence,
+    i: Int,
+): Boolean =
+    (text[i] == '"' || text[i] == '\'') &&
+        i > 0 &&
+        i < text.length - 1 &&
+        text[i - 1].isLetter() &&
+        text[i + 1].isLetter()
+
 /** Splits a normalized query into its words, dropping punctuation. */
-internal fun tocQueryTokens(query: String): List<String> = normalizeQueryForHebrew(query).split(NON_WORD).filter { it.isNotEmpty() }
+internal fun tocQueryTokens(query: String): List<String> {
+    val normalized = normalizeQueryForHebrew(query)
+    val joined = buildString { normalized.forEachIndexed { i, c -> if (!isInWordQuote(normalized, i)) append(c) } }
+    return joined.split(NON_WORD).filter { it.isNotEmpty() }
+}
 
 /** A TOC title that matched every query token: highlight ranges in the original text, and how many tokens were whole words. */
 internal data class TocTextMatch(
@@ -20,28 +36,44 @@ internal data class TocTextMatch(
 )
 
 /**
- * Matches [text] against [tokens]: each token must be the start of a word of the title
- * (diacritics, geresh/gershayim and final letters ignored). A token prefers a word it equals,
- * so "סימן א" highlights "א" rather than the first word starting with alef.
+ * Matches [text] against [tokens]: each token must be the start of its own word of the title
+ * (diacritics, quotes/geresh/gershayim and final letters ignored). Whole-word hits are taken
+ * first, so "סימן א" highlights "א" rather than the first word starting with alef, and a word
+ * serves one token only: "סימן ס" does not match "סימן ג".
  */
 internal fun matchTocText(
     text: String,
     tokens: List<String>,
 ): TocTextMatch? {
     if (tokens.isEmpty()) return null
-    val (plain, map) = stripDiacriticsWithMap(text)
-    val words = WORD.findAll(replaceFinalsWithBase(plain).lowercase()).toList()
-
-    val ranges = ArrayList<IntRange>(tokens.size)
-    var exactWords = 0
-    for (token in tokens) {
-        val word =
-            words.firstOrNull { it.value == token }?.also { exactWords++ }
-                ?: words.firstOrNull { it.value.startsWith(token) }
-                ?: return null
-        val start = word.range.first
-        ranges += mapToOrigIndex(map, start)..mapToOrigIndex(map, start + token.length - 1)
+    val (stripped, strippedMap) = stripDiacriticsWithMap(text)
+    val plain = StringBuilder(stripped.length)
+    val toOriginal = IntArray(stripped.length)
+    stripped.forEachIndexed { i, c ->
+        if (!isInWordQuote(stripped, i)) {
+            toOriginal[plain.length] = strippedMap[i]
+            plain.append(c)
+        }
     }
+    val map = toOriginal.copyOf(plain.length)
+    val words = WORD.findAll(replaceFinalsWithBase(plain.toString()).lowercase()).toList()
+
+    val used = BooleanArray(words.size)
+    val starts = IntArray(tokens.size) { -1 }
+    var exactWords = 0
+    tokens.forEachIndexed { t, token ->
+        val w = words.indices.firstOrNull { !used[it] && words[it].value == token } ?: return@forEachIndexed
+        used[w] = true
+        starts[t] = words[w].range.first
+        exactWords++
+    }
+    // Longest tokens first, so a short one does not take the only word a longer one fits
+    tokens.indices.filter { starts[it] < 0 }.sortedByDescending { tokens[it].length }.forEach { t ->
+        val w = words.indices.firstOrNull { !used[it] && words[it].value.startsWith(tokens[t]) } ?: return null
+        used[w] = true
+        starts[t] = words[w].range.first
+    }
+    val ranges = tokens.indices.map { t -> mapToOrigIndex(map, starts[t])..mapToOrigIndex(map, starts[t] + tokens[t].length - 1) }
     return TocTextMatch(ranges, exactWords)
 }
 

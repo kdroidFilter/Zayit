@@ -35,6 +35,28 @@ class TocSearchTest {
     }
 
     @Test
+    fun `ASCII quotes inside a word count as gershayim and geresh`() {
+        // Most titles of the database write them with ASCII quotes
+        val title = "סימן קכ\"א"
+        assertNotNull(matchTocText(title, tocQueryTokens("קכא")))
+        assertNotNull(matchTocText(title, tocQueryTokens("קכ\"א")))
+        assertNotNull(matchTocText(title, tocQueryTokens("קכ״א")))
+        assertNotNull(matchTocText("סימן קכ״א", tocQueryTokens("קכ\"א")))
+        assertNotNull(matchTocText("פרק ס'", tocQueryTokens("ס'")))
+        val match = assertNotNull(matchTocText(title, tocQueryTokens("קכא")))
+        assertEquals("קכ\"א", title.substring(match.ranges.single()))
+    }
+
+    @Test
+    fun `each title word serves one query word only`() {
+        assertNull(matchTocText("סימן ג", tocQueryTokens("סימן ס\"ג")))
+        assertNull(matchTocText("סימן ג", tocQueryTokens("סימן ס")))
+        assertNotNull(matchTocText("סימן סג", tocQueryTokens("סימן ס\"ג")))
+        // A short token does not steal the only word a longer one fits
+        assertNotNull(matchTocText("ספרים סב", tocQueryTokens("ס ספר")))
+    }
+
+    @Test
     fun `nikud and final letters are ignored`() {
         assertNotNull(matchTocText("הִלְכוֹת שַׁבָּת", listOf("הלכות", "שבת")))
         assertNotNull(matchTocText("סימן", tocQueryTokens("סימנ")))

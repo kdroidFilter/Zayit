@@ -4,9 +4,14 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.TocFilterResult
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import io.github.santimattius.structured.annotations.StructuredScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
@@ -19,9 +24,16 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 class TocUseCase(
     private val repository: SeforimRepository,
     private val stateManager: BookContentStateManager,
+    @StructuredScope private val scope: CoroutineScope,
 ) {
-    // The whole TOC of the current book, loaded on the first search
-    private var fullToc: Pair<Long, List<TocEntry>>? = null
+    // The whole TOC of a book, loaded once per search session: shared by the searches of
+    // successive keystrokes, which cancel each other but not the load
+    private var tocLoad: Pair<Long, Deferred<List<TocEntry>?>>? = null
+    private var selectingSearchEntry = false
+    private val searchRunner =
+        PaneSearchRunner<TocFilterResult> { transform ->
+            stateManager.updateToc(save = false) { copy(search = search?.let(transform)) }
+        }
 
     /**
      * Charge les entrées racine du TOC pour un livre
@@ -159,58 +171,68 @@ class TocUseCase(
 
     /** Shows or hides the search bar. */
     fun toggleSearch() {
-        stateManager.updateToc(save = false) { copy(search = search.toggled()) }
+        if (stateManager.state.value.toc.search != null) {
+            closeSearch()
+        } else {
+            stateManager.updateToc(save = false) { copy(search = search.toggled()) }
+        }
     }
 
     fun closeSearch() {
         stateManager.updateToc(save = false) { copy(search = null) }
+        tocLoad = null
     }
 
     /** Filters the TOC of the open book by title. */
-    suspend fun search(query: String) =
-        runPaneSearch(
-            query = query,
-            update = { transform -> stateManager.updateToc(save = false) { copy(search = search?.let(transform)) } },
-        ) {
-            val bookId = openBookId() ?: return@runPaneSearch null
-            val entries = bookToc(bookId).orEmpty()
+    suspend fun search(query: String) {
+        // A query flushed by a closing field, or arriving after Escape
+        if (stateManager.state.value.toc.search == null) return
+        searchRunner.run(query) {
+            val bookId = openBookId() ?: return@run null
+            val entries = bookToc(bookId).await()
+            if (entries == null) {
+                // Failed load: not kept, the next keystroke retries
+                tocLoad = null
+                return@run TocFilterResult()
+            }
             val result = withContext(Dispatchers.Default) { buildTocFilter(entries, query) }
             // Drop the result if another book was opened meanwhile
             result.takeIf { openBookId() == bookId }
         }
+    }
 
     /** Hides the search bar and reveals the entry [tocId] in the tree. Returns the line to jump to. */
     suspend fun selectSearchEntry(tocId: Long): Long? {
-        // Already closed: a repeated Enter or click must not jump twice
-        if (stateManager.state.value.toc.search == null) return null
-        val entry =
-            fullToc?.second?.firstOrNull { it.id == tocId }
-                ?: runSuspendCatching { repository.getTocEntry(tocId) }.getOrNull()
-                ?: return null
-        // Expand first so the regular tree comes back already open on the entry
-        expandPathToTocEntry(entry.id)
-        stateManager.updateToc(save = false) { copy(search = null) }
-        return entry.lineId
-            ?: runSuspendCatching { repository.getLineIdsForTocEntry(entry.id).firstOrNull() }.getOrNull()
+        // Closed or already opening an entry: a double click or a held Enter must not jump twice
+        if (stateManager.state.value.toc.search == null || selectingSearchEntry) return null
+        selectingSearchEntry = true
+        try {
+            val entry = runSuspendCatching { repository.getTocEntry(tocId) }.getOrNull() ?: return null
+            // Expand first so the regular tree comes back already open on the entry
+            expandPathToTocEntry(entry.id)
+            closeSearch()
+            return entry.lineId
+                ?: runSuspendCatching { repository.getLineIdsForTocEntry(entry.id).firstOrNull() }.getOrNull()
+        } finally {
+            selectingSearchEntry = false
+        }
     }
 
     private fun openBookId(): Long? =
         stateManager.state.value.navigation.selectedBook
             ?.id
 
-    /** The whole TOC of [bookId], loaded once. */
-    private suspend fun bookToc(bookId: Long): List<TocEntry>? {
-        fullToc?.takeIf { it.first == bookId }?.let { return it.second }
-        return runSuspendCatching { repository.getBookToc(bookId) }
-            .getOrNull()
-            ?.also { fullToc = bookId to it }
-    }
+    private fun bookToc(bookId: Long): Deferred<List<TocEntry>?> =
+        tocLoad?.takeIf { it.first == bookId }?.second
+            ?: scope
+                .async { runSuspendCatching { repository.getBookToc(bookId) }.getOrNull() }
+                .also { tocLoad = bookId to it }
 
     /**
      * Réinitialise le TOC
      */
     fun resetToc() {
-        fullToc = null
+        tocLoad = null
         stateManager.updateToc(save = false) {
             copy(
                 search = null,

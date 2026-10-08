@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -118,13 +119,7 @@ fun <T : PaneSearchResult> PaneSearchLayout(
                 onTextChange = { text -> if (text != pendingSubmit) pendingSubmit = null },
                 onQueryChange = onQueryChange,
                 onSubmit = { text ->
-                    if (search.resultQuery == text) {
-                        activeId?.let(onSelect)
-                    } else {
-                        pendingSubmit = text
-                        // Skip the debounce
-                        if (search.query != text) onQueryChange(text)
-                    }
+                    if (search.resultQuery == text) activeId?.let(onSelect) else pendingSubmit = text
                 },
                 onMove = { delta ->
                     val ids = result?.matchIds.orEmpty()
@@ -183,6 +178,19 @@ private fun PaneSearchField(
     val focusRequester = remember { FocusRequester() }
     val currentOnTextChange by rememberUpdatedState(onTextChange)
     val currentOnQueryChange by rememberUpdatedState(onQueryChange)
+    // The last query handed over, to flush what the debounce still holds when the field goes
+    // away (tab switch, re-docked pane): the rebuilt field starts from the handed-over query
+    val sentQuery = remember { mutableStateOf(query) }
+    val send = { text: String ->
+        sentQuery.value = text
+        currentOnQueryChange(text)
+    }
+    DisposableEffect(fieldState) {
+        onDispose {
+            val text = fieldState.text.toString()
+            if (text != sentQuery.value) send(text)
+        }
+    }
 
     LaunchedEffect(focus.requested) {
         if (focus.requested) {
@@ -197,7 +205,7 @@ private fun PaneSearchField(
             .drop(1)
             .onEach { currentOnTextChange(it) }
             .debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MS }
-            .collect { currentOnQueryChange(it) }
+            .collect { if (it != sentQuery.value) send(it) }
     }
 
     // The book text menu (copy link, highlight…) is inherited from the pane: not for a search field
@@ -212,7 +220,12 @@ private fun PaneSearchField(
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                         when (event.key) {
-                            Key.Enter, Key.NumPadEnter -> onSubmit(fieldState.text.toString())
+                            Key.Enter, Key.NumPadEnter -> {
+                                val text = fieldState.text.toString()
+                                // Skip the debounce
+                                if (text != sentQuery.value) send(text)
+                                onSubmit(text)
+                            }
                             Key.DirectionDown -> onMove(1)
                             Key.DirectionUp -> onMove(-1)
                             Key.Escape -> onClose()

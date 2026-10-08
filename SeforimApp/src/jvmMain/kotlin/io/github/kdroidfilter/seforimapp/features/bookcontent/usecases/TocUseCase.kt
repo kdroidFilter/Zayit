@@ -180,7 +180,9 @@ class TocUseCase(
     }
 
     /** Filters the TOC of the open book by title. */
-    suspend fun search(query: String) =
+    suspend fun search(query: String) {
+        // A query flushed by a closing field, or arriving after Escape
+        if (stateManager.state.value.toc.search == null) return
         searchRunner.run(query) {
             val bookId = openBookId() ?: return@run null
             val entries = bookToc(bookId).await()
@@ -188,6 +190,7 @@ class TocUseCase(
             // Drop the result if another book was opened meanwhile
             result.takeIf { openBookId() == bookId }
         }
+    }
 
     /** Hides the search bar and reveals the entry [tocId] in the tree. Returns the line to jump to. */
     suspend fun selectSearchEntry(tocId: Long): Long? {

@@ -46,6 +46,7 @@ import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent
@@ -265,6 +266,7 @@ private fun SearchResultContentMvi(
     }
     val findQuery by appSettings.findQueryFlow(tabId).collectAsState("")
     val showFind by appSettings.findBarOpenFlow(tabId).collectAsState()
+    val findFocusRequest by appSettings.findFocusRequestFlow(tabId).collectAsState()
     val activeFindQuery = if (showFind) findQuery else ""
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
@@ -336,12 +338,7 @@ private fun SearchResultContentMvi(
     }
 
     val findState = remember(tabId) { TextFieldState() }
-    LaunchedEffect(findQuery) {
-        val current = findState.text.toString()
-        if (current != findQuery) {
-            findState.edit { replace(0, length, findQuery) }
-        }
-    }
+    LaunchedEffect(findQuery) { syncFindField(findState, findQuery) }
     var currentHitIndex by remember { mutableStateOf(-1) }
 
     fun navigateTo(
@@ -371,6 +368,12 @@ private fun SearchResultContentMvi(
                 break
             }
         }
+    }
+
+    // Ctrl/Cmd+G and F3 come from the window's shortcuts
+    val navigateToLatest by rememberUpdatedState<(Boolean) -> Unit> { navigateTo(it, scope) }
+    LaunchedEffect(tabId) {
+        appSettings.findStepRequests(tabId).collect { forward -> navigateToLatest(forward) }
     }
 
     val keyHandler = remember { { _: KeyEvent -> false } }
@@ -569,6 +572,7 @@ private fun SearchResultContentMvi(
                     onEnterNext = { navigateTo(true, scope) },
                     onEnterPrev = { navigateTo(false, scope) },
                     onClose = { appSettings.closeFindBar(tabId) },
+                    focusRequest = findFocusRequest,
                 )
             }
         }

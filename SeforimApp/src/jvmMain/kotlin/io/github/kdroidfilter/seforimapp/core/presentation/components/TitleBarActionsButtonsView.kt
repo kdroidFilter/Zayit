@@ -7,6 +7,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
@@ -47,19 +48,7 @@ fun TitleBarActionsButtonsView() {
     val tabsViewModel: TabsViewModel = LocalOpenWindow.current.tabsViewModel
     val tabsState = tabsViewModel.state.collectAsState().value
     val currentTab = tabsState.tabs.getOrNull(tabsState.selectedTabIndex)
-    val findEnabled =
-        when (val dest = currentTab?.destination) {
-            is TabsDestination.Search -> true
-            is TabsDestination.BookContent -> {
-                (
-                    appGraph.tabPersistedStateStore
-                        .get(dest.tabId)
-                        ?.bookContent
-                        ?.selectedBookId ?: -1L
-                ) > 0L
-            }
-            else -> false
-        }
+    val findEnabled = currentTab?.destination?.hasFindInPage(appGraph.tabPersistedStateStore) == true
 
     val iconDescription =
         when (theme) {
@@ -130,7 +119,7 @@ fun TitleBarActionsButtonsView() {
             val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@TitleBarActionButton
             // Toggle the Find-in-Page bar for the current tab only
             val isOpen = appSettings.findBarOpenFlow(tabId).value
-            if (isOpen) appSettings.closeFindBar(tabId) else appSettings.openFindBar(tabId)
+            if (isOpen) appSettings.closeFindBar(tabId) else appSettings.showFindBar(tabId, appGraph.selectionContext.selectedTextIn(tabId))
         },
         tooltipText =
             if (findEnabled) {

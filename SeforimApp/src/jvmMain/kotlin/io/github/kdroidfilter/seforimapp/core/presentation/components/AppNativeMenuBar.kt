@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
 import io.github.kdroidfilter.seforimapp.features.home.widgets.availableTools
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
@@ -44,6 +45,8 @@ fun AppNativeMenuBar(
     onQuit: () -> Unit,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
+    val selectionContext = LocalAppGraph.current.selectionContext
+    val tabStateStore = LocalAppGraph.current.tabPersistedStateStore
     val theme by mainAppState.theme.collectAsState()
     val accentColor by mainAppState.accentColor.collectAsState()
     val compactMode by appSettings.compactModeFlow.collectAsState()
@@ -241,8 +244,10 @@ fun AppNativeMenuBar(
             ) {
                 val tabs = tabsViewModel.tabs.value
                 val selectedIndex = tabsViewModel.selectedTabIndex.value
-                val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@Item
-                appSettings.toggleFindBar(tabId)
+                val destination = tabs.getOrNull(selectedIndex)?.destination ?: return@Item
+                if (!destination.hasFindInPage(tabStateStore)) return@Item
+                val tabId = destination.tabId
+                appSettings.showFindBar(tabId, selectionContext.selectedTextIn(tabId))
             }
         }
 

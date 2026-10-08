@@ -48,6 +48,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.ClosePinnedTabHi
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
@@ -231,6 +232,9 @@ fun NucleusApplicationScope.MainAppWindow(
                         appSettings = appSettings,
                         onNavigateTo = { /* no-op: legacy shortcuts not used here */ },
                         tabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: "",
+                        findAvailable =
+                            currentTabs.getOrNull(currentIndex)?.destination?.hasFindInPage(appGraph.tabPersistedStateStore) == true,
+                        selectedText = { tabId -> appGraph.selectionContext.selectedTextIn(tabId) },
                     )
                 }
             } else {

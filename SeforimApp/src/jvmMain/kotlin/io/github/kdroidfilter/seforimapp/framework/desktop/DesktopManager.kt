@@ -176,13 +176,23 @@ class DesktopManager(
 
     // ---- Tabs (driven by the tab declarations) ----
 
-    /** A tab the workspace closed (×, window close): forget it and its state. */
+    /** A tab the workspace closed (×, window close): forget it and its state, kept for a reopen. */
     fun onTabClosed(
         session: DesktopSession,
         tabId: String,
     ) {
-        session.forget(tabId)
+        session.forget(tabId, tabPersistedStateStore.get(tabId))
         tabPersistedStateStore.remove(tabId)
+    }
+
+    /** Brings back the last tab closed on [windowId]'s desktop into that window, with its reading state. */
+    fun reopenClosedTab(windowId: String) {
+        val win = window(windowId) ?: return
+        val closed = win.session.popClosedTab() ?: return
+        val destination = closed.item.destination
+        closed.state?.let { tabPersistedStateStore.set(destination.tabId, it) }
+        val index = win.group()?.let { it.ids.indexOf(it.selectedId) }?.coerceAtLeast(0) ?: 0
+        win.session.addTab(destination, win.groupId, index, title = closed.item.title, tabType = closed.item.tabType)
     }
 
     // ---- Desktop switching ----
@@ -263,8 +273,8 @@ class DesktopManager(
         } else {
             val tabIds = session.group(win.groupId)?.ids.orEmpty()
             removeWindow(win)
+            // Their states go with onTabClosed, which keeps them for a reopen.
             tabIds.forEach(session.workspace::close)
-            tabPersistedStateStore.removeAll(tabIds)
         }
         refreshActiveDesktop()
     }
@@ -354,7 +364,7 @@ class DesktopManager(
                     windows = listOf(moved) + windows.drop(1),
                 )
         }
-        source.workspace.close(tabId)
+        source.discard(tabId)
         return true
     }
 
@@ -393,7 +403,7 @@ class DesktopManager(
         val window = _windows.value.firstOrNull { it.session.workspace === into && it.groupId == target.group.id } ?: return
         val newId = UUID.randomUUID().toString()
         addMovedTab(item, newId, tabPersistedStateStore.get(tabId) ?: TabPersistedState(), window, target.index, select = true)
-        source.workspace.close(tabId)
+        source.discard(tabId)
         window.requestFocus()
         onWindowFocused(window.id)
     }

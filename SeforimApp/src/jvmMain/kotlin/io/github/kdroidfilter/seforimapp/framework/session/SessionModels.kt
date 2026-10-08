@@ -161,6 +161,9 @@ data class DesktopTabsSnapshot(
 data class SerializableTabTitle(
     val title: String,
     val tabType: TabType,
+    // Appended last: the session is ProtoBuf, numbered by declaration order.
+    val pinned: Boolean = false,
+    val shortTitle: String = "",
 )
 
 @Serializable

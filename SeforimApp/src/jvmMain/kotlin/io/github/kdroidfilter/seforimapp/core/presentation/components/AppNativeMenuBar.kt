@@ -226,7 +226,7 @@ fun AppNativeMenuBar(
                 tabsViewModel.onEvent(TabsEvents.OnAdd)
             }
             Item(text = menuCloseTab) {
-                tabsViewModel.onEvent(TabsEvents.OnClose(tabsState.selectedTabIndex))
+                tabsViewModel.closeSelectedTab()
             }
             Item(text = menuCloseAllTabs) {
                 tabsViewModel.onEvent(TabsEvents.CloseAll)

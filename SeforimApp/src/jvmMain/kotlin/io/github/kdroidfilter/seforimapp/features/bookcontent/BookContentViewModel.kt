@@ -16,6 +16,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.pinnedTabLabel
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -333,12 +334,12 @@ class BookContentViewModel(
             }
 
             // Observe the selected book and current TOC to update the title
+            var labelledBookId: Long? = null
+            var pinnedLabel = ""
             stateManager.state
                 .map { state ->
-                    val bookTitle =
-                        state.navigation.selectedBook
-                            ?.title
-                            .orEmpty()
+                    val book = state.navigation.selectedBook
+                    val bookTitle = book?.title.orEmpty()
                     val tocLabel =
                         state.toc.breadcrumbPath
                             .lastOrNull()
@@ -350,11 +351,16 @@ class BookContentViewModel(
                         } else {
                             bookTitle
                         }
-                    combined
-                }.filter { it.isNotEmpty() }
+                    Triple(book?.id, bookTitle, combined)
+                }.filter { (_, _, combined) -> combined.isNotEmpty() }
                 .distinctUntilChanged()
-                .collect { combined ->
-                    titleUpdateManager.updateTabTitle(tabId, combined, TabType.BOOK)
+                .collect { (bookId, bookTitle, combined) ->
+                    // Once per book: what the tab shows when pinned.
+                    if (bookId != labelledBookId) {
+                        labelledBookId = bookId
+                        pinnedLabel = pinnedTabLabel(bookTitle, bookId?.let { repository.getAcronymsForBook(it) }.orEmpty())
+                    }
+                    titleUpdateManager.updateTabTitle(tabId, combined, TabType.BOOK, pinnedLabel)
                 }
         }
     }

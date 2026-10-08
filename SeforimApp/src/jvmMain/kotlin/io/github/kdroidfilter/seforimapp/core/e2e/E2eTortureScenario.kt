@@ -53,7 +53,7 @@ object E2eTortureScenario {
     private const val OPS = 400
     private const val SETTLE_MS = 350L
     private const val CAPTURE_EVERY = 50
-    private const val OPERATION_COUNT = 26
+    private const val OPERATION_COUNT = 33
     private const val STALL_MS = 2000L
     private const val MAX_STALL_MS = 120_000L
     private const val BOOK_POOL = 300
@@ -69,6 +69,7 @@ object E2eTortureScenario {
     private val ops = System.getenv("ZAYIT_E2E_OPS")?.toIntOrNull() ?: OPS
     private val settleMs = System.getenv("ZAYIT_E2E_SETTLE")?.toLongOrNull() ?: SETTLE_MS
     private val burst = (System.getenv("ZAYIT_E2E_BURST")?.toIntOrNull() ?: 1).coerceAtLeast(1)
+    private val trace = System.getenv("ZAYIT_E2E_TRACE") == "1"
     private var bookId = -1L
     private var books: List<Long> = emptyList()
     private var failures = 0
@@ -232,6 +233,7 @@ object E2eTortureScenario {
         val tabs = tabsOf(w)
         val kind = random.nextInt(OPERATION_COUNT)
         currentOp = "op $op (#$kind)"
+        if (trace) println("E2E > $currentOp on ${w.id.take(8)} tabs=${tabs.size} windows=${dm.windows.value.size}")
         return when (kind) {
             0 -> {
                 w.tabsViewModel.openTab(
@@ -278,7 +280,7 @@ object E2eTortureScenario {
                 "detach"
             }
             7 -> {
-                if (dm.windows.value.size > 1 && takeRemoval()) dm.closeWindow(w.id)
+                if (dm.windows.value.size > 1 && takeRemoval()) closeWindowKeepingPins(op, w)
                 "close-window"
             }
             8 -> {
@@ -336,8 +338,111 @@ object E2eTortureScenario {
                 w.tabsViewModel.onEvent(TabsEvents.OnAdd)
                 "new-tab"
             }
+            in PIN_OPERATIONS -> pinOperation(op, kind, w)
             else -> contentOperation(kind, w)
         }
+    }
+
+    private val PIN_OPERATIONS = 26..32
+
+    /** Pinning: toggles, the closes that must spare pinned tabs, Ctrl+W's double press, reopen, and moves at the boundary. */
+    @Suppress("CyclomaticComplexMethod", "LongMethod")
+    private suspend fun pinOperation(
+        op: Int,
+        kind: Int,
+        w: OpenWindow,
+    ): String {
+        val tabs = tabsOf(w)
+        val session = w.session
+        return when (kind) {
+            26 -> {
+                if (tabs.isNotEmpty()) {
+                    val i = random.nextInt(tabs.size)
+                    w.tabsViewModel.setPinned(i, !session.isPinned(tabs[i]))
+                }
+                "pin-toggle"
+            }
+            27 -> {
+                // The bulk closes never take a pinned tab.
+                val pinned = tabs.filter(session::isPinned)
+                if (tabs.isNotEmpty() && dm.windows.value.sumOf { tabsOf(it).size } > 2 && takeRemoval()) {
+                    val i = random.nextInt(tabs.size)
+                    w.tabsViewModel.onEvent(
+                        listOf(
+                            TabsEvents.CloseAll,
+                            TabsEvents.CloseOthers(i),
+                            TabsEvents.CloseLeft(i),
+                            TabsEvents.CloseRight(i),
+                        ).random(random),
+                    )
+                    val gone = pinned.filter { session.item(it) == null }
+                    if (gone.isNotEmpty()) fail(op, "a bulk close took pinned tab(s) ${gone.map { it.take(6) }}")
+                }
+                "bulk-close"
+            }
+            28 -> {
+                // One Ctrl+W on a pinned tab only warns — a hint still up from an earlier op makes it the second.
+                val selected = w.group()?.selectedId
+                val hinted = w.tabsViewModel.closePinnedHint.value
+                if (selected != null && session.isPinned(selected) && !hinted && takeRemoval()) {
+                    w.tabsViewModel.closeSelectedTab()
+                    if (session.item(selected) == null) fail(op, "a single Ctrl+W closed pinned tab ${selected.take(6)}")
+                }
+                "ctrl-w-once"
+            }
+            29 -> {
+                // Two, close together: the second closes it — or, on an unpinned tab, the next one: keep a third.
+                if (tabs.size > 2 && takeRemoval()) {
+                    w.tabsViewModel.closeSelectedTab()
+                    delay(random.nextLong(0, 120))
+                    w.tabsViewModel.closeSelectedTab()
+                }
+                "ctrl-w-twice"
+            }
+            30 -> {
+                dm.reopenClosedTab(w.id)
+                "reopen-closed"
+            }
+            31 -> {
+                // Straight through the workspace, anywhere: the constraint has to hold on every path.
+                if (tabs.size > 1) session.workspace.reorder(tabs.random(random), random.nextInt(-1, tabs.size + 1))
+                "reorder-anywhere"
+            }
+            else -> {
+                // A drag across the boundary: a pinned tab to the far end, another one to the start.
+                val pinned = tabs.filter(session::isPinned)
+                val tab = if (pinned.isNotEmpty() && random.nextBoolean()) pinned.random(random) else tabs.randomOrNull(random)
+                val b = w.boundsOnScreen()
+                if (tab != null && b != null && tabs.size > 1) {
+                    val s = scale(w)
+                    val x = if (session.isPinned(tab)) b.x + b.width - 60f else b.x + 10f
+                    drag(w, tab, Offset(x * s, (b.y + STRIP_Y_DP) * s))
+                }
+                "drag-across-pins"
+            }
+        }
+    }
+
+    /** Closes [w]; its pinned tabs must survive in another window of its desktop when it has one. */
+    private fun closeWindowKeepingPins(
+        op: Int,
+        w: OpenWindow,
+    ) {
+        val session = w.session
+        val pinned = tabsOf(w).filter(session::isPinned)
+        val heir = dm.windowsOf(session.desktopId).any { it !== w && it.group() != null }
+        dm.closeWindow(w.id)
+        if (!heir || pinned.isEmpty()) return
+        val lost = pinned.filter { id -> session.workspace.groups.none { id in it.ids } || !session.isPinned(id) }
+        if (lost.isNotEmpty()) fail(op, "closing a window lost pinned tab(s) ${lost.map { it.take(6) }}")
+    }
+
+    private fun fail(
+        op: Int,
+        message: String,
+    ) {
+        failures++
+        sc.note("op $op: $message")
     }
 
     /** What happens inside a tab: books, reading, search, themes and the Home widgets. */
@@ -484,6 +589,10 @@ object E2eTortureScenario {
                     .map { it.id }
                     .filter { it !in shown }
             if (orphan.isNotEmpty()) problems += "group(s) without a window: $orphan"
+            for (group in session.workspace.groups) {
+                val flags = group.ids.map(session::isPinned)
+                if (flags != flags.sortedDescending()) problems += "pinned tab(s) not first in ${group.id}: $flags"
+            }
         }
         for (w in dm.windows.value) {
             if (w.group() == null && !w.session.isAwaiting(w.groupId)) problems += "window ${w.id.take(8)} shows no group"

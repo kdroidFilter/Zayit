@@ -217,6 +217,9 @@
     <string name="toggle_commentators_sidebar">הצג/הסתר סרגל מפרשים</string>
     <string name="show_commentators_sidebar">הצג סרגל מפרשים</string>
     <string name="hide_commentators_sidebar">הסתר סרגל מפרשים</string>
+    <!-- Pane header: pull the pane out into a window of its own, or put it back in the dock -->
+    <string name="pane_float">פתח בחלון נפרד</string>
+    <string name="pane_dock">החזר לחלון הראשי</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>

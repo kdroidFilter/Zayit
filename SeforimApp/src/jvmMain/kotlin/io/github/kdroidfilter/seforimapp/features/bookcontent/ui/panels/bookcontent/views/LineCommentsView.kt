@@ -91,6 +91,12 @@ private val SCROLL_DEBOUNCE = 100.milliseconds
 // truth: changing this value updates both the layout and the scrollbar metrics.
 private val CommentaryItemVerticalPaddingPerSide = 8.dp
 
+private val CommentatorsListMinWidth = 150.dp
+private const val COMMENTATORS_LIST_SPLIT = 0.10f
+
+// Below this width the commentators list no longer fits beside one commentary column.
+private val CompactCommentariesPaneWidth = CommentatorsListMinWidth + MIN_CELL_WIDTH_AT_REF
+
 @OptIn(ExperimentalSplitPaneApi::class)
 @Composable
 fun LineCommentsView(
@@ -133,60 +139,75 @@ fun LineCommentsView(
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
-    Column(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
-        // Header
-        PaneHeader(
-            label = stringResource(Res.string.commentaries),
-            interactionSource = paneInteractionSource,
-            onHide = { onEvent(BookContentEvent.ToggleCommentaries) },
-            actions = {
-                CommentatorsSidebarToggleButton(
-                    isVisible = contentState.isCommentatorsListVisible,
-                    onToggle = { onEvent(BookContentEvent.ToggleCommentatorsList) },
-                )
-            },
-        )
-        Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-            when {
-                selectedLine == null -> {
-                    CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
-                }
-
-                providers == null -> Unit
-
-                isManualMultiSelection -> {
-                    MultiLineCommentariesContent(
-                        selectedLineIds = selectedLineIds,
-                        providers = providers,
-                        primarySelectedLineId = primarySelectedLineId,
-                        selectedCommentatorIds = selectedCommentatorIds,
-                        commentatorsListScrollIndex = commentatorsListScrollIndex,
-                        commentatorsListScrollOffset = commentatorsListScrollOffset,
-                        columnScroll = columnScroll,
-                        onEvent = onEvent,
-                        textSizes = textSizes,
-                        findQueryText = activeQuery,
-                        isCommentatorsListVisible = contentState.isCommentatorsListVisible,
-                        diacritics = diacritics,
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().hoverable(paneInteractionSource)) {
+        // Too narrow for the commentators list beside a text column: the list takes the texts' place
+        // while open, and starts closed (the persisted sidebar flag is for the wide layout).
+        val compact = maxWidth < CompactCommentariesPaneWidth
+        var compactListOpen by remember { mutableStateOf(false) }
+        val isCommentatorsListVisible = if (compact) compactListOpen else contentState.isCommentatorsListVisible
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            PaneHeader(
+                label = stringResource(Res.string.commentaries),
+                interactionSource = paneInteractionSource,
+                onHide = { onEvent(BookContentEvent.ToggleCommentaries) },
+                actions = {
+                    CommentatorsSidebarToggleButton(
+                        isVisible = isCommentatorsListVisible,
+                        onToggle = {
+                            if (compact) {
+                                compactListOpen = !compactListOpen
+                            } else {
+                                onEvent(BookContentEvent.ToggleCommentatorsList)
+                            }
+                        },
                     )
-                }
+                },
+            )
+            Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                when {
+                    selectedLine == null -> {
+                        CenteredMessage(stringResource(Res.string.select_line_for_commentaries))
+                    }
 
-                else -> {
-                    val prefetched = lineConnections[selectedLine.id]?.commentatorGroups
-                    CommentariesContent(
-                        selectedLineId = selectedLine.id,
-                        providers = providers,
-                        selectedCommentatorIds = selectedCommentatorIds,
-                        commentatorsListScrollIndex = commentatorsListScrollIndex,
-                        commentatorsListScrollOffset = commentatorsListScrollOffset,
-                        columnScroll = columnScroll,
-                        onEvent = onEvent,
-                        textSizes = textSizes,
-                        findQueryText = activeQuery,
-                        isCommentatorsListVisible = contentState.isCommentatorsListVisible,
-                        prefetchedGroups = prefetched,
-                        diacritics = diacritics,
-                    )
+                    providers == null -> Unit
+
+                    isManualMultiSelection -> {
+                        MultiLineCommentariesContent(
+                            selectedLineIds = selectedLineIds,
+                            providers = providers,
+                            primarySelectedLineId = primarySelectedLineId,
+                            selectedCommentatorIds = selectedCommentatorIds,
+                            commentatorsListScrollIndex = commentatorsListScrollIndex,
+                            commentatorsListScrollOffset = commentatorsListScrollOffset,
+                            columnScroll = columnScroll,
+                            onEvent = onEvent,
+                            textSizes = textSizes,
+                            findQueryText = activeQuery,
+                            isCommentatorsListVisible = isCommentatorsListVisible,
+                            compact = compact,
+                            diacritics = diacritics,
+                        )
+                    }
+
+                    else -> {
+                        val prefetched = lineConnections[selectedLine.id]?.commentatorGroups
+                        CommentariesContent(
+                            selectedLineId = selectedLine.id,
+                            providers = providers,
+                            selectedCommentatorIds = selectedCommentatorIds,
+                            commentatorsListScrollIndex = commentatorsListScrollIndex,
+                            commentatorsListScrollOffset = commentatorsListScrollOffset,
+                            columnScroll = columnScroll,
+                            onEvent = onEvent,
+                            textSizes = textSizes,
+                            findQueryText = activeQuery,
+                            isCommentatorsListVisible = isCommentatorsListVisible,
+                            compact = compact,
+                            prefetchedGroups = prefetched,
+                            diacritics = diacritics,
+                        )
+                    }
                 }
             }
         }
@@ -206,6 +227,7 @@ private fun CommentariesContent(
     textSizes: AnimatedTextSizes,
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
+    compact: Boolean,
     prefetchedGroups: List<CommentatorGroup>?,
     diacritics: DiacriticsMode,
 ) {
@@ -241,43 +263,29 @@ private fun CommentariesContent(
             },
         )
 
-    val splitState = rememberSplitPaneState(0.10f)
-
-    LaunchedEffect(isCommentatorsListVisible) {
-        if (!isCommentatorsListVisible) {
-            splitState.positionPercentage = 0f
-        } else if (splitState.positionPercentage <= 0f) {
-            splitState.positionPercentage = 0.10f
-        }
-    }
-
-    EnhancedHorizontalSplitPane(
-        splitPaneState = splitState.asStable(),
-        firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
-        showSplitter = isCommentatorsListVisible,
-        showDivider = true,
-        firstContent = {
-            if (isCommentatorsListVisible) {
-                CommentatorsList(
-                    groups = commentatorGroups,
-                    selectedCommentators = selectedCommentators.value,
-                    initialScrollIndex = commentatorsListScrollIndex,
-                    initialScrollOffset = commentatorsListScrollOffset,
-                    onScroll = { index, offset ->
-                        onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
-                    },
-                    onSelectionChange = { name, checked ->
-                        selectedCommentators.value =
-                            if (checked) {
-                                selectedCommentators.value + name
-                            } else {
-                                selectedCommentators.value - name
-                            }
-                    },
-                )
-            }
+    CommentatorsListAndTexts(
+        isListVisible = isCommentatorsListVisible,
+        compact = compact,
+        list = {
+            CommentatorsList(
+                groups = commentatorGroups,
+                selectedCommentators = selectedCommentators.value,
+                initialScrollIndex = commentatorsListScrollIndex,
+                initialScrollOffset = commentatorsListScrollOffset,
+                onScroll = { index, offset ->
+                    onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
+                },
+                onSelectionChange = { name, checked ->
+                    selectedCommentators.value =
+                        if (checked) {
+                            selectedCommentators.value + name
+                        } else {
+                            selectedCommentators.value - name
+                        }
+                },
+            )
         },
-        secondContent = {
+        texts = {
             // Ensure selected commentators are always displayed in a stable order,
             // independent of the order in which they were selected.
             val selectedInDisplayOrder =
@@ -317,6 +325,7 @@ private fun MultiLineCommentariesContent(
     textSizes: AnimatedTextSizes,
     findQueryText: String,
     isCommentatorsListVisible: Boolean,
+    compact: Boolean,
     diacritics: DiacriticsMode,
 ) {
     val primaryLineId = primarySelectedLineId ?: selectedLineIds.firstOrNull() ?: return
@@ -351,43 +360,29 @@ private fun MultiLineCommentariesContent(
             },
         )
 
-    val splitState = rememberSplitPaneState(0.10f)
-
-    LaunchedEffect(isCommentatorsListVisible) {
-        if (!isCommentatorsListVisible) {
-            splitState.positionPercentage = 0f
-        } else if (splitState.positionPercentage <= 0f) {
-            splitState.positionPercentage = 0.10f
-        }
-    }
-
-    EnhancedHorizontalSplitPane(
-        splitPaneState = splitState.asStable(),
-        firstMinSize = if (isCommentatorsListVisible) 150f else 0f,
-        showSplitter = isCommentatorsListVisible,
-        showDivider = true,
-        firstContent = {
-            if (isCommentatorsListVisible) {
-                CommentatorsList(
-                    groups = commentatorGroups,
-                    selectedCommentators = selectedCommentators.value,
-                    initialScrollIndex = commentatorsListScrollIndex,
-                    initialScrollOffset = commentatorsListScrollOffset,
-                    onScroll = { index, offset ->
-                        onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
-                    },
-                    onSelectionChange = { name, checked ->
-                        selectedCommentators.value =
-                            if (checked) {
-                                selectedCommentators.value + name
-                            } else {
-                                selectedCommentators.value - name
-                            }
-                    },
-                )
-            }
+    CommentatorsListAndTexts(
+        isListVisible = isCommentatorsListVisible,
+        compact = compact,
+        list = {
+            CommentatorsList(
+                groups = commentatorGroups,
+                selectedCommentators = selectedCommentators.value,
+                initialScrollIndex = commentatorsListScrollIndex,
+                initialScrollOffset = commentatorsListScrollOffset,
+                onScroll = { index, offset ->
+                    onEvent(BookContentEvent.CommentatorsListScrolled(index, offset))
+                },
+                onSelectionChange = { name, checked ->
+                    selectedCommentators.value =
+                        if (checked) {
+                            selectedCommentators.value + name
+                        } else {
+                            selectedCommentators.value - name
+                        }
+                },
+            )
         },
-        secondContent = {
+        texts = {
             val selectedInDisplayOrder =
                 remember(commentatorsInDisplayOrder, selectedCommentators.value) {
                     commentatorsInDisplayOrder.filter { it in selectedCommentators.value }.toImmutableList()
@@ -404,6 +399,47 @@ private fun MultiLineCommentariesContent(
                 diacritics = diacritics,
             )
         },
+    )
+}
+
+/**
+ * The commentators list beside the texts, in a split pane; in a [compact] pane, the list in the texts' place
+ * while it is open.
+ */
+@OptIn(ExperimentalSplitPaneApi::class)
+@Composable
+private fun CommentatorsListAndTexts(
+    isListVisible: Boolean,
+    compact: Boolean,
+    list: @Composable () -> Unit,
+    texts: @Composable () -> Unit,
+) {
+    // Movable: the texts and the list keep their state when the pane crosses the compact width.
+    val currentList by rememberUpdatedState(list)
+    val currentTexts by rememberUpdatedState(texts)
+    val movableList = remember { movableContentOf { currentList() } }
+    val movableTexts = remember { movableContentOf { currentTexts() } }
+    if (compact) {
+        if (isListVisible) movableList() else movableTexts()
+        return
+    }
+    val splitState = rememberSplitPaneState(COMMENTATORS_LIST_SPLIT)
+
+    LaunchedEffect(isListVisible) {
+        if (!isListVisible) {
+            splitState.positionPercentage = 0f
+        } else if (splitState.positionPercentage <= 0f) {
+            splitState.positionPercentage = COMMENTATORS_LIST_SPLIT
+        }
+    }
+
+    EnhancedHorizontalSplitPane(
+        splitPaneState = splitState.asStable(),
+        firstMinSize = if (isListVisible) CommentatorsListMinWidth.value else 0f,
+        showSplitter = isListVisible,
+        showDivider = true,
+        firstContent = { if (isListVisible) movableList() },
+        secondContent = { movableTexts() },
     )
 }
 

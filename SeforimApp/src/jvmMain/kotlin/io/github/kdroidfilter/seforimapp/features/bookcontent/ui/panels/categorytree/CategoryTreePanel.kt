@@ -69,8 +69,7 @@ fun CategoryTreePanel(
                             booksInCategory = result.books,
                             expandedCategories = result.categoryIds,
                             selectedCategory = null,
-                            // Lets the tree scroll to the active match
-                            selectedBook = result.books.firstOrNull { it.id == activeId },
+                            selectedBook = null,
                             scrollIndex = 0,
                             scrollOffset = 0,
                             categoryReveal = null,
@@ -79,7 +78,6 @@ fun CategoryTreePanel(
                     onBookClick = bookClick(onEvent) { onEvent(BookContentEvent.BookTreeSearchBookSelected(it.id)) },
                     onScroll = { _, _ -> },
                     selectedBookIdOverride = activeId,
-                    revealSelectionOnly = true,
                 )
             }
         }

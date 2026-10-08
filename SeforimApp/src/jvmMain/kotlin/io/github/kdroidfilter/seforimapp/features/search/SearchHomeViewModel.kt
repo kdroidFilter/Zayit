@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
@@ -493,69 +494,22 @@ class SearchHomeViewModel(
             }
         }
 
-        // Apply selected scope only (view filters) and persist dataset scope for fetch
+        // Persist the selected scope as both the fetch scope and the view filter
         val selected = _uiState.value
-        val datasetScope: String
-        val filterCategoryId: Long
-        val filterBookId: Long
-        val filterTocId: Long
-        val fetchCategoryId: Long
-        val fetchBookId: Long
-        val fetchTocId: Long
-        when {
-            selected.selectedScopeToc != null -> {
-                val toc = selected.selectedScopeToc
-                datasetScope = "toc"
-                filterCategoryId = 0L
-                filterBookId = toc.bookId
-                filterTocId = toc.id
-                fetchCategoryId = 0L
-                fetchBookId = toc.bookId
-                fetchTocId = toc.id
+        val scope =
+            when {
+                selected.selectedScopeToc != null ->
+                    SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
+                selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
+                selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
+                else -> SearchScope.Global
             }
-            selected.selectedScopeBook != null -> {
-                val book = selected.selectedScopeBook
-                datasetScope = "book"
-                filterCategoryId = 0L
-                filterBookId = book.id
-                filterTocId = 0L
-                fetchCategoryId = 0L
-                fetchBookId = book.id
-                fetchTocId = 0L
-            }
-            selected.selectedScopeCategory != null -> {
-                val cat = selected.selectedScopeCategory
-                datasetScope = "category"
-                filterCategoryId = cat.id
-                filterBookId = 0L
-                filterTocId = 0L
-                fetchCategoryId = cat.id
-                fetchBookId = 0L
-                fetchTocId = 0L
-            }
-            else -> {
-                datasetScope = "global"
-                filterCategoryId = 0L
-                filterBookId = 0L
-                filterTocId = 0L
-                fetchCategoryId = 0L
-                fetchBookId = 0L
-                fetchTocId = 0L
-            }
-        }
 
         persistedStore.update(currentTabId) { current ->
             val nextSearch =
-                (current.search ?: SearchPersistedState()).copy(
+                (current.search ?: SearchPersistedState()).withScope(scope).copy(
                     query = query,
                     globalExtended = selected.globalExtended,
-                    datasetScope = datasetScope,
-                    filterCategoryId = filterCategoryId,
-                    filterBookId = filterBookId,
-                    filterTocId = filterTocId,
-                    fetchCategoryId = fetchCategoryId,
-                    fetchBookId = fetchBookId,
-                    fetchTocId = fetchTocId,
                     selectedCategoryIds = emptySet(),
                     selectedBookIds = emptySet(),
                     selectedTocIds = emptySet(),

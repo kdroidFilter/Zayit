@@ -9,6 +9,10 @@ object StateKeys {
     const val BOOK_ID = "bookId"
     const val LINE_ID = "lineId"
 
+    // Scope of a fresh search tab (a search reopened from history)
+    const val SEARCH_SCOPE = "searchScope"
+    const val SEARCH_GLOBAL_EXTENDED = "searchGlobalExtended"
+
     // Open the notes pane on the requested line (a note opened from the notes page or widget)
     const val OPEN_NOTES = "openNotes"
 

@@ -486,7 +486,57 @@ class AppSettings(
         _sourceFontCodeFlow.value = DEFAULT_SOURCE_FONT
     }
 
+    /** The preferences that follow the user to another machine (see [PORTABLE_KEYS]). */
+    fun exportPortablePreferences(): Map<String, String> = exportPortablePreferences(settings)
+
     companion object {
+        // Preferences worth carrying to another machine. The database location, the session and
+        // the onboarding state belong to this machine only.
+        private val PORTABLE_KEYS =
+            setOf(
+                KEY_TEXT_SIZE,
+                KEY_LINE_HEIGHT,
+                KEY_MAX_COMMENTATORS_PER_PAGE,
+                KEY_CLOSE_TREE_ON_NEW_BOOK,
+                KEY_PERSIST_SESSION,
+                KEY_KEEP_SCREEN_AWAKE_ON_BOOK,
+                KEY_FONT_BOOK,
+                KEY_FONT_COMMENTARY,
+                KEY_FONT_TARGUM,
+                KEY_FONT_SOURCE,
+                KEY_REGION_COUNTRY,
+                KEY_REGION_CITY,
+                KEY_USER_FIRST_NAME,
+                KEY_USER_LAST_NAME,
+                KEY_SIDDUR_NUSACH,
+                KEY_SIDDUR_MINYAN,
+                KEY_SIDDUR_BEIT_AVEL,
+                KEY_USER_COMMUNITY,
+                KEY_THEME_MODE,
+                KEY_ACCENT_COLOR,
+                KEY_HOME_WIDGETS_LAYOUT,
+                KEY_SHOW_HOME_WALLPAPER,
+                KEY_COMPACT_MODE,
+            )
+
+        private fun isPortableKey(key: String): Boolean = key in PORTABLE_KEYS || key.startsWith(KEY_HOME_WIDGET_OPTIONS_PREFIX)
+
+        /**
+         * The portable preferences of [settings] as their stored strings: Java Preferences keeps
+         * every value as a string, so they round-trip whatever their type.
+         */
+        fun exportPortablePreferences(settings: Settings): Map<String, String> =
+            settings.keys.filter(::isPortableKey).associateWith { settings.getString(it, "") }
+
+        /** Replaces the portable preferences of [settings] with [preferences], leaving the others alone. */
+        fun importPortablePreferences(
+            settings: Settings,
+            preferences: Map<String, String>,
+        ) {
+            settings.keys.filter(::isPortableKey).forEach(settings::remove)
+            preferences.filterKeys(::isPortableKey).forEach { (key, value) -> settings.putString(key, value) }
+        }
+
         // Text size constants
         const val DEFAULT_TEXT_SIZE = 16f
         const val MIN_TEXT_SIZE = 14f

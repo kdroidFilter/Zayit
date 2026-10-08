@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
+import androidx.compose.foundation.lazy.LazyListItemInfo
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
 import kotlin.math.ceil
 import kotlin.math.max
 import kotlin.time.Duration.Companion.milliseconds
@@ -93,4 +95,63 @@ internal fun findItemIndexForPixel(
         if (cumPx[mid] <= target) lo = mid else hi = mid - 1
     }
     return lo
+}
+
+/**
+ * Thumb position in `[0, 1]`, as `above / (above + below)` in cumPx units.
+ *
+ * `above` is the modelled height scrolled past the viewport top: `cumPx[first]` plus the
+ * real fraction already scrolled through the first visible item, remapped to its
+ * modelled height. `below` mirrors it from the viewport bottom: the real fraction of the
+ * last visible item still hidden, remapped the same way, plus `cumPx` of every item
+ * after it. Both ends are therefore exact on real layout — `above = 0` at the top and
+ * `below = 0` at the bottom — even when the model over- or under-estimates heights.
+ * Dividing by `total − viewport` instead left the thumb short of the end whenever the
+ * last screen's modelled height exceeded the viewport, a gap that is visible on short
+ * books where `total − viewport` is small.
+ *
+ * [modelIndexAt] maps a lazy-list index to its index in [cumPx], or `-1` for items
+ * outside the modelled domain (loaders, transient paging indices).
+ */
+internal inline fun computeModelScrollRatio(
+    info: LazyListLayoutInfo,
+    cumPx: LongArray,
+    total: Int,
+    modelIndexAt: (lazyIndex: Int) -> Int,
+): Float {
+    if (total <= 0 || cumPx.size < total + 1) return 0f
+    // Indexed scans: no iterator nor filtered list allocated on each scroll frame.
+    val visible = info.visibleItemsInfo
+    var firstInfo: LazyListItemInfo? = null
+    var firstIdx = -1
+    for (i in visible.indices) {
+        val idx = modelIndexAt(visible[i].index)
+        if (idx >= 0) {
+            firstInfo = visible[i]
+            firstIdx = idx.coerceAtMost(total - 1)
+            break
+        }
+    }
+    if (firstInfo == null) return 0f
+    var lastInfo: LazyListItemInfo = firstInfo
+    var lastIdx = firstIdx
+    for (i in visible.lastIndex downTo 0) {
+        val idx = modelIndexAt(visible[i].index)
+        if (idx >= 0) {
+            lastInfo = visible[i]
+            lastIdx = idx.coerceAtMost(total - 1)
+            break
+        }
+    }
+
+    val hiddenAbove = (info.viewportStartOffset - firstInfo.offset).toFloat()
+    val firstFraction = (hiddenAbove / firstInfo.size.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val above = cumPx[firstIdx] + firstFraction * (cumPx[firstIdx + 1] - cumPx[firstIdx])
+
+    val hiddenBelow = (lastInfo.offset + lastInfo.size - info.viewportEndOffset).toFloat()
+    val lastFraction = (hiddenBelow / lastInfo.size.coerceAtLeast(1)).coerceIn(0f, 1f)
+    val below = (cumPx[total] - cumPx[lastIdx + 1]) + lastFraction * (cumPx[lastIdx + 1] - cumPx[lastIdx])
+
+    val sum = above + below
+    return if (sum <= 0f) 0f else above / sum
 }

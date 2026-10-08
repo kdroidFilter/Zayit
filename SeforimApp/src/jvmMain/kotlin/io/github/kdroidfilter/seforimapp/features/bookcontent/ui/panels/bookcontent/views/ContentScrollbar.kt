@@ -34,7 +34,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * The total content height becomes
  * `totalContentPx = totalVisualLines × lineHeightPx + N × paddingPerItemPx`, which matches
  * what Compose actually lays out. Thumb size = `viewport / totalContentPx`, thumb position
- * = `scrollPx / (totalContentPx − viewport)`. No per-frame sampling, no latch heuristics.
+ * = `above / (above + below)` (see [computeModelScrollRatio]). No per-frame sampling, no
+ * latch heuristics.
  *
  * [bookCharCounts] is the per-line raw char-count vector for the currently loaded book in
  * `lineIndex` order (the VM prefetches it once per book). The composable prefix-sums the
@@ -83,12 +84,15 @@ fun ContentScrollbar(
         ) ?: return
     if (latched.hidden) return
 
-    // Thumb **position** uses the book-wide line-index geometry (not the paged-window
-    // line index): `position = (firstLineIdx + firstInnerOffset) / (N − visibleLines)`.
-    // At scroll start `firstLineIdx = 0` → 0. At scroll end `firstLineIdx = N −
-    // visibleLines` → 1. Numerator and denominator scale with the same `avgItemSize`
-    // so the ratio reaches the boundaries exactly, no pinning required, no flicker.
-    val position = computeBookPosition(listState, lazyPagingItems, counts.size, cumPx, totalContentPx).coerceIn(0f, 1f)
+    // Thumb **position** in book-wide line-index space, two-sided so both ends are exact
+    // on the real layout (see [computeModelScrollRatio]).
+    val pagedCount = lazyPagingItems.itemCount
+    val position =
+        computeModelScrollRatio(listState.layoutInfo, cumPx, itemCount) { lazyIndex ->
+            // Guard against paging prepends/appends where `visibleItemsInfo` briefly
+            // contains indices beyond the snapshot — `peek()` would throw.
+            if (lazyIndex in 0 until pagedCount) lazyPagingItems.peek(lazyIndex)?.lineIndex ?: -1 else -1
+        }
 
     if (E2e.enabled) SideEffect { E2e.bookScrollbar = listState to position }
     E2ePerf.Record()
@@ -188,51 +192,3 @@ fun ContentScrollbar(
 // text catching up to fast drags (~60 Hz) without spamming `buildLinesPager` on every
 // frame. Final exact target is flushed on `onDragStopped` regardless.
 private val FAR_DRAG_THROTTLE = 16.milliseconds
-
-/**
- * Book-wide thumb position in `[0, 1]`, in pixel-space.
- *
- * Formula: `scrolledPx = cumPx[firstLineIdx] + innerFraction × itemModelHeight`, divided
- * by `totalContentPx − viewport`. `cumPx[firstLineIdx]` exactly encodes the modelled
- * weight of every line before the first visible one. `innerFraction = -offset / size`
- * is the proportion scrolled **through** the current item, measured on the real
- * rendered pixels. Multiplying it by `cumPx[firstLineIdx + 1] − cumPx[firstLineIdx]`
- * converts that proportion back into cumPx units, so the thumb advances proportionally
- * to the item's modelled weight while scrolling through it — a tall line moves the
- * thumb more than a short one, matching the reading progress. `.coerceIn(0f, 1f)` at
- * the caller pins boundaries when the model and actual layout diverge slightly.
- */
-private fun computeBookPosition(
-    listState: LazyListState,
-    lazyPagingItems: LazyPagingItems<Line>,
-    bookLineCount: Int,
-    cumPx: LongArray,
-    totalContentPx: Float,
-): Float {
-    if (bookLineCount == 0 || cumPx.size < bookLineCount + 1) return 0f
-    val itemCount = lazyPagingItems.itemCount
-    if (itemCount == 0) return 0f
-    val info = listState.layoutInfo
-    // Guard against paging prepends/appends where `visibleItemsInfo` briefly contains
-    // indices beyond the snapshot size — `peek()` would throw `IndexOutOfBoundsException`.
-    // Single-pass scan to avoid allocating a filtered list on every scroll frame (60 Hz).
-    var firstInfo: androidx.compose.foundation.lazy.LazyListItemInfo? = null
-    val visibleList = info.visibleItemsInfo
-    for (i in visibleList.indices) {
-        val item = visibleList[i]
-        if (item.index in 0 until itemCount) {
-            firstInfo = item
-            break
-        }
-    }
-    if (firstInfo == null) return 0f
-    val firstLine = lazyPagingItems.peek(firstInfo.index) ?: return 0f
-    val firstLineIdx = firstLine.lineIndex.coerceIn(0, bookLineCount - 1)
-    val firstSize = firstInfo.size.coerceAtLeast(1)
-    val innerFraction = ((-firstInfo.offset).toFloat() / firstSize).coerceIn(0f, 1f)
-    val itemModelHeight = (cumPx[firstLineIdx + 1] - cumPx[firstLineIdx]).toFloat().coerceAtLeast(0f)
-    val scrolledPx = cumPx[firstLineIdx].toFloat() + innerFraction * itemModelHeight
-    val viewport = (info.viewportEndOffset - info.viewportStartOffset).toFloat()
-    val maxScroll = (totalContentPx - viewport).coerceAtLeast(1f)
-    return scrolledPx / maxScroll
-}

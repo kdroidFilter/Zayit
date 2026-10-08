@@ -175,6 +175,12 @@ fun NucleusApplicationScope.MainAppWindow(
                 ) {
                     openFavoritesTab()
                     true
+                } else if (isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.T) {
+                    desktopMgr.reopenClosedTab(openWindow.id)
+                    true
+                } else if (isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.W) {
+                    tabsVm.onEvent(TabsEvents.CloseAll)
+                    true
                 } else if (isCtrlOrCmd && keyEvent.key == Key.T) {
                     tabsVm.onEvent(TabsEvents.OnAdd)
                     true
@@ -313,6 +319,16 @@ fun NucleusApplicationScope.MainAppWindow(
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                 when {
+                                    // Ctrl/Cmd + Shift + W => close all tabs
+                                    isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.W -> {
+                                        tabsVm.onEvent(TabsEvents.CloseAll)
+                                        true
+                                    }
+                                    // Ctrl/Cmd + Shift + T => reopen the last closed tab
+                                    isCtrlOrCmd && keyEvent.isShiftPressed && keyEvent.key == Key.T -> {
+                                        desktopMgr.reopenClosedTab(openWindow.id)
+                                        true
+                                    }
                                     // Ctrl/Cmd + W => close current tab
                                     isCtrlOrCmd && keyEvent.key == Key.W -> {
                                         tabsVm.onEvent(TabsEvents.OnClose(selectedIndex))

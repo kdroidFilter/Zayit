@@ -143,12 +143,12 @@ private fun ReaderBar(
 ) {
     val viewModel = tabBookViewModel(session.ownerOf(destination.tabId), destination)
     val uiState by viewModel.uiState.collectAsState()
-    val showDiacritics by viewModel.showDiacritics.collectAsState()
+    val diacritics by viewModel.diacritics.collectAsState()
     Box(Modifier.fillMaxHeight()) {
         if (start) {
             StartVerticalBar(uiState = uiState, onEvent = viewModel::onEvent)
         } else if (uiState.navigation.selectedBook != null || destination is TabsDestination.Search) {
-            EndVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, showDiacritics = showDiacritics)
+            EndVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, diacritics = diacritics)
         }
     }
 }

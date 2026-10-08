@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.annotations
 
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.stripNikudTeamimWithMap
 
 /**
@@ -19,20 +20,20 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.stripNikudTeamim
 fun resolveHighlightRange(
     linePlainText: String,
     selectedText: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ): IntRange? {
     val needle = selectedText.trim()
     if (needle.isEmpty() || linePlainText.isEmpty()) return null
 
-    if (showDiacritics) {
+    if (diacritics == DiacriticsMode.All) {
         val start = linePlainText.indexOf(needle)
         if (start < 0) return null
         return start until (start + needle.length)
     }
 
-    // Diacritics hidden: the selection is in stripped space (matching the rendered text, which
+    // Some diacritics hidden: the selection is in stripped space (matching the rendered text, which
     // keeps ׳ ״). Locate it there, then map the bounds back to original coordinates for storage.
-    val (strippedText, strippedToOriginal) = stripNikudTeamimWithMap(linePlainText)
+    val (strippedText, strippedToOriginal) = stripNikudTeamimWithMap(linePlainText, diacritics)
     val start = strippedText.indexOf(needle)
     if (start < 0) return null
     val end = start + needle.length
@@ -63,19 +64,19 @@ data class LineHighlightRange(
 fun resolveHighlightRangesForSelection(
     sortedVisibleLines: List<Pair<Long, String>>,
     selectedText: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ): List<LineHighlightRange> {
     if (sortedVisibleLines.isEmpty()) return emptyList()
 
     val segments = selectedText.split('\n').map { it.trim() }.filter { it.isNotEmpty() }
     if (segments.isEmpty()) return emptyList()
 
-    fun displayed(plain: String): String = if (showDiacritics) plain else stripNikudTeamimWithMap(plain).first
+    fun displayed(plain: String): String = diacritics.apply(plain)
 
     if (segments.size == 1) {
         val seg = segments.first()
         val line = sortedVisibleLines.firstOrNull { displayed(it.second).contains(seg) } ?: return emptyList()
-        val range = resolveHighlightRange(line.second, seg, showDiacritics) ?: return emptyList()
+        val range = resolveHighlightRange(line.second, seg, diacritics) ?: return emptyList()
         return listOf(LineHighlightRange(line.first, range))
     }
 
@@ -91,7 +92,7 @@ fun resolveHighlightRangesForSelection(
         val lineIndex = startIndex + offset
         if (lineIndex > sortedVisibleLines.lastIndex) break
         val (lineId, plain) = sortedVisibleLines[lineIndex]
-        val range = resolveHighlightRange(plain, segments[offset], showDiacritics) ?: (0 until plain.length)
+        val range = resolveHighlightRange(plain, segments[offset], diacritics) ?: (0 until plain.length)
         result += LineHighlightRange(lineId, range)
     }
     return result

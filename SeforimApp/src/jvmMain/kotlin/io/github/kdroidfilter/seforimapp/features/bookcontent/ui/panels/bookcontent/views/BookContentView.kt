@@ -63,6 +63,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.rememberAppTextZoom
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.drawNoteUnderlines
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
@@ -76,7 +77,6 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -107,7 +107,7 @@ fun BookContentView(
     onLineSelect: (Line, Boolean) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     tabId: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
     draftNote: NoteDraftAnchor? = null,
     isTocEntrySelection: Boolean = false,
@@ -571,7 +571,7 @@ fun BookContentView(
     // Backed by a ConcurrentHashMap: the prefetcher writes from EfficiencyCoreDispatcher while
     // LineItem reads during composition on the main thread.
     val stableAnnotatedCache =
-        remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
+        remember(bookId, textSize, boldScaleForPlatform, diacritics) {
             StableAnnotatedCache(java.util.concurrent.ConcurrentHashMap())
         }
 
@@ -586,7 +586,7 @@ fun BookContentView(
         prefetchImageBuilder,
         textSize,
         boldScaleForPlatform,
-        showDiacritics,
+        diacritics,
         footnoteMarkerColor,
         isDarkTheme,
     ) {
@@ -612,7 +612,7 @@ fun BookContentView(
                     for (line in lines) {
                         ensureActive()
                         val processed =
-                            if (showDiacritics) line.content else HebrewTextUtils.removeAllDiacritics(line.content)
+                            diacritics.apply(line.content)
                         val key =
                             htmlAnnotationCacheKey(
                                 lineId = line.id,
@@ -915,7 +915,7 @@ fun BookContentView(
                                         currentMatchStart =
                                             if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
                                         annotatedCache = stableAnnotatedCache,
-                                        showDiacritics = showDiacritics,
+                                        diacritics = diacritics,
                                         onLayoutWidthMeasure = { width ->
                                             if (textLayoutWidthPx == 0 && width > 0) {
                                                 textLayoutWidthPx = width
@@ -945,7 +945,7 @@ fun BookContentView(
                                             lineHeight = lineHeight,
                                             boldScale = boldScaleForPlatform,
                                             annotatedCache = stableAnnotatedCache,
-                                            showDiacritics = showDiacritics,
+                                            diacritics = diacritics,
                                             // The context menu acts on this verse, as from its first reading
                                             onContextClick = {
                                                 selectionContext.setCurrentLineId(line.id)
@@ -954,7 +954,7 @@ fun BookContentView(
                                         )
                                     }
                                     shnayimMikraTargum.targumOf(line.heRef)?.let {
-                                        ShnayimMikraTargum(it, targumFontFamily, textSize, lineHeight, showDiacritics)
+                                        ShnayimMikraTargum(it, targumFontFamily, textSize, lineHeight, diacritics)
                                     }
                                 }
                                 if (markedLines?.last == line.lineIndex) MarkedEnd(if (shnayimMikra) "סוף הקריאה" else "סוף הלימוד")
@@ -1207,21 +1207,14 @@ private fun LineItem(
     highlightTerms: List<String>? = null,
     currentMatchStart: Int? = null,
     annotatedCache: StableAnnotatedCache? = null,
-    showDiacritics: Boolean = true,
+    diacritics: DiacriticsMode = DiacriticsMode.All,
     userHighlights: List<UserHighlight> = emptyList(),
     userNotes: List<UserNote> = emptyList(),
     onLayoutWidthMeasure: (Int) -> Unit = {},
     onContextClick: () -> Unit = {},
 ) {
-    // Process content: remove diacritics if setting is disabled
-    val processedContent =
-        remember(lineContent, showDiacritics) {
-            if (showDiacritics) {
-                lineContent
-            } else {
-                HebrewTextUtils.removeAllDiacritics(lineContent)
-            }
-        }
+    // Process content: remove the diacritics the current mode hides
+    val processedContent = remember(lineContent, diacritics) { diacritics.apply(lineContent) }
 
     // Footnote marker color from theme
     val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
@@ -1325,7 +1318,7 @@ private fun LineItem(
             baseHl,
             currentHl,
             userHighlights,
-            showDiacritics,
+            diacritics,
             originalPlainText,
         ) {
             // User highlights first, then search highlights on top. Note markers are drawn
@@ -1335,7 +1328,7 @@ private fun LineItem(
                     annotated = annotated,
                     highlights = userHighlights,
                     originalText = originalPlainText,
-                    showDiacritics = showDiacritics,
+                    diacritics = diacritics,
                 )
             if (!highlightTerms.isNullOrEmpty()) {
                 // Smart mode: highlight multiple terms from dictionary expansion
@@ -1362,8 +1355,8 @@ private fun LineItem(
     // Dotted grey underline marking the noted ranges (drawn from the text layout so it supports
     // wrapping and RTL). Offsets are remapped to the displayed text when diacritics are hidden.
     val noteRanges =
-        remember(userNotes, originalPlainText, showDiacritics, displayText) {
-            noteDisplayRanges(userNotes, originalPlainText, showDiacritics, displayText.length)
+        remember(userNotes, originalPlainText, diacritics, displayText) {
+            noteDisplayRanges(userNotes, originalPlainText, diacritics, displayText.length)
         }
     val noteUnderlineColor = JewelTheme.globalColors.text.info
     var noteLayout by remember { mutableStateOf<TextLayoutResult?>(null) }

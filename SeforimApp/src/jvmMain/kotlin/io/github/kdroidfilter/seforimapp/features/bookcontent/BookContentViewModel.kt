@@ -16,6 +16,7 @@ import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
@@ -105,8 +106,8 @@ class BookContentViewModel(
             .flatMapLatest { it }
             .cachedIn(viewModelScope)
 
-    private val _showDiacritics = MutableStateFlow(true)
-    val showDiacritics: StateFlow<Boolean> = _showDiacritics.asStateFlow()
+    private val _diacritics = MutableStateFlow(DiacriticsMode.All)
+    val diacritics: StateFlow<DiacriticsMode> = _diacritics.asStateFlow()
     private var currentRootCategoryId: Long? = null
 
     // Per-line `charCount` vector for the current book, ordered by lineIndex. Feeds the
@@ -379,10 +380,10 @@ class BookContentViewModel(
             categoryDisplaySettingsUseCase.categoryChanges.collectLatest { categoryId ->
                 if (categoryId == currentRootCategoryId) {
                     val nav = stateManager.state.value.navigation
-                    _showDiacritics.value =
+                    _diacritics.value =
                         categoryDisplaySettingsUseCase
-                            .getShowDiacriticsForCategory(categoryId, nav)
-                            .showDiacritics
+                            .getDiacriticsForCategory(categoryId, nav)
+                            .diacritics
                 }
             }
         }
@@ -392,13 +393,13 @@ class BookContentViewModel(
         val categoryId = nav.selectedBook?.categoryId
         if (categoryId == null || categoryId <= 0) {
             currentRootCategoryId = null
-            _showDiacritics.value = true
+            _diacritics.value = DiacriticsMode.All
             return
         }
 
-        val setting = categoryDisplaySettingsUseCase.getShowDiacriticsForCategory(categoryId, nav)
+        val setting = categoryDisplaySettingsUseCase.getDiacriticsForCategory(categoryId, nav)
         currentRootCategoryId = setting.rootCategoryId
-        _showDiacritics.value = setting.showDiacritics
+        _diacritics.value = setting.diacritics
     }
 
     /** Event handling */
@@ -578,8 +579,8 @@ class BookContentViewModel(
                 BookContentEvent.ToggleSources ->
                     contentUseCase.toggleSources()
 
-                BookContentEvent.ToggleDiacritics ->
-                    toggleShowDiacriticsForCurrentCategory()
+                BookContentEvent.CycleDiacritics ->
+                    cycleDiacriticsForCurrentCategory()
 
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
@@ -656,12 +657,13 @@ class BookContentViewModel(
         }
     }
 
-    private suspend fun toggleShowDiacriticsForCurrentCategory() {
+    private suspend fun cycleDiacriticsForCurrentCategory() {
         val nav = stateManager.state.value.navigation
-        val selectedCategoryId = nav.selectedBook?.categoryId ?: return
-        val setting = categoryDisplaySettingsUseCase.toggleShowDiacriticsForCategory(selectedCategoryId, nav) ?: return
+        val book = nav.selectedBook ?: return
+        val setting =
+            categoryDisplaySettingsUseCase.cycleDiacriticsForCategory(book.categoryId, nav, book.hasTeamim) ?: return
         currentRootCategoryId = setting.rootCategoryId
-        _showDiacritics.value = setting.showDiacritics
+        _diacritics.value = setting.diacritics
     }
 
     /** Loads a book by ID */

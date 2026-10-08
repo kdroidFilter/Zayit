@@ -1,13 +1,23 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -16,6 +26,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import seforimapp.seforimapp.generated.resources.*
 
 @Composable
@@ -66,7 +77,7 @@ fun StartVerticalBar(
 fun EndVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ) {
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
@@ -114,8 +125,9 @@ fun EndVerticalBar(
                 val bookHasDiacritics = selectedBook.hasNekudot || selectedBook.hasTeamim
                 if (bookHasDiacritics) {
                     DiacriticsButton(
-                        showDiacritics = showDiacritics,
-                        onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
+                        diacritics = diacritics,
+                        hasTeamim = selectedBook.hasTeamim,
+                        onClick = { onEvent(BookContentEvent.CycleDiacritics) },
                         shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
                     )
                 }
@@ -294,13 +306,65 @@ fun DiacriticsButton(
     onClick: () -> Unit,
     shortcutHint: String? = null,
 ) {
-    SelectableIconButtonWithToolip(
-        toolTipText = stringResource(if (showDiacritics) Res.string.hide_diacritics_tooltip else Res.string.show_diacritics_tooltip),
+    DiacriticsButton(
+        diacritics = if (showDiacritics) DiacriticsMode.All else DiacriticsMode.None,
+        hasTeamim = false,
         onClick = onClick,
-        isSelected = showDiacritics,
+        shortcutHint = shortcutHint,
+    )
+}
+
+/** Cycles through the [DiacriticsMode]s: dots show how much is shown, the tooltip what the next click does. */
+@Composable
+fun DiacriticsButton(
+    diacritics: DiacriticsMode,
+    hasTeamim: Boolean,
+    onClick: () -> Unit,
+    shortcutHint: String? = null,
+) {
+    val tooltip =
+        when (diacritics.next(hasTeamim)) {
+            DiacriticsMode.All -> Res.string.show_diacritics_tooltip
+            DiacriticsMode.NikudOnly -> Res.string.hide_teamim_tooltip
+            DiacriticsMode.None ->
+                if (diacritics == DiacriticsMode.NikudOnly) Res.string.hide_nikud_tooltip else Res.string.hide_diacritics_tooltip
+        }
+    SelectableIconButtonWithToolip(
+        toolTipText = stringResource(tooltip),
+        onClick = onClick,
+        isSelected = diacritics != DiacriticsMode.None,
         icon = TextDiacritics,
         iconDescription = stringResource(Res.string.toggle_diacritics),
         label = stringResource(Res.string.toggle_diacritics),
         shortcutHint = shortcutHint,
+        // With two states the selected background says it all; with three, dots tell how much is shown
+        indicator = if (hasTeamim) ({ LevelIndicator(levels = 2, level = diacritics.shownLevel) }) else null,
     )
+}
+
+/** Diacritic layers shown: nikud and teamim, nikud only, none. */
+private val DiacriticsMode.shownLevel: Int
+    get() =
+        when (this) {
+            DiacriticsMode.All -> 2
+            DiacriticsMode.NikudOnly -> 1
+            DiacriticsMode.None -> 0
+        }
+
+/**
+ * [levels] small dots, [level] of them lit. At level 0 the dots are invisible, as the unselected
+ * button already says so, but keep their space so the icon does not move.
+ */
+@Composable
+private fun LevelIndicator(
+    levels: Int,
+    level: Int,
+) {
+    val on = JewelTheme.globalColors.text.selected
+    val off = if (level == 0) Color.Transparent else JewelTheme.globalColors.text.disabled
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(levels) {
+            Box(Modifier.size(4.dp).background(if (it < level) on else off, CircleShape))
+        }
+    }
 }

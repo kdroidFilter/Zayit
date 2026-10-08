@@ -306,13 +306,13 @@ private fun HomeTabContent(
 ) {
     val viewModel = tabBookViewModel(tabOwner, destination)
     val uiState by viewModel.uiState.collectAsState()
-    val showDiacritics by viewModel.showDiacritics.collectAsState()
+    val diacritics by viewModel.diacritics.collectAsState()
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     BookContentScreen(
         uiState = uiState,
         onEvent = viewModel::onEvent,
-        showDiacritics = showDiacritics,
+        diacritics = diacritics,
         isRestoringSession = isRestoringSession,
         searchUi = searchUi,
         searchCallbacks = searchCallbacks,
@@ -340,7 +340,7 @@ private fun SearchTabContent(
     }
 
     val bcUiState by bookVm.uiState.collectAsState()
-    val showDiacritics by bookVm.showDiacritics.collectAsState()
+    val diacritics by bookVm.diacritics.collectAsState()
     val searchUi by viewModel.uiState.collectAsState()
     val visibleResults by viewModel.visibleResultsFlow.collectAsState()
     val isFiltering by viewModel.isFilteringFlow.collectAsState()
@@ -350,7 +350,7 @@ private fun SearchTabContent(
     SearchResultInBookShellMvi(
         bookUiState = bcUiState,
         onEvent = bookVm::onEvent,
-        showDiacritics = showDiacritics,
+        diacritics = diacritics,
         searchUi = searchUi,
         visibleResults = visibleResults,
         isFiltering = isFiltering,
@@ -420,7 +420,7 @@ private fun BookContentTabContent(
 ) {
     val viewModel = tabBookViewModel(tabOwner, destination)
     val uiState by viewModel.uiState.collectAsState()
-    val showDiacritics by viewModel.showDiacritics.collectAsState()
+    val diacritics by viewModel.diacritics.collectAsState()
     val bookCharCounts by viewModel.bookCharCounts.collectAsState()
 
     // React to destination changes when ViewModel is reused
@@ -438,7 +438,7 @@ private fun BookContentTabContent(
     BookContentScreen(
         uiState = uiState,
         onEvent = viewModel::onEvent,
-        showDiacritics = showDiacritics,
+        diacritics = diacritics,
         isRestoringSession = isRestoringSession,
         searchUi = searchUi,
         searchCallbacks = searchCallbacks,

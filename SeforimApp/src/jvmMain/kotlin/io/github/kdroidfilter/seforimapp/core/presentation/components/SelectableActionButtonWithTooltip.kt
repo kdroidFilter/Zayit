@@ -47,6 +47,7 @@ fun SelectableIconButtonWithToolip(
     iconDescription: String = "",
     enabled: Boolean = true,
     shortcutHint: String? = null,
+    indicator: (@Composable () -> Unit)? = null,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     val compactMode by appSettings.compactModeFlow.collectAsState()
@@ -161,6 +162,10 @@ fun SelectableIconButtonWithToolip(
                     tint = if (enabled) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
                     modifier = Modifier.size(iconSize),
                 )
+                if (indicator != null) {
+                    Spacer(modifier = Modifier.height(3.dp))
+                    indicator()
+                }
                 if (!compactMode) {
                     Spacer(modifier = Modifier.height(4.dp))
                     val labelColor =

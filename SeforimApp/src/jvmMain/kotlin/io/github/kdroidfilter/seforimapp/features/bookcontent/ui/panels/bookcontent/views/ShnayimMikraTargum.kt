@@ -10,9 +10,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Text
 
@@ -68,12 +68,12 @@ internal fun ShnayimMikraTargum(
     fontFamily: FontFamily,
     textSize: Float,
     lineHeight: Float,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ) {
     val size = textSize * TARGUM_SCALE
     val annotated =
-        remember(html, size, showDiacritics) {
-            buildAnnotatedFromHtml(if (showDiacritics) html else HebrewTextUtils.removeAllDiacritics(html), size)
+        remember(html, size, diacritics) {
+            buildAnnotatedFromHtml(diacritics.apply(html), size)
         }
     Text(
         annotated,

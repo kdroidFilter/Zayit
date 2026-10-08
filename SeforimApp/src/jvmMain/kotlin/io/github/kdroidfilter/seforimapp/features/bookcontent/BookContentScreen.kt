@@ -45,6 +45,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRangesForSelection
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
@@ -291,7 +292,7 @@ private fun applyHighlightFromSelection(
     bookId: Long,
     commentaryColumn: List<io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef>,
     color: Color,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     store: HighlightStore,
     @StructuredScope scope: CoroutineScope,
 ) {
@@ -300,7 +301,7 @@ private fun applyHighlightFromSelection(
     if (commentaryColumn.isNotEmpty()) {
         val commentaryBookId = commentaryColumn.first().bookId
         val sorted = commentaryColumn.map { it.lineId to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-        val ranges = resolveHighlightRangesForSelection(sorted, selectedText, showDiacritics)
+        val ranges = resolveHighlightRangesForSelection(sorted, selectedText, diacritics)
         persistHighlights(commentaryBookId, ranges, color, store, scope)
         return
     }
@@ -311,7 +312,7 @@ private fun applyHighlightFromSelection(
         lines
             .sortedBy { it.lineIndex }
             .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-    val mainRanges = resolveHighlightRangesForSelection(mainSorted, selectedText, showDiacritics)
+    val mainRanges = resolveHighlightRangesForSelection(mainSorted, selectedText, diacritics)
     persistHighlights(bookId, mainRanges, color, store, scope)
 }
 
@@ -342,13 +343,13 @@ private fun persistHighlights(
 private fun resolveNoteDraft(
     selectedText: String,
     lines: List<io.github.kdroidfilter.seforimlibrary.core.models.Line>,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ): NoteDraftAnchor? {
     val sorted =
         lines
             .sortedBy { it.lineIndex }
             .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-    val range = resolveHighlightRangesForSelection(sorted, selectedText, showDiacritics).firstOrNull() ?: return null
+    val range = resolveHighlightRangesForSelection(sorted, selectedText, diacritics).firstOrNull() ?: return null
     return NoteDraftAnchor(
         lineId = range.lineId,
         startOffset = range.range.first,
@@ -432,7 +433,7 @@ private fun composeKeyEventToSwingKeyStroke(event: KeyEvent): KeyStroke? {
 fun BookTextMenus(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     tabUi: BookTabUi,
     content: @Composable () -> Unit,
 ) {
@@ -465,7 +466,7 @@ fun BookTextMenus(
             copyWithoutNikudLabel,
             copyWithSourceLabel,
             copyLinkLabel,
-            showDiacritics,
+            diacritics,
             bookHasDiacritics,
             bookId,
         ) {
@@ -489,9 +490,9 @@ fun BookTextMenus(
                             val query = normalizeSearchQuery(textManager.selectedText.text)
                             val selectedText = textManager.selectedText.text
                             buildList {
-                                // Copy without nikud option - first position, only show when book has diacritics and they are enabled
+                                // Copy without nikud option - first position, only show when book has diacritics and they are shown
                                 if (bookHasDiacritics &&
-                                    showDiacritics &&
+                                    diacritics != DiacriticsMode.None &&
                                     selectedText.isNotBlank() &&
                                     (HebrewTextUtils.containsNikud(selectedText) || HebrewTextUtils.containsTeamim(selectedText))
                                 ) {
@@ -604,7 +605,7 @@ fun BookTextMenus(
                                             val lines = selectionContext.visibleLines.value.lines
                                             val draft =
                                                 if (selectedText.isNotBlank()) {
-                                                    resolveNoteDraft(selectedText, lines, showDiacritics)
+                                                    resolveNoteDraft(selectedText, lines, diacritics)
                                                 } else {
                                                     resolveWholeLineNoteDraft(selectionContext.currentLineId.value, lines)
                                                 }
@@ -629,7 +630,7 @@ fun BookTextMenus(
                                                     bookId = bookId,
                                                     commentaryColumn = selectionContext.activeCommentaryColumn.value,
                                                     color = color,
-                                                    showDiacritics = showDiacritics,
+                                                    diacritics = diacritics,
                                                     store = highlightStore,
                                                     scope = highlightScope,
                                                 )
@@ -683,7 +684,7 @@ fun PlainTextMenus(content: @Composable () -> Unit) {
 fun BookContentScreen(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     searchUi: SearchHomeUiState,
     searchCallbacks: HomeSearchCallbacks,
     tabUi: BookTabUi,
@@ -725,11 +726,11 @@ fun BookContentScreen(
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
 
-    BookTextMenus(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics, tabUi = tabUi) {
+    BookTextMenus(uiState = uiState, onEvent = onEvent, diacritics = diacritics, tabUi = tabUi) {
         BookContentPanel(
             uiState = uiState,
             onEvent = onEvent,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
             isRestoringSession = isRestoringSession,
             searchUi = searchUi,
             searchCallbacks = searchCallbacks,
@@ -753,7 +754,7 @@ fun handleBookShortcut(
         when (keyEvent.key) {
             Key.B -> if (keyEvent.isShiftPressed) BookContentEvent.ToggleToc else BookContentEvent.ToggleBookTree
             Key.K -> if (keyEvent.isShiftPressed) BookContentEvent.ToggleTargum else BookContentEvent.ToggleCommentaries
-            Key.J -> BookContentEvent.ToggleDiacritics
+            Key.J -> BookContentEvent.CycleDiacritics
             else -> return false
         }
     onEvent(event)

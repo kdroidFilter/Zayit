@@ -95,7 +95,7 @@ data class TocSuggestionDto(
 
 @Immutable
 data class SearchHomeUiState(
-    val selectedFilter: SearchFilter = SearchFilter.TEXT,
+    val selectedFilter: SearchFilter = SearchFilter.REFERENCE,
     val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
     val isReferenceLoading: Boolean = false,
@@ -545,8 +545,10 @@ class SearchHomeViewModel(
         val selected = _uiState.value
         val scope =
             when {
-                selected.selectedScopeToc != null ->
+                // An alternative-TOC entry has no main-TOC scope: search its whole book
+                selected.selectedScopeToc != null && !selected.selectedScopeToc.isAltTocEntry() ->
                     SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
+                selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
                 selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
                 selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
                 else -> SearchScope.Global

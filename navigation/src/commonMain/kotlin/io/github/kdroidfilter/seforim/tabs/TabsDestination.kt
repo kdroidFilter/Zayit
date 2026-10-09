@@ -61,6 +61,14 @@ sealed interface TabsDestination {
         override val tabId: String,
     ) : TabsDestination
 
+    /** An author's page: biography and books. */
+    @Serializable
+    @Immutable
+    data class Author(
+        override val tabId: String,
+        val authorId: Long,
+    ) : TabsDestination
+
     /**
      * The smart siddur, opened on [part] (a SiddurPart name) of the Jewish day [epochDay], or on the tefila of the
      * hour; scrolled to the first [heading] that has these words.

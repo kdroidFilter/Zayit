@@ -1715,6 +1715,9 @@ class SearchResultViewModel(
         executeFilteredSearch()
     }
 
+    /** Where this tab's search looks (the one truth, persisted with the tab). */
+    val searchScope: SearchScope get() = persistedSearchState().scope
+
     /**
      * A search from the bar: [scope] is the bar's (its picked book or category, else everywhere) and
      * replaces this tab's, with its filters; the persisted scope stays the one truth of the search.

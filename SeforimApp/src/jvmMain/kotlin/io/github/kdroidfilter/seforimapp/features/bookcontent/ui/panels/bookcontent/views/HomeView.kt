@@ -463,6 +463,7 @@ internal fun UnifiedSearchBar(
 
     val referenceSearchState = remember { TextFieldState() }
     val currentOnTextChange by rememberUpdatedState(onTextChange)
+    val currentBookPicked by rememberUpdatedState(searchUi.selectedScopeBook != null)
     val tocSearchState = remember { TextFieldState() }
     var skipNextReferenceQuery by remember { mutableStateOf(false) }
     var skipNextTocQuery by remember { mutableStateOf(false) }
@@ -484,6 +485,8 @@ internal fun UnifiedSearchBar(
     // Forward toc input changes to the ViewModel (ignored until a book is selected)
     LaunchedEffect(Unit) {
         snapshotFlow { tocSearchState.text.toString() }.collect { qRaw ->
+            // In a book, the typed text is also the search's query
+            if (currentBookPicked) currentOnTextChange(qRaw)
             if (skipNextTocQuery) {
                 skipNextTocQuery = false
                 tocEditedSinceBook = qRaw.isNotBlank()
@@ -502,9 +505,17 @@ internal fun UnifiedSearchBar(
         searchCallbacks.onOpenReference()
     }
 
-    // The results page shows its query in the field, without opening suggestions for it
-    LaunchedEffect(initialText) {
-        if (initialText.isNotEmpty() && referenceSearchState.text.toString() != initialText) {
+    // The results page shows its query in the field, without opening suggestions for it: the book's
+    // field once the bar is in a book (its search's scope), else the main one
+    val inBook = searchUi.selectedScopeBook != null && searchUi.selectedScopeToc == null
+    LaunchedEffect(initialText, inBook) {
+        if (initialText.isEmpty()) return@LaunchedEffect
+        if (inBook) {
+            if (tocSearchState.text.toString() != initialText) {
+                skipNextTocQuery = true
+                tocSearchState.edit { replace(0, length, initialText) }
+            }
+        } else if (referenceSearchState.text.toString() != initialText) {
             skipNextReferenceQuery = true
             referenceSearchState.edit { replace(0, length, initialText) }
         }

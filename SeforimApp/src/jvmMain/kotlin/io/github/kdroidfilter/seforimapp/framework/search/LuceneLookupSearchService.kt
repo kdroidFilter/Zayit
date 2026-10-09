@@ -77,6 +77,8 @@ class LuceneLookupSearchService(
         val id: Long,
         val name: String,
         val bookCount: Int,
+        // The alias the query was found by, when not the name (חפץ חיים); set by the caller
+        val alias: String? = null,
     )
 
     data class BookHit(
@@ -95,6 +97,8 @@ class LuceneLookupSearchService(
         val orderIndex: Int,
         val score: Double,
         val matchedAcronyms: List<String>,
+        // The query is one of the book's acronyms, whole (שוע for שולחן ערוך)
+        val exactAcronym: Boolean = false,
     ) {
         /** A lightweight [Book] for display; load the full one by [id] when opening it. */
         fun toBook(): Book =
@@ -290,6 +294,7 @@ class LuceneLookupSearchService(
                     orderIndex = hit.orderIndex,
                     score = score,
                     matchedAcronyms = findMatchedAcronyms(hit.title, normalizedQuery),
+                    exactAcronym = hasExactAcronymMatch(hit.title, normalizedQuery),
                 )
             }
 

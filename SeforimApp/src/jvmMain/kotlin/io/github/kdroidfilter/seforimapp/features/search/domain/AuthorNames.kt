@@ -44,6 +44,33 @@ object AuthorNames {
         return "$HONORIFIC $name"
     }
 
+    /**
+     * The alias a query was typed as (`חפץ חיים` for רבי ישראל מאיר הכהן), or null when it reads as
+     * the [name] itself: every query word starts a word, as the lookup index matches them.
+     */
+    fun matchedAlias(
+        query: String,
+        name: String,
+        aliases: List<String>,
+    ): String? {
+        val words = searchWords(withoutHonorific(query))
+        if (words.isEmpty()) return null
+
+        fun matches(candidate: String): Boolean {
+            val candidateWords = searchWords(candidate)
+            return words.all { word -> candidateWords.any { it.startsWith(word) } }
+        }
+        return if (matches(name)) null else aliases.firstOrNull(::matches)
+    }
+
+    private fun searchWords(text: String): List<String> =
+        text
+            .replace(NIKUD, "")
+            .replace(BIDI_MARKS, "")
+            .replace(Regex("[\"'״׳]"), "")
+            .split(Regex("\\s+"))
+            .filter { it.isNotEmpty() }
+
     /** A query typed as the name is shown (`הרב יוסף`), without the display-only honorific. */
     fun withoutHonorific(query: String): String {
         val trimmed = query.trimStart()

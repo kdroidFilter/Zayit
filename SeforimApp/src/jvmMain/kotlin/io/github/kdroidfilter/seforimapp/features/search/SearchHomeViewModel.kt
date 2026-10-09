@@ -8,6 +8,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ReferenceParser
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ReferenceResolver
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.RepositoryReferenceSource
@@ -40,6 +41,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Navigation events emitted by SearchHomeViewModel.
@@ -87,6 +89,8 @@ data class CategorySuggestionDto(
 data class BookSuggestionDto(
     val book: Book,
     val path: List<String>,
+    // Typed as one of its acronyms, whole
+    val exactAcronym: Boolean = false,
 )
 
 @Immutable
@@ -135,6 +139,14 @@ class SearchHomeViewModel(
     val navigationEvents = _navigationEvents.receiveAsFlow()
 
     private val referenceResolver = ReferenceResolver(RepositoryReferenceSource(repository))
+
+    // Author aliases by id, to tell which one a query was typed as; few authors have any
+    private val aliasesByAuthor = ConcurrentHashMap<Long, List<String>>()
+
+    private suspend fun authorAliases(authorId: Long): List<String> =
+        aliasesByAuthor[authorId] ?: runSuspendCatching { repository.getAuthorDetails(authorId)?.aliases.orEmpty() }
+            .getOrDefault(emptyList())
+            .also { aliasesByAuthor[authorId] = it }
 
     // The books of the picked author, filtered by what is typed next
     private var authorBooks: List<BookSuggestionDto> = emptyList()
@@ -304,12 +316,16 @@ class SearchHomeViewModel(
                                             lookup.suggestBooks(q, limit = maxBookPredictive).map { hit ->
                                                 val book = hit.toBook()
                                                 val catPath = buildCategoryPathTitlesCached(book.categoryId)
-                                                BookSuggestionDto(book, catPath + book.title)
+                                                BookSuggestionDto(book, catPath + book.title, hit.exactAcronym)
                                             }
                                         }
 
                                     val authorsDeferred =
-                                        async(Dispatchers.Default) { lookup.suggestAuthors(q, limit = MAX_AUTHOR_SUGGESTIONS) }
+                                        async(Dispatchers.IO) {
+                                            lookup.suggestAuthors(q, limit = MAX_AUTHOR_SUGGESTIONS).map { hit ->
+                                                hit.copy(alias = AuthorNames.matchedAlias(q, hit.name, authorAliases(hit.id)))
+                                            }
+                                        }
 
                                     val jumpsDeferred =
                                         async(Dispatchers.IO) {

@@ -611,6 +611,7 @@
     <string name="search_switch_all">חיפוש בכל הספרים</string>
     <string name="search_switch_base">רק ספרי יסוד</string>
     <string name="search_tab_all">הכל</string>
+    <string name="search_clear">ניקוי</string>
     <string name="search_panel_author_page">לדף המחבר</string>
     <string name="search_stop">בטל חיפוש</string>
     <string name="search_near_selector_label">קרבה</string>

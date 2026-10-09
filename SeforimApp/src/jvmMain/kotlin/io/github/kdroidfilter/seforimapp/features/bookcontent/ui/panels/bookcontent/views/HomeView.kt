@@ -24,6 +24,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -1594,6 +1595,20 @@ private fun SearchBar(
                             enabled = !isUserTyping && windowInfo.isWindowFocused,
                         )
                     }
+                }
+            },
+            // Clears the typed text, keeping the picked book
+            trailingIcon = {
+                if (state.text.isNotEmpty()) {
+                    Icon(
+                        AllIconsKeys.Actions.Close,
+                        stringResource(Res.string.search_clear),
+                        Modifier
+                            .clickable {
+                                state.clearText()
+                                effectiveFocusRequester.requestFocus()
+                            }.pointerHoverIcon(PointerIcon.Hand),
+                    )
                 }
             },
             leadingIcon = {

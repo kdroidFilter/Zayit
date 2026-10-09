@@ -81,6 +81,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -724,7 +725,7 @@ private fun SuggestionsPanel(
                     val rowIndex = jumpSuggestions.size + textRows + idx
                     val author = authorSuggestions[idx]
                     SuggestionRow(
-                        parts = listOf(author.name.withoutNikud()),
+                        parts = listOf(AuthorNames.display(author.name)),
                         onClick = { onPickAuthor(author) },
                         kind = SuggestionKind.AUTHOR,
                         highlighted = rowIndex == focusedIndex,
@@ -970,9 +971,6 @@ private fun stripBookPrefixFromTocPath(
     }
     return parts
 }
-
-// Author names come with nikud from some sources: show them plain, like book titles
-private fun String.withoutNikud(): String = replace(Regex("[\u0591-\u05C7]"), "").replace(Regex("\\s+"), " ").trim()
 
 private fun String.withBold(part: String?): AnnotatedString {
     val start = part?.takeIf { it.isNotEmpty() }?.let { indexOf(it) } ?: -1
@@ -1575,7 +1573,7 @@ private fun SearchBar(
                         Spacer(Modifier.width(8.dp))
                     } else if (selectedAuthor != null) {
                         SelectedBookChip(
-                            title = selectedAuthor.withoutNikud(),
+                            title = AuthorNames.display(selectedAuthor),
                             onClear = {
                                 onClearAuthor()
                                 effectiveFocusRequester.requestFocus()

@@ -138,7 +138,7 @@ fun SearchResultInBookShellMvi(
             .fillMaxSize()
             .padding(vertical = 6.dp, horizontal = 4.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(JewelTheme.globalColors.panelBackground)
+            .background(readingPaper())
 
     val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
     if (showBookContent) {
@@ -305,7 +305,7 @@ private fun SearchResultContentMvi(
         BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
             val showPanel = entity != null && maxWidth >= PANEL_MIN_WIDTH
             // Wide screens get wider columns: a fixed width would leave most of them empty
-            val columnWidth = (maxWidth * 0.55f).coerceIn(COLUMN_MIN_WIDTH, COLUMN_MAX_WIDTH)
+            val columnWidth = (maxWidth * 0.45f).coerceIn(COLUMN_MIN_WIDTH, COLUMN_MAX_WIDTH)
             val panelWidth = (maxWidth * 0.22f).coerceIn(PANEL_NARROW_WIDTH, PANEL_MAX_WIDTH)
             // One centered reading column for the bar, the status and the results, as on Google,
             // with the panel of the book or author the query names beside it
@@ -417,7 +417,7 @@ private fun SearchResultContentMvi(
 
                     // Results list
                     Box(
-                        modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground),
+                        modifier = Modifier.fillMaxSize().background(readingPaper()),
                     ) {
                         if (visibleResults.isEmpty()) {
                             if (state.isLoading) {
@@ -483,7 +483,7 @@ private fun SearchResultContentMvi(
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
-                                        .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
+                                        .background(readingPaper().copy(alpha = 0.4f))
                                         .zIndex(1f),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -597,6 +597,16 @@ private fun rememberSnippetDisplay(
     return remember(annotated, findQuery, baseHl) { highlightAnnotated(annotated, findQuery, baseHl) }
 }
 
+// Reading colors, as Google's: white paper in light (the theme's panel is tinted), and secondary
+// text a dark grey (the theme's info grey is too faint to read a passage in)
+@Composable
+private fun readingPaper(): Color = if (JewelTheme.isDark) JewelTheme.globalColors.panelBackground else Color.White
+
+@Composable
+private fun readingSecondary(): Color =
+    JewelTheme.globalColors.text.normal
+        .copy(alpha = 0.72f)
+
 // The app's zoom, as a factor of the default text size
 private val LocalResultZoom = staticCompositionLocalOf { 1f }
 
@@ -622,7 +632,7 @@ private fun ResultView(
     val hit = item.hit
     // Titles in the app's text color, bold, as every other text; the rest grey
     val ink = JewelTheme.globalColors.text.normal
-    val grey = JewelTheme.globalColors.text.info
+    val grey = readingSecondary()
     val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
     val pieces = breadcrumbs[hit.lineId]
     LaunchedEffect(hit.lineId) { if (pieces == null) currentOnRequestBreadcrumb(hit) }
@@ -633,7 +643,7 @@ private fun ResultView(
             Text(categories, color = grey, fontSize = 12f.zoomed(), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ResultLink(hit.bookTitle, ink, 18f.zoomed(), FontWeight.Bold) { onOpenResult(hit) }
+            ResultLink(hit.bookTitle, ink, 17f.zoomed(), FontWeight.Bold) { onOpenResult(hit) }
             if (place != null) {
                 Text(
                     "· $place",
@@ -672,7 +682,7 @@ private fun Snippet(
     val display = rememberSnippetDisplay(hit.snippet, SNIPPET_SIZE * LocalResultZoom.current, findQuery, bookFontCode, boldColor = ink)
     Text(
         text = display,
-        color = JewelTheme.globalColors.text.info,
+        color = readingSecondary(),
         fontSize = SNIPPET_SIZE.zoomed(),
         lineHeight = (SNIPPET_SIZE * 1.65f).zoomed(),
         maxLines = 2,
@@ -792,8 +802,8 @@ private fun CategoryTab(
     }
 }
 
-private val COLUMN_MIN_WIDTH = 760.dp
-private val COLUMN_MAX_WIDTH = 1100.dp
+private val COLUMN_MIN_WIDTH = 640.dp
+private val COLUMN_MAX_WIDTH = 860.dp
 private val PANEL_NARROW_WIDTH = 300.dp
 private val PANEL_MAX_WIDTH = 440.dp
 
@@ -808,7 +818,7 @@ private fun PanelSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth().padding(bottom = 6.dp))
-        Text(title, fontSize = 12f.zoomed(), fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.info)
+        Text(title, fontSize = 12f.zoomed(), fontWeight = FontWeight.SemiBold, color = readingSecondary())
         content()
     }
 }
@@ -822,7 +832,7 @@ private fun EntityPanel(
     onOpenAuthor: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val grey = JewelTheme.globalColors.text.info
+    val grey = readingSecondary()
     val shape = RoundedCornerShape(12.dp)
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -830,7 +840,7 @@ private fun EntityPanel(
             modifier
                 .clip(shape)
                 .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .background(JewelTheme.globalColors.panelBackground)
+                .background(readingPaper())
                 .padding(16.dp),
     ) {
         when (entity) {
@@ -917,7 +927,7 @@ private fun SearchStatusLine(
     onGlobalExtendedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val grey = JewelTheme.globalColors.text.info
+    val grey = readingSecondary()
     val count = remember(total) { NumberFormat.getIntegerInstance().format(total) }
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(

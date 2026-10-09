@@ -814,8 +814,8 @@ private fun ResultView(
 
 /**
  * The selected result in its book, to read without opening it: its place as a title, then the
- * found line marked by a bar, between the lines around it, faded; in the books' font and size, at a
- * reading width. A button opens the book there.
+ * found line marked by a bar, between the lines around it, faded; in the books' font and size, over
+ * the whole width as the book's text. A button opens the book there.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -887,7 +887,8 @@ private fun PassagePreview(
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                         Column(
                             verticalArrangement = Arrangement.spacedBy(14.dp),
-                            modifier = Modifier.widthIn(max = READING_WIDTH).fillMaxWidth().padding(horizontal = 28.dp, vertical = 22.dp),
+                            // The whole width, as the book's text
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
                         ) {
                             lines.forEach { line ->
                                 val found = line.id == hit.lineId
@@ -952,7 +953,6 @@ private fun PassagePreview(
     }
 }
 
-private val READING_WIDTH = 900.dp
 private val PREVIEW_DETAILS_MIN_WIDTH = 1100.dp
 private val PREVIEW_DETAILS_WIDTH = 300.dp
 private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)

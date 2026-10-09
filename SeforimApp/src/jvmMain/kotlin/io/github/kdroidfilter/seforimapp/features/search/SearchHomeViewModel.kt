@@ -120,7 +120,6 @@ data class SearchHomeUiState(
     val selectedScopeToc: TocEntry? = null,
     val userDisplayName: String = "",
     val userCommunityCode: String? = null,
-    val tocPreviewHints: List<String> = emptyList(),
     val pairedReferenceHints: List<Pair<String, String>> = emptyList(),
 )
 
@@ -409,7 +408,6 @@ class SearchHomeViewModel(
                     selectedScopeCategory = null,
                     selectedScopeBook = null,
                     selectedScopeToc = null,
-                    tocPreviewHints = emptyList(),
                     isReferenceLoading = false,
                 )
         }
@@ -436,7 +434,6 @@ class SearchHomeViewModel(
                 suggestionsVisible = false,
                 tocSuggestionsVisible = false,
                 tocSuggestions = emptyList(),
-                tocPreviewHints = emptyList(),
                 isReferenceLoading = false,
                 isTocLoading = false,
             )
@@ -486,7 +483,6 @@ class SearchHomeViewModel(
                 suggestionsVisible = false,
                 tocSuggestionsVisible = false,
                 tocSuggestions = emptyList(),
-                tocPreviewHints = emptyList(),
                 isReferenceLoading = false,
                 isTocLoading = true,
             )
@@ -512,16 +508,9 @@ class SearchHomeViewModel(
                     tocCache[book.id] = built
                     built
                 }
-            val preview =
-                tocEntries
-                    .mapNotNull { it.toc.text.takeIf { t -> t.isNotBlank() } }
-                    .distinct()
-                    .take(5)
-                    .toList()
             val initialSuggestions = tocEntries.take(maxTocPredictive)
             _uiState.value =
                 _uiState.value.copy(
-                    tocPreviewHints = preview,
                     tocSuggestions = initialSuggestions,
                     tocSuggestionsVisible = initialSuggestions.isNotEmpty(),
                     isTocLoading = false,

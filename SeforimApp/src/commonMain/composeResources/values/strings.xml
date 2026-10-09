@@ -313,13 +313,12 @@
     <!-- Book names only (for reference-mode first field) -->
 
     <!-- TOC examples (for second field when no book yet) -->
-    <string name="reference_toc_hint_1">פרק א</string>
-    <string name="reference_toc_hint_2">סימן א</string>
-    <string name="reference_toc_hint_3">סעיף א</string>
-    <string name="reference_toc_hint_4">דף ב עמוד א</string>
-    <string name="reference_toc_hint_5">שער א</string>
-    <string name="tab_hint_select">Tab ⇥</string>
-    <string name="hint_open_or_search_inside">↵ פתיחה · Tab חיפוש בתוך</string>
+    <string name="search_in_book_placeholder">מה לחפש בספר זה? פרק, סימן או כל מילה</string>
+    <string name="row_action_open">פתיחה</string>
+    <string name="row_action_search_inside">חיפוש בתוך</string>
+    <string name="row_action_search">חיפוש</string>
+    <string name="row_action_search_base">בספרי יסוד</string>
+    <string name="row_action_search_all">בכל הספרים</string>
     <string name="autocomplete_no_results">לא נמצאו תוצאות</string>
     <string name="autocomplete_loading">טוען…</string>
 

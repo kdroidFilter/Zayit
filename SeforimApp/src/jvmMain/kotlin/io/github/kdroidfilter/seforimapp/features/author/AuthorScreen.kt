@@ -259,7 +259,7 @@ private fun TextPane(
             }
             if (page.details.bio != null) {
                 Spacer(Modifier.height(4.dp))
-                Text(stringResource(Res.string.author_bio_ai_notice), fontSize = 12.sp, color = JewelTheme.globalColors.text.disabled)
+                Text(stringResource(Res.string.author_bio_ai_notice), fontSize = 14.sp, color = JewelTheme.globalColors.text.disabled)
             }
             Spacer(Modifier.height(20.dp))
             page.details.bio?.summary?.let {

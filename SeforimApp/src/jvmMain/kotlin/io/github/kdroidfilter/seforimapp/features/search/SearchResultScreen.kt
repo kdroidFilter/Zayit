@@ -114,7 +114,6 @@ data class SearchShellActions(
     val onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
     val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
     val onShowOnlyCategory: (Long?) -> Unit = {},
-    val onOpenBook: (Long) -> Unit = {},
     val onOpenBookAt: (bookId: Long, lineId: Long) -> Unit = { _, _ -> },
     val onOpenAuthor: (Long) -> Unit = {},
 )
@@ -325,8 +324,9 @@ private fun SearchResultContentMvi(
 
     // The tabs are the unfiltered search's categories: once one is picked, the tree only has it left
     var tabCategories by remember(state.executedQuery, state.globalExtended) { mutableStateOf(categories) }
-    LaunchedEffect(categories, selectedCategoryIds) {
-        if (selectedCategoryIds.isEmpty() && categories.isNotEmpty()) tabCategories = categories
+    // (the widest tree seen for this query: a category or a book filter narrows it)
+    LaunchedEffect(categories) {
+        if (categories.size >= tabCategories.size) tabCategories = categories
     }
 
     // The selected result, shown beside the list on wide windows; the first one until one is picked
@@ -400,7 +400,8 @@ private fun SearchResultContentMvi(
                             )
                         }
 
-                        if (tabCategories.size > 1) {
+                        // Always there, as Google's, even with one category: "הכל" also undoes a kept filter
+                        if (tabCategories.isNotEmpty()) {
                             Spacer(Modifier.height(10.dp))
                             CategoryTabs(tabCategories, selectedCategoryIds, actions.onShowOnlyCategory)
                         }
@@ -579,7 +580,6 @@ private fun SearchResultContentMvi(
                         if (entity != null) {
                             EntityPanel(
                                 entity = entity,
-                                onOpenBook = actions.onOpenBook,
                                 onOpenBookAt = actions.onOpenBookAt,
                                 onOpenAuthor = actions.onOpenAuthor,
                                 modifier = Modifier.fillMaxWidth(),
@@ -598,7 +598,6 @@ private fun SearchResultContentMvi(
                                 details = { book ->
                                     EntityDetails(
                                         entity = book,
-                                        onOpenBook = actions.onOpenBook,
                                         onOpenBookAt = actions.onOpenBookAt,
                                         onOpenAuthor = actions.onOpenAuthor,
                                     )
@@ -1117,13 +1116,12 @@ private fun PanelSection(
 @Composable
 private fun EntityPanel(
     entity: SearchEntity,
-    onOpenBook: (Long) -> Unit,
     onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
     onOpenAuthor: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.card().padding(16.dp)) {
-        EntityDetails(entity, onOpenBook, onOpenBookAt, onOpenAuthor)
+        EntityDetails(entity, onOpenBookAt, onOpenAuthor)
     }
 }
 
@@ -1131,7 +1129,6 @@ private fun EntityPanel(
 @Composable
 private fun ColumnScope.EntityDetails(
     entity: SearchEntity,
-    onOpenBook: (Long) -> Unit,
     onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
     onOpenAuthor: (Long) -> Unit,
 ) {
@@ -1144,9 +1141,6 @@ private fun ColumnScope.EntityDetails(
                 Text(book.title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
                 if (entity.categories.isNotEmpty()) {
                     Text(entity.categories.joinToString(" › "), fontSize = 12.sp, color = grey)
-                }
-                DefaultButton(onClick = { onOpenBook(book.id) }, modifier = Modifier.padding(vertical = 4.dp)) {
-                    Text(stringResource(Res.string.row_action_open))
                 }
                 book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
                     Text(

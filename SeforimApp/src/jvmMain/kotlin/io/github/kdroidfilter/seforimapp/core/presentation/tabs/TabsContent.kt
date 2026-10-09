@@ -457,7 +457,6 @@ fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellAct
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
             },
             onShowOnlyCategory = viewModel::showOnlyCategory,
-            onOpenBook = viewModel::openBook,
             onOpenBookAt = viewModel::openBookAt,
             onOpenAuthor = viewModel::openAuthor,
         )

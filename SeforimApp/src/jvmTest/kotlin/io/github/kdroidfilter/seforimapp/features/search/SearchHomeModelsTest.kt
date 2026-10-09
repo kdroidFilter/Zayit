@@ -108,7 +108,6 @@ class SearchHomeModelsTest {
         assertNull(state.selectedScopeToc)
         assertEquals("", state.userDisplayName)
         assertNull(state.userCommunityCode)
-        assertTrue(state.tocPreviewHints.isEmpty())
         assertTrue(state.pairedReferenceHints.isEmpty())
     }
 

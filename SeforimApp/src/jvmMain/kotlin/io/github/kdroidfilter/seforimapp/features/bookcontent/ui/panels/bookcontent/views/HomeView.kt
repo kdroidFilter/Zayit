@@ -486,16 +486,6 @@ private fun HomeBody(
                                         }
                                     val breadcrumbSeparatorTop = stringResource(Res.string.breadcrumb_separator)
                                     val isTocInTopBar = searchUi.selectedScopeBook != null
-                                    val tocHintsForBar =
-                                        searchUi.tocPreviewHints.ifEmpty {
-                                            listOf(
-                                                stringResource(Res.string.reference_toc_hint_1),
-                                                stringResource(Res.string.reference_toc_hint_2),
-                                                stringResource(Res.string.reference_toc_hint_3),
-                                                stringResource(Res.string.reference_toc_hint_4),
-                                                stringResource(Res.string.reference_toc_hint_5),
-                                            )
-                                        }
                                     SearchBar(
                                         state = if (isTocInTopBar) tocSearchState else referenceSearchState,
                                         onSubmit = { openReference() },
@@ -527,7 +517,6 @@ private fun HomeBody(
                                         tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
                                         tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
                                         selectedBook = searchUi.selectedScopeBook,
-                                        placeholderHints = if (isTocInTopBar) tocHintsForBar else null,
                                         placeholderText = null,
                                         submitOnEnterInReference = isTocInTopBar,
                                         onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
@@ -1208,7 +1197,6 @@ private fun SearchBar(
     focusRequester: FocusRequester? = null,
     onDismissSuggestions: () -> Unit = {},
     // Placeholder hints override (animated)
-    placeholderHints: List<String>? = null,
     // Synchronized placeholder override (renders plain text if provided)
     placeholderText: String? = null,
     // Once a book is picked, pressing Enter on a TOC entry also opens it
@@ -1235,15 +1223,6 @@ private fun SearchBar(
             stringResource(Res.string.reference_hint_5),
         )
 
-    val tocHints =
-        listOf(
-            stringResource(Res.string.reference_toc_hint_1),
-            stringResource(Res.string.reference_toc_hint_2),
-            stringResource(Res.string.reference_toc_hint_3),
-            stringResource(Res.string.reference_toc_hint_4),
-            stringResource(Res.string.reference_toc_hint_5),
-        )
-
     val textHints =
         listOf(
             stringResource(Res.string.text_hint_1),
@@ -1253,10 +1232,10 @@ private fun SearchBar(
             stringResource(Res.string.text_hint_5),
         )
 
-    // The one bar takes references and texts alike: show both, in turn
+    // The one bar takes references and texts alike: show both, in turn; in a picked book, texts to search in it
     val hints =
-        placeholderHints ?: when {
-            selectedBook != null -> tocHints
+        when {
+            selectedBook != null -> textHints
             else -> referenceHints.zip(textHints).flatMap { (reference, text) -> listOf(reference, text) }
         }
 

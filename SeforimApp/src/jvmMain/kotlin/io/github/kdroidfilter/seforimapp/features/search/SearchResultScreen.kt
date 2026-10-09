@@ -329,6 +329,10 @@ private fun SearchResultContentMvi(
 
     val keyHandler = remember { { _: KeyEvent -> false } }
 
+    // What the bar is filled with: the typed draft when the tab opens (restored), then each executed
+    // query; never the live draft, which would write the field back while the user types or clears it
+    val barText = remember(state.executedQuery) { state.draftQuery.ifEmpty { state.executedQuery } }
+
     // The selection lives in the ViewModel, as the preview it drives
     val selectedLineId = preview?.hit?.lineId
     val showBookDetails by appSettings.searchBookDetailsFlow.collectAsState()
@@ -389,7 +393,7 @@ private fun SearchResultContentMvi(
                                 searchUi = homeSearchUi,
                                 searchCallbacks = homeSearchCallbacks,
                                 modifier = Modifier.weight(1f),
-                                initialText = state.draftQuery.ifEmpty { state.executedQuery },
+                                initialText = barText,
                                 autoFocus = false,
                                 onTextChange = actions.onQueryChange,
                             )

@@ -291,6 +291,8 @@
     <string name="search_mode_text">טקסט</string>
     <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
     <string name="search_mode_text_explicit">חיפוש בטקסט</string>
+    <string name="search_text_row">חיפוש «%1$s» בטקסט</string>
+    <string name="search_text_row_in_book">חיפוש «%1$s» בתוך %2$s</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
     <string name="remove_selected_book">הסר ספר שנבחר</string>
 

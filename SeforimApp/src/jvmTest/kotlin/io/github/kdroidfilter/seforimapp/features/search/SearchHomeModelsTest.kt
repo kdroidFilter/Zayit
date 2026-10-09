@@ -95,7 +95,7 @@ class SearchHomeModelsTest {
     @Test
     fun `SearchHomeUiState has correct defaults`() {
         val state = SearchHomeUiState()
-        assertEquals(SearchFilter.TEXT, state.selectedFilter)
+        assertEquals(SearchFilter.REFERENCE, state.selectedFilter)
         assertFalse(state.globalExtended)
         assertFalse(state.suggestionsVisible)
         assertFalse(state.isReferenceLoading)

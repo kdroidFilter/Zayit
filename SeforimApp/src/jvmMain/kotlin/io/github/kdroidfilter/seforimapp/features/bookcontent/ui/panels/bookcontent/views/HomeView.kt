@@ -37,6 +37,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -1318,6 +1319,8 @@ private fun SearchBar(
     val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
+    // Suggestions are for the one typing: none while the field isn't focused (a restored results tab)
+    var fieldFocused by remember { mutableStateOf(false) }
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
@@ -1634,7 +1637,8 @@ private fun SearchBar(
 
                             else -> false
                         }
-                    }.focusRequester(effectiveFocusRequester),
+                    }.focusRequester(effectiveFocusRequester)
+                    .onFocusChanged { fieldFocused = it.isFocused },
             enabled = enabled,
             placeholder = {
                 if (placeholderText != null) {
@@ -1715,6 +1719,7 @@ private fun SearchBar(
         val a = anchor
         val showOverlay =
             isTabSelected &&
+                fieldFocused &&
                 popupVisible &&
                 a != null &&
                 (

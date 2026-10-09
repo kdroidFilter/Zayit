@@ -471,7 +471,11 @@ class SearchHomeViewModel(
         _uiState.value = _uiState.value.copy(selectedScopeAuthor = null, bookSuggestions = emptyList(), suggestionsVisible = false)
     }
 
-    fun onPickBook(book: Book) {
+    fun onPickBook(
+        book: Book,
+        // False to only show the book picked (a restored results tab), its TOC staying closed
+        showSuggestions: Boolean = true,
+    ) {
         authorBooks = emptyList()
         // Update synchronously first
         _uiState.value =
@@ -512,7 +516,7 @@ class SearchHomeViewModel(
             _uiState.value =
                 _uiState.value.copy(
                     tocSuggestions = initialSuggestions,
-                    tocSuggestionsVisible = initialSuggestions.isNotEmpty(),
+                    tocSuggestionsVisible = showSuggestions && initialSuggestions.isNotEmpty(),
                     isTocLoading = false,
                 )
         }
@@ -589,9 +593,10 @@ class SearchHomeViewModel(
                             scope.categoryId,
                         )
                     }.getOrNull()?.let(::onPickCategory)
-                is SearchScope.Book -> runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let(::onPickBook)
+                is SearchScope.Book ->
+                    runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let { onPickBook(it, showSuggestions = false) }
                 is SearchScope.Toc -> {
-                    runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let(::onPickBook)
+                    runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let { onPickBook(it, showSuggestions = false) }
                     runSuspendCatching { repository.getTocEntry(scope.tocId) }.getOrNull()?.let(::onPickToc)
                 }
             }

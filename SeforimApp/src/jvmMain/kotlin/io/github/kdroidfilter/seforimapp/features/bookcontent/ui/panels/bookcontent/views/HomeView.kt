@@ -1321,6 +1321,8 @@ private fun SearchBar(
     // Suggestions are for the one typing: none until the field was focused once (a restored results
     // tab), then as before; losing the focus to a click in them must not hide them under the pointer
     var engaged by remember { mutableStateOf(false) }
+    // Bumped each time the field gets the focus: the suggestions come back after a click outside
+    var focusCount by remember { mutableIntStateOf(0) }
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
@@ -1380,6 +1382,7 @@ private fun SearchBar(
         showTocEmptyState,
         showBookLoading,
         showTocLoading,
+        focusCount,
     ) {
         val shouldOpen =
             when {
@@ -1638,7 +1641,12 @@ private fun SearchBar(
                             else -> false
                         }
                     }.focusRequester(effectiveFocusRequester)
-                    .onFocusChanged { if (it.isFocused) engaged = true },
+                    .onFocusChanged {
+                        if (it.isFocused) {
+                            engaged = true
+                            focusCount++
+                        }
+                    },
             enabled = enabled,
             placeholder = {
                 if (placeholderText != null) {
@@ -1758,7 +1766,9 @@ private fun SearchBar(
                 }
             Popup(
                 popupPositionProvider = provider,
-                properties = PopupProperties(focusable = false),
+                // A click outside closes it, as any menu; the field's focus brings it back
+                properties = PopupProperties(focusable = false, dismissOnClickOutside = true),
+                onDismissRequest = { popupVisible = false },
             ) {
                 val widthDp = with(LocalDensity.current) { a.size.width.toDp() }
                 Box(Modifier.width(widthDp)) {

@@ -156,6 +156,21 @@ class ReferenceResolverTest {
     fun unknownBookOrPlace() {
         assertTrue(resolve("ספר לא קיים ב").isEmpty())
         assertTrue(resolve("חולין קמג").isEmpty())
-        assertTrue(resolve("בראשית ברא").isEmpty())
+        assertTrue(resolve("בראשית ויאמר").isEmpty())
+    }
+
+    @Test
+    fun namesCompleteWhileTyped() {
+        assertEquals(listOf(150L), resolve("בראשית לך").map { it.lineId })
+        assertEquals(listOf(1040L), resolve("חולין הש").map { it.lineId })
+        // ברא begins the parasha בראשית
+        assertEquals(listOf(1L), resolve("בראשית ברא").map { it.lineId })
+    }
+
+    @Test
+    fun bareNumbersAreNotCompleted() {
+        // יום ד / יום ה are names; כ must not complete to the bare chapter כג
+        assertEquals(listOf(250L, 260L), resolve("תהילים יום").map { it.lineId })
+        assertTrue(resolve("תהילים כגג").isEmpty())
     }
 }

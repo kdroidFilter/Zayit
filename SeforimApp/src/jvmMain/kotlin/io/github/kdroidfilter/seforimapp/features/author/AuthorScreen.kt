@@ -48,9 +48,11 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
@@ -162,7 +164,7 @@ private fun AuthorPageLayout(
                         .onSizeChanged { rowHeight = it.height },
                     horizontalArrangement = Arrangement.spacedBy(40.dp),
                 ) {
-                    Column(Modifier.widthIn(max = TEXT_WIDTH)) {
+                    Sheet(padding = 36.dp, modifier = Modifier.widthIn(max = TEXT_WIDTH)) {
                         Header(page.details, large = true)
                         Spacer(Modifier.height(20.dp))
                         Body(page, onLink)
@@ -180,12 +182,14 @@ private fun AuthorPageLayout(
                     )
                 }
             } else {
-                Column(Modifier.widthIn(max = TEXT_WIDTH).padding(horizontal = 16.dp, vertical = 20.dp)) {
-                    Header(page.details, large = false)
-                    Spacer(Modifier.height(16.dp))
-                    InfoCard(page, onBook, Modifier.fillMaxWidth())
-                    Spacer(Modifier.height(20.dp))
-                    Body(page, onLink)
+                Column(Modifier.widthIn(max = TEXT_WIDTH).padding(horizontal = 12.dp, vertical = 16.dp)) {
+                    Sheet(padding = 20.dp, modifier = Modifier.fillMaxWidth()) {
+                        Header(page.details, large = false)
+                        Spacer(Modifier.height(16.dp))
+                        InfoCard(page, onBook, Modifier.fillMaxWidth())
+                        Spacer(Modifier.height(20.dp))
+                        Body(page, onLink)
+                    }
                 }
             }
         }
@@ -197,39 +201,31 @@ private fun Header(
     details: AuthorDetails,
     large: Boolean,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            AuthorNames.display(details.name),
-            fontSize = if (large) 30.sp else 24.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
-            color = JewelTheme.globalColors.text.normal,
-        )
-        val era = details.era?.let { ERAS[it] }
-        val years = years(details)
-        if (era != null || years != null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                era?.let { Pill(it) }
-                years?.let { Pill(it) }
-            }
-        }
-    }
+    Text(
+        AuthorNames.display(details.name),
+        fontSize = if (large) 30.sp else 24.sp,
+        fontWeight = FontWeight.SemiBold,
+        fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
+        color = JewelTheme.globalColors.text.normal,
+    )
 }
 
+// A surface like the info card's, under the page's text
 @Composable
-private fun Pill(text: String) {
-    val accent = JewelTheme.globalColors.outlines.focused
-    Text(
-        text,
-        fontSize = 12.sp,
-        color = JewelTheme.globalColors.text.info,
-        modifier =
-            Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(accent.copy(alpha = 0.08f))
-                .border(1.dp, accent.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
-                .padding(horizontal = 10.dp, vertical = 3.dp),
-    )
+private fun Sheet(
+    padding: Dp,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier
+            .clip(RoundedCornerShape(10.dp))
+            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
+            .background(JewelTheme.globalColors.panelBackground)
+            .padding(padding),
+    ) {
+        content()
+    }
 }
 
 @Composable
@@ -481,18 +477,35 @@ private val ERAS =
         "CO" to "בני זמננו",
     )
 
-// `1761–1837`, `~1089–1164`; null when nothing is known
-private fun years(details: AuthorDetails): String? {
-    fun year(
-        value: Int?,
-        approx: Boolean,
-    ) = value?.let { (if (approx) "~" else "") + it }
-    val birth = year(details.birthYear, details.birthYearApprox)
-    val death = year(details.deathYear, details.deathYearApprox)
-    return when {
-        birth != null && death != null -> "$birth–$death"
-        death != null -> "–$death"
-        birth != null -> "$birth–"
-        else -> null
+private val hebrewYears =
+    HebrewDateFormatter().apply {
+        isHebrewFormat = true
+        isUseGershGershayim = true
     }
+
+/**
+ * `ה׳תקכ״א–ה׳תקצ״ז (1761–1837)`, `~1089` for an approximate year; null when nothing is known.
+ * Sefaria gives civil years only: the Hebrew one is the year that covers most of it (+3760), so
+ * it may be one off.
+ */
+private fun years(details: AuthorDetails): String? {
+    fun span(year: (Int) -> String): String? {
+        fun one(
+            value: Int?,
+            approx: Boolean,
+        ) = value?.let { (if (approx) "~" else "") + year(it) }
+        val birth = one(details.birthYear, details.birthYearApprox)
+        val death = one(details.deathYear, details.deathYearApprox)
+        return when {
+            birth != null && death != null -> "$birth–$death"
+            death != null -> "–$death"
+            birth != null -> "$birth–"
+            else -> null
+        }
+    }
+    val civil = span { it.toString() } ?: return null
+    val hebrew = span { hebrewYears.formatHebrewNumber(it + HEBREW_YEAR_OFFSET) }
+    return "$hebrew ($civil)"
 }
+
+private const val HEBREW_YEAR_OFFSET = 3760

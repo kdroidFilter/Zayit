@@ -605,7 +605,7 @@ private val LocalResultZoom = staticCompositionLocalOf { 1f }
 private fun Float.zoomed(): TextUnit = (this * LocalResultZoom.current).sp
 
 /**
- * A result as on Google: its categories in small, the book as the colored title with the passage's
+ * A result as on Google: its categories in small, the book as the bold title with the passage's
  * place beside it in grey, the passage in grey with the matched words bold, then a link to the
  * book's other results.
  */
@@ -620,7 +620,8 @@ private fun ResultView(
     onMoreInBook: () -> Unit,
 ) {
     val hit = item.hit
-    val accent = JewelTheme.globalColors.outlines.focused
+    // Titles in the app's text color, bold, as every other text; the rest grey
+    val ink = JewelTheme.globalColors.text.normal
     val grey = JewelTheme.globalColors.text.info
     val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
     val pieces = breadcrumbs[hit.lineId]
@@ -632,7 +633,7 @@ private fun ResultView(
             Text(categories, color = grey, fontSize = 12f.zoomed(), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ResultLink(hit.bookTitle, accent, 18f.zoomed()) { onOpenResult(hit) }
+            ResultLink(hit.bookTitle, ink, 18f.zoomed(), FontWeight.Bold) { onOpenResult(hit) }
             if (place != null) {
                 Text(
                     "· $place",
@@ -650,7 +651,7 @@ private fun ResultView(
             Box(Modifier.padding(top = 4.dp)) {
                 ResultLink(
                     stringResource(Res.string.search_more_from_book, item.more, hit.bookTitle),
-                    accent,
+                    grey,
                     13f.zoomed(),
                     onClick = onMoreInBook,
                 )
@@ -704,6 +705,7 @@ private fun ResultLink(
     text: String,
     color: Color,
     fontSize: TextUnit,
+    fontWeight: FontWeight? = null,
     onClick: () -> Unit,
 ) {
     val hover = remember { MutableInteractionSource() }
@@ -712,6 +714,7 @@ private fun ResultLink(
         text = text,
         color = color,
         fontSize = fontSize,
+        fontWeight = fontWeight,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         textDecoration = if (hovered) TextDecoration.Underline else null,

@@ -214,6 +214,11 @@ sealed interface BookContentEvent {
         val lineId: Long?,
     ) : BookContentEvent
 
+    // Opens an author's page in a new tab
+    data class OpenAuthor(
+        val authorId: Long,
+    ) : BookContentEvent
+
     data class SelectedCommentatorsChanged(
         val lineId: Long,
         val selectedIds: Set<Long>,

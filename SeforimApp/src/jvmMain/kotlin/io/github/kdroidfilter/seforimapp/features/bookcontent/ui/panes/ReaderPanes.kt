@@ -626,7 +626,13 @@ private fun BookPaneBody(
                         val book by viewModel.bookDetailsFlow.collectAsState()
                         book
                     }
-                BookDetailsPane(book = details, onHide = { onEvent(BookContentEvent.ToggleBookDetails) }, modifier = modifier)
+                BookDetailsPane(
+                    book = details,
+                    onHide = { onEvent(BookContentEvent.ToggleBookDetails) },
+                    onOpenBookAt = { bookId, lineId -> onEvent(BookContentEvent.OpenCommentaryTarget(bookId, lineId)) },
+                    onOpenAuthor = { onEvent(BookContentEvent.OpenAuthor(it)) },
+                    modifier = modifier,
+                )
             }
             ReaderPane.Targum, ReaderPane.Comments, ReaderPane.Sources -> {
                 val book = uiState.navigation.selectedBook ?: return@BookTextMenus

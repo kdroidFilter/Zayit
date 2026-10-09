@@ -43,6 +43,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import java.util.UUID
 
 /** Simplified ViewModel for the book content screen */
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -645,6 +646,11 @@ class BookContentViewModel(
 
                 is BookContentEvent.OpenCommentaryTarget ->
                     event.lineId?.let { openCommentaryTarget(event.bookId, it) }
+
+                is BookContentEvent.OpenAuthor ->
+                    desktopManager.tabsViewModelFor(tabId)?.openTab(
+                        TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = event.authorId),
+                    )
 
                 // Commentaries
                 is BookContentEvent.CommentariesTabSelected ->

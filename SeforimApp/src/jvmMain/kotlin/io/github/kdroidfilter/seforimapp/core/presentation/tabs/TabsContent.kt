@@ -135,7 +135,6 @@ fun TabsContent() {
             HomeSearchCallbacks(
                 onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
                 onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
-                onFilterChange = searchHomeViewModel::onFilterChange,
                 onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
                 onSubmitTextSearch = { query ->
                     val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
@@ -148,6 +147,8 @@ fun TabsContent() {
                 onPickCategory = searchHomeViewModel::onPickCategory,
                 onPickBook = searchHomeViewModel::onPickBook,
                 onPickToc = searchHomeViewModel::onPickToc,
+                onPickAuthor = searchHomeViewModel::onPickAuthor,
+                onClearAuthor = searchHomeViewModel::onClearAuthor,
                 onOpenJump = { jump ->
                     val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
                     scope.launch { searchHomeViewModel.openJump(jump, tabId) }

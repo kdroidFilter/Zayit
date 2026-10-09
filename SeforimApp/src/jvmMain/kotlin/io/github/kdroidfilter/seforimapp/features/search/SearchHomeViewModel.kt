@@ -8,10 +8,12 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ReferenceParser
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ReferenceResolver
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.RepositoryReferenceSource
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService.AuthorHit
 import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
@@ -95,7 +97,6 @@ data class TocSuggestionDto(
 
 @Immutable
 data class SearchHomeUiState(
-    val selectedFilter: SearchFilter = SearchFilter.TEXT,
     val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
     val isReferenceLoading: Boolean = false,
@@ -103,6 +104,10 @@ data class SearchHomeUiState(
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
     /** Places the typed text points to (`חולין יב:`), listed above the book suggestions. */
     val jumpSuggestions: List<ResolvedReference> = emptyList(),
+    /** Authors the typed text may name, listed before the books. */
+    val authorSuggestions: List<AuthorHit> = emptyList(),
+    /** The author picked: the books listed are then theirs. */
+    val selectedScopeAuthor: AuthorHit? = null,
     val tocSuggestionsVisible: Boolean = false,
     val isTocLoading: Boolean = false,
     val tocSuggestions: List<TocSuggestionDto> = emptyList(),
@@ -130,6 +135,9 @@ class SearchHomeViewModel(
     val navigationEvents = _navigationEvents.receiveAsFlow()
 
     private val referenceResolver = ReferenceResolver(RepositoryReferenceSource(repository))
+
+    // The books of the picked author, filtered by what is typed next
+    private var authorBooks: List<BookSuggestionDto> = emptyList()
 
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
@@ -212,13 +220,21 @@ class SearchHomeViewModel(
                 .distinctUntilChanged()
                 .collectLatest { qRaw ->
                     val q = qRaw.trim()
-                    if (q.isBlank()) {
+                    if (_uiState.value.selectedScopeAuthor != null) {
+                        _uiState.value =
+                            _uiState.value.copy(
+                                isReferenceLoading = false,
+                                bookSuggestions = authorBooks.filter { it.titleContains(q) },
+                                suggestionsVisible = true,
+                            )
+                    } else if (q.isBlank()) {
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = false,
                                 categorySuggestions = emptyList(),
                                 bookSuggestions = emptyList(),
                                 jumpSuggestions = emptyList(),
+                                authorSuggestions = emptyList(),
                                 suggestionsVisible = false,
                             )
                     } else {
@@ -292,22 +308,26 @@ class SearchHomeViewModel(
                                             }
                                         }
 
+                                    val authorsDeferred =
+                                        async(Dispatchers.Default) { lookup.suggestAuthors(q, limit = MAX_AUTHOR_SUGGESTIONS) }
+
                                     val jumpsDeferred =
                                         async(Dispatchers.IO) {
                                             runSuspendCatching { referenceResolver.resolve(q) }.getOrDefault(emptyList())
                                         }
 
-                                    Triple(catsDeferred.await(), booksDeferred.await(), jumpsDeferred.await())
+                                    Suggestions(catsDeferred.await(), booksDeferred.await(), jumpsDeferred.await(), authorsDeferred.await())
                                 }
                             }
 
-                        val (catSuggestions, bookSuggestions, jumpSuggestions) = result
+                        val (catSuggestions, bookSuggestions, jumpSuggestions, authorSuggestions) = result
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = false,
                                 categorySuggestions = catSuggestions,
                                 bookSuggestions = bookSuggestions,
                                 jumpSuggestions = jumpSuggestions,
+                                authorSuggestions = authorSuggestions,
                                 suggestionsVisible = true,
                             )
                     }
@@ -406,10 +426,44 @@ class SearchHomeViewModel(
             )
     }
 
+    /** Lists the books of [author], to pick one of them next. */
+    fun onPickAuthor(author: AuthorHit) {
+        _uiState.value =
+            _uiState.value.copy(
+                selectedScopeAuthor = author,
+                authorSuggestions = emptyList(),
+                jumpSuggestions = emptyList(),
+                bookSuggestions = emptyList(),
+                isReferenceLoading = true,
+                suggestionsVisible = true,
+            )
+        viewModelScope.launch {
+            authorBooks =
+                withContext(Dispatchers.IO) {
+                    runSuspendCatching { repository.searchBooksByAuthor(author.name) }
+                        .getOrDefault(emptyList())
+                        // The query matches the name anywhere: keep this author's books only
+                        .filter { book -> book.authors.any { it.id == author.id } }
+                        .sortedWith(compareByDescending<Book> { it.isBaseBook }.thenBy { it.order })
+                        .map { book -> BookSuggestionDto(book, buildCategoryPathTitlesCached(book.categoryId) + book.title) }
+                }
+            if (_uiState.value.selectedScopeAuthor?.id == author.id) {
+                _uiState.value = _uiState.value.copy(bookSuggestions = authorBooks, isReferenceLoading = false)
+            }
+        }
+    }
+
+    fun onClearAuthor() {
+        authorBooks = emptyList()
+        _uiState.value = _uiState.value.copy(selectedScopeAuthor = null, bookSuggestions = emptyList(), suggestionsVisible = false)
+    }
+
     fun onPickBook(book: Book) {
+        authorBooks = emptyList()
         // Update synchronously first
         _uiState.value =
             _uiState.value.copy(
+                selectedScopeAuthor = null,
                 selectedScopeCategory = null,
                 selectedScopeBook = book,
                 selectedScopeToc = null,
@@ -502,10 +556,6 @@ class SearchHomeViewModel(
             )
     }
 
-    fun onFilterChange(filter: SearchFilter) {
-        _uiState.value = _uiState.value.copy(selectedFilter = filter)
-    }
-
     fun onGlobalExtendedChange(extended: Boolean) {
         _uiState.value = _uiState.value.copy(globalExtended = extended)
     }
@@ -545,8 +595,10 @@ class SearchHomeViewModel(
         val selected = _uiState.value
         val scope =
             when {
-                selected.selectedScopeToc != null ->
+                // An alternative-TOC entry has no main-TOC scope: search its whole book
+                selected.selectedScopeToc != null && !selected.selectedScopeToc.isAltTocEntry() ->
                     SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
+                selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
                 selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
                 selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
                 else -> SearchScope.Global
@@ -726,3 +778,16 @@ private val ALT_TOC_LABELS =
         "Daf" to "דפים",
         "Contents" to "תוכן",
     )
+
+private const val MAX_AUTHOR_SUGGESTIONS = 4
+
+// Typed text against a title, both without nikud or quotes (שו"ת / שו״ת)
+private fun BookSuggestionDto.titleContains(typed: String): Boolean =
+    typed.isBlank() || ReferenceParser.normalizeName(book.title).contains(ReferenceParser.normalizeName(typed))
+
+private data class Suggestions(
+    val categories: List<CategorySuggestionDto>,
+    val books: List<BookSuggestionDto>,
+    val jumps: List<ResolvedReference>,
+    val authors: List<AuthorHit>,
+)

@@ -52,7 +52,6 @@ fun BookContentPanel(
         HomeSearchCallbacks(
             onReferenceQueryChanged = {},
             onTocQueryChanged = {},
-            onFilterChange = {},
             onGlobalExtendedChange = {},
             onSubmitTextSearch = {},
             onOpenReference = {},

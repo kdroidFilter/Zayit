@@ -387,7 +387,8 @@ private fun SearchTabContent(
     val isFiltering by viewModel.isFilteringFlow.collectAsState()
     val breadcrumbs by viewModel.breadcrumbsFlow.collectAsState()
     val bookCounts by viewModel.bookFacetCountsFlow.collectAsState()
-    val searchTree by viewModel.searchTreeFlow.collectAsState()
+    val tabCategories by viewModel.tabCategoriesFlow.collectAsState()
+    val preview by viewModel.previewFlow.collectAsState()
     val selectedCategoryIds by viewModel.selectedCategoryIdsFlow.collectAsState()
     val entity by viewModel.entityFlow.collectAsState()
 
@@ -400,13 +401,12 @@ private fun SearchTabContent(
         isFiltering = isFiltering,
         breadcrumbs = breadcrumbs,
         bookCounts = bookCounts,
-        categories = searchTree,
+        categories = tabCategories,
         selectedCategoryIds = selectedCategoryIds,
         entity = entity,
         homeSearchUi = homeSearchUi,
         homeSearchCallbacks = barCallbacks,
-        loadContext = viewModel::passageContext,
-        loadBook = viewModel::bookDetails,
+        preview = preview,
         actions = actions,
         tabUi = tabUi(tabOwner),
     )
@@ -458,6 +458,7 @@ fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellAct
             },
             onShowOnlyCategory = viewModel::showOnlyCategory,
             onOpenBookAt = viewModel::openBookAt,
+            onSelectResult = viewModel::selectResult,
             onOpenAuthor = viewModel::openAuthor,
         )
     }

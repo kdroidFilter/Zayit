@@ -975,10 +975,8 @@ class SearchResultViewModel(
         if (q.isBlank()) return
         dropBeforeBook()
         newSearchGeneration()
-        // The tab is named after the search it shows; the bar holds it
+        // The tab is named after the search it shows (the draft stays: a restore re-running it keeps it)
         titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
-        _uiState.value = _uiState.value.copy(draftQuery = q)
-        updatePersistedSearch { it.copy(draftQuery = q) }
         // Record the executed search into the visit history (deduplicated by query and scope)
         val persisted = persistedSearchState()
         val scope = persisted.scope
@@ -1738,6 +1736,8 @@ class SearchResultViewModel(
     ) {
         dropBeforeBook()
         setQuery(query)
+        // What was typed is what is searched now
+        setDraft(query)
         _selectedCategoryIds.value = emptySet()
         _selectedBookIds.value = emptySet()
         _selectedTocIds.value = emptySet()

@@ -1326,6 +1326,7 @@ private fun SearchBar(
     // closed them). None before the first one (a restored results tab); losing the focus to a click in
     // them doesn't hide them under the pointer
     var openRequests by remember { mutableIntStateOf(0) }
+    var handledOpenRequests by remember { mutableIntStateOf(0) }
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
@@ -1397,8 +1398,12 @@ private fun SearchBar(
                 showTocLoading -> true
                 else -> false
             }
+        // A reopen request alone (a click in the field, which also closed the list as a click outside it)
+        // keeps the highlighted row; new suggestions start from the first
+        val keepRow = openRequests != handledOpenRequests && shouldOpen && focusedIndex >= 0
+        handledOpenRequests = openRequests
         popupVisible = shouldOpen
-        focusedIndex = if (shouldOpen && (showTocSuggestions || showCategorySuggestions)) 0 else -1
+        if (!keepRow) focusedIndex = if (shouldOpen && (showTocSuggestions || showCategorySuggestions)) 0 else -1
     }
 
     var anchor by remember { mutableStateOf<AnchorBounds?>(null) }

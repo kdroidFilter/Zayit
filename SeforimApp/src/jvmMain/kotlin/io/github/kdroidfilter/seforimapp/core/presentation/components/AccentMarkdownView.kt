@@ -16,7 +16,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
@@ -62,48 +61,6 @@ fun AccentMarkdownView(
     modifier: Modifier = Modifier,
     includeH3: Boolean = true,
     extraItems: (LazyListScope.() -> Unit)? = null,
-) {
-    AccentMarkdownContent(
-        load = { Res.readBytes(resourcePath).decodeToString() },
-        key = resourcePath,
-        modifier = modifier,
-        includeH3 = includeH3,
-        extraItems = extraItems,
-    )
-}
-
-/**
- * Renders [markdown] like [AccentMarkdownView], with [headerItems] above it and [onUrlClick]
- * deciding what a link opens (a zayit:// link opens a tab, say).
- */
-@Composable
-fun AccentMarkdownView(
-    markdown: String,
-    onUrlClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    headerItems: (LazyListScope.() -> Unit)? = null,
-    extraItems: (LazyListScope.() -> Unit)? = null,
-) {
-    AccentMarkdownContent(
-        load = { markdown },
-        key = markdown,
-        modifier = modifier,
-        includeH3 = true,
-        headerItems = headerItems,
-        extraItems = extraItems,
-        onUrlClick = onUrlClick,
-    )
-}
-
-@Composable
-private fun AccentMarkdownContent(
-    load: suspend () -> String,
-    key: String,
-    includeH3: Boolean,
-    modifier: Modifier = Modifier,
-    headerItems: (LazyListScope.() -> Unit)? = null,
-    extraItems: (LazyListScope.() -> Unit)? = null,
-    onUrlClick: (String) -> Unit = { url -> UrlOpener.open(url) },
 ) {
     val isDark = JewelTheme.isDark
     val accent = JewelTheme.globalColors.outlines.focused
@@ -175,10 +132,9 @@ private fun AccentMarkdownContent(
         }
 
     var blocks by remember { mutableStateOf(emptyList<MarkdownBlock>()) }
-    // The text is reloaded when [key] changes, with the loader of that composition
-    val currentLoad by rememberUpdatedState(load)
-    LaunchedEffect(key) {
-        blocks = processor.processMarkdownDocument(currentLoad())
+    LaunchedEffect(resourcePath) {
+        val bytes = Res.readBytes(resourcePath)
+        blocks = processor.processMarkdownDocument(bytes.decodeToString())
     }
 
     ProvideMarkdownStyling(markdownStyling, blockRenderer, NoOpCodeHighlighter) {
@@ -196,12 +152,11 @@ private fun AccentMarkdownContent(
                     ),
                 verticalArrangement = Arrangement.spacedBy(markdownStyling.blockVerticalSpacing),
             ) {
-                headerItems?.invoke(this)
                 items(blocks) { block ->
                     blockRenderer.RenderBlock(
                         block = block,
                         enabled = true,
-                        onUrlClick = onUrlClick,
+                        onUrlClick = { url: String -> UrlOpener.open(url) },
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
@@ -211,7 +166,7 @@ private fun AccentMarkdownContent(
     }
 }
 
-private fun buildHeading(
+internal fun buildHeading(
     isDark: Boolean,
     textStyle: TextStyle,
     h2TextStyle: TextStyle,

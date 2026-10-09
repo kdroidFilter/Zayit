@@ -148,6 +148,10 @@ fun TabsContent() {
                 onPickCategory = searchHomeViewModel::onPickCategory,
                 onPickBook = searchHomeViewModel::onPickBook,
                 onPickToc = searchHomeViewModel::onPickToc,
+                onOpenJump = { jump ->
+                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
+                    scope.launch { searchHomeViewModel.openJump(jump, tabId) }
+                },
             )
         }
 

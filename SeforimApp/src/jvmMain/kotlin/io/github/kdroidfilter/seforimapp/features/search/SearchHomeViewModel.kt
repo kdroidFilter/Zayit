@@ -8,6 +8,9 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ReferenceResolver
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.RepositoryReferenceSource
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
@@ -98,6 +101,8 @@ data class SearchHomeUiState(
     val isReferenceLoading: Boolean = false,
     val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
+    /** Places the typed text points to (`חולין יב:`), listed above the book suggestions. */
+    val jumpSuggestions: List<ResolvedReference> = emptyList(),
     val tocSuggestionsVisible: Boolean = false,
     val isTocLoading: Boolean = false,
     val tocSuggestions: List<TocSuggestionDto> = emptyList(),
@@ -123,6 +128,8 @@ class SearchHomeViewModel(
     // Navigation events channel - UI collects and handles navigation
     private val _navigationEvents = Channel<SearchHomeNavigationEvent>(Channel.BUFFERED)
     val navigationEvents = _navigationEvents.receiveAsFlow()
+
+    private val referenceResolver = ReferenceResolver(RepositoryReferenceSource(repository))
 
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
@@ -211,6 +218,7 @@ class SearchHomeViewModel(
                                 isReferenceLoading = false,
                                 categorySuggestions = emptyList(),
                                 bookSuggestions = emptyList(),
+                                jumpSuggestions = emptyList(),
                                 suggestionsVisible = false,
                             )
                     } else {
@@ -284,18 +292,22 @@ class SearchHomeViewModel(
                                             }
                                         }
 
-                                    val cats = catsDeferred.await()
-                                    val books = booksDeferred.await()
-                                    cats to books
+                                    val jumpsDeferred =
+                                        async(Dispatchers.IO) {
+                                            runSuspendCatching { referenceResolver.resolve(q) }.getOrDefault(emptyList())
+                                        }
+
+                                    Triple(catsDeferred.await(), booksDeferred.await(), jumpsDeferred.await())
                                 }
                             }
 
-                        val (catSuggestions, bookSuggestions) = result
+                        val (catSuggestions, bookSuggestions, jumpSuggestions) = result
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = false,
                                 categorySuggestions = catSuggestions,
                                 bookSuggestions = bookSuggestions,
+                                jumpSuggestions = jumpSuggestions,
                                 suggestionsVisible = true,
                             )
                     }
@@ -562,6 +574,24 @@ class SearchHomeViewModel(
                 bookId = book.id,
                 tabId = currentTabId,
                 lineId = anchorLineId,
+            ),
+        )
+    }
+
+    /** Opens the place a typed reference resolved to, in the current tab. */
+    suspend fun openJump(
+        jump: ResolvedReference,
+        currentTabId: String,
+    ) {
+        persistedStore.update(currentTabId) { current ->
+            current.copy(bookContent = current.bookContent.copy(selectedBookId = jump.book.id))
+        }
+        _uiState.value = _uiState.value.copy(suggestionsVisible = false)
+        _navigationEvents.send(
+            SearchHomeNavigationEvent.NavigateToBookContent(
+                bookId = jump.book.id,
+                tabId = currentTabId,
+                lineId = jump.lineId,
             ),
         )
     }

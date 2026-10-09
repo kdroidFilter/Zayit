@@ -23,7 +23,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -844,7 +843,8 @@ private fun PassagePreview(
         if (categories.isNotEmpty()) Text(categories, fontSize = 12f.zoomed(), color = readingSecondary())
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth().padding(vertical = 10.dp))
         VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f)) {
-            Column(Modifier.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            // The ScrollState overload scrolls its content itself
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 lines?.forEach { line ->
                     val found = line.id == hit.lineId
                     val text =

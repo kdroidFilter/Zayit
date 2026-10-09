@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
@@ -70,6 +71,7 @@ import io.github.kdroidfilter.seforimapp.features.author.plainPersonLinks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
@@ -79,6 +81,7 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.TablerInfoSquare
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
@@ -326,6 +329,7 @@ private fun SearchResultContentMvi(
 
     // The selection lives in the ViewModel, as the preview it drives
     val selectedLineId = preview?.hit?.lineId
+    val showBookDetails by appSettings.searchBookDetailsFlow.collectAsState()
     val listFocus = remember { FocusRequester() }
     val windowInfo = LocalWindowInfo.current
 
@@ -594,17 +598,26 @@ private fun SearchResultContentMvi(
                                 bookFontCode = bookFontCode,
                                 // The passage follows the zoom, as the books
                                 textSize = mainTextSize,
-                                details = { book ->
-                                    EntityDetails(
-                                        entity = book,
-                                        onOpenBookAt = actions.onOpenBookAt,
-                                        onOpenAuthor = actions.onOpenAuthor,
-                                    )
-                                },
                                 onOpen = { openResult(shown.hit, false) },
                                 onOpenLine = { lineId -> actions.onOpenBookAt(shown.hit.bookId, lineId) },
                                 modifier = Modifier.weight(1f),
                             )
+                        }
+                    }
+                    // The book's details (author, parts): a pane at the side, hidden or shown as the book's panes
+                    val book = preview?.book
+                    if (showBookDetails && book != null) {
+                        Column(Modifier.width(DETAILS_PANE_WIDTH).fillMaxHeight().card()) {
+                            PaneHeader(
+                                label = stringResource(Res.string.search_book_details),
+                                onHide = { appSettings.setSearchBookDetailsVisible(false) },
+                            )
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                            ) {
+                                EntityDetails(entity = book, onOpenBookAt = actions.onOpenBookAt, onOpenAuthor = actions.onOpenAuthor)
+                            }
                         }
                     }
                 }
@@ -825,14 +838,12 @@ private fun PassagePreview(
     query: String,
     bookFontCode: String,
     textSize: Float,
-    details: @Composable (SearchEntity.BookEntity) -> Unit,
     onOpen: () -> Unit,
     // A click on a line opens the book there, in a new tab (the found line as the result does)
     onOpenLine: (lineId: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hit = preview.hit
-    val book = preview.book
     val accent = JewelTheme.globalColors.outlines.focused
     val ink = JewelTheme.globalColors.text.normal
     val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
@@ -878,74 +889,54 @@ private fun PassagePreview(
             }
         }
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
-            // Wide: the book's details (author, parts) beside the text, where its margin would be empty
-            val showDetails = maxWidth >= PREVIEW_DETAILS_MIN_WIDTH
-            Row(Modifier.fillMaxSize()) {
-                VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f).fillMaxHeight()) {
-                    // The ScrollState overload scrolls its content itself
-                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(14.dp),
-                            // The whole width, as the book's text
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
-                        ) {
-                            lines.forEach { line ->
-                                val found = line.id == hit.lineId
-                                val text =
-                                    remember(line.id, textSize, words, highlight) {
-                                        words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
-                                            highlightAnnotated(acc, word, highlight)
-                                        }
-                                    }
-                                val lineHover = remember { MutableInteractionSource() }
-                                val lineHovered by lineHover.collectIsHoveredAsState()
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .height(IntrinsicSize.Min)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(if (lineHovered) accent.copy(alpha = 0.06f) else Color.Transparent)
-                                            .hoverable(lineHover)
-                                            .clickable(interactionSource = lineHover, indication = null) {
-                                                if (found) onOpen() else onOpenLine(line.id)
-                                            }.pointerHoverIcon(PointerIcon.Hand)
-                                            .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
-                                ) {
-                                    // The found line: a bar on its side, the text at full strength
-                                    Box(
-                                        Modifier
-                                            .width(3.dp)
-                                            .fillMaxHeight()
-                                            .background(if (found) accent else Color.Transparent),
-                                    )
-                                    Text(
-                                        text = text,
-                                        fontFamily = fontFamily,
-                                        fontSize = textSize.sp,
-                                        lineHeight = (textSize * 1.8f).sp,
-                                        color = if (found) ink else ink.copy(alpha = 0.45f),
-                                        textAlign = TextAlign.Justify,
-                                        modifier = Modifier.weight(1f).padding(start = 14.dp),
-                                    )
+        VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // The ScrollState overload scrolls its content itself
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    // The whole width, as the book's text
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
+                ) {
+                    lines.forEach { line ->
+                        val found = line.id == hit.lineId
+                        val text =
+                            remember(line.id, textSize, words, highlight) {
+                                words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
+                                    highlightAnnotated(acc, word, highlight)
                                 }
                             }
+                        val lineHover = remember { MutableInteractionSource() }
+                        val lineHovered by lineHover.collectIsHoveredAsState()
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (lineHovered) accent.copy(alpha = 0.06f) else Color.Transparent)
+                                    .hoverable(lineHover)
+                                    .clickable(interactionSource = lineHover, indication = null) {
+                                        if (found) onOpen() else onOpenLine(line.id)
+                                    }.pointerHoverIcon(PointerIcon.Hand)
+                                    .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
+                        ) {
+                            // The found line: a bar on its side, the text at full strength
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .fillMaxHeight()
+                                    .background(if (found) accent else Color.Transparent),
+                            )
+                            Text(
+                                text = text,
+                                fontFamily = fontFamily,
+                                fontSize = textSize.sp,
+                                lineHeight = (textSize * 1.8f).sp,
+                                color = if (found) ink else ink.copy(alpha = 0.45f),
+                                textAlign = TextAlign.Justify,
+                                modifier = Modifier.weight(1f).padding(start = 14.dp),
+                            )
                         }
-                    }
-                }
-                book?.takeIf { showDetails }?.let { info ->
-                    Divider(Orientation.Vertical, Modifier.fillMaxHeight())
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier =
-                            Modifier
-                                .width(PREVIEW_DETAILS_WIDTH)
-                                .fillMaxHeight()
-                                .verticalScroll(rememberScrollState())
-                                .padding(20.dp),
-                    ) {
-                        details(info)
                     }
                 }
             }
@@ -953,8 +944,7 @@ private fun PassagePreview(
     }
 }
 
-private val PREVIEW_DETAILS_MIN_WIDTH = 1100.dp
-private val PREVIEW_DETAILS_WIDTH = 300.dp
+private val DETAILS_PANE_WIDTH = 300.dp
 private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)
 private const val FOUND_LINE_MARGIN = 40
 
@@ -1139,70 +1129,68 @@ private fun ColumnScope.EntityDetails(
     onOpenAuthor: (Long) -> Unit,
 ) {
     val grey = readingSecondary()
-    run {
-        when (entity) {
-            is SearchEntity.BookEntity -> {
-                val book = entity.book
-                val accent = JewelTheme.globalColors.outlines.focused
-                Text(book.title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
-                if (entity.categories.isNotEmpty()) {
-                    Text(entity.categories.joinToString(" › "), fontSize = 12.sp, color = grey)
+    when (entity) {
+        is SearchEntity.BookEntity -> {
+            val book = entity.book
+            val accent = JewelTheme.globalColors.outlines.focused
+            Text(book.title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
+            if (entity.categories.isNotEmpty()) {
+                Text(entity.categories.joinToString(" › "), fontSize = 12.sp, color = grey)
+            }
+            book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    it,
+                    fontSize = 13.sp,
+                    lineHeight = 21.sp,
+                    color = grey,
+                    maxLines = 6,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            entity.authors.forEach { author ->
+                PanelSection(stringResource(Res.string.search_panel_author)) {
+                    ResultLink(AuthorNames.display(author.name), accent, 14.sp) { onOpenAuthor(author.id) }
+                    val facts = listOfNotNull(author.era?.let { AUTHOR_ERAS[it] }, authorYears(author))
+                    if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
                 }
-                book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        it,
-                        fontSize = 13.sp,
-                        lineHeight = 21.sp,
-                        color = grey,
-                        maxLines = 6,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                entity.authors.forEach { author ->
-                    PanelSection(stringResource(Res.string.search_panel_author)) {
-                        ResultLink(AuthorNames.display(author.name), accent, 14.sp) { onOpenAuthor(author.id) }
-                        val facts = listOfNotNull(author.era?.let { AUTHOR_ERAS[it] }, authorYears(author))
-                        if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
-                    }
-                }
-                if (entity.parts.isNotEmpty()) {
-                    PanelSection(stringResource(Res.string.search_panel_parts)) {
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            entity.parts.forEach { part ->
-                                ResultLink(part.title, accent, 13.sp) { onOpenBookAt(book.id, part.lineId) }
-                            }
+            }
+            if (entity.parts.isNotEmpty()) {
+                PanelSection(stringResource(Res.string.search_panel_parts)) {
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        entity.parts.forEach { part ->
+                            ResultLink(part.title, accent, 13.sp) { onOpenBookAt(book.id, part.lineId) }
                         }
                     }
                 }
             }
+        }
 
-            is SearchEntity.AuthorEntity -> {
-                val details = entity.details
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(WritingHand, contentDescription = null, tint = grey, modifier = Modifier.size(20.dp))
-                    Text(
-                        AuthorNames.display(details.name),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = JewelTheme.globalColors.text.normal,
-                    )
-                }
-                val facts = listOfNotNull(details.era?.let { AUTHOR_ERAS[it] }, authorYears(details))
-                if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
-                details.bio?.summary?.let {
-                    Text(
-                        plainPersonLinks(it).replace("**", ""),
-                        fontSize = 13.sp,
-                        lineHeight = 21.sp,
-                        color = grey,
-                        maxLines = 7,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                Text(stringResource(Res.string.author_books_count, details.books.size), fontSize = 12.sp, color = grey)
-                DefaultButton(onClick = { onOpenAuthor(details.id) }, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(stringResource(Res.string.search_panel_author_page))
-                }
+        is SearchEntity.AuthorEntity -> {
+            val details = entity.details
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(WritingHand, contentDescription = null, tint = grey, modifier = Modifier.size(20.dp))
+                Text(
+                    AuthorNames.display(details.name),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = JewelTheme.globalColors.text.normal,
+                )
+            }
+            val facts = listOfNotNull(details.era?.let { AUTHOR_ERAS[it] }, authorYears(details))
+            if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
+            details.bio?.summary?.let {
+                Text(
+                    plainPersonLinks(it).replace("**", ""),
+                    fontSize = 13.sp,
+                    lineHeight = 21.sp,
+                    color = grey,
+                    maxLines = 7,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(stringResource(Res.string.author_books_count, details.books.size), fontSize = 12.sp, color = grey)
+            DefaultButton(onClick = { onOpenAuthor(details.id) }, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(Res.string.search_panel_author_page))
             }
         }
     }
@@ -1303,5 +1291,21 @@ private fun StableListScrollbar(
             listState.requestScrollToItem(target)
         },
         modifier = modifier,
+    )
+}
+
+/** The end bar's toggle of the search's book-details pane. */
+@Composable
+fun SearchBookDetailsToggle() {
+    val appSettings = LocalAppGraph.current.appSettings
+    val visible by appSettings.searchBookDetailsFlow.collectAsState()
+    val label = stringResource(Res.string.search_book_details)
+    SelectableIconButtonWithToolip(
+        toolTipText = label,
+        onClick = { appSettings.setSearchBookDetailsVisible(!visible) },
+        isSelected = visible,
+        icon = TablerInfoSquare,
+        iconDescription = label,
+        label = label,
     )
 }

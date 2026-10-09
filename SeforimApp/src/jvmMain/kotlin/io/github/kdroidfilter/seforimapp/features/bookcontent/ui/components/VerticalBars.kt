@@ -82,6 +82,8 @@ fun EndVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     diacritics: DiacriticsMode,
+    // The tab's own toggles under the zoom (a search's book-details pane)
+    extraTopContent: @Composable () -> Unit = {},
 ) {
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
@@ -123,6 +125,7 @@ fun EndVerticalBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
             ZoomButtons()
+            extraTopContent()
 
             // Diacritics toggle button - only when a book is selected and has nekudot/teamim
             if (!noBookSelected) {

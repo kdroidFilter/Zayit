@@ -46,4 +46,11 @@ class AuthorNamesTest {
         // רבקה, רבן... must not be read as רב
         assertEquals("הרב רבינוביץ", AuthorNames.display("רבינוביץ"))
     }
+
+    @Test
+    fun queriesDropTheDisplayHonorific() {
+        assertEquals("יוסף קארו", AuthorNames.withoutHonorific("הרב יוסף קארו"))
+        assertEquals("הרבני", AuthorNames.withoutHonorific("הרבני"))
+        assertEquals("רמב\"ם", AuthorNames.withoutHonorific("רמב\"ם"))
+    }
 }

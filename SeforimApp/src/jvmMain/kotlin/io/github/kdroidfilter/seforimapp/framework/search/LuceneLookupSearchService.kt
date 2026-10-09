@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.search
 
+import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import org.apache.lucene.analysis.Analyzer
 import org.apache.lucene.analysis.standard.StandardAnalyzer
@@ -156,6 +157,16 @@ class LuceneLookupSearchService(
      * before authors were indexed.
      */
     fun suggestAuthors(
+        raw: String,
+        limit: Int,
+    ): List<AuthorHit> {
+        // הרב is added on display only: a query typed as shown finds the bare name, else a stored one with it
+        val bare = AuthorNames.withoutHonorific(raw)
+        if (bare != raw && bare.isNotBlank()) authorsFor(bare, limit).takeIf { it.isNotEmpty() }?.let { return it }
+        return authorsFor(raw, limit)
+    }
+
+    private fun authorsFor(
         raw: String,
         limit: Int,
     ): List<AuthorHit> {

@@ -7,7 +7,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -16,6 +18,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
@@ -64,7 +68,10 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.*
+import org.jetbrains.jewel.ui.component.styling.TextFieldMetrics
+import org.jetbrains.jewel.ui.component.styling.TextFieldStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import org.jetbrains.jewel.ui.theme.textFieldStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.text.NumberFormat
 
@@ -83,6 +90,7 @@ data class SearchShellActions(
     val onEnsureScopeBookForToc: (Long) -> Unit,
     val onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
     val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
+    val onShowOnlyCategory: (Long?) -> Unit = {},
 )
 
 @Composable
@@ -107,6 +115,22 @@ private fun SearchToolbar(
         snapshotFlow { searchState.text.toString() }.distinctUntilChanged().collect { q -> currentOnQueryChange(q) }
     }
 
+    // A pill-shaped field, as on Google
+    val baseStyle = JewelTheme.textFieldStyle
+    val pillStyle =
+        remember(baseStyle) {
+            TextFieldStyle(
+                colors = baseStyle.colors,
+                metrics =
+                    TextFieldMetrics(
+                        borderWidth = baseStyle.metrics.borderWidth,
+                        contentPadding = PaddingValues(horizontal = 14.dp),
+                        cornerSize = CornerSize(50),
+                        minSize = baseStyle.metrics.minSize,
+                    ),
+                iconButtonStyle = baseStyle.iconButtonStyle,
+            )
+        }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -115,6 +139,7 @@ private fun SearchToolbar(
         // Query field
         TextField(
             state = searchState,
+            style = pillStyle,
             modifier =
                 Modifier.weight(1f).height(40.dp).onPreviewKeyEvent { ev ->
                     if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) &&
@@ -141,7 +166,7 @@ private fun SearchToolbar(
             },
             textStyle =
                 androidx.compose.ui.text
-                    .TextStyle(fontSize = 13.sp),
+                    .TextStyle(fontSize = 15.sp),
         )
     }
 }
@@ -161,7 +186,9 @@ fun SearchResultInBookShellMvi(
     isFiltering: Boolean,
     breadcrumbs: ImmutableMap<Long, List<String>>,
     bookCounts: Map<Long, Int>,
-    loadBookHits: suspend (Long) -> List<SearchResult>,
+    // The results' top categories, as tabs above them
+    categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -194,6 +221,8 @@ fun SearchResultInBookShellMvi(
                 isFiltering = isFiltering,
                 breadcrumbs = breadcrumbs,
                 bookCounts = bookCounts,
+                categories = categories,
+                selectedCategoryIds = selectedCategoryIds,
                 actions = actions,
                 tabId = tabId,
             )
@@ -208,6 +237,8 @@ private fun SearchResultContentMvi(
     isFiltering: Boolean,
     breadcrumbs: ImmutableMap<Long, List<String>>,
     bookCounts: Map<Long, Int>,
+    categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -346,6 +377,10 @@ private fun SearchResultContentMvi(
                 onQueryChange = actions.onQueryChange,
             )
 
+            if (categories.size > 1) {
+                Spacer(Modifier.height(10.dp))
+                CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
+            }
             Spacer(Modifier.height(12.dp))
             val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
             val totalResults =
@@ -733,6 +768,67 @@ private fun ResultLink(
         textDecoration = if (hovered) TextDecoration.Underline else null,
         modifier = Modifier.hoverable(hover).pointerHoverIcon(PointerIcon.Hand).clickable(onClick = onClick),
     )
+}
+
+/**
+ * The results' top categories as tabs, as Google's "All · Images · News": the most frequent first,
+ * one at a time; "הכל" shows them all.
+ */
+@Composable
+private fun CategoryTabs(
+    categories: List<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
+    onShowOnly: (Long?) -> Unit,
+) {
+    val sorted = remember(categories) { categories.sortedByDescending { it.count } }
+    val selected = sorted.firstOrNull { it.category.id in selectedCategoryIds }?.category?.id
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+    ) {
+        CategoryTab(stringResource(Res.string.search_tab_all), null, selected == null) { onShowOnly(null) }
+        sorted.forEach { node ->
+            CategoryTab(node.category.title, node.count, selected == node.category.id) { onShowOnly(node.category.id) }
+        }
+    }
+}
+
+@Composable
+private fun CategoryTab(
+    label: String,
+    count: Int?,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val accent = JewelTheme.globalColors.outlines.focused
+    val shape = RoundedCornerShape(50)
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier =
+            Modifier
+                .clip(shape)
+                .background(
+                    when {
+                        selected -> accent.copy(alpha = 0.15f)
+                        hovered ->
+                            JewelTheme.globalColors.text.normal
+                                .copy(alpha = 0.06f)
+                        else -> Color.Transparent
+                    },
+                ).border(1.dp, if (selected) accent else JewelTheme.globalColors.borders.normal, shape)
+                .hoverable(hover)
+                .clickable(onClick = onClick)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        Text(label, fontSize = 13.sp, color = if (selected) accent else JewelTheme.globalColors.text.normal, maxLines = 1)
+        if (count != null) {
+            Text(count.toString(), fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1)
+        }
+    }
 }
 
 /**

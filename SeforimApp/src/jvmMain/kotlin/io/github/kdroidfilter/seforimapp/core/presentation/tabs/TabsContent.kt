@@ -367,6 +367,8 @@ private fun SearchTabContent(
     val isFiltering by viewModel.isFilteringFlow.collectAsState()
     val breadcrumbs by viewModel.breadcrumbsFlow.collectAsState()
     val bookCounts by viewModel.bookFacetCountsFlow.collectAsState()
+    val searchTree by viewModel.searchTreeFlow.collectAsState()
+    val selectedCategoryIds by viewModel.selectedCategoryIdsFlow.collectAsState()
 
     SearchResultInBookShellMvi(
         bookUiState = bcUiState,
@@ -377,7 +379,8 @@ private fun SearchTabContent(
         isFiltering = isFiltering,
         breadcrumbs = breadcrumbs,
         bookCounts = bookCounts,
-        loadBookHits = viewModel::loadAllHitsForBook,
+        categories = searchTree,
+        selectedCategoryIds = selectedCategoryIds,
         actions = rememberSearchShellActions(viewModel),
         tabUi = tabUi(tabOwner),
     )
@@ -427,6 +430,7 @@ fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellAct
             onTocFilter = { entry ->
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
             },
+            onShowOnlyCategory = viewModel::showOnlyCategory,
         )
     }
 

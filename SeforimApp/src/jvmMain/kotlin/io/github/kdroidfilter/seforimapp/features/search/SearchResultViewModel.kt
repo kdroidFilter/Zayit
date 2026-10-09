@@ -1133,38 +1133,6 @@ class SearchResultViewModel(
         }
     }
 
-    /**
-     * Load ALL hits for [bookId] under the current query/scope. Used to expand a grouped
-     * result card inline. Opens a dedicated, short-lived session restricted to the book.
-     * ponytail: restricts by bookId + baseBookOnly only; active sidebar TOC/category client
-     * filters aren't re-applied here — consistent with the facet counts shown on the card.
-     */
-    suspend fun loadAllHitsForBook(bookId: Long): List<SearchResult> {
-        val q = currentSearchQuery.takeIf { it.isNotBlank() } ?: _uiState.value.query.trim()
-        if (q.isBlank()) return emptyList()
-        val baseBookOnly = !_uiState.value.globalExtended
-        return withContext(Dispatchers.Default) {
-            val session =
-                lucene.openSession(
-                    query = q,
-                    near = DEFAULT_NEAR,
-                    bookIds = listOf(bookId),
-                    baseBookOnly = baseBookOnly,
-                ) ?: return@withContext emptyList()
-            try {
-                val all = ArrayList<LineHit>()
-                while (true) {
-                    val page = session.nextPage(LAZY_PAGE_SIZE) ?: break
-                    all += page.hits
-                    if (page.isLastPage) break
-                }
-                hitsToResults(all, q)
-            } finally {
-                runCatching { session.close() }
-            }
-        }
-    }
-
     private suspend fun prepareSearchSession(
         query: String,
         fetchCategoryId: Long?,
@@ -1570,6 +1538,20 @@ class SearchResultViewModel(
             updatePersistedSearch { it.copy(selectedCategoryIds = next) }
             maybeClearFiltersIfNoneChecked()
             // Trigger filtered Lucene search
+            executeFilteredSearch()
+        }
+    }
+
+    /** Shows one top category's results only (a tab above the results), or all of them for null. */
+    fun showOnlyCategory(categoryId: Long?) {
+        _selectedCategoryIds.value = emptySet()
+        _selectedBookIds.value = emptySet()
+        _selectedTocIds.value = emptySet()
+        updatePersistedSearch { it.copy(selectedCategoryIds = emptySet(), selectedBookIds = emptySet(), selectedTocIds = emptySet()) }
+        if (categoryId != null) {
+            setCategoryChecked(categoryId, true)
+        } else {
+            maybeClearFiltersIfNoneChecked()
             executeFilteredSearch()
         }
     }

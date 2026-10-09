@@ -5,12 +5,22 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.AuthorDetails
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
+/** A part of a book and the line it starts at. */
+data class BookPart(
+    val title: String,
+    val lineId: Long,
+)
+
 /** What a search names, shown in a panel beside its results, as Google's knowledge panel. */
 sealed interface SearchEntity {
     data class BookEntity(
         val book: Book,
         // Its categories, from the root (הלכה › שולחן ערוך)
         val categories: List<String>,
+        // Its authors, with their era and years
+        val authors: List<AuthorDetails>,
+        // Its main parts (הלכות לשון הרע, הלכות רכילות; פרק א for a tractate), to open directly
+        val parts: List<BookPart>,
     ) : SearchEntity
 
     data class AuthorEntity(
@@ -57,12 +67,32 @@ class SearchEntityFinder(
             categories.add(0, category.title)
             categoryId = category.parentId
         }
-        return SearchEntity.BookEntity(book, categories)
+        val authors = book.authors.mapNotNull { repository.getAuthorDetails(it.id) }
+        return SearchEntity.BookEntity(book, categories, authors, mainParts(book))
+    }
+
+    /**
+     * The book's main parts: its top TOC entries below a root that only repeats the title, when few
+     * enough to mean something (הלכות לשון הרע…), else the first alternative TOC that has few (a
+     * tractate's chapters rather than its folios); none when every list is long (סימן א, ב, ג…).
+     */
+    private suspend fun mainParts(book: Book): List<BookPart> {
+        var level = repository.getBookRootToc(book.id)
+        while (level.size == 1 && level[0].hasChildren) level = repository.getTocChildren(level[0].id)
+        if (level.size <= MAX_PARTS) return level.mapNotNull { e -> e.lineId?.let { BookPart(e.text, it) } }
+        for (structure in repository.getAltTocStructuresForBook(book.id)) {
+            var alt = repository.getAltRootToc(structure.id)
+            while (alt.size == 1 && alt[0].hasChildren) alt = repository.getAltTocChildren(alt[0].id)
+            if (alt.size in 2..MAX_ALT_PARTS) return alt.mapNotNull { e -> e.lineId?.let { BookPart(e.text, it) } }
+        }
+        return emptyList()
     }
 
     private companion object {
         const val BOOK_CANDIDATES = 5
         const val AUTHOR_CANDIDATES = 3
         const val MAX_DEPTH = 12
+        const val MAX_PARTS = 12
+        const val MAX_ALT_PARTS = 20
     }
 }

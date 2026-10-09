@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -18,7 +17,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
@@ -65,6 +63,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
+import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
@@ -78,6 +77,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.component.styling.TextFieldMetrics
 import org.jetbrains.jewel.ui.component.styling.TextFieldStyle
@@ -103,6 +103,7 @@ data class SearchShellActions(
     val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
     val onShowOnlyCategory: (Long?) -> Unit = {},
     val onOpenBook: (Long) -> Unit = {},
+    val onOpenBookAt: (bookId: Long, lineId: Long) -> Unit = { _, _ -> },
     val onOpenAuthor: (Long) -> Unit = {},
 )
 
@@ -585,6 +586,7 @@ private fun SearchResultContentMvi(
                     EntityPanel(
                         entity = entity,
                         onOpenBook = actions.onOpenBook,
+                        onOpenBookAt = actions.onOpenBookAt,
                         onOpenAuthor = actions.onOpenAuthor,
                         modifier = Modifier.padding(top = 112.dp, end = 16.dp).width(panelWidth),
                     )
@@ -613,49 +615,39 @@ private fun SearchResultContentMvi(
     }
 }
 
-/**
- * One result of the flat list: a passage, maybe a second one of the same book shown under it
- * (as Google does for two pages of a site), and how many more the book has ([more], on the
- * book's first result only).
- */
+/** One result of the flat list: a passage, and how many more its book has ([more], on the book's first result only). */
 @Stable
 private data class ResultItem(
     val hit: SearchResult,
-    val sub: SearchResult?,
     val more: Int,
 ) {
-    val lineIds: List<Long> get() = listOfNotNull(hit.lineId, sub?.lineId)
+    val lineIds: List<Long> get() = listOf(hit.lineId)
 }
 
+private val HTML_TAG = Regex("<[^>]+>")
+
 /**
- * The results in relevance order, at most two passages of a book in a row: a run of one book
- * shows its first passage with its second under it, and skips the rest. A book may come back
- * lower with a later run. [bookCounts] (exact per-book totals) gives the "more in this book"
- * count of a book's first result.
+ * The results in relevance order, one passage per run of a book (its next ones are behind the
+ * "more" link), and a passage whose text was already shown (the same prayer in two siddurim
+ * sections) dropped. A book may come back lower with a later run. [bookCounts] (exact per-book
+ * totals) gives the "more in this book" count of a book's first result.
  */
 private fun flattenResults(
     results: List<SearchResult>,
     bookCounts: Map<Long, Int>,
 ): List<ResultItem> {
-    val runs = ArrayList<Pair<SearchResult, SearchResult?>>()
+    val items = ArrayList<ResultItem>()
+    val booksSeen = HashSet<Long>()
+    val textsSeen = HashSet<String>()
     var runBook = -1L
-    var runLength = 0
     for (r in results) {
-        if (r.bookId == runBook) {
-            runLength++
-            if (runLength == 2) runs[runs.lastIndex] = runs.last().first to r
-        } else {
-            runBook = r.bookId
-            runLength = 1
-            runs += r to null
-        }
+        if (r.bookId == runBook) continue
+        runBook = r.bookId
+        if (!textsSeen.add(r.snippet.replace(HTML_TAG, "").searchKey())) continue
+        val more = if (booksSeen.add(r.bookId)) ((bookCounts[r.bookId] ?: 1) - 1).coerceAtLeast(0) else 0
+        items += ResultItem(r, more)
     }
-    val seen = HashSet<Long>()
-    return runs.map { (hit, sub) ->
-        val shown = if (sub != null) 2 else 1
-        val more = if (seen.add(hit.bookId)) ((bookCounts[hit.bookId] ?: shown) - shown).coerceAtLeast(0) else 0
-        ResultItem(hit, sub, more)
-    }
+    return items
 }
 
 // "Gilt" — the matched search term glows gold like a gilded letter (Torah-ornament palette).
@@ -704,8 +696,8 @@ private fun Float.zoomed(): TextUnit = (this * LocalResultZoom.current).sp
 
 /**
  * A result as on Google: its categories in small, the book as the colored title with the passage's
- * place beside it in grey, the passage in grey with the matched words bold, then maybe a second
- * passage of the book indented and a link to the book's other results.
+ * place beside it in grey, the passage in grey with the matched words bold, then a link to the
+ * book's other results.
  */
 @Composable
 private fun ResultView(
@@ -744,17 +736,8 @@ private fun ResultView(
         }
         Snippet(hit, findQuery, bookFontCode) { onOpenResult(hit) }
 
-        item.sub?.let { sub ->
-            val subPieces = breadcrumbs[sub.lineId]
-            LaunchedEffect(sub.lineId) { if (subPieces == null) currentOnRequestBreadcrumb(sub) }
-            val subPlace = remember(subPieces, sub.bookTitle) { categoriesAndPlace(subPieces, sub.bookTitle).second }
-            Column(modifier = Modifier.padding(start = 22.dp, top = 8.dp)) {
-                ResultLink(subPlace ?: sub.bookTitle, accent, 14f.zoomed()) { onOpenResult(sub) }
-                Snippet(sub, findQuery, bookFontCode) { onOpenResult(sub) }
-            }
-        }
         if (item.more > 0) {
-            Box(Modifier.padding(start = if (item.sub != null) 22.dp else 0.dp, top = 6.dp)) {
+            Box(Modifier.padding(top = 4.dp)) {
                 ResultLink(
                     stringResource(Res.string.search_more_from_book, item.more, hit.bookTitle),
                     accent,
@@ -827,8 +810,8 @@ private fun ResultLink(
 }
 
 /**
- * The results' top categories as tabs, as Google's "All · Images · News": the most frequent first,
- * one at a time; "הכל" shows them all.
+ * The results' top categories as tabs, as Google's "All · Images · News": "הכל", the five most
+ * frequent, the rest behind "עוד". One at a time.
  */
 @Composable
 private fun CategoryTabs(
@@ -838,21 +821,35 @@ private fun CategoryTabs(
 ) {
     val sorted = remember(categories) { categories.sortedByDescending { it.count } }
     val selected = sorted.firstOrNull { it.category.id in selectedCategoryIds }?.category?.id
-    Row(
+    var showAll by remember(categories) { mutableStateOf(false) }
+    val shown =
+        if (showAll) {
+            sorted
+        } else {
+            sorted.take(TOP_TABS) + sorted.drop(TOP_TABS).filter { it.category.id == selected }
+        }
+    FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        CategoryTab(stringResource(Res.string.search_tab_all), null, selected == null) { onShowOnly(null) }
-        sorted.forEach { node ->
-            CategoryTab(node.category.title, node.count, selected == node.category.id) { onShowOnly(node.category.id) }
+        CategoryTab(stringResource(Res.string.search_tab_all), selected == null) { onShowOnly(null) }
+        shown.forEach { node ->
+            CategoryTab(node.category.title, selected == node.category.id) { onShowOnly(node.category.id) }
+        }
+        if (sorted.size > TOP_TABS) {
+            CategoryTab(stringResource(if (showAll) Res.string.search_tabs_less else Res.string.search_tabs_more), false) {
+                showAll = !showAll
+            }
         }
     }
 }
 
+private const val TOP_TABS = 5
+
 @Composable
 private fun CategoryTab(
     label: String,
-    count: Int?,
     selected: Boolean,
     onClick: () -> Unit,
 ) {
@@ -860,9 +857,7 @@ private fun CategoryTab(
     val shape = RoundedCornerShape(50)
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    Box(
         modifier =
             Modifier
                 .clip(shape)
@@ -881,9 +876,6 @@ private fun CategoryTab(
                 .padding(horizontal = 12.dp, vertical = 4.dp),
     ) {
         Text(label, fontSize = 13f.zoomed(), color = if (selected) accent else JewelTheme.globalColors.text.normal, maxLines = 1)
-        if (count != null) {
-            Text(count.toString(), fontSize = 11f.zoomed(), color = JewelTheme.globalColors.text.info, maxLines = 1)
-        }
     }
 }
 
@@ -895,11 +887,25 @@ private val PANEL_MAX_WIDTH = 440.dp
 // Below this the results take the whole width and the panel stays hidden
 private val PANEL_MIN_WIDTH = 1000.dp
 
+/** A titled part of the panel, under a thin divider. */
+@Composable
+private fun PanelSection(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
+        Divider(Orientation.Horizontal, Modifier.fillMaxWidth().padding(bottom = 6.dp))
+        Text(title, fontSize = 12f.zoomed(), fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.info)
+        content()
+    }
+}
+
 /** The book or author a query names, as Google's knowledge panel: what it is, and buttons to go there. */
 @Composable
 private fun EntityPanel(
     entity: SearchEntity,
     onOpenBook: (Long) -> Unit,
+    onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
     onOpenAuthor: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -917,16 +923,13 @@ private fun EntityPanel(
         when (entity) {
             is SearchEntity.BookEntity -> {
                 val book = entity.book
-                Text(book.title, fontSize = 20f.zoomed(), fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
+                val accent = JewelTheme.globalColors.outlines.focused
+                Text(book.title, fontSize = 22f.zoomed(), fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
                 if (entity.categories.isNotEmpty()) {
                     Text(entity.categories.joinToString(" › "), fontSize = 12f.zoomed(), color = grey)
                 }
-                book.authors.forEach { author ->
-                    ResultLink(
-                        AuthorNames.display(author.name),
-                        JewelTheme.globalColors.outlines.focused,
-                        14f.zoomed(),
-                    ) { onOpenAuthor(author.id) }
+                DefaultButton(onClick = { onOpenBook(book.id) }, modifier = Modifier.padding(vertical = 4.dp)) {
+                    Text(stringResource(Res.string.row_action_open))
                 }
                 book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
                     Text(
@@ -938,8 +941,21 @@ private fun EntityPanel(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                DefaultButton(onClick = { onOpenBook(book.id) }, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(stringResource(Res.string.row_action_open))
+                entity.authors.forEach { author ->
+                    PanelSection(stringResource(Res.string.search_panel_author)) {
+                        ResultLink(AuthorNames.display(author.name), accent, 14f.zoomed()) { onOpenAuthor(author.id) }
+                        val facts = listOfNotNull(author.era?.let { AUTHOR_ERAS[it] }, authorYears(author))
+                        if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12f.zoomed(), color = grey)
+                    }
+                }
+                if (entity.parts.isNotEmpty()) {
+                    PanelSection(stringResource(Res.string.search_panel_parts)) {
+                        FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            entity.parts.forEach { part ->
+                                ResultLink(part.title, accent, 13f.zoomed()) { onOpenBookAt(book.id, part.lineId) }
+                            }
+                        }
+                    }
                 }
             }
 

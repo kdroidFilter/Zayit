@@ -434,6 +434,7 @@ fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellAct
             },
             onShowOnlyCategory = viewModel::showOnlyCategory,
             onOpenBook = viewModel::openBook,
+            onOpenBookAt = viewModel::openBookAt,
             onOpenAuthor = viewModel::openAuthor,
         )
     }

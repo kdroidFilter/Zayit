@@ -86,8 +86,8 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.reference.Resolv
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService.AuthorHit
-import io.github.kdroidfilter.seforimapp.icons.HistoryEdu
 import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
+import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -997,7 +997,7 @@ private fun SuggestionIcon(kind: SuggestionKind) {
         SuggestionKind.TEXT_SEARCH -> Icon(AllIconsKeys.Actions.Find, null, iconModifier, tint = tint)
         SuggestionKind.CATEGORY -> Icon(AllIconsKeys.Nodes.Folder, null, iconModifier, tint = tint)
         SuggestionKind.AUTHOR ->
-            Image(rememberVectorPainter(HistoryEdu), null, iconModifier, colorFilter = ColorFilter.tint(tint))
+            Image(rememberVectorPainter(WritingHand), null, iconModifier, colorFilter = ColorFilter.tint(tint))
     }
 }
 

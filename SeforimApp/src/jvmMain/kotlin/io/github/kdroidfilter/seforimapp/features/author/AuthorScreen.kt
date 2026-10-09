@@ -220,8 +220,8 @@ private fun AuthorEndBar(
     val label = stringResource(Res.string.author_info_pane)
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
-        topContent = {
-            ZoomButtons()
+        topContent = { ZoomButtons() },
+        bottomContent = {
             SelectableIconButtonWithToolip(
                 toolTipText = label,
                 onClick = onInfo,
@@ -231,7 +231,6 @@ private fun AuthorEndBar(
                 label = label,
             )
         },
-        bottomContent = {},
     )
 }
 

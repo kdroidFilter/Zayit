@@ -72,6 +72,7 @@ import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
@@ -258,8 +259,8 @@ private fun TextPane(
                 Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
             }
             if (page.details.bio != null) {
-                Spacer(Modifier.height(4.dp))
-                Text(stringResource(Res.string.author_bio_ai_notice), fontSize = 14.sp, color = JewelTheme.globalColors.text.disabled)
+                Spacer(Modifier.height(12.dp))
+                InlineInformationBanner(text = stringResource(Res.string.author_bio_ai_notice))
             }
             Spacer(Modifier.height(20.dp))
             page.details.bio?.summary?.let {

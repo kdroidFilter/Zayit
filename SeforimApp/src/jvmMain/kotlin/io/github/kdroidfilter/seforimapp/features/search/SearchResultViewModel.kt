@@ -926,6 +926,7 @@ class SearchResultViewModel(
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
+        dropBeforeBook()
         // Record the executed search into the visit history (deduplicated by query and scope)
         val persisted = persistedSearchState()
         val scope = persisted.scope
@@ -1616,8 +1617,55 @@ class SearchResultViewModel(
         }
     }
 
+    // The full results, kept while one book's are shown ("more from it"), to come back to as they were
+    private data class BeforeBook(
+        val ui: SearchUiState,
+        val session: SearchSession?,
+        val agg: CategoryAgg,
+        val tree: ImmutableList<SearchTreeCategory>,
+    )
+
+    private var beforeBook: BeforeBook? = null
+
+    /** Narrows the results to one book ("more from it"), keeping the full ones to come back to. */
+    fun showMoreFromBook(bookId: Long) {
+        viewModelScope.launch {
+            lazyLoadMutex.withLock {
+                beforeBook = BeforeBook(_uiState.value, currentSession, _categoryAgg.value, _searchTree.value)
+                // Kept open for the way back: the book's search must not close it
+                currentSession = null
+            }
+            setBookChecked(bookId, true)
+        }
+    }
+
+    /** Back to the full results as they were (results, pages, tree): no new search. */
+    fun backFromBook() {
+        val saved = beforeBook ?: return _selectedBookIds.value.forEach { setBookChecked(it, false) }
+        beforeBook = null
+        viewModelScope.launch {
+            currentJob?.cancel()
+            lazyLoadMutex.withLock {
+                currentSession?.close()
+                currentSession = saved.session
+            }
+            _selectedBookIds.value = emptySet()
+            updatePersistedSearch { it.copy(selectedBookIds = emptySet()) }
+            _categoryAgg.value = saved.agg
+            _searchTree.value = saved.tree
+            _uiState.value = saved.ui
+        }
+    }
+
+    // A new search drops the kept results
+    private fun dropBeforeBook() {
+        beforeBook?.session?.let { runCatching { it.close() } }
+        beforeBook = null
+    }
+
     /** Shows one top category's results only (a tab above the results), or all of them for null. */
     fun showOnlyCategory(categoryId: Long?) {
+        dropBeforeBook()
         _selectedCategoryIds.value = emptySet()
         _selectedBookIds.value = emptySet()
         _selectedTocIds.value = emptySet()

@@ -95,7 +95,6 @@ class SearchHomeModelsTest {
     @Test
     fun `SearchHomeUiState has correct defaults`() {
         val state = SearchHomeUiState()
-        assertEquals(SearchFilter.TEXT, state.selectedFilter)
         assertFalse(state.globalExtended)
         assertFalse(state.suggestionsVisible)
         assertFalse(state.isReferenceLoading)
@@ -117,7 +116,6 @@ class SearchHomeModelsTest {
     fun `SearchHomeUiState can be created with custom values`() {
         val state =
             SearchHomeUiState(
-                selectedFilter = SearchFilter.REFERENCE,
                 globalExtended = true,
                 suggestionsVisible = true,
                 isReferenceLoading = true,
@@ -125,7 +123,6 @@ class SearchHomeModelsTest {
                 userCommunityCode = "SEPHARADE",
             )
 
-        assertEquals(SearchFilter.REFERENCE, state.selectedFilter)
         assertTrue(state.globalExtended)
         assertTrue(state.suggestionsVisible)
         assertTrue(state.isReferenceLoading)
@@ -137,12 +134,10 @@ class SearchHomeModelsTest {
     fun `SearchHomeUiState copy preserves unchanged values`() {
         val original =
             SearchHomeUiState(
-                selectedFilter = SearchFilter.REFERENCE,
                 userDisplayName = "Test",
             )
         val modified = original.copy(globalExtended = true)
 
-        assertEquals(SearchFilter.REFERENCE, modified.selectedFilter)
         assertEquals("Test", modified.userDisplayName)
         assertTrue(modified.globalExtended)
     }

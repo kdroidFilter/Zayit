@@ -53,6 +53,8 @@ class LuceneLookupSearchService(
         )
     }
 
+    private val authorSort = Sort(SortField("book_count", SortField.Type.LONG, true))
+
     private val bookSort =
         Sort(
             SortField("is_base_book", SortField.Type.INT, true),
@@ -67,6 +69,13 @@ class LuceneLookupSearchService(
         val text: String,
         val level: Int,
         val score: Float,
+    )
+
+    /** An author of the lookup index, with the number of its books. */
+    data class AuthorHit(
+        val id: Long,
+        val name: String,
+        val bookCount: Int,
     )
 
     data class BookHit(
@@ -136,6 +145,48 @@ class LuceneLookupSearchService(
                     title = doc.getField("book_title").stringValue(),
                     isBaseBook = doc.getField("is_base_book")?.numericValue()?.toInt() == 1,
                     orderIndex = doc.getField("order_index")?.numericValue()?.toInt() ?: Int.MAX_VALUE,
+                )
+            }
+        }
+    }
+
+    /**
+     * Authors whose name or alias (רעק״א, ראב״ע...) starts with the typed words, those with the
+     * most books first. Empty below [MIN_BOOK_QUERY_LENGTH] characters, or with an index built
+     * before authors were indexed.
+     */
+    fun suggestAuthors(
+        raw: String,
+        limit: Int,
+    ): List<AuthorHit> {
+        val q = normalizeHebrew(raw)
+        if (q.length < MIN_BOOK_QUERY_LENGTH) return emptyList()
+        // Aliases are indexed whole (רעקא) and split at their gershayim (רעק + א): the split reading
+        // only when the whole one finds nobody, as its one-letter pieces match many names
+        val whole = authorsMatching(q, limit)
+        if (whole.isNotEmpty()) return whole
+        val split = normalizeHebrew(raw.replace(Regex("[\"'״׳]"), " "))
+        return if (split == q) whole else authorsMatching(split, limit)
+    }
+
+    private fun authorsMatching(
+        normalized: String,
+        limit: Int,
+    ): List<AuthorHit> {
+        val tokens = normalized.split("\\s+".toRegex()).filter { it.isNotEmpty() }
+        if (tokens.isEmpty()) return emptyList()
+        return withSearcher { searcher ->
+            val query = BooleanQuery.Builder()
+            query.add(TermQuery(Term("type", "author")), BooleanClause.Occur.FILTER)
+            tokens.forEach { t -> query.add(PrefixQuery(Term("q", t)), BooleanClause.Occur.MUST) }
+            val top = searcher.search(query.build(), limit, authorSort)
+            val stored = searcher.storedFields()
+            top.scoreDocs.map { sd ->
+                val doc = stored.document(sd.doc)
+                AuthorHit(
+                    id = doc.getField("author_id").numericValue().toLong(),
+                    name = doc.getField("author_name").stringValue(),
+                    bookCount = doc.getField("book_count").numericValue().toInt(),
                 )
             }
         }

@@ -77,6 +77,8 @@ class LuceneLookupSearchService(
         val id: Long,
         val name: String,
         val bookCount: Int,
+        // The alias the query was found by, when not the name (חפץ חיים); set by the caller
+        val alias: String? = null,
     )
 
     data class BookHit(

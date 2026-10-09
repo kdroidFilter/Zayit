@@ -53,4 +53,13 @@ class AuthorNamesTest {
         assertEquals("הרבני", AuthorNames.withoutHonorific("הרבני"))
         assertEquals("רמב\"ם", AuthorNames.withoutHonorific("רמב\"ם"))
     }
+
+    @Test
+    fun aQueryTypedAsAnAliasNamesIt() {
+        val aliases = listOf("חפץ חיים")
+        assertEquals("חפץ חיים", AuthorNames.matchedAlias("חפץ חיים", "רבי ישראל מאיר הכהן", aliases))
+        assertEquals("חפץ חיים", AuthorNames.matchedAlias("חפץ ח", "רבי ישראל מאיר הכהן", aliases))
+        assertEquals(null, AuthorNames.matchedAlias("ישראל מאיר", "רבי ישראל מאיר הכהן", aliases))
+        assertEquals(null, AuthorNames.matchedAlias("הרב ישראל", "ישראל מאיר הכהן", aliases))
+    }
 }

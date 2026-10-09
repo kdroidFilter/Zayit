@@ -32,7 +32,7 @@ data class ReferenceSplit(
 object ReferenceParser {
     // Words announcing a place, dropped on both sides when matching (דף יב, פרק א, פרשת נח...)
     private val PLACE_WORDS =
-        setOf("דף", "עמוד", "פרק", "פסוק", "סימן", "סעיף", "הלכה", "אות", "משנה", "פרשת", "פרשה", "מזמור")
+        setOf("דף", "עמוד", "פרק", "פסוק", "סימן", "סעיף", "הלכה", "הלכות", "הל", "אות", "משנה", "פרשת", "פרשה", "מזמור")
 
     private val TEAMIM_AND_NIKUD = Regex("[֑-ׇ]")
     private val QUOTES = Regex("[\"'`׳״‘’“”]")
@@ -100,6 +100,19 @@ object ReferenceParser {
 
     /** The words of a TOC entry compared with typed place words: normalized, without place words. */
     fun placeWords(text: String): List<String> = normalizeName(text).split(' ').filter { it.isNotEmpty() && it !in PLACE_WORDS }
+
+    /**
+     * Whether a typed place word names the same thing as a TOC word, also when only a one-letter
+     * prefix differs (`וחלב` / `בחלב`); words under three letters must match exactly.
+     */
+    fun sameWord(
+        typed: String,
+        entry: String,
+    ): Boolean = typed == entry || withoutPrefix(typed) == withoutPrefix(entry)
+
+    private fun withoutPrefix(word: String): String = if (word.length >= 3 && word.first() in PREFIX_LETTERS) word.drop(1) else word
+
+    private const val PREFIX_LETTERS = "ובהלמשכ"
 
     /** Value of a Hebrew numeral written canonically (`יב`, `טו`, `שכח`), else null. */
     fun hebrewNumeralValue(token: String): Int? {

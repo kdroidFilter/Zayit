@@ -187,13 +187,13 @@ data class DesktopsState(
 @Serializable
 data class SearchPersistedState(
     val query: String = "",
-    // What the bar holds, typed but not searched yet (restored in the bar; [query] is what is searched)
-    val draftQuery: String = "",
     val globalExtended: Boolean = false,
     val datasetScope: String = "global",
+    // Unused (a search is no longer scoped to a category), kept for the ProtoBuf field numbers
     val filterCategoryId: Long = 0L,
     val filterBookId: Long = 0L,
     val filterTocId: Long = 0L,
+    // Unused, as filterCategoryId
     val fetchCategoryId: Long = 0L,
     val fetchBookId: Long = 0L,
     val fetchTocId: Long = 0L,
@@ -209,24 +209,24 @@ data class SearchPersistedState(
     // Full search snapshot (results + aggregates) for identical restore
     val snapshot: SearchTabCache.Snapshot? = null,
     val breadcrumbs: Map<Long, List<String>> = emptyMap(),
+    // Appended last: the session is ProtoBuf, numbered by declaration order.
+    // What the bar holds, typed but not searched yet (restored in the bar; [query] is what is searched)
+    val draftQuery: String = "",
 ) {
     /** The scope the search runs in: its fetch scope, else its view filter. */
     val scope: SearchScope
         get() {
-            val categoryId = fetchCategoryId.takeIf { it > 0 } ?: filterCategoryId.takeIf { it > 0 }
             val bookId = fetchBookId.takeIf { it > 0 } ?: filterBookId.takeIf { it > 0 }
             val tocId = fetchTocId.takeIf { it > 0 } ?: filterTocId.takeIf { it > 0 }
             return when {
                 tocId != null && bookId != null -> SearchScope.Toc(bookId = bookId, tocId = tocId)
                 bookId != null -> SearchScope.Book(bookId)
-                categoryId != null -> SearchScope.Category(categoryId)
                 else -> SearchScope.Global
             }
         }
 
-    /** Runs the search in [scope]: both its fetch scope and its view filter. */
+    /** Runs the search in [scope]: both its fetch scope and its view filter (a legacy category: everywhere). */
     fun withScope(scope: SearchScope): SearchPersistedState {
-        val categoryId = (scope as? SearchScope.Category)?.categoryId ?: 0L
         val bookId =
             when (scope) {
                 is SearchScope.Book -> scope.bookId
@@ -237,15 +237,14 @@ data class SearchPersistedState(
         return copy(
             datasetScope =
                 when (scope) {
-                    SearchScope.Global -> "global"
-                    is SearchScope.Category -> "category"
+                    SearchScope.Global, is SearchScope.Category -> "global"
                     is SearchScope.Book -> "book"
                     is SearchScope.Toc -> "toc"
                 },
-            filterCategoryId = categoryId,
+            filterCategoryId = 0L,
             filterBookId = bookId,
             filterTocId = tocId,
-            fetchCategoryId = categoryId,
+            fetchCategoryId = 0L,
             fetchBookId = bookId,
             fetchTocId = tocId,
         )

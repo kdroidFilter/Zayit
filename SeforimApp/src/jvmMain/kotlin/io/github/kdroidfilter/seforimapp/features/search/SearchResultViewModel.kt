@@ -73,7 +73,6 @@ data class SearchUiState(
     val baseBooksHadNoResults: Boolean = false,
     val isLoading: Boolean = false,
     val results: List<SearchResult> = emptyList(),
-    val scopeCategoryPath: List<Category> = emptyList(),
     val scopeBook: Book? = null,
     val scopeTocId: Long? = null,
     // Scroll/anchor persistence
@@ -132,12 +131,11 @@ class SearchResultViewModel(
         updatePersistedSearch { it.withScope(scope).copy(globalExtended = globalExtended) }
     }
 
-    /** The name of the TOC entry, book or category the search is scoped to, shown in its history entry. */
+    /** The name of the TOC entry or book the search is scoped to, shown in its history entry. */
     private suspend fun scopeLabel(scope: SearchScope): String? =
         runSuspendCatching {
             when (scope) {
-                SearchScope.Global -> null
-                is SearchScope.Category -> repository.getCategory(scope.categoryId)?.title
+                SearchScope.Global, is SearchScope.Category -> null
                 is SearchScope.Book -> repository.getBookCore(scope.bookId)?.title
                 is SearchScope.Toc ->
                     listOfNotNull(repository.getBookCore(scope.bookId)?.title, repository.getTocEntry(scope.tocId)?.text)
@@ -183,10 +181,6 @@ class SearchResultViewModel(
 
         data class FilterByBookId(
             val bookId: Long,
-        ) : SearchResultEvents()
-
-        data class FilterByCategoryId(
-            val categoryId: Long,
         ) : SearchResultEvents()
 
         data class SetQuery(
@@ -254,10 +248,6 @@ class SearchResultViewModel(
                 filterByBookId(event.bookId)
             }
 
-            is SearchResultEvents.FilterByCategoryId -> {
-                filterByCategoryId(event.categoryId)
-            }
-
             is SearchResultEvents.SetQuery -> {
                 setQuery(event.query)
             }
@@ -300,14 +290,6 @@ class SearchResultViewModel(
         }
     }
 
-    // Key representing the current search parameters (no result caching).
-    private data class SearchParamsKey(
-        val query: String,
-        val filterCategoryId: Long?,
-        val filterBookId: Long?,
-        val filterTocId: Long?,
-    )
-
     private companion object {
         private const val DEFAULT_NEAR = 5
     }
@@ -321,9 +303,6 @@ class SearchResultViewModel(
     private var currentTocAllowedLineIds: Set<Long> = emptySet()
     private var currentSearchQuery: String = ""
     private val lazyLoadMutex = Mutex()
-
-    // Pagination cursors/state
-    private var currentKey: SearchParamsKey? = null
 
     // Data structures for results tree
     data class SearchTreeBook(
@@ -364,17 +343,7 @@ class SearchResultViewModel(
 
     // Allowed sets computed only when scope changes (Debounce 300ms on scope)
     private val scopeBookIdFlow = uiState.map { it.scopeBook?.id }.distinctUntilChanged()
-    private val scopeCatIdFlow = uiState.map { it.scopeCategoryPath.lastOrNull()?.id }.distinctUntilChanged()
     private val scopeTocIdFlow = uiState.map { it.scopeTocId }.distinctUntilChanged()
-
-    // Use conditional debounce: no delay when null (to immediately clear filters)
-    private val allowedBooksFlow: StateFlow<Set<Long>> =
-        scopeCatIdFlow
-            .debounce { catId -> if (catId == null) 0L else 100L }
-            .mapLatest { catId ->
-                if (catId == null) emptySet() else collectBookIdsUnderCategory(catId)
-            }.flowOn(Dispatchers.Default)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     // Multi-select filters (checkboxes)
     private val _selectedCategoryIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -403,15 +372,14 @@ class SearchResultViewModel(
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     // Visible results update immediately per page; filtering uses precomputed allowed sets when available
-    private val baseScopeFlow: StateFlow<Quad<List<SearchResult>, Long?, Set<Long>, Long?>> =
+    private val baseScopeFlow: StateFlow<Triple<List<SearchResult>, Long?, Long?>> =
         combine(
             uiState.map { it.results },
             scopeBookIdFlow,
-            allowedBooksFlow,
             scopeTocIdFlow,
-        ) { results, bookId, allowedBooks, tocId ->
-            Quad(results, bookId, allowedBooks, tocId)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Quad(emptyList(), null, emptySet(), null))
+        ) { results, bookId, tocId ->
+            Triple(results, bookId, tocId)
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Triple(emptyList(), null, null))
 
     private val extraMultiFlow: StateFlow<Triple<Set<Long>, Set<Long>, Set<Long>>> =
         combine(selectedBookIdsFlow, multiAllowedBooksFlow, selectedTocIdsFlow) { selBooks, multiBooks, selectedTocs ->
@@ -423,17 +391,13 @@ class SearchResultViewModel(
             .distinctUntilChanged()
             .mapLatest { (base, extra) ->
                 withContext(Dispatchers.Default) {
-                    val results = base.a
-                    val bookId = base.b
-                    val allowedBooks = base.c
-                    val tocId = base.d
+                    val (results, bookId, tocId) = base
                     val selectedBooks = extra.first
                     val multiBooks = extra.second
                     val multiLines = extra.third
                     fastFilterVisibleResults(
                         results = results,
                         bookId = bookId,
-                        allowedBooks = allowedBooks,
                         tocActive = tocId != null,
                         selectedBooks = selectedBooks,
                         multiBooks = multiBooks,
@@ -450,10 +414,9 @@ class SearchResultViewModel(
 
     // Emits true whenever a filter key changes (category/book/toc), and becomes false
     // after the next visibleResultsFlow emission reflecting that change.
-    private val filterKeyBase: StateFlow<Triple<Long?, Long?, Long?>> =
-        combine(scopeBookIdFlow, scopeCatIdFlow, scopeTocIdFlow) { bookId, catId, tocId ->
-            Triple(bookId, catId, tocId)
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Triple(null, null, null))
+    private val filterKeyBase: StateFlow<Pair<Long?, Long?>> =
+        combine(scopeBookIdFlow, scopeTocIdFlow) { bookId, tocId -> bookId to tocId }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null to null)
 
     private val filterKeyExtra: StateFlow<Triple<Set<Long>, Set<Long>, Set<Long>>> =
         combine(selectedBookIdsFlow, selectedCategoryIdsFlow, selectedTocIdsFlow) { selBooks, selCats, selTocs ->
@@ -462,7 +425,7 @@ class SearchResultViewModel(
 
     private val filterKeyFlow =
         combine(filterKeyBase, filterKeyExtra) { base, extra ->
-            Sext(base.first, base.second, base.third, extra.first, extra.second, extra.third)
+            Pair(base, extra)
         }.distinctUntilChanged()
 
     val isFilteringFlow: StateFlow<Boolean> =
@@ -627,23 +590,6 @@ class SearchResultViewModel(
         }
     }
 
-    // Helper to combine 4 values strongly typed
-    private data class Quad<A, B, C, D>(
-        val a: A,
-        val b: B,
-        val c: C,
-        val d: D,
-    )
-
-    private data class Sext<A, B, C, D, E, F>(
-        val a: A,
-        val b: B,
-        val c: C,
-        val d: D,
-        val e: E,
-        val f: F,
-    )
-
     private var currentTocBookId: Long? = null
 
     // --- Fast filtering index helpers (delegated to ResultsIndexingUseCase) ---
@@ -651,7 +597,6 @@ class SearchResultViewModel(
     private suspend fun fastFilterVisibleResults(
         results: List<SearchResult>,
         bookId: Long?,
-        allowedBooks: Set<Long>,
         tocActive: Boolean,
         selectedBooks: Set<Long>,
         multiBooks: Set<Long>,
@@ -661,7 +606,6 @@ class SearchResultViewModel(
         if (results.isEmpty()) return emptyList()
         if (!tocActive &&
             bookId == null &&
-            allowedBooks.isEmpty() &&
             selectedBooks.isEmpty() &&
             multiBooks.isEmpty() &&
             selectedTocIds.isEmpty()
@@ -713,16 +657,6 @@ class SearchResultViewModel(
             val merged = resultsIndexingUseCase.mergeSortedIndicesParallel(toMerge)
             return resultsIndexingUseCase.extractResultsAtIndices(results, merged)
         }
-        // fallback to scope allowedBooks only
-        if (allowedBooks.isNotEmpty()) {
-            val distinctBooks = index.bookToIndices.size
-            return if (allowedBooks.size >= distinctBooks * 3 / 4) {
-                resultsIndexingUseCase.parallelFilterByBook(results, allowedBooks)
-            } else {
-                val arr = resultsIndexingUseCase.mergeSortedIndicesParallel(allowedBooks.mapNotNull { index.bookToIndices[it] })
-                resultsIndexingUseCase.extractResultsAtIndices(results, arr)
-            }
-        }
         return results
     }
 
@@ -746,6 +680,12 @@ class SearchResultViewModel(
         val navQuery = savedStateHandle.get<String>("searchQuery") ?: ""
         // A fresh tab opened with a scope (a search reopened from history) runs in that scope
         if (persistedSearchState().query.isBlank()) seedNavigationScope(savedStateHandle)
+        // A search saved scoped to a category runs everywhere now (the category tabs narrow it): again
+        persistedSearchState().let { saved ->
+            if (saved.filterCategoryId > 0 || saved.fetchCategoryId > 0) {
+                updatePersistedSearch { it.withScope(it.scope).copy(snapshot = null) }
+            }
+        }
         val persisted = persistedSearchState()
         val initialQuery = persisted.query.takeIf { it.isNotBlank() } ?: navQuery
 
@@ -771,7 +711,6 @@ class SearchResultViewModel(
                 scopeTocId = persisted.filterTocId.takeIf { it > 0 },
             )
 
-        val filterCategoryId = persisted.filterCategoryId.takeIf { it > 0 }
         val filterBookId = persisted.filterBookId.takeIf { it > 0 }
         val filterTocId = persisted.filterTocId.takeIf { it > 0 }
 
@@ -790,14 +729,6 @@ class SearchResultViewModel(
                     val book = toc?.let { repository.getBookCore(it.bookId) }
                     _uiState.value = _uiState.value.copy(scopeBook = book)
                 }
-            }
-        }
-
-        // Restore category scope path if a category filter is persisted.
-        if (filterCategoryId != null) {
-            viewModelScope.launch {
-                val path = runSuspendCatching { buildCategoryPath(filterCategoryId) }.getOrDefault(emptyList())
-                _uiState.value = _uiState.value.copy(scopeCategoryPath = path)
             }
         }
 
@@ -828,7 +759,6 @@ class SearchResultViewModel(
                     val q = initialQuery
                     val baseBookOnly = !_uiState.value.globalExtended
                     // Re-open session with same filters for lazy loading continuation
-                    val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
                     val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
                     val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
                     // Collect line IDs for TOC filter if applicable
@@ -857,7 +787,6 @@ class SearchResultViewModel(
                             query = q,
                             near = DEFAULT_NEAR,
                             bookFilter = null,
-                            categoryFilter = fetchCategoryId,
                             bookIds = finalBookIds,
                             lineIds = lineIds,
                             baseBookOnly = baseBookOnly,
@@ -899,17 +828,6 @@ class SearchResultViewModel(
                 // Mark facets as computed so the tree won't be rebuilt from partial results
                 facetsComputed = true
             }
-            // Reconstruct currentKey from fetch scope.
-            val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
-            val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
-            val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
-            currentKey =
-                SearchParamsKey(
-                    query = _uiState.value.query,
-                    filterCategoryId = fetchCategoryId,
-                    filterBookId = fetchBookId,
-                    filterTocId = fetchTocId,
-                )
         } else if (initialQuery.isNotBlank()) {
             // Fresh VM with no snapshot – run the search
             executeSearch()
@@ -1025,7 +943,6 @@ class SearchResultViewModel(
                 }
                 try {
                     val persisted = persistedSearchState()
-                    val fetchCategoryId = persisted.fetchCategoryId.takeIf { it > 0 } ?: persisted.filterCategoryId.takeIf { it > 0 }
                     val fetchBookId = persisted.fetchBookId.takeIf { it > 0 } ?: persisted.filterBookId.takeIf { it > 0 }
                     val fetchTocId = persisted.fetchTocId.takeIf { it > 0 } ?: persisted.filterTocId.takeIf { it > 0 }
                     // Apply persisted/initial global-extended flag to UI state so toolbar reflects it
@@ -1034,19 +951,6 @@ class SearchResultViewModel(
                         _uiState.value = _uiState.value.copy(globalExtended = extended)
                     }
 
-                    currentKey =
-                        SearchParamsKey(
-                            query = q,
-                            filterCategoryId = fetchCategoryId,
-                            filterBookId = fetchBookId,
-                            filterTocId = fetchTocId,
-                        )
-
-                    val initialScopePath =
-                        when {
-                            persisted.filterCategoryId > 0 -> buildCategoryPath(persisted.filterCategoryId)
-                            else -> emptyList()
-                        }
                     val persistedScopeBook =
                         when {
                             persisted.filterBookId > 0 -> repository.getBookCore(persisted.filterBookId)
@@ -1055,10 +959,7 @@ class SearchResultViewModel(
                     val resolvedScopeBook =
                         persistedScopeBook ?: fetchBookId?.let { runSuspendCatching { repository.getBookCore(it) }.getOrNull() }
                     _uiState.value =
-                        _uiState.value.copy(
-                            scopeCategoryPath = initialScopePath,
-                            scopeBook = resolvedScopeBook,
-                        )
+                        _uiState.value.copy(scopeBook = resolvedScopeBook)
                     // Prepare TOC tree for the scoped book so the panel is ready without recomputation
                     resolvedScopeBook?.let { book ->
                         if (currentTocBookId != book.id) {
@@ -1082,10 +983,6 @@ class SearchResultViewModel(
 
                             fetchBookId != null -> {
                                 listOf(fetchBookId)
-                            }
-
-                            fetchCategoryId != null -> {
-                                collectBookIdsUnderCategory(fetchCategoryId)
                             }
 
                             else -> {
@@ -1141,7 +1038,7 @@ class SearchResultViewModel(
                         currentSession = null
                     }
 
-                    val sessionInfo = prepareSearchSession(q, fetchCategoryId, fetchBookId, fetchTocId)
+                    val sessionInfo = prepareSearchSession(q, fetchBookId, fetchTocId)
                     if (sessionInfo == null) {
                         _uiState.value = _uiState.value.copy(results = emptyList(), progressCurrent = 0, progressTotal = 0)
                         return@launch
@@ -1256,7 +1153,6 @@ class SearchResultViewModel(
 
     private suspend fun prepareSearchSession(
         query: String,
-        fetchCategoryId: Long?,
         fetchBookId: Long?,
         fetchTocId: Long?,
     ): Pair<SearchSession, Set<Long>>? {
@@ -1274,11 +1170,6 @@ class SearchResultViewModel(
 
                 fetchBookId != null -> {
                     lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = false)
-                }
-
-                fetchCategoryId != null -> {
-                    val books = collectBookIdsUnderCategory(fetchCategoryId)
-                    lucene.openSession(query, DEFAULT_NEAR, bookIds = books, baseBookOnly = baseBookOnly)
                 }
 
                 else -> {
@@ -1362,43 +1253,6 @@ class SearchResultViewModel(
      */
     suspend fun buildSearchResultTree(): List<SearchTreeCategory> = buildSearchTreeUseCase(uiState.value.results)
 
-    /** Apply a category filter. Triggers a Lucene search with the filter for instant results. */
-    fun filterByCategoryId(categoryId: Long) {
-        viewModelScope.launch {
-            // Clear checkbox selections when using direct filter
-            _selectedCategoryIds.value = emptySet()
-            _selectedBookIds.value = emptySet()
-            _selectedTocIds.value = emptySet()
-
-            updatePersistedSearch {
-                it.copy(
-                    datasetScope = "category",
-                    filterCategoryId = categoryId,
-                    filterBookId = 0L,
-                    filterTocId = 0L,
-                    fetchCategoryId = categoryId,
-                    fetchBookId = 0L,
-                    fetchTocId = 0L,
-                    selectedCategoryIds = emptySet(),
-                    selectedBookIds = emptySet(),
-                    selectedTocIds = emptySet(),
-                )
-            }
-            val scopePath = buildCategoryPath(categoryId)
-            _uiState.value =
-                _uiState.value.copy(
-                    scopeCategoryPath = scopePath,
-                    scopeBook = null,
-                    scopeTocId = null,
-                    scrollIndex = 0,
-                    scrollOffset = 0,
-                    scrollToAnchorTimestamp = System.currentTimeMillis(),
-                )
-            // Trigger Lucene search with category filter
-            executeDirectFilterSearch(categoryId = categoryId)
-        }
-    }
-
     /** Apply a book filter. Triggers a Lucene search with the filter for instant results. */
     fun filterByBookId(bookId: Long) {
         viewModelScope.launch {
@@ -1408,14 +1262,7 @@ class SearchResultViewModel(
             _selectedTocIds.value = emptySet()
 
             updatePersistedSearch {
-                it.copy(
-                    datasetScope = "book",
-                    filterCategoryId = 0L,
-                    filterBookId = bookId,
-                    filterTocId = 0L,
-                    fetchCategoryId = 0L,
-                    fetchBookId = bookId,
-                    fetchTocId = 0L,
+                it.withScope(SearchScope.Book(bookId)).copy(
                     selectedCategoryIds = emptySet(),
                     selectedBookIds = emptySet(),
                     selectedTocIds = emptySet(),
@@ -1425,7 +1272,6 @@ class SearchResultViewModel(
             _uiState.value =
                 _uiState.value.copy(
                     scopeBook = book,
-                    scopeCategoryPath = emptyList(),
                     scopeTocId = null,
                     scrollIndex = 0,
                     scrollOffset = 0,
@@ -1455,14 +1301,7 @@ class SearchResultViewModel(
             val toc = runSuspendCatching { repository.getTocEntry(tocId) }.getOrNull()
             val bookIdFromToc = toc?.bookId
             updatePersistedSearch {
-                it.copy(
-                    datasetScope = "toc",
-                    filterCategoryId = 0L,
-                    filterBookId = bookIdFromToc ?: 0L,
-                    filterTocId = tocId,
-                    fetchCategoryId = 0L,
-                    fetchBookId = bookIdFromToc ?: 0L,
-                    fetchTocId = tocId,
+                it.withScope(SearchScope.Toc(bookId = bookIdFromToc ?: 0L, tocId = tocId)).copy(
                     selectedCategoryIds = emptySet(),
                     selectedBookIds = emptySet(),
                     selectedTocIds = emptySet(),
@@ -1474,7 +1313,6 @@ class SearchResultViewModel(
                 _uiState.value.copy(
                     scopeBook = scopeBook,
                     scopeTocId = tocId,
-                    scopeCategoryPath = emptyList(),
                     scrollIndex = 0,
                     scrollOffset = 0,
                     scrollToAnchorTimestamp = System.currentTimeMillis(),
@@ -1498,7 +1336,6 @@ class SearchResultViewModel(
      * NOTE: Does NOT rebuild the tree - keeps the original tree structure for navigation.
      */
     private fun executeDirectFilterSearch(
-        categoryId: Long? = null,
         bookId: Long? = null,
         tocId: Long? = null,
     ) {
@@ -1520,8 +1357,6 @@ class SearchResultViewModel(
 
                             // Will use lineIds
                             bookId != null -> listOf(bookId)
-
-                            categoryId != null -> collectBookIdsUnderCategory(categoryId)
 
                             else -> null // Use baseBookOnly parameter instead
                         }
@@ -1798,21 +1633,10 @@ class SearchResultViewModel(
         _uiState.value =
             _uiState.value.copy(
                 scopeBook = null,
-                scopeCategoryPath = emptyList(),
                 scopeTocId = null,
             )
         tocBookCache.clear()
-        updatePersistedSearch {
-            it.copy(
-                datasetScope = "global",
-                filterCategoryId = 0L,
-                filterBookId = 0L,
-                filterTocId = 0L,
-                fetchCategoryId = 0L,
-                fetchBookId = 0L,
-                fetchTocId = 0L,
-            )
-        }
+        updatePersistedSearch { it.withScope(SearchScope.Global) }
     }
 
     /**
@@ -1974,8 +1798,6 @@ class SearchResultViewModel(
 
     private suspend fun collectBookIdsUnderCategory(categoryId: Long): Set<Long> =
         categoryNavigationUseCase.collectBookIdsUnderCategory(categoryId)
-
-    private suspend fun buildCategoryPath(categoryId: Long): List<Category> = categoryNavigationUseCase.buildCategoryPath(categoryId)
 
     /**
      * Compute breadcrumb pieces for a given search result: category path, book, and TOC path to the line.

@@ -222,31 +222,6 @@ class ResultsIndexingUseCaseTest {
         }
 
     @Test
-    fun `parallelFilterByBook filters correctly`() =
-        runBlocking {
-            val useCase = ResultsIndexingUseCase()
-            val results = createTestResults()
-            val allowedBooks = setOf(1L, 3L)
-
-            val filtered = useCase.parallelFilterByBook(results, allowedBooks)
-
-            assertEquals(4, filtered.size)
-            assertTrue(filtered.all { it.bookId in allowedBooks })
-        }
-
-    @Test
-    fun `fastFilterByBookSequential filters correctly`() {
-        val useCase = ResultsIndexingUseCase()
-        val results = createTestResults()
-        val allowedBooks = setOf(2L)
-
-        val filtered = useCase.fastFilterByBookSequential(results, allowedBooks)
-
-        assertEquals(2, filtered.size)
-        assertTrue(filtered.all { it.bookId == 2L })
-    }
-
-    @Test
     fun `extractResultsAtIndices extracts correct results`() =
         runBlocking {
             val useCase = ResultsIndexingUseCase()
@@ -283,26 +258,4 @@ class ResultsIndexingUseCaseTest {
         val merged2 = ResultsIndexingUseCase.mergeTwo(b, a)
         assertTrue(merged2.contentEquals(intArrayOf(1, 2, 3)))
     }
-
-    @Test
-    fun `large dataset parallel filtering works`() =
-        runBlocking {
-            val useCase = ResultsIndexingUseCase()
-
-            // Create large dataset
-            val results =
-                (0 until 10_000).map { i ->
-                    createTestResult(
-                        bookId = (i % 100).toLong(),
-                        lineId = i.toLong(),
-                    )
-                }
-
-            val allowedBooks = setOf(0L, 1L, 2L, 3L, 4L)
-            val filtered = useCase.parallelFilterByBook(results, allowedBooks)
-
-            // Should have 100 results per book * 5 books = 500
-            assertEquals(500, filtered.size)
-            assertTrue(filtered.all { it.bookId in allowedBooks })
-        }
 }

@@ -19,7 +19,6 @@ import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
@@ -80,12 +79,6 @@ sealed class SearchHomeNavigationEvent {
 }
 
 @Immutable
-data class CategorySuggestionDto(
-    val category: Category,
-    val path: List<String>,
-)
-
-@Immutable
 data class BookSuggestionDto(
     val book: Book,
     val path: List<String>,
@@ -104,7 +97,6 @@ data class SearchHomeUiState(
     val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
     val isReferenceLoading: Boolean = false,
-    val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
     /** Places the typed text points to (`חולין יב:`), listed above the book suggestions. */
     val jumpSuggestions: List<ResolvedReference> = emptyList(),
@@ -115,7 +107,6 @@ data class SearchHomeUiState(
     val tocSuggestionsVisible: Boolean = false,
     val isTocLoading: Boolean = false,
     val tocSuggestions: List<TocSuggestionDto> = emptyList(),
-    val selectedScopeCategory: Category? = null,
     val selectedScopeBook: Book? = null,
     val selectedScopeToc: TocEntry? = null,
     // The book was picked by the user (back to the bar to type in its TOC), not put back by a restore
@@ -168,8 +159,6 @@ class SearchHomeViewModel(
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<K, V>?): Boolean = size > maxSize
     }
 
-    private val categoryDepthCache = LruCache<Long, Int>(512)
-    private val categoryDepthMutex = Mutex()
     private val categoryPathCache = LruCache<Long, List<String>>(512)
     private val categoryPathMutex = Mutex()
     private val tocPathCache = LruCache<Long, List<String>>(2048)
@@ -186,16 +175,6 @@ class SearchHomeViewModel(
             text.contains(query, ignoreCase = true) -> 2
             else -> 3
         }
-
-    private suspend fun getCategoryDepthCached(catId: Long): Int {
-        categoryDepthMutex.withLock { categoryDepthCache[catId]?.let { return it } }
-        val depth =
-            withContext(Dispatchers.IO) {
-                runSuspendCatching { repository.getCategoryDepth(catId) }.getOrDefault(Int.MAX_VALUE)
-            }
-        categoryDepthMutex.withLock { categoryDepthCache[catId] = depth }
-        return depth
-    }
 
     private suspend fun buildCategoryPathTitlesCached(catId: Long): List<String> {
         categoryPathMutex.withLock { categoryPathCache[catId]?.let { return it } }
@@ -254,7 +233,6 @@ class SearchHomeViewModel(
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = false,
-                                categorySuggestions = emptyList(),
                                 bookSuggestions = emptyList(),
                                 jumpSuggestions = emptyList(),
                                 authorSuggestions = emptyList(),
@@ -270,57 +248,6 @@ class SearchHomeViewModel(
                         val result =
                             withContext(Dispatchers.Default) {
                                 coroutineScope {
-                                    val pattern = "%$q%"
-
-                                    // Helper ranks by quick string match only (cheap)
-                                    fun catTitleRank(title: String): Int =
-                                        when {
-                                            title.equals(q, ignoreCase = true) -> 0
-                                            title.startsWith(q, ignoreCase = true) -> 1
-                                            title.contains(q, ignoreCase = true) -> 2
-                                            else -> 3
-                                        }
-
-                                    fun titleRank(title: String): Int =
-                                        when {
-                                            title.equals(q, ignoreCase = true) -> 0
-                                            title.startsWith(q, ignoreCase = true) -> 1
-                                            title.contains(q, ignoreCase = true) -> 2
-                                            else -> 3
-                                        }
-
-                                    // Categories: fetch, cheap-rank, compute depth for top-N, then build paths for final
-                                    val catsDeferred =
-                                        async(Dispatchers.IO) {
-                                            val catsRaw =
-                                                repository
-                                                    .findCategoriesByTitleLike(pattern, limit = 50)
-                                                    .filter { it.title.isNotBlank() }
-                                                    .distinctBy { it.id }
-                                            val topForDepth =
-                                                catsRaw
-                                                    .sortedBy { catTitleRank(it.title) }
-                                                    .take(24)
-                                            val withDepth =
-                                                topForDepth.map { cat ->
-                                                    // Depth via cache for ranking
-                                                    val depth = getCategoryDepthCached(cat.id)
-                                                    cat to depth
-                                                }
-                                            val topFinal =
-                                                withDepth
-                                                    .sortedWith(
-                                                        compareBy<Pair<Category, Int>> { it.second }
-                                                            .thenBy { catTitleRank(it.first.title) },
-                                                    ).take(12)
-                                                    .map { it.first }
-                                            // Build display paths only for final items
-                                            topFinal.map { cat ->
-                                                val path = buildCategoryPathTitlesCached(cat.id)
-                                                CategorySuggestionDto(cat, path.ifEmpty { listOf(cat.title) })
-                                            }
-                                        }
-
                                     // Books: same acronym-aware suggestions as the book tree search
                                     val booksDeferred =
                                         async(Dispatchers.Default) {
@@ -343,15 +270,14 @@ class SearchHomeViewModel(
                                             runSuspendCatching { referenceResolver.resolve(q) }.getOrDefault(emptyList())
                                         }
 
-                                    Suggestions(catsDeferred.await(), booksDeferred.await(), jumpsDeferred.await(), authorsDeferred.await())
+                                    Suggestions(booksDeferred.await(), jumpsDeferred.await(), authorsDeferred.await())
                                 }
                             }
 
-                        val (catSuggestions, bookSuggestions, jumpSuggestions, authorSuggestions) = result
+                        val (bookSuggestions, jumpSuggestions, authorSuggestions) = result
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = false,
-                                categorySuggestions = catSuggestions,
                                 bookSuggestions = bookSuggestions,
                                 jumpSuggestions = jumpSuggestions,
                                 authorSuggestions = authorSuggestions,
@@ -423,7 +349,6 @@ class SearchHomeViewModel(
         if (query.isBlank()) {
             _uiState.value =
                 _uiState.value.copy(
-                    selectedScopeCategory = null,
                     selectedScopeBook = null,
                     selectedScopeToc = null,
                     isReferenceLoading = false,
@@ -441,20 +366,6 @@ class SearchHomeViewModel(
                     isTocLoading = false,
                 )
         }
-    }
-
-    fun onPickCategory(category: Category) {
-        _uiState.value =
-            _uiState.value.copy(
-                selectedScopeCategory = category,
-                selectedScopeBook = null,
-                selectedScopeToc = null,
-                suggestionsVisible = false,
-                tocSuggestionsVisible = false,
-                tocSuggestions = emptyList(),
-                isReferenceLoading = false,
-                isTocLoading = false,
-            )
     }
 
     /** Lists the books of [author], to pick one of them next. */
@@ -499,7 +410,6 @@ class SearchHomeViewModel(
         _uiState.value =
             _uiState.value.copy(
                 selectedScopeAuthor = null,
-                selectedScopeCategory = null,
                 selectedScopeBook = book,
                 selectedScopeToc = null,
                 bookPickedByUser = showSuggestions,
@@ -606,8 +516,7 @@ class SearchHomeViewModel(
 
     /**
      * Puts the bar where [scope] searched, as a results tab opens, so that what it shows is where it
-     * searches: a book (a TOC entry's whole book), shown as its chip. A category, which the bar has no
-     * chip for, leaves it everywhere.
+     * searches: a book (a TOC entry's whole book), shown as its chip.
      */
     fun showScope(scope: SearchScope) {
         val bookId =
@@ -621,7 +530,7 @@ class SearchHomeViewModel(
         }
     }
 
-    /** Where the bar searches: its picked TOC entry, book or category, else everywhere. */
+    /** Where the bar searches: its picked TOC entry or book, else everywhere. */
     fun barScope(): SearchScope {
         val selected = _uiState.value
         return when {
@@ -630,7 +539,6 @@ class SearchHomeViewModel(
                 SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
             selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
             selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
-            selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
             else -> SearchScope.Global
         }
     }
@@ -862,7 +770,6 @@ private fun BookSuggestionDto.titleContains(typed: String): Boolean =
     typed.isBlank() || ReferenceParser.normalizeName(book.title).contains(ReferenceParser.normalizeName(typed))
 
 private data class Suggestions(
-    val categories: List<CategorySuggestionDto>,
     val books: List<BookSuggestionDto>,
     val jumps: List<ResolvedReference>,
     val authors: List<AuthorHit>,

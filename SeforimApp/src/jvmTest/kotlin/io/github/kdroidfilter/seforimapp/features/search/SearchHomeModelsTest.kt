@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.search
 
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,7 +10,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SearchHomeModelsTest {
-    private val testCategory = Category(id = 1L, title = "Test Category", parentId = null)
     private val testBook = Book(id = 1L, categoryId = 1L, sourceId = 1L, title = "Test Book")
     private val testTocEntry = TocEntry(id = 1L, bookId = 1L, text = "Chapter 1", level = 1)
 
@@ -58,21 +56,6 @@ class SearchHomeModelsTest {
         assertTrue(event1 != event3)
     }
 
-    // CategorySuggestionDto tests
-    @Test
-    fun `CategorySuggestionDto stores category and path`() {
-        val path = listOf("Root", "Parent")
-        val dto = CategorySuggestionDto(category = testCategory, path = path)
-        assertEquals(testCategory, dto.category)
-        assertEquals(2, dto.path.size)
-    }
-
-    @Test
-    fun `CategorySuggestionDto path can be empty`() {
-        val dto = CategorySuggestionDto(category = testCategory, path = emptyList())
-        assertTrue(dto.path.isEmpty())
-    }
-
     // BookSuggestionDto tests
     @Test
     fun `BookSuggestionDto stores book and path`() {
@@ -98,12 +81,10 @@ class SearchHomeModelsTest {
         assertFalse(state.globalExtended)
         assertFalse(state.suggestionsVisible)
         assertFalse(state.isReferenceLoading)
-        assertTrue(state.categorySuggestions.isEmpty())
         assertTrue(state.bookSuggestions.isEmpty())
         assertFalse(state.tocSuggestionsVisible)
         assertFalse(state.isTocLoading)
         assertTrue(state.tocSuggestions.isEmpty())
-        assertNull(state.selectedScopeCategory)
         assertNull(state.selectedScopeBook)
         assertNull(state.selectedScopeToc)
         assertEquals("", state.userDisplayName)

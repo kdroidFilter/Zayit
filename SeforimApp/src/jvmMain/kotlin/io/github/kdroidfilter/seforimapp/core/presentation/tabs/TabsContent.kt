@@ -415,7 +415,6 @@ private fun rememberHomeSearchCallbacks(
                 val tabId = latestCurrentTabId() ?: return@HomeSearchCallbacks
                 launchOpenReference(scope, tabId)
             },
-            onPickCategory = searchHomeViewModel::onPickCategory,
             onPickBook = searchHomeViewModel::onPickBook,
             onPickToc = searchHomeViewModel::onPickToc,
             onPickAuthor = searchHomeViewModel::onPickAuthor,

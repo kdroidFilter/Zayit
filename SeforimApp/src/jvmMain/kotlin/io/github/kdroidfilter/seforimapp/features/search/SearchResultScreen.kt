@@ -6,6 +6,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -57,12 +59,14 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LogoImage
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.UnifiedSearchBar
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
+import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -137,8 +141,6 @@ fun SearchResultInBookShellMvi(
         Modifier
             .fillMaxSize()
             .padding(vertical = 6.dp, horizontal = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(readingPaper())
 
     val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
     if (showBookContent) {
@@ -320,12 +322,17 @@ private fun SearchResultContentMvi(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     // The home page's smart bar: references, books and authors open; a text search runs here
-                    UnifiedSearchBar(
-                        searchUi = homeSearchUi,
-                        searchCallbacks = homeSearchCallbacks,
-                        initialText = state.query,
-                        autoFocus = false,
-                    )
+                    // The logo beside the bar, as Google's
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                        LogoImage(Modifier.width(LOGO_WIDTH).aspectRatio(LOGO_RATIO))
+                        UnifiedSearchBar(
+                            searchUi = homeSearchUi,
+                            searchCallbacks = homeSearchCallbacks,
+                            modifier = Modifier.weight(1f),
+                            initialText = state.query,
+                            autoFocus = false,
+                        )
+                    }
 
                     if (categories.size > 1) {
                         Spacer(Modifier.height(10.dp))
@@ -416,8 +423,14 @@ private fun SearchResultContentMvi(
                     // Inline progress above replaces the old loading row/spinner
 
                     // Results list
+                    // One card holding the results, as the history page's
                     Box(
-                        modifier = Modifier.fillMaxSize().background(readingPaper()),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
+                                .background(JewelTheme.globalColors.panelBackground),
                     ) {
                         if (visibleResults.isEmpty()) {
                             if (state.isLoading) {
@@ -483,7 +496,7 @@ private fun SearchResultContentMvi(
                                 modifier =
                                     Modifier
                                         .fillMaxSize()
-                                        .background(readingPaper().copy(alpha = 0.4f))
+                                        .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
                                         .zIndex(1f),
                                 contentAlignment = Alignment.Center,
                             ) {
@@ -597,11 +610,7 @@ private fun rememberSnippetDisplay(
     return remember(annotated, findQuery, baseHl) { highlightAnnotated(annotated, findQuery, baseHl) }
 }
 
-// Reading colors, as Google's: white paper in light (the theme's panel is tinted), and secondary
-// text a dark grey (the theme's info grey is too faint to read a passage in)
-@Composable
-private fun readingPaper(): Color = if (JewelTheme.isDark) JewelTheme.globalColors.panelBackground else Color.White
-
+// Secondary text a dark grey: the theme's info grey is too faint to read a passage in
 @Composable
 private fun readingSecondary(): Color =
     JewelTheme.globalColors.text.normal
@@ -638,35 +647,70 @@ private fun ResultView(
     LaunchedEffect(hit.lineId) { if (pieces == null) currentOnRequestBreadcrumb(hit) }
     val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        if (categories.isNotEmpty()) {
-            Text(categories, color = grey, fontSize = 12f.zoomed(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-        }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ResultLink(hit.bookTitle, ink, 17f.zoomed(), FontWeight.Bold) { onOpenResult(hit) }
-            if (place != null) {
-                Text(
-                    "· $place",
-                    color = grey,
-                    fontSize = 13f.zoomed(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+    // A row as the history's: a book icon, hover tint, a divider under it
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (hovered) accent.copy(alpha = 0.06f) else Color.Transparent)
+                .hoverable(hover)
+                .clickable(interactionSource = hover, indication = null) { onOpenResult(hit) }
+                .pointerHoverIcon(PointerIcon.Hand),
+    ) {
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+        ) {
+            Image(
+                painter = rememberVectorPainter(bookOpenTabs(ink)),
+                contentDescription = null,
+                modifier = Modifier.padding(top = 3.dp).size(15.dp),
+            )
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(hit.bookTitle, color = ink, fontSize = 14f.zoomed(), fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    if (place != null) {
+                        Text(
+                            "· $place",
+                            color = grey,
+                            fontSize = 12f.zoomed(),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
+                }
+                Snippet(hit, findQuery, bookFontCode)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (categories.isNotEmpty()) {
+                        Text(categories, color = grey, fontSize = 11f.zoomed(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    if (item.more > 0) {
+                        ResultLink(
+                            stringResource(Res.string.search_more_from_book, item.more, hit.bookTitle),
+                            accent,
+                            11f.zoomed(),
+                            onClick = onMoreInBook,
+                        )
+                    }
+                }
             }
         }
-        Snippet(hit, findQuery, bookFontCode) { onOpenResult(hit) }
-
-        if (item.more > 0) {
-            Box(Modifier.padding(top = 4.dp)) {
-                ResultLink(
-                    stringResource(Res.string.search_more_from_book, item.more, hit.bookTitle),
-                    grey,
-                    13f.zoomed(),
-                    onClick = onMoreInBook,
-                )
-            }
-        }
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 31.dp)
+                .height(1.dp)
+                .background(
+                    JewelTheme.globalColors.borders.normal
+                        .copy(alpha = 0.5f),
+                ),
+        )
     }
 }
 
@@ -676,7 +720,6 @@ private fun Snippet(
     hit: SearchResult,
     findQuery: String?,
     bookFontCode: String,
-    onClick: () -> Unit,
 ) {
     val ink = JewelTheme.globalColors.text.normal
     val display = rememberSnippetDisplay(hit.snippet, SNIPPET_SIZE * LocalResultZoom.current, findQuery, bookFontCode, boldColor = ink)
@@ -687,11 +730,11 @@ private fun Snippet(
         lineHeight = (SNIPPET_SIZE * 1.65f).zoomed(),
         maxLines = 2,
         overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(top = 2.dp).pointerHoverIcon(PointerIcon.Hand).clickable(onClick = onClick),
+        modifier = Modifier.padding(vertical = 2.dp),
     )
 }
 
-private const val SNIPPET_SIZE = 14f
+private const val SNIPPET_SIZE = 13f
 
 /** The result's categories (הלכה › ראשונים) and its place in the book (סימן קד), once its breadcrumb is known. */
 private fun categoriesAndPlace(
@@ -802,6 +845,9 @@ private fun CategoryTab(
     }
 }
 
+private val LOGO_WIDTH = 96.dp
+private const val LOGO_RATIO = 1556f / 715f
+
 private val COLUMN_MIN_WIDTH = 640.dp
 private val COLUMN_MAX_WIDTH = 860.dp
 private val PANEL_NARROW_WIDTH = 300.dp
@@ -840,7 +886,7 @@ private fun EntityPanel(
             modifier
                 .clip(shape)
                 .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .background(readingPaper())
+                .background(JewelTheme.globalColors.panelBackground)
                 .padding(16.dp),
     ) {
         when (entity) {

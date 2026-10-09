@@ -646,7 +646,7 @@ internal fun FreezableCenter(
  * In dark mode: accent color tint from the current theme.
  */
 @Composable
-private fun LogoImage(modifier: Modifier = Modifier) {
+internal fun LogoImage(modifier: Modifier = Modifier) {
     val isDark = JewelTheme.isDark
     val accent = JewelTheme.globalColors.outlines.focused
     val logoTint = if (isDark) accent else AccentColor.Gold.forMode(isDark = false)

@@ -1395,20 +1395,14 @@ private fun SearchBar(
                                 }
                             }
 
-                            // Arrows move through the open list: keep their KeyDown from moving the caret
-                            (ev.key == Key.DirectionDown || ev.key == Key.DirectionUp) &&
-                                ev.type == KeyEventType.KeyDown &&
-                                popupVisible -> true
-
-                            ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
-                                val total = if (isTocMode) totalTocRows else totalCatBook
-                                if (total > 0) focusedIndex = (focusedIndex + 1).coerceAtMost(total - 1)
-                                true
-                            }
-
-                            ev.key == Key.DirectionUp && ev.type == KeyEventType.KeyUp -> {
-                                val total = if (isTocMode) totalTocRows else totalCatBook
-                                if (total > 0) focusedIndex = (focusedIndex - 1).coerceAtLeast(0)
+                            // Arrows move through the open list as soon as they are pressed, repeating while
+                            // held (like Chrome's omnibox); neither event reaches the field, whose caret stays put
+                            (ev.key == Key.DirectionDown || ev.key == Key.DirectionUp) && popupVisible -> {
+                                if (ev.type == KeyEventType.KeyDown) {
+                                    val total = if (isTocMode) totalTocRows else totalCatBook
+                                    val step = if (ev.key == Key.DirectionDown) 1 else -1
+                                    if (total > 0) focusedIndex = (focusedIndex + step).coerceIn(0, total - 1)
+                                }
                                 true
                             }
 

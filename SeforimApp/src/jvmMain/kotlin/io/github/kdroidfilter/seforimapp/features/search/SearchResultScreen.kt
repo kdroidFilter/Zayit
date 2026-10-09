@@ -369,10 +369,21 @@ private fun SearchResultContentMvi(
                         .widthIn(max = PAGE_MAX_WIDTH)
                         .padding(16.dp),
             ) {
-                Column(Modifier.widthIn(max = HEADER_MAX_WIDTH)) {
+                // The bar, the tabs and the status in a card, as the panes under them
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp)
+                        .card()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
                     // The home page's smart bar: references, books and authors open; a text search runs here
                     // The logo beside the bar, as Google's
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.widthIn(max = HEADER_MAX_WIDTH),
+                    ) {
                         LogoImage(Modifier.width(LOGO_WIDTH).aspectRatio(LOGO_RATIO))
                         UnifiedSearchBar(
                             searchUi = homeSearchUi,
@@ -466,8 +477,6 @@ private fun SearchResultContentMvi(
                             }
                         }
                     }
-
-                    Spacer(Modifier.height(8.dp))
                 }
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
@@ -479,9 +488,7 @@ private fun SearchResultContentMvi(
                                 .focusRequester(listFocus)
                                 .onPreviewKeyEvent(::onListKey)
                                 .focusable()
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
-                                .background(JewelTheme.globalColors.panelBackground),
+                                .card(),
                     ) {
                         if (visibleResults.isEmpty()) {
                             if (state.isLoading) {
@@ -835,9 +842,7 @@ private fun PassagePreview(
         modifier =
             modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
-                .background(JewelTheme.globalColors.panelBackground),
+                .card(),
     ) {
         Column(Modifier.padding(start = 28.dp, end = 28.dp, top = 18.dp, bottom = 14.dp)) {
             if (categories.isNotEmpty()) Text(categories, fontSize = 12f.zoomed(), color = readingSecondary(), maxLines = 1)
@@ -1033,6 +1038,15 @@ private fun CategoryTab(
 private val LOGO_WIDTH = 96.dp
 private const val LOGO_RATIO = 1556f / 715f
 
+/** The page's card look: rounded, bordered, on the panel's background, as the history page's cards. */
+@Composable
+private fun Modifier.card(): Modifier {
+    val shape = RoundedCornerShape(10.dp)
+    return clip(shape)
+        .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+        .background(JewelTheme.globalColors.panelBackground)
+}
+
 private val PAGE_MAX_WIDTH = 1700.dp
 private val HEADER_MAX_WIDTH = 900.dp
 private val LIST_MIN_WIDTH = 340.dp
@@ -1064,15 +1078,9 @@ private fun EntityPanel(
     modifier: Modifier = Modifier,
 ) {
     val grey = readingSecondary()
-    val shape = RoundedCornerShape(12.dp)
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier =
-            modifier
-                .clip(shape)
-                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(16.dp),
+        modifier = modifier.card().padding(16.dp),
     ) {
         when (entity) {
             is SearchEntity.BookEntity -> {

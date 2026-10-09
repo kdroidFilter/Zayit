@@ -686,14 +686,13 @@ internal fun LogoImage(modifier: Modifier = Modifier) {
 private fun logoTint(): Color =
     if (JewelTheme.isDark) JewelTheme.globalColors.outlines.focused else AccentColor.Gold.forMode(isDark = false)
 
-/** The logo's word alone (זית, without the olive branch), tinted as the full logo's text. */
+/** The logo's olive branch alone, in its own colors. */
 @Composable
-internal fun LogoWord(modifier: Modifier = Modifier) {
+internal fun LogoBranch(modifier: Modifier = Modifier) {
     Image(
-        BitmapPainter(imageResource(Res.drawable.zayit_logo_word), filterQuality = FilterQuality.Medium),
+        BitmapPainter(imageResource(Res.drawable.zayit_logo_branch), filterQuality = FilterQuality.Medium),
         contentDescription = null,
         modifier = modifier,
-        colorFilter = ColorFilter.tint(logoTint(), BlendMode.SrcIn),
     )
 }
 

@@ -6,6 +6,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -33,6 +34,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -72,13 +74,14 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LogoWord
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LogoBranch
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.UnifiedSearchBar
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
+import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
@@ -322,6 +325,12 @@ private fun SearchResultContentMvi(
 
     val keyHandler = remember { { _: KeyEvent -> false } }
 
+    // The tabs are the unfiltered search's categories: once one is picked, the tree only has it left
+    var tabCategories by remember(state.executedQuery, state.globalExtended) { mutableStateOf(categories) }
+    LaunchedEffect(categories, selectedCategoryIds) {
+        if (selectedCategoryIds.isEmpty() && categories.isNotEmpty()) tabCategories = categories
+    }
+
     // The selected result, shown beside the list on wide windows; the first one until one is picked
     var selectedLineId by remember(items.firstOrNull()?.hit?.lineId) { mutableStateOf<Long?>(null) }
     val selected = items.firstOrNull { it.hit.lineId == selectedLineId } ?: items.firstOrNull()
@@ -383,7 +392,7 @@ private fun SearchResultContentMvi(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            LogoWord(Modifier.height(LOGO_HEIGHT).aspectRatio(LOGO_RATIO))
+                            LogoBranch(Modifier.height(LOGO_HEIGHT).aspectRatio(LOGO_RATIO))
                             UnifiedSearchBar(
                                 searchUi = homeSearchUi,
                                 searchCallbacks = homeSearchCallbacks,
@@ -393,9 +402,9 @@ private fun SearchResultContentMvi(
                             )
                         }
 
-                        if (categories.size > 1) {
+                        if (tabCategories.size > 1) {
                             Spacer(Modifier.height(10.dp))
-                            CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
+                            CategoryTabs(tabCategories, selectedCategoryIds, actions.onShowOnlyCategory)
                         }
                         Spacer(Modifier.height(12.dp))
                         val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
@@ -861,7 +870,12 @@ private fun PassagePreview(
                     Text(hit.bookTitle, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
                     if (place != null) Text(place, fontSize = 14.sp, color = readingSecondary(), maxLines = 1)
                 }
-                OutlinedButton(onClick = onOpen) { Text(stringResource(Res.string.search_open_in_book)) }
+                OutlinedButton(onClick = onOpen) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Image(rememberVectorPainter(bookOpenTabs(ink)), contentDescription = null, modifier = Modifier.size(14.dp))
+                        Text(stringResource(Res.string.search_open_in_book))
+                    }
+                }
             }
         }
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
@@ -1069,8 +1083,8 @@ private fun CategoryTab(
     }
 }
 
-private val LOGO_HEIGHT = 34.dp
-private const val LOGO_RATIO = 754f / 425f
+private val LOGO_HEIGHT = 40.dp
+private const val LOGO_RATIO = 634f / 684f
 
 /** The page's card look: rounded, bordered, on the panel's background, as the history page's cards. */
 @Composable

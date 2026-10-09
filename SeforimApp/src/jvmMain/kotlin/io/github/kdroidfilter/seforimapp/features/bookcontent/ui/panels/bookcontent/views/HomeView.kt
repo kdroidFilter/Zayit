@@ -668,8 +668,9 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  */
 private fun SuggestionsPanel(
     rows: ImmutableList<CatBookRow>,
-    // Runs the row at an index: its main action (open, search) or its Tab one (search inside)
-    onRow: (index: Int, open: Boolean) -> Unit,
+    // Runs a row: its main action (open, search) or its Tab one (search inside). By row, not index:
+    // a click must run the row it lands on even if the list changed since this lambda was made
+    onRow: (row: CatBookRow, open: Boolean) -> Unit,
     onTextSearchAll: () -> Unit,
     textSearchLabel: String?,
     textSearchQuery: String?,
@@ -754,9 +755,10 @@ private fun SuggestionsPanel(
             } else {
                 items(rows.size) { rowIndex ->
                     val focused = rowIndex == focusedIndex
-                    val open = RowAction(KEY_ENTER, stringResource(Res.string.row_action_open)) { onRow(rowIndex, true) }
-                    val searchInside = RowAction(KEY_TAB, stringResource(Res.string.row_action_search_inside)) { onRow(rowIndex, false) }
-                    when (val row = rows[rowIndex]) {
+                    val row = rows[rowIndex]
+                    val open = RowAction(KEY_ENTER, stringResource(Res.string.row_action_open)) { onRow(row, true) }
+                    val searchInside = RowAction(KEY_TAB, stringResource(Res.string.row_action_search_inside)) { onRow(row, false) }
+                    when (row) {
                         is CatBookRow.Jump ->
                             SuggestionRow(
                                 parts = listOf(row.reference.book.title, row.reference.label),
@@ -769,13 +771,13 @@ private fun SuggestionsPanel(
                         CatBookRow.TextSearch ->
                             SuggestionRow(
                                 parts = listOfNotNull(textSearchLabel),
-                                onClick = { onRow(rowIndex, true) },
+                                onClick = { onRow(row, true) },
                                 kind = SuggestionKind.TEXT_SEARCH,
                                 emphasis = textSearchQuery,
                                 highlighted = focused,
                                 actions =
                                     listOf(
-                                        RowAction(KEY_ENTER, stringResource(Res.string.row_action_search_base)) { onRow(rowIndex, true) },
+                                        RowAction(KEY_ENTER, stringResource(Res.string.row_action_search_base)) { onRow(row, true) },
                                         RowAction(KEY_CTRL_ENTER, stringResource(Res.string.row_action_search_all), onTextSearchAll),
                                     ),
                             )
@@ -1403,18 +1405,25 @@ private fun SearchBar(
         }
 
         // Commits the book-stage row at [index] (jumps, text search, authors, categories, books); returns the book picked
-        fun pickCatBookRow(
-            index: Int,
+        // Runs a book-stage row: its main action ([open]: open, search) or its Tab one (search inside)
+        fun runCatBookRow(
+            row: CatBookRow,
             open: Boolean,
         ) {
-            when (val row = catBookRows.getOrNull(index)) {
+            when (row) {
                 is CatBookRow.Jump -> handlePickJump(row.reference)
                 CatBookRow.TextSearch -> handleTextSearch()
                 is CatBookRow.Author -> if (open) handleOpenAuthor(row.hit) else handlePickAuthor(row.hit)
                 is CatBookRow.Category -> handlePickCategory(row.suggestion)
                 is CatBookRow.Book -> if (open) handleOpenBook(row.suggestion) else handlePickBook(row.suggestion)
-                null -> Unit
             }
+        }
+
+        fun pickCatBookRow(
+            index: Int,
+            open: Boolean,
+        ) {
+            catBookRows.getOrNull(index)?.let { runCatBookRow(it, open) }
         }
 
         fun handleSubmit() {
@@ -1709,7 +1718,7 @@ private fun SearchBar(
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
                             rows = catBookRows,
-                            onRow = ::pickCatBookRow,
+                            onRow = { row, open -> runCatBookRow(row, open) },
                             onTextSearchAll = { handleTextSearch(extended = true) },
                             textSearchLabel =
                                 if (textSearchEnabled &&

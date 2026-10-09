@@ -110,6 +110,25 @@ object ReferenceParser {
         entry: String,
     ): Boolean = typed == entry || withoutPrefix(typed) == withoutPrefix(entry)
 
+    /**
+     * Whether [typed] begins the name made of [words]: the same words, the last one possibly
+     * still being typed (`בשר וח` begins `בשר בחלב`).
+     */
+    fun startsName(
+        typed: List<String>,
+        words: List<String>,
+    ): Boolean {
+        if (typed.isEmpty() || typed.size > words.size) return false
+        val last = typed.lastIndex
+        if ((0 until last).any { !sameWord(typed[it], words[it]) }) return false
+        val partial = typed[last]
+        val word = words[last]
+        return word.startsWith(partial) || withoutPrefix(word).startsWith(dropPrefix(partial))
+    }
+
+    // A prefix letter typed alone or with the start of a word (`ו`, `וח`)
+    private fun dropPrefix(word: String): String = if (word.first() in PREFIX_LETTERS) word.drop(1) else word
+
     private fun withoutPrefix(word: String): String = if (word.length >= 3 && word.first() in PREFIX_LETTERS) word.drop(1) else word
 
     private const val PREFIX_LETTERS = "ובהלמשכ"

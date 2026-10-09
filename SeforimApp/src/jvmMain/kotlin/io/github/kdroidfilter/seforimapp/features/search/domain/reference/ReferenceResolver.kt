@@ -44,16 +44,20 @@ data class ResolvedReference(
 class ReferenceResolver(
     private val source: ReferenceSource,
 ) {
-    /** The places [query] may point to, best first; empty when it is not a reference. */
+    /**
+     * The places [query] may point to, best first; empty when it is not a reference. While a name
+     * is being typed (`שוע יוד בש`), the entries it may complete to are offered.
+     */
     suspend fun resolve(
         query: String,
         maxBooks: Int = 3,
+        maxResults: Int = 5,
     ): List<ResolvedReference> {
         for (split in ReferenceParser.splits(query)) {
             for (name in nameVariants(split.bookName)) {
                 val books = source.booksNamed(name)
                 if (books.isEmpty()) continue
-                return rank(books, name).take(maxBooks).mapNotNull { book -> locate(book, split.place) }
+                return rank(books, name).take(maxBooks).flatMap { book -> locate(book, split.place, maxResults) }.take(maxResults)
             }
         }
         return emptyList()
@@ -89,6 +93,23 @@ class ReferenceResolver(
     }
 
     private suspend fun locate(
+        book: Book,
+        place: List<ReferenceToken>,
+        maxResults: Int,
+    ): List<ResolvedReference> {
+        locateExactly(book, place)?.let { return listOf(it) }
+        // No entry named so: the entries whose name starts with the typed words
+        val trees = listOf(source.toc(book.id)) + source.altTocs(book.id)
+        return trees
+            .asSequence()
+            .flatMap { tree -> completions(tree, place) }
+            .mapNotNull { match -> resolved(book, match) }
+            .distinctBy { it.lineId }
+            .take(maxResults)
+            .toList()
+    }
+
+    private suspend fun locateExactly(
         book: Book,
         place: List<ReferenceToken>,
     ): ResolvedReference? {
@@ -133,6 +154,28 @@ class ReferenceResolver(
             level = children[hit.node.id].orEmpty()
         }
         return match
+    }
+
+    // Entries below what the place words matched exactly whose name the remaining words begin,
+    // the last one possibly cut short, in TOC order
+    private fun completions(
+        entries: List<TocNode>,
+        place: List<ReferenceToken>,
+    ): Sequence<Match> {
+        val children = entries.groupBy { it.parentId }
+        val reached = walk(entries, place)
+        val typed = place.drop(reached?.consumed ?: 0).map { it.text }
+        if (typed.isEmpty()) return emptySequence()
+        val path = reached?.path.orEmpty()
+
+        fun below(parent: Long?): Sequence<TocNode> = children[parent].orEmpty().asSequence().flatMap { sequenceOf(it) + below(it.id) }
+        return below(reached?.node?.id)
+            .filter { entry ->
+                val words = ReferenceParser.placeWords(entry.text)
+                // Bare numbers (`סימן ש`) are only matched whole, by [matchEntry]
+                val bareNumber = words.size == 1 && TocNumber.of(entry.text) != null
+                !bareNumber && ReferenceParser.startsName(typed, words)
+            }.map { entry -> Match(entry, place.size, path + entry.text.trim()) }
     }
 
     // The first entry of [level] matching the words at [position], in TOC order, looking through

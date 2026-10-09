@@ -6,7 +6,6 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -837,9 +836,8 @@ private fun ResultView(
 /**
  * The selected result in its book, to read without opening it: its place as a title, then the
  * found line marked by a bar, between the lines around it, faded; in the books' font and size, over
- * the whole width as the book's text. A button opens the book there.
+ * the whole width as the book's text. A click on a line opens the book there.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PassagePreview(
     preview: SearchResultViewModel.PassagePreview,
@@ -889,12 +887,6 @@ private fun PassagePreview(
                     Text(hit.bookTitle, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
                     if (place != null) Text(place, fontSize = 14.sp, color = readingSecondary(), maxLines = 1)
                 }
-                IconActionButton(
-                    key = AllIconsKeys.Actions.OpenNewTab,
-                    contentDescription = stringResource(Res.string.search_open_in_book),
-                    onClick = onOpen,
-                    tooltip = { Text(stringResource(Res.string.search_open_in_book)) },
-                )
             }
         }
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth())

@@ -372,6 +372,13 @@ class AppSettings(
         settings[KEY_ONBOARDING_FINISHED] = finished
     }
 
+    // Whether the user dismissed the AI-generated notice on author biographies
+    fun isAuthorBioAiNoticeDismissed(): Boolean = settings[KEY_AUTHOR_BIO_AI_NOTICE_DISMISSED, false]
+
+    fun setAuthorBioAiNoticeDismissed(dismissed: Boolean) {
+        settings[KEY_AUTHOR_BIO_AI_NOTICE_DISMISSED] = dismissed
+    }
+
     // User profile accessors
     // Reactive flows to observe user identity changes across the app
     private val _userFirstNameFlow = MutableStateFlow(getUserFirstName() ?: "")
@@ -627,6 +634,7 @@ class AppSettings(
 
         // Onboarding state
         private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
+        private const val KEY_AUTHOR_BIO_AI_NOTICE_DISMISSED = "author_bio_ai_notice_dismissed"
 
         // Region configuration keys
         private const val KEY_REGION_COUNTRY = "region_country"

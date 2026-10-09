@@ -132,7 +132,65 @@ private data class CategorySuggestion(
 private data class BookSuggestion(
     val book: BookModel,
     val path: List<String>,
+    val exactAcronym: Boolean = false,
 )
+
+/** A row of the book-stage list; see [catBookRows] for their order. */
+private sealed interface CatBookRow {
+    data class Jump(
+        val reference: ResolvedReference,
+    ) : CatBookRow
+
+    data object TextSearch : CatBookRow
+
+    data class Author(
+        val hit: AuthorHit,
+    ) : CatBookRow
+
+    data class Category(
+        val suggestion: CategorySuggestion,
+    ) : CatBookRow
+
+    data class Book(
+        val suggestion: BookSuggestion,
+    ) : CatBookRow
+}
+
+/**
+ * The book-stage rows in order: the references, then the books and authors named exactly as typed
+ * (`חולין` opens Chullin on Enter; `שוע` puts the שולחן ערוך parts first), the text search, then the other authors, categories and books.
+ */
+private fun catBookRows(
+    query: String,
+    jumps: List<ResolvedReference>,
+    textSearch: Boolean,
+    authors: List<AuthorHit>,
+    categories: List<CategorySuggestion>,
+    books: List<BookSuggestion>,
+): ImmutableList<CatBookRow> {
+    val key = query.matchKey()
+    val (exactAuthors, otherAuthors) =
+        authors.partition { author ->
+            listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.matchKey() == key }
+        }
+    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.matchKey() == key }
+    return buildList {
+        jumps.mapTo(this) { CatBookRow.Jump(it) }
+        exactBooks.mapTo(this) { CatBookRow.Book(it) }
+        exactAuthors.mapTo(this) { CatBookRow.Author(it) }
+        if (textSearch) add(CatBookRow.TextSearch)
+        otherAuthors.mapTo(this) { CatBookRow.Author(it) }
+        categories.mapTo(this) { CatBookRow.Category(it) }
+        otherBooks.mapTo(this) { CatBookRow.Book(it) }
+    }.toImmutableList()
+}
+
+// Compares names as typed: without nikud, quotes and extra spaces
+private fun String.matchKey(): String =
+    replace(Regex("[\u0591-\u05C7]"), "")
+        .replace(Regex("[\"'״׳]"), "")
+        .replace(Regex("\\s+"), " ")
+        .trim()
 
 @Immutable
 private data class TocSuggestion(
@@ -419,7 +477,7 @@ private fun HomeBody(
                                     val mappedBookSuggestionsForBar =
                                         searchUi.bookSuggestions
                                             .map { bs ->
-                                                BookSuggestion(bs.book, bs.path)
+                                                BookSuggestion(bs.book, bs.path, bs.exactAcronym)
                                             }.toImmutableList()
                                     val mappedTocSuggestionsForBar =
                                         searchUi.tocSuggestions.map { ts ->
@@ -609,14 +667,11 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  * Uses native Jewel menu styling for consistent look and feel.
  */
 private fun SuggestionsPanel(
-    jumpSuggestions: ImmutableList<ResolvedReference>,
-    authorSuggestions: ImmutableList<AuthorHit>,
+    rows: ImmutableList<CatBookRow>,
     onPickAuthor: (AuthorHit) -> Unit,
     textSearchLabel: String?,
     textSearchQuery: String?,
     onTextSearch: () -> Unit,
-    categorySuggestions: ImmutableList<CategorySuggestion>,
-    bookSuggestions: ImmutableList<BookSuggestion>,
     onPickJump: (ResolvedReference) -> Unit,
     onPickCategory: (CategorySuggestion) -> Unit,
     onPickBook: (BookSuggestion) -> Unit,
@@ -628,11 +683,9 @@ private fun SuggestionsPanel(
     val listState = rememberLazyListState()
     val menuStyle = JewelTheme.menuStyle
 
-    val textRows = if (textSearchLabel != null) 1 else 0
-    val beforeCategories = jumpSuggestions.size + textRows + authorSuggestions.size
-    LaunchedEffect(focusedIndex, beforeCategories, categorySuggestions.size, bookSuggestions.size) {
+    LaunchedEffect(focusedIndex, rows.size) {
         if (focusedIndex >= 0) {
-            val total = beforeCategories + categorySuggestions.size + bookSuggestions.size
+            val total = rows.size
             if (total > 0) {
                 val visible = listState.layoutInfo.visibleItemsInfo
                 val firstVisible = visible.firstOrNull()?.index
@@ -649,7 +702,7 @@ private fun SuggestionsPanel(
             }
         }
     }
-    val isEmpty = beforeCategories == 0 && categorySuggestions.isEmpty() && bookSuggestions.isEmpty()
+    val isEmpty = rows.isEmpty()
     Column(
         modifier =
             Modifier
@@ -701,68 +754,66 @@ private fun SuggestionsPanel(
                     }
                 }
             } else {
-                items(jumpSuggestions.size) { idx ->
-                    val jump = jumpSuggestions[idx]
-                    SuggestionRow(
-                        parts = listOf(jump.book.title, jump.label),
-                        onClick = { onPickJump(jump) },
-                        kind = SuggestionKind.PLACE,
-                        highlighted = idx == focusedIndex,
-                        showTabHint = idx == focusedIndex,
-                        hint = "↵",
-                    )
-                }
-                if (textSearchLabel != null) {
-                    item {
-                        val rowIndex = jumpSuggestions.size
-                        SuggestionRow(
-                            parts = listOf(textSearchLabel),
-                            onClick = onTextSearch,
-                            kind = SuggestionKind.TEXT_SEARCH,
-                            emphasis = textSearchQuery,
-                            highlighted = rowIndex == focusedIndex,
-                            showTabHint = rowIndex == focusedIndex,
-                            hint = "↵",
-                        )
+                items(rows.size) { rowIndex ->
+                    val focused = rowIndex == focusedIndex
+                    when (val row = rows[rowIndex]) {
+                        is CatBookRow.Jump ->
+                            SuggestionRow(
+                                parts = listOf(row.reference.book.title, row.reference.label),
+                                onClick = { onPickJump(row.reference) },
+                                kind = SuggestionKind.PLACE,
+                                highlighted = focused,
+                                showTabHint = focused,
+                                hint = "↵",
+                            )
+
+                        CatBookRow.TextSearch ->
+                            SuggestionRow(
+                                parts = listOfNotNull(textSearchLabel),
+                                onClick = onTextSearch,
+                                kind = SuggestionKind.TEXT_SEARCH,
+                                emphasis = textSearchQuery,
+                                highlighted = focused,
+                                showTabHint = focused,
+                                hint = "↵",
+                            )
+
+                        is CatBookRow.Author ->
+                            SuggestionRow(
+                                parts =
+                                    listOf(
+                                        AuthorNames.display(row.hit.name) +
+                                            row.hit.alias
+                                                ?.let { " ($it)" }
+                                                .orEmpty(),
+                                    ),
+                                onClick = { onPickAuthor(row.hit) },
+                                hint = stringResource(Res.string.hint_open_or_search_inside),
+                                kind = SuggestionKind.AUTHOR,
+                                highlighted = focused,
+                                showTabHint = focused,
+                                detail = stringResource(Res.string.author_books_count, row.hit.bookCount),
+                            )
+
+                        is CatBookRow.Category ->
+                            SuggestionRow(
+                                parts = dedupAdjacent(row.suggestion.path),
+                                onClick = { onPickCategory(row.suggestion) },
+                                kind = SuggestionKind.CATEGORY,
+                                highlighted = focused,
+                                showTabHint = focused,
+                            )
+
+                        is CatBookRow.Book ->
+                            SuggestionRow(
+                                parts = dedupAdjacent(row.suggestion.path),
+                                onClick = { onPickBook(row.suggestion) },
+                                hint = stringResource(Res.string.hint_open_or_search_inside),
+                                kind = SuggestionKind.BOOK,
+                                highlighted = focused,
+                                showTabHint = focused,
+                            )
                     }
-                }
-                items(authorSuggestions.size) { idx ->
-                    val rowIndex = jumpSuggestions.size + textRows + idx
-                    val author = authorSuggestions[idx]
-                    SuggestionRow(
-                        parts = listOf(AuthorNames.display(author.name)),
-                        onClick = { onPickAuthor(author) },
-                        hint = stringResource(Res.string.hint_open_or_search_inside),
-                        kind = SuggestionKind.AUTHOR,
-                        highlighted = rowIndex == focusedIndex,
-                        showTabHint = rowIndex == focusedIndex,
-                        detail = stringResource(Res.string.author_books_count, author.bookCount),
-                    )
-                }
-                items(categorySuggestions.size) { idx ->
-                    val rowIndex = beforeCategories + idx
-                    val cat = categorySuggestions[idx]
-                    val dedupPath = dedupAdjacent(cat.path)
-                    SuggestionRow(
-                        parts = dedupPath,
-                        onClick = { onPickCategory(cat) },
-                        kind = SuggestionKind.CATEGORY,
-                        highlighted = rowIndex == focusedIndex,
-                        showTabHint = rowIndex == focusedIndex,
-                    )
-                }
-                items(bookSuggestions.size) { i ->
-                    val rowIndex = beforeCategories + categorySuggestions.size + i
-                    val book = bookSuggestions[i]
-                    val dedupPath = dedupAdjacent(book.path)
-                    SuggestionRow(
-                        parts = dedupPath,
-                        onClick = { onPickBook(book) },
-                        hint = stringResource(Res.string.hint_open_or_search_inside),
-                        kind = SuggestionKind.BOOK,
-                        highlighted = rowIndex == focusedIndex,
-                        showTabHint = rowIndex == focusedIndex,
-                    )
                 }
             }
         }
@@ -1240,12 +1291,20 @@ private fun SearchBar(
     val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
-    // Rows of the reference-mode list: jumps, then categories, then books
-    val jumpCount = jumpSuggestions.size
-    val authorCount = authorSuggestions.size
-    val categoriesCount = categorySuggestions.size
-    val totalCatBook =
-        jumpCount + (if (textSearchEnabled && state.text.isNotBlank()) 1 else 0) + authorCount + categoriesCount + bookSuggestions.size
+    // Rows of the book-stage list, in display order
+    val query = state.text.toString().trim()
+    val catBookRows =
+        remember(query, jumpSuggestions, textSearchEnabled, authorSuggestions, categorySuggestions, bookSuggestions) {
+            catBookRows(
+                query,
+                jumpSuggestions,
+                textSearchEnabled && query.isNotEmpty(),
+                authorSuggestions,
+                categorySuggestions,
+                bookSuggestions,
+            )
+        }
+    val totalCatBook = catBookRows.size
     // Keyboard navigation must operate on the exact list that TocSuggestionsPanel
     // renders, otherwise the highlighted row and the picked entry desync and the
     // wrong reference opens (see [tocSuggestionsForDisplay]).
@@ -1361,20 +1420,13 @@ private fun SearchBar(
             index: Int,
             open: Boolean,
         ) {
-            val afterJumps = index - jumpCount
-            val afterAuthors = afterJumps - textRowCount - authorCount
-            when {
-                index < jumpCount -> handlePickJump(jumpSuggestions[index])
-                afterJumps < textRowCount -> handleTextSearch()
-                afterAuthors < 0 -> {
-                    val author = authorSuggestions[afterJumps - textRowCount]
-                    if (open) handleOpenAuthor(author) else handlePickAuthor(author)
-                }
-                afterAuthors < categoriesCount -> handlePickCategory(categorySuggestions[afterAuthors])
-                else ->
-                    bookSuggestions.getOrNull(afterAuthors - categoriesCount)?.let { book ->
-                        if (open) handleOpenBook(book) else handlePickBook(book)
-                    }
+            when (val row = catBookRows.getOrNull(index)) {
+                is CatBookRow.Jump -> handlePickJump(row.reference)
+                CatBookRow.TextSearch -> handleTextSearch()
+                is CatBookRow.Author -> if (open) handleOpenAuthor(row.hit) else handlePickAuthor(row.hit)
+                is CatBookRow.Category -> handlePickCategory(row.suggestion)
+                is CatBookRow.Book -> if (open) handleOpenBook(row.suggestion) else handlePickBook(row.suggestion)
+                null -> Unit
             }
         }
 
@@ -1675,8 +1727,7 @@ private fun SearchBar(
                         )
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
-                            jumpSuggestions = jumpSuggestions,
-                            authorSuggestions = authorSuggestions,
+                            rows = catBookRows,
                             onPickAuthor = ::handleOpenAuthor,
                             textSearchLabel =
                                 if (textSearchEnabled &&
@@ -1688,8 +1739,6 @@ private fun SearchBar(
                                 },
                             textSearchQuery = state.text.toString().trim(),
                             onTextSearch = ::handleTextSearch,
-                            categorySuggestions = categorySuggestions,
-                            bookSuggestions = bookSuggestions,
                             onPickJump = ::handlePickJump,
                             onPickCategory = ::handlePickCategory,
                             onPickBook = ::handleOpenBook,

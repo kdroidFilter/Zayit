@@ -438,6 +438,8 @@ private fun SearchResultContentMvi(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             SearchStatusLine(
+                                // In one book, where it searched: no base/all books choice there
+                                scope = if (oneBook) state.scopeBook?.title ?: visibleResults.firstOrNull()?.bookTitle else null,
                                 total = totalResults,
                                 isLoading = showProgress,
                                 globalExtended = state.globalExtended,
@@ -1209,6 +1211,7 @@ private fun ColumnScope.EntityDetails(
  */
 @Composable
 private fun SearchStatusLine(
+    scope: String?,
     total: Int,
     isLoading: Boolean,
     globalExtended: Boolean,
@@ -1223,6 +1226,7 @@ private fun SearchStatusLine(
             text =
                 when {
                     isLoading -> stringResource(Res.string.search_searching)
+                    scope != null -> stringResource(Res.string.search_status_in, count, scope)
                     baseBooksHadNoResults -> stringResource(Res.string.search_status_fallback, count)
                     globalExtended -> stringResource(Res.string.search_status_all, count)
                     else -> stringResource(Res.string.search_status_base, count)
@@ -1231,7 +1235,7 @@ private fun SearchStatusLine(
             fontSize = 13.sp,
             maxLines = 1,
         )
-        if (!isLoading && !baseBooksHadNoResults) {
+        if (!isLoading && !baseBooksHadNoResults && scope == null) {
             Text("·", color = grey, fontSize = 13.sp)
             ResultLink(
                 stringResource(if (globalExtended) Res.string.search_switch_base else Res.string.search_switch_all),

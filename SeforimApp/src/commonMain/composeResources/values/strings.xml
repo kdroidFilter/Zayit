@@ -607,6 +607,7 @@
     <string name="search_more_from_book">עוד %1$d תוצאות מ%2$s</string>
     <string name="search_status_base">כ־%1$s תוצאות בספרי יסוד</string>
     <string name="search_status_all">כ־%1$s תוצאות בכל הספרים</string>
+    <string name="search_status_in">כ־%1$s תוצאות ב%2$s</string>
     <string name="search_status_fallback">לא נמצא בספרי יסוד · מוצגות %1$s תוצאות מכל הספרים</string>
     <string name="search_switch_all">חיפוש בכל הספרים</string>
     <string name="search_switch_base">רק ספרי יסוד</string>

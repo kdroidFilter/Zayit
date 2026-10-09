@@ -51,6 +51,7 @@ import io.github.kdroidfilter.seforimapp.features.favorites.FavoritesTabContent
 import io.github.kdroidfilter.seforimapp.features.history.HistoryTabContent
 import io.github.kdroidfilter.seforimapp.features.notes.NotesTabContent
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
@@ -273,6 +274,8 @@ fun TabsContent() {
                                         tabOwner = tabOwner,
                                         destination = destination,
                                         isSelected = isSelected,
+                                        homeSearchUi = searchUi,
+                                        homeSearchCallbacks = homeSearchCallbacks,
                                     )
                                 }
 
@@ -348,8 +351,25 @@ private fun SearchTabContent(
     tabOwner: SimpleTabViewModelOwner,
     destination: TabsDestination.Search,
     isSelected: Boolean,
+    homeSearchUi: SearchHomeUiState,
+    homeSearchCallbacks: HomeSearchCallbacks,
 ) {
     val viewModel = tabSearchViewModel(tabOwner, destination)
+    val actions = rememberSearchShellActions(viewModel)
+    // The home bar here: its text search runs in this tab, in the base or all books as chosen
+    // (only Ctrl+Enter widens it), in the bar's picked book if any
+    val barCallbacks =
+        remember(homeSearchCallbacks, viewModel, homeSearchUi.selectedScopeBook) {
+            homeSearchCallbacks.copy(
+                onGlobalExtendedChange = { extended ->
+                    if (extended) viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(true))
+                },
+                onSubmitTextSearch = { query ->
+                    actions.onSubmit(query)
+                    homeSearchUi.selectedScopeBook?.let { actions.onBookCheckedChange(it.id, true) }
+                },
+            )
+        }
     val bookVm = tabBookViewModel(tabOwner, destination)
 
     // Keep tree computation disabled when tab is not selected
@@ -383,7 +403,9 @@ private fun SearchTabContent(
         categories = searchTree,
         selectedCategoryIds = selectedCategoryIds,
         entity = entity,
-        actions = rememberSearchShellActions(viewModel),
+        homeSearchUi = homeSearchUi,
+        homeSearchCallbacks = barCallbacks,
+        actions = actions,
         tabUi = tabUi(tabOwner),
     )
 }

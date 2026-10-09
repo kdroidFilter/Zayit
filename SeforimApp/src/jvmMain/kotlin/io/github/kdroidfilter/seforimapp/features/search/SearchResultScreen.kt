@@ -17,21 +17,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
@@ -61,6 +56,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.UnifiedSearchBar
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
@@ -79,10 +76,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
-import org.jetbrains.jewel.ui.component.styling.TextFieldMetrics
-import org.jetbrains.jewel.ui.component.styling.TextFieldStyle
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import org.jetbrains.jewel.ui.theme.textFieldStyle
 import seforimapp.seforimapp.generated.resources.*
 import java.text.NumberFormat
 
@@ -107,98 +101,6 @@ data class SearchShellActions(
     val onOpenAuthor: (Long) -> Unit = {},
 )
 
-@Composable
-private fun SearchToolbar(
-    initialQuery: String,
-    onSubmit: (query: String) -> Unit,
-    onQueryChange: (String) -> Unit,
-) {
-    val searchState = remember { TextFieldState() }
-    val fieldFocus = remember { FocusRequester() }
-    val currentOnQueryChange by rememberUpdatedState(onQueryChange)
-
-    // Keep the field in sync with initial/current query
-    LaunchedEffect(initialQuery) {
-        val text = searchState.text.toString()
-        if (text != initialQuery) {
-            searchState.edit { replace(0, length, initialQuery) }
-        }
-    }
-
-    // Persist live edits so session restore reopens with the last typed text
-    LaunchedEffect(Unit) {
-        snapshotFlow { searchState.text.toString() }.distinctUntilChanged().collect { q -> currentOnQueryChange(q) }
-    }
-
-    // A pill-shaped field, as on Google
-    val baseStyle = JewelTheme.textFieldStyle
-    val pillStyle =
-        remember(baseStyle) {
-            TextFieldStyle(
-                colors = baseStyle.colors,
-                metrics =
-                    TextFieldMetrics(
-                        borderWidth = baseStyle.metrics.borderWidth,
-                        contentPadding = PaddingValues(horizontal = 14.dp),
-                        cornerSize = CornerSize(50),
-                        minSize = baseStyle.metrics.minSize,
-                    ),
-                iconButtonStyle = baseStyle.iconButtonStyle,
-            )
-        }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Query field
-        TextField(
-            state = searchState,
-            style = pillStyle,
-            modifier =
-                Modifier.weight(1f).height(40.dp).focusRequester(fieldFocus).onPreviewKeyEvent { ev ->
-                    if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) &&
-                        ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp
-                    ) {
-                        val q = searchState.text.toString()
-                        onSubmit(q)
-                        true
-                    } else {
-                        false
-                    }
-                },
-            placeholder = { Text(stringResource(Res.string.search_placeholder)) },
-            trailingIcon = {
-                if (searchState.text.isNotEmpty()) {
-                    Icon(
-                        AllIconsKeys.Actions.Close,
-                        stringResource(Res.string.search_clear),
-                        Modifier
-                            .clickable {
-                                searchState.clearText()
-                                fieldFocus.requestFocus()
-                            }.pointerHoverIcon(PointerIcon.Hand),
-                    )
-                }
-            },
-            leadingIcon = {
-                IconButton(modifier = Modifier.pointerHoverIcon(PointerIcon.Hand), onClick = {
-                    val q = searchState.text.toString()
-                    onSubmit(q)
-                }) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Find,
-                        contentDescription = stringResource(Res.string.search_icon_description),
-                    )
-                }
-            },
-            textStyle =
-                androidx.compose.ui.text
-                    .TextStyle(fontSize = 15.sp),
-        )
-    }
-}
-
 /**
  * The text of a search tab: the results, or the book opened from them. Its facet panes (category
  * tree, contents) and the book's panes are dock satellites of the window (see `ReaderPanes`).
@@ -219,6 +121,9 @@ fun SearchResultInBookShellMvi(
     selectedCategoryIds: Set<Long>,
     // The book or author the query names, beside the results
     entity: SearchEntity?,
+    // The home page's bar state and callbacks, for the same bar here
+    homeSearchUi: SearchHomeUiState,
+    homeSearchCallbacks: HomeSearchCallbacks,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -254,6 +159,8 @@ fun SearchResultInBookShellMvi(
                 categories = categories,
                 selectedCategoryIds = selectedCategoryIds,
                 entity = entity,
+                homeSearchUi = homeSearchUi,
+                homeSearchCallbacks = homeSearchCallbacks,
                 actions = actions,
                 tabId = tabId,
             )
@@ -271,6 +178,8 @@ private fun SearchResultContentMvi(
     categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
     selectedCategoryIds: Set<Long>,
     entity: SearchEntity?,
+    homeSearchUi: SearchHomeUiState,
+    homeSearchCallbacks: HomeSearchCallbacks,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -410,11 +319,12 @@ private fun SearchResultContentMvi(
                             .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    // Top persistent search toolbar
-                    SearchToolbar(
-                        initialQuery = state.query,
-                        onSubmit = actions.onSubmit,
-                        onQueryChange = actions.onQueryChange,
+                    // The home page's smart bar: references, books and authors open; a text search runs here
+                    UnifiedSearchBar(
+                        searchUi = homeSearchUi,
+                        searchCallbacks = homeSearchCallbacks,
+                        initialText = state.query,
+                        autoFocus = false,
                     )
 
                     if (categories.size > 1) {

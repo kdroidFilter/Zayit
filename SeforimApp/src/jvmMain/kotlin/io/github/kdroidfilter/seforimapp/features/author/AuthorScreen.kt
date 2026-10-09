@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -245,35 +246,37 @@ private fun TextPane(
         .collectAsState()
     val scroll = rememberScrollState()
     VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 28.dp)) {
-            Text(
-                AuthorNames.display(page.details.name).hebrewQuotes(),
-                fontSize = (textSize * NAME_SCALE).sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
-                color = JewelTheme.globalColors.text.normal,
-            )
-            val facts = listOfNotNull(page.details.era?.let { ERAS[it] }, years(page.details))
-            if (showFacts && facts.isNotEmpty()) {
-                Spacer(Modifier.height(6.dp))
-                Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
-            }
-            if (page.details.bio != null) {
-                Spacer(Modifier.height(12.dp))
-                InlineInformationBanner(text = stringResource(Res.string.author_bio_ai_notice))
-            }
-            Spacer(Modifier.height(20.dp))
-            page.details.bio?.summary?.let {
-                ProseMarkdown(
-                    plainPersonLinks(it),
-                    onLink,
-                    fontSize = (textSize + 2).sp,
-                    lineHeight = ((textSize + 2) * LINE_SPACING).sp,
+        SelectionContainer {
+            Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 28.dp)) {
+                Text(
+                    AuthorNames.display(page.details.name).hebrewQuotes(),
+                    fontSize = (textSize * NAME_SCALE).sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
+                    color = JewelTheme.globalColors.text.normal,
                 )
-            }
-            if (page.bio.sections.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                ProseMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
+                val facts = listOfNotNull(page.details.era?.let { ERAS[it] }, years(page.details))
+                if (showFacts && facts.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
+                }
+                if (page.details.bio != null) {
+                    Spacer(Modifier.height(12.dp))
+                    InlineInformationBanner(text = stringResource(Res.string.author_bio_ai_notice))
+                }
+                Spacer(Modifier.height(20.dp))
+                page.details.bio?.summary?.let {
+                    ProseMarkdown(
+                        plainPersonLinks(it),
+                        onLink,
+                        fontSize = (textSize + 2).sp,
+                        lineHeight = ((textSize + 2) * LINE_SPACING).sp,
+                    )
+                }
+                if (page.bio.sections.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    ProseMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
+                }
             }
         }
     }
@@ -306,21 +309,23 @@ private fun InfoPane(
     val details = page.details
     val scroll = rememberScrollState()
     VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
-        Column(
-            Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 14.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            details.era?.let { ERAS[it] }?.let { InfoLine(stringResource(Res.string.author_info_era), it) }
-            years(details)?.let { InfoLine(stringResource(Res.string.author_info_years), it) }
-            if (details.aliases.isNotEmpty()) {
-                InfoLine(stringResource(Res.string.author_info_aliases), details.aliases.joinToString(" · ") { it.withoutNikud() })
-            }
-            InfoLine(stringResource(Res.string.author_books), details.books.size.toString())
-            if (page.bio.sources.isNotBlank()) {
-                Sources(page.bio.sources, onLink)
-            }
-            if (details.bio != null) {
-                Text(stringResource(Res.string.author_bio_license), fontSize = 11.sp, color = JewelTheme.globalColors.text.disabled)
+        SelectionContainer {
+            Column(
+                Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                details.era?.let { ERAS[it] }?.let { InfoLine(stringResource(Res.string.author_info_era), it) }
+                years(details)?.let { InfoLine(stringResource(Res.string.author_info_years), it) }
+                if (details.aliases.isNotEmpty()) {
+                    InfoLine(stringResource(Res.string.author_info_aliases), details.aliases.joinToString(" · ") { it.withoutNikud() })
+                }
+                InfoLine(stringResource(Res.string.author_books), details.books.size.toString())
+                if (page.bio.sources.isNotBlank()) {
+                    Sources(page.bio.sources, onLink)
+                }
+                if (details.bio != null) {
+                    Text(stringResource(Res.string.author_bio_license), fontSize = 11.sp, color = JewelTheme.globalColors.text.disabled)
+                }
             }
         }
     }

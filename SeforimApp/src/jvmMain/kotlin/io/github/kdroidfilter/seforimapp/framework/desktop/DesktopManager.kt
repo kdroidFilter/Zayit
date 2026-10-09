@@ -68,7 +68,8 @@ class DesktopManager(
     private val tabPersistedStateStore: TabPersistedStateStore,
     private val thumbnails: TabThumbnailStore,
     titleUpdateManager: TabTitleUpdateManager,
-    private val searchHomeViewModelFactory: () -> SearchHomeViewModel,
+    // [observeProfile]: the home page's greeting needs it, a results tab's bar doesn't
+    private val searchHomeViewModelFactory: (observeProfile: Boolean) -> SearchHomeViewModel,
     defaultDesktopName: String,
     // The saved session, restored before the first frame (an app composing no window is closed).
     bootState: DesktopsState? = null,
@@ -150,7 +151,7 @@ class DesktopManager(
     fun isTabOpen(tabId: String): Boolean = sessionOf(tabId) != null
 
     /** A search bar's state of its own, for a tab that has its bar (the search results'). */
-    fun newSearchBarViewModel(): SearchHomeViewModel = searchHomeViewModelFactory()
+    fun newSearchBarViewModel(): SearchHomeViewModel = searchHomeViewModelFactory(false)
 
     /**
      * The [TabsViewModel] of the window currently hosting [tabId]. Per-tab ViewModels navigate
@@ -719,7 +720,7 @@ class DesktopManager(
                 id = UUID.randomUUID().toString(),
                 session = session,
                 groupId = groupId,
-                searchHomeViewModel = searchHomeViewModelFactory(),
+                searchHomeViewModel = searchHomeViewModelFactory(true),
                 windowState = state,
             )
         _windows.update { it.adding(w) }

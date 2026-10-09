@@ -1,15 +1,11 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-
-private const val PARALLEL_FILTER_THRESHOLD = 2_000
 
 /**
  * Index structure for fast filtering of search results.
@@ -180,66 +176,6 @@ class ResultsIndexingUseCase {
             }
             mergeRange(0, arrays.size)
         }
-    }
-
-    /**
-     * Filters results by book IDs using parallel processing for large datasets.
-     *
-     * @param results The search results to filter
-     * @param allowedBookIds Set of allowed book IDs
-     * @return Filtered results containing only matching books
-     */
-    suspend fun parallelFilterByBook(
-        results: List<SearchResult>,
-        allowedBookIds: Set<Long>,
-    ): List<SearchResult> {
-        val total = results.size
-        val cores = Runtime.getRuntime().availableProcessors().coerceAtLeast(1)
-
-        if (total < PARALLEL_FILTER_THRESHOLD || cores == 1) {
-            return fastFilterByBookSequential(results, allowedBookIds)
-        }
-
-        val chunk = (total + cores - 1) / cores
-        return coroutineScope {
-            val tasks = ArrayList<Deferred<List<SearchResult>>>(cores)
-            var start = 0
-            while (start < total) {
-                val s = start
-                val e = minOf(total, start + chunk)
-                tasks +=
-                    async {
-                        val sub = ArrayList<SearchResult>(e - s)
-                        var i = s
-                        while (i < e) {
-                            val v = results[i]
-                            if (v.bookId in allowedBookIds) sub.add(v)
-                            i++
-                        }
-                        sub
-                    }
-                start = e
-            }
-            tasks.awaitAll().flatten()
-        }
-    }
-
-    /**
-     * Filters results by book IDs sequentially.
-     *
-     * @param results The search results to filter
-     * @param allowedBookIds Set of allowed book IDs
-     * @return Filtered results containing only matching books
-     */
-    fun fastFilterByBookSequential(
-        results: List<SearchResult>,
-        allowedBookIds: Set<Long>,
-    ): List<SearchResult> {
-        val out = ArrayList<SearchResult>(results.size)
-        for (r in results) {
-            if (r.bookId in allowedBookIds) out.add(r)
-        }
-        return out
     }
 
     /**

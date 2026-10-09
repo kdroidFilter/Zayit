@@ -50,8 +50,8 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AccentMarkdown
 import io.github.kdroidfilter.seforimapp.core.presentation.components.EmptyState
-import io.github.kdroidfilter.seforimapp.core.presentation.components.ProseMarkdown
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
@@ -266,7 +266,7 @@ private fun TextPane(
                 }
                 Spacer(Modifier.height(20.dp))
                 page.details.bio?.summary?.let {
-                    ProseMarkdown(
+                    AccentMarkdown(
                         plainPersonLinks(it),
                         onLink,
                         fontSize = (textSize + 2).sp,
@@ -275,7 +275,7 @@ private fun TextPane(
                 }
                 if (page.bio.sections.isNotBlank()) {
                     Spacer(Modifier.height(8.dp))
-                    ProseMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
+                    AccentMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
                 }
             }
         }
@@ -340,7 +340,7 @@ private fun Sources(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Disclosure(stringResource(Res.string.author_sources), expanded) { expanded = !expanded }
         if (expanded) {
-            ProseMarkdown(markdown, onLink, fontSize = 12.sp, lineHeight = 20.sp, color = JewelTheme.globalColors.text.info)
+            AccentMarkdown(markdown, onLink, fontSize = 12.sp, lineHeight = 20.sp, color = JewelTheme.globalColors.text.info)
         }
     }
 }

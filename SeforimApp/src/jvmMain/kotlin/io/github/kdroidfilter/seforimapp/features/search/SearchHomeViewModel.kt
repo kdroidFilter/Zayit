@@ -578,6 +578,20 @@ class SearchHomeViewModel(
             )
     }
 
+    /** Where the bar searches: its picked TOC entry, book or category, else everywhere. */
+    fun barScope(): SearchScope {
+        val selected = _uiState.value
+        return when {
+            // An alternative-TOC entry has no main-TOC scope: search its whole book
+            selected.selectedScopeToc != null && !selected.selectedScopeToc.isAltTocEntry() ->
+                SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
+            selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
+            selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
+            selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
+            else -> SearchScope.Global
+        }
+    }
+
     suspend fun submitSearch(
         query: String,
         currentTabId: String,
@@ -598,16 +612,7 @@ class SearchHomeViewModel(
 
         // Persist the selected scope as both the fetch scope and the view filter
         val selected = _uiState.value
-        val scope =
-            when {
-                // An alternative-TOC entry has no main-TOC scope: search its whole book
-                selected.selectedScopeToc != null && !selected.selectedScopeToc.isAltTocEntry() ->
-                    SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
-                selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
-                selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
-                selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
-                else -> SearchScope.Global
-            }
+        val scope = barScope()
 
         persistedStore.update(currentTabId) { current ->
             val nextSearch =

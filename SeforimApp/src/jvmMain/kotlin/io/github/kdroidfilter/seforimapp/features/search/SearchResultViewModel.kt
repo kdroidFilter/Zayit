@@ -1715,21 +1715,23 @@ class SearchResultViewModel(
         executeFilteredSearch()
     }
 
-    /** Searches [query] in one book only (picked in the bar): a single scoped search. */
-    fun searchInBook(
+    /**
+     * A search from the bar: [scope] is the bar's (its picked book or category, else everywhere) and
+     * replaces this tab's, with its filters; the persisted scope stays the one truth of the search.
+     */
+    fun searchFromBar(
         query: String,
-        bookId: Long,
+        scope: SearchScope,
     ) {
         dropBeforeBook()
         setQuery(query)
-        newSearchGeneration()
         _selectedCategoryIds.value = emptySet()
+        _selectedBookIds.value = emptySet()
         _selectedTocIds.value = emptySet()
-        _selectedBookIds.value = setOf(bookId)
         updatePersistedSearch {
-            it.copy(selectedCategoryIds = emptySet(), selectedTocIds = emptySet(), selectedBookIds = setOf(bookId))
+            it.withScope(scope).copy(selectedCategoryIds = emptySet(), selectedBookIds = emptySet(), selectedTocIds = emptySet())
         }
-        executeFilteredSearch()
+        executeSearch()
     }
 
     // A new search drops the kept results

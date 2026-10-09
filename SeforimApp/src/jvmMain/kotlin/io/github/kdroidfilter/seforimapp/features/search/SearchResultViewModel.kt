@@ -56,6 +56,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.util.UUID
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayDeque
 
 private const val LAZY_PAGE_SIZE = 25
@@ -540,14 +541,22 @@ class SearchResultViewModel(
     private val _searchTree = MutableStateFlow<ImmutableList<SearchTreeCategory>>(persistentListOf())
     val searchTreeFlow: StateFlow<ImmutableList<SearchTreeCategory>> = _searchTree.asStateFlow()
 
+    // Bumped by each new search (not by its filters), with the tree cleared: the tabs restart from it
+    private val searchGeneration = MutableStateFlow(0)
+
+    private fun newSearchGeneration() {
+        _searchTree.value = persistentListOf()
+        searchGeneration.value++
+    }
+
     /**
-     * The category tabs: the widest tree seen for the executed query (a category or a book filter
+     * The category tabs: the widest tree seen for the current search (a category or a book filter
      * narrows the tree to what it keeps, the tabs stay).
      */
     val tabCategoriesFlow: StateFlow<ImmutableList<SearchTreeCategory>> =
-        combine(uiState.map { it.executedQuery to it.globalExtended }.distinctUntilChanged(), searchTreeFlow) { key, tree -> key to tree }
-            .scan(null as Pair<Pair<String, Boolean>, ImmutableList<SearchTreeCategory>>?) { widest, (key, tree) ->
-                if (widest == null || widest.first != key || tree.size >= widest.second.size) key to tree else widest
+        combine(searchGeneration, searchTreeFlow) { generation, tree -> generation to tree }
+            .scan(null as Pair<Int, ImmutableList<SearchTreeCategory>>?) { widest, (generation, tree) ->
+                if (widest == null || widest.first != generation || tree.size >= widest.second.size) generation to tree else widest
             }.map { it?.second ?: persistentListOf() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), persistentListOf())
 
@@ -566,6 +575,14 @@ class SearchResultViewModel(
         val book: SearchEntity.BookEntity?,
     )
 
+    // A book's details, once per book: browsing its results shows the same ones
+    private val bookDetailsCache = ConcurrentHashMap<Long, SearchEntity.BookEntity>()
+
+    private suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? =
+        bookDetailsCache[bookId] ?: runSuspendCatching { entityFinder.describeBook(bookId) }
+            .getOrNull()
+            ?.also { bookDetailsCache[bookId] = it }
+
     val previewFlow: StateFlow<PassagePreview?> =
         combine(visibleResultsFlow, selectedLineId) { results, id -> results.firstOrNull { it.lineId == id } ?: results.firstOrNull() }
             .distinctUntilChangedBy { it?.lineId }
@@ -574,7 +591,7 @@ class SearchResultViewModel(
                     PassagePreview(
                         hit = it,
                         lines = runSuspendCatching { passageContext(it) }.getOrDefault(emptyList()),
-                        book = runSuspendCatching { entityFinder.describeBook(it.bookId) }.getOrNull(),
+                        book = bookDetails(it.bookId),
                     )
                 }
             }.flowOn(Dispatchers.IO)
@@ -951,6 +968,7 @@ class SearchResultViewModel(
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
         dropBeforeBook()
+        newSearchGeneration()
         // Record the executed search into the visit history (deduplicated by query and scope)
         val persisted = persistedSearchState()
         val scope = persisted.scope
@@ -1655,9 +1673,16 @@ class SearchResultViewModel(
     fun showMoreFromBook(bookId: Long) {
         viewModelScope.launch {
             lazyLoadMutex.withLock {
-                beforeBook = BeforeBook(_uiState.value, currentSession, _categoryAgg.value, _searchTree.value)
-                // Kept open for the way back: the book's search must not close it
-                currentSession = null
+                val ui = _uiState.value
+                // A search still streaming is cancelled by the book's: nothing whole to come back to then
+                // (the way back searches again); a page being loaded resumes from the kept session
+                beforeBook =
+                    if (ui.isLoading) {
+                        null
+                    } else {
+                        BeforeBook(ui.copy(isLoadingMore = false), currentSession, _categoryAgg.value, _searchTree.value)
+                            .also { currentSession = null } // kept open for the way back
+                    }
             }
             setBookChecked(bookId, true)
         }
@@ -1665,7 +1690,7 @@ class SearchResultViewModel(
 
     /** Back to the full results as they were (results, pages, tree): no new search. */
     fun backFromBook() {
-        val saved = beforeBook ?: return _selectedBookIds.value.forEach { setBookChecked(it, false) }
+        val saved = beforeBook ?: return clearBookFilter()
         beforeBook = null
         viewModelScope.launch {
             currentJob?.cancel()
@@ -1679,6 +1704,31 @@ class SearchResultViewModel(
             _searchTree.value = saved.tree
             _uiState.value = saved.ui
         }
+    }
+
+    // Without kept results (a restored tab, a search cut short): drop the book filter, one search
+    private fun clearBookFilter() {
+        _selectedBookIds.value = emptySet()
+        updatePersistedSearch { it.copy(selectedBookIds = emptySet()) }
+        maybeClearFiltersIfNoneChecked()
+        executeFilteredSearch()
+    }
+
+    /** Searches [query] in one book only (picked in the bar): a single scoped search. */
+    fun searchInBook(
+        query: String,
+        bookId: Long,
+    ) {
+        dropBeforeBook()
+        setQuery(query)
+        newSearchGeneration()
+        _selectedCategoryIds.value = emptySet()
+        _selectedTocIds.value = emptySet()
+        _selectedBookIds.value = setOf(bookId)
+        updatePersistedSearch {
+            it.copy(selectedCategoryIds = emptySet(), selectedTocIds = emptySet(), selectedBookIds = setOf(bookId))
+        }
+        executeFilteredSearch()
     }
 
     // A new search drops the kept results

@@ -365,8 +365,8 @@ private fun SearchTabContent(
                     if (extended) viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(true))
                 },
                 onSubmitTextSearch = { query ->
-                    actions.onSubmit(query)
-                    homeSearchUi.selectedScopeBook?.let { actions.onBookCheckedChange(it.id, true) }
+                    val book = homeSearchUi.selectedScopeBook
+                    if (book != null) viewModel.searchInBook(query, book.id) else actions.onSubmit(query)
                 },
             )
         }

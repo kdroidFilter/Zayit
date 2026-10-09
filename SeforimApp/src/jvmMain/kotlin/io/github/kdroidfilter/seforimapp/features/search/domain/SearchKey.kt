@@ -6,7 +6,9 @@ private val SPACES = Regex("\\s+")
 
 /** A name as typed, to compare: without nikud, quotes and extra spaces (`שו"ע` = `שוע`). */
 internal fun String.searchKey(): String =
-    replace(NIKUD, "")
+    // The maqaf joins words (שולחן־ערוך): a space, before the nikud range (which holds it) goes
+    replace('\u05BE', ' ')
+        .replace(NIKUD, "")
         .replace(QUOTES, "")
         .replace(SPACES, " ")
         .trim()

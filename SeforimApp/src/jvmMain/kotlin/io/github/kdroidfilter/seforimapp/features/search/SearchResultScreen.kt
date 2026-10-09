@@ -212,8 +212,11 @@ private fun SearchResultContentMvi(
     val appSettings = LocalAppGraph.current.appSettings
     val listState = rememberLazyListState()
     // A flat list by relevance, as on Google: at most two passages of a book in a row
+    // Narrowed to a book ("more from it"), or searched in one from the start (home's book / TOC scope):
+    // all its passages show
     val inBook = bookFilterIds.isNotEmpty()
-    val items = remember(visibleResults, bookCounts, inBook) { flattenResults(visibleResults, bookCounts, inBook) }
+    val oneBook = inBook || state.scopeBook != null || state.scopeTocId != null
+    val items = remember(visibleResults, bookCounts, oneBook) { flattenResults(visibleResults, bookCounts, oneBook) }
     val lineToItemIndex =
         remember(items) {
             buildMap {

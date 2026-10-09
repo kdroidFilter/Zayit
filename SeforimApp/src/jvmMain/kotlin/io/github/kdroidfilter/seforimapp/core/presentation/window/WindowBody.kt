@@ -144,8 +144,8 @@ private fun ReaderBar(
     val viewModel = tabBookViewModel(session.ownerOf(destination.tabId), destination)
     val uiState by viewModel.uiState.collectAsState()
     val diacritics by viewModel.diacritics.collectAsState()
-    // A search's results take the whole tab, as History / Favorites; its bars come with a book opened in it
-    if (destination is TabsDestination.Search && !isBookTextShown(uiState)) return
+    // A search's results have no navigation bar (their tabs filter); the end bar keeps the zoom for the preview
+    if (start && destination is TabsDestination.Search && !isBookTextShown(uiState)) return
     Box(Modifier.fillMaxHeight()) {
         if (start) {
             StartVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, showBookTree = destination !is TabsDestination.Search)

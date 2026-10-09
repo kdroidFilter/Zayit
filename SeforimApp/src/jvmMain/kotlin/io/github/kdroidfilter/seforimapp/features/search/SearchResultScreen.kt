@@ -6,7 +6,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -34,7 +34,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -81,7 +80,6 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
-import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
@@ -593,7 +591,8 @@ private fun SearchResultContentMvi(
                                 pieces = breadcrumbs[item.hit.lineId],
                                 query = state.executedQuery,
                                 bookFontCode = bookFontCode,
-                                textSize = PREVIEW_TEXT_SIZE,
+                                // The passage follows the zoom, as the books
+                                textSize = mainTextSize,
                                 loadContext = loadContext,
                                 loadBook = loadBook,
                                 details = { book ->
@@ -818,6 +817,7 @@ private fun ResultView(
  * found line marked by a bar, between the lines around it, faded; in the books' font and size, at a
  * reading width. A button opens the book there.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PassagePreview(
     hit: SearchResult,
@@ -870,12 +870,12 @@ private fun PassagePreview(
                     Text(hit.bookTitle, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
                     if (place != null) Text(place, fontSize = 14.sp, color = readingSecondary(), maxLines = 1)
                 }
-                OutlinedButton(onClick = onOpen) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Image(rememberVectorPainter(bookOpenTabs(ink)), contentDescription = null, modifier = Modifier.size(14.dp))
-                        Text(stringResource(Res.string.search_open_in_book))
-                    }
-                }
+                IconActionButton(
+                    key = AllIconsKeys.Actions.OpenNewTab,
+                    contentDescription = stringResource(Res.string.search_open_in_book),
+                    onClick = onOpen,
+                    tooltip = { Text(stringResource(Res.string.search_open_in_book)) },
+                )
             }
         }
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
@@ -948,7 +948,6 @@ private fun PassagePreview(
 private val READING_WIDTH = 900.dp
 private val PREVIEW_DETAILS_MIN_WIDTH = 1100.dp
 private val PREVIEW_DETAILS_WIDTH = 300.dp
-private const val PREVIEW_TEXT_SIZE = 17f
 private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)
 private const val FOUND_LINE_MARGIN = 40
 

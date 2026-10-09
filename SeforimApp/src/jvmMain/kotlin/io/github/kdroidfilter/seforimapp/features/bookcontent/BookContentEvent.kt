@@ -154,6 +154,9 @@ sealed interface BookContentEvent {
 
     data object ToggleSources : BookContentEvent
 
+    /** Shows or hides the book-details pane (in every tab: one setting). */
+    data object ToggleBookDetails : BookContentEvent
+
     data object CycleDiacritics : BookContentEvent
 
     data class ContentScrolled(

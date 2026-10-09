@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.CategoryNavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.ExecuteSearchUseCase
@@ -56,7 +57,6 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayDeque
 
 private const val LAZY_PAGE_SIZE = 25
@@ -487,7 +487,8 @@ class SearchResultViewModel(
 
     private val _tocTree = MutableStateFlow<TocTree?>(null)
     val tocTreeFlow: StateFlow<TocTree?> = _tocTree.asStateFlow()
-    private val entityFinder = SearchEntityFinder(lookup, repository)
+    private val bookDetailsLoader = BookDetailsLoader(repository)
+    private val entityFinder = SearchEntityFinder(lookup, repository, bookDetailsLoader)
 
     /** The book or author the executed query names, for the panel beside the results; null mostly. */
     val entityFlow: StateFlow<SearchEntity?> =
@@ -577,13 +578,8 @@ class SearchResultViewModel(
         val book: SearchEntity.BookEntity?,
     )
 
-    // A book's details, once per book: browsing its results shows the same ones
-    private val bookDetailsCache = ConcurrentHashMap<Long, SearchEntity.BookEntity>()
-
     private suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? =
-        bookDetailsCache[bookId] ?: runSuspendCatching { entityFinder.describeBook(bookId) }
-            .getOrNull()
-            ?.also { bookDetailsCache[bookId] = it }
+        runSuspendCatching { bookDetailsLoader.load(bookId) }.getOrNull()
 
     val previewFlow: StateFlow<PassagePreview?> =
         combine(visibleResultsFlow, selectedLineId) { results, id -> results.firstOrNull { it.lineId == id } ?: results.firstOrNull() }

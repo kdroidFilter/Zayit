@@ -38,6 +38,7 @@ import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
@@ -493,6 +494,10 @@ class SearchResultViewModel(
             .mapLatest { q -> if (q.isEmpty()) null else runSuspendCatching { entityFinder.find(q) }.getOrNull() }
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** The lines around a result, for its preview beside the list. */
+    suspend fun passageContext(hit: SearchResult): List<Line> =
+        repository.getLines(hit.bookId, (hit.lineIndex - CONTEXT_LINES).coerceAtLeast(0), hit.lineIndex + CONTEXT_LINES)
 
     /** Opens a book from the panel, in a new tab. */
     fun openBook(bookId: Long) {
@@ -1972,3 +1977,5 @@ class SearchResultViewModel(
         return searchTocUseCase.ensureTocLineIndex(bookId, existingTree)
     }
 }
+
+private const val CONTEXT_LINES = 4

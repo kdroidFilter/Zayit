@@ -10,6 +10,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -18,17 +20,24 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
@@ -36,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
@@ -67,6 +77,7 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -128,6 +139,8 @@ fun SearchResultInBookShellMvi(
     // The home page's bar state and callbacks, for the same bar here
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
+    // The lines around a result, for its preview
+    loadContext: suspend (SearchResult) -> List<Line>,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -163,6 +176,7 @@ fun SearchResultInBookShellMvi(
                 entity = entity,
                 homeSearchUi = homeSearchUi,
                 homeSearchCallbacks = homeSearchCallbacks,
+                loadContext = loadContext,
                 actions = actions,
                 tabId = tabId,
             )
@@ -182,6 +196,7 @@ private fun SearchResultContentMvi(
     entity: SearchEntity?,
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
+    loadContext: suspend (SearchResult) -> List<Line>,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -302,25 +317,54 @@ private fun SearchResultContentMvi(
 
     val keyHandler = remember { { _: KeyEvent -> false } }
 
+    // The selected result, shown beside the list on wide windows; the first one until one is picked
+    var selectedLineId by remember(items.firstOrNull()?.hit?.lineId) { mutableStateOf<Long?>(null) }
+    val selected = items.firstOrNull { it.hit.lineId == selectedLineId } ?: items.firstOrNull()
+    val listFocus = remember { FocusRequester() }
+    val windowInfo = LocalWindowInfo.current
+
+    // In a new tab by default; [inPlace] (Ctrl, or the preview's button) opens it in this tab
+    fun openResult(
+        result: SearchResult,
+        inPlace: Boolean,
+    ) {
+        actions.onOpenResult(result, !inPlace)
+    }
+
+    // Up and down move the selection through the list, Enter opens it
+    fun onListKey(event: KeyEvent): Boolean {
+        if (event.type != KeyEventType.KeyDown || items.isEmpty()) return false
+        val index = items.indexOfFirst { it.hit.lineId == selected?.hit?.lineId }.coerceAtLeast(0)
+        val next =
+            when (event.key) {
+                Key.DirectionDown -> (index + 1).coerceAtMost(items.lastIndex)
+                Key.DirectionUp -> (index - 1).coerceAtLeast(0)
+                Key.Enter, Key.NumPadEnter -> {
+                    selected?.let { openResult(it.hit, false) }
+                    return true
+                }
+                else -> return false
+            }
+        selectedLineId = items[next].hit.lineId
+        scope.launch { listState.animateScrollToItem(next) }
+        return true
+    }
+
     // The page follows the app's zoom, as the books do
     CompositionLocalProvider(LocalResultZoom provides mainTextSize / AppSettings.DEFAULT_TEXT_SIZE) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
-            val showPanel = entity != null && maxWidth >= PANEL_MIN_WIDTH
-            // Wide screens get wider columns: a fixed width would leave most of them empty
-            val columnWidth = (maxWidth * 0.45f).coerceIn(COLUMN_MIN_WIDTH, COLUMN_MAX_WIDTH)
-            val panelWidth = (maxWidth * 0.22f).coerceIn(PANEL_NARROW_WIDTH, PANEL_MAX_WIDTH)
-            // One centered reading column for the bar, the status and the results, as on Google,
-            // with the panel of the book or author the query names beside it
-            Row(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight()) {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxHeight()
-                            .widthIn(max = columnWidth)
-                            .weight(1f, fill = false)
-                            .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
+            // Wide windows read the selected passage beside the list, as a mail client
+            val twoPanes = maxWidth >= TWO_PANES_MIN_WIDTH
+            val listWidth = (maxWidth * 0.32f).coerceIn(LIST_MIN_WIDTH, LIST_MAX_WIDTH)
+            Column(
+                modifier =
+                    Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxHeight()
+                        .widthIn(max = PAGE_MAX_WIDTH)
+                        .padding(16.dp),
+            ) {
+                Column(Modifier.widthIn(max = HEADER_MAX_WIDTH)) {
                     // The home page's smart bar: references, books and authors open; a text search runs here
                     // The logo beside the bar, as Google's
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -419,15 +463,17 @@ private fun SearchResultContentMvi(
                     }
 
                     Spacer(Modifier.height(8.dp))
-
-                    // Inline progress above replaces the old loading row/spinner
-
-                    // Results list
+                }
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
                     // One card holding the results, as the history page's
                     Box(
                         modifier =
-                            Modifier
-                                .fillMaxSize()
+                            listModifier
+                                .fillMaxHeight()
+                                .focusRequester(listFocus)
+                                .onPreviewKeyEvent(::onListKey)
+                                .focusable()
                                 .clip(RoundedCornerShape(10.dp))
                                 .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
                                 .background(JewelTheme.globalColors.panelBackground),
@@ -450,18 +496,24 @@ private fun SearchResultContentMvi(
                                     verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
-                                        val windowInfo = LocalWindowInfo.current
                                         ResultView(
                                             item = item,
+                                            selected = twoPanes && item.hit.lineId == selected?.hit?.lineId,
                                             findQuery = activeFindQuery,
                                             bookFontCode = bookFontCode,
                                             breadcrumbs = breadcrumbs,
                                             onRequestBreadcrumb = actions.onRequestBreadcrumb,
-                                            onOpenResult = { result ->
-                                                val mods = windowInfo.keyboardModifiers
-                                                val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                                actions.onOpenResult(result, openInNewTab)
+                                            // Wide: a click shows the passage beside the list, a double click opens it; narrow: opens it
+                                            onClick = { result ->
+                                                if (twoPanes) {
+                                                    selectedLineId = result.lineId
+                                                    listFocus.requestFocus()
+                                                } else {
+                                                    val mods = windowInfo.keyboardModifiers
+                                                    openResult(result, mods.isCtrlPressed || mods.isMetaPressed)
+                                                }
                                             },
+                                            onOpen = { result -> openResult(result, false) },
                                             onMoreInBook = { actions.onBookCheckedChange(item.hit.bookId, true) },
                                         )
                                     }
@@ -504,15 +556,31 @@ private fun SearchResultContentMvi(
                             }
                         }
                     }
-                }
-                if (showPanel && entity != null) {
-                    EntityPanel(
-                        entity = entity,
-                        onOpenBook = actions.onOpenBook,
-                        onOpenBookAt = actions.onOpenBookAt,
-                        onOpenAuthor = actions.onOpenAuthor,
-                        modifier = Modifier.padding(top = 112.dp, end = 16.dp).width(panelWidth),
-                    )
+                    if (twoPanes) {
+                        Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            if (entity != null) {
+                                EntityPanel(
+                                    entity = entity,
+                                    onOpenBook = actions.onOpenBook,
+                                    onOpenBookAt = actions.onOpenBookAt,
+                                    onOpenAuthor = actions.onOpenAuthor,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                            selected?.let { item ->
+                                PassagePreview(
+                                    hit = item.hit,
+                                    pieces = breadcrumbs[item.hit.lineId],
+                                    query = state.executedQuery,
+                                    bookFontCode = bookFontCode,
+                                    textSize = mainTextSize,
+                                    loadContext = loadContext,
+                                    onOpen = { openResult(item.hit, false) },
+                                    modifier = Modifier.weight(1f),
+                                )
+                            }
+                        }
+                    }
                 }
             }
 
@@ -631,11 +699,13 @@ private fun Float.zoomed(): TextUnit = (this * LocalResultZoom.current).sp
 @Composable
 private fun ResultView(
     item: ResultItem,
+    selected: Boolean,
     findQuery: String?,
     bookFontCode: String,
     breadcrumbs: ImmutableMap<Long, List<String>>,
     onRequestBreadcrumb: (SearchResult) -> Unit,
-    onOpenResult: (SearchResult) -> Unit,
+    onClick: (SearchResult) -> Unit,
+    onOpen: (SearchResult) -> Unit,
     onMoreInBook: () -> Unit,
 ) {
     val hit = item.hit
@@ -656,10 +726,19 @@ private fun ResultView(
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(6.dp))
-                .background(if (hovered) accent.copy(alpha = 0.06f) else Color.Transparent)
-                .hoverable(hover)
-                .clickable(interactionSource = hover, indication = null) { onOpenResult(hit) }
-                .pointerHoverIcon(PointerIcon.Hand),
+                .background(
+                    when {
+                        selected -> accent.copy(alpha = 0.14f)
+                        hovered -> accent.copy(alpha = 0.06f)
+                        else -> Color.Transparent
+                    },
+                ).hoverable(hover)
+                .combinedClickable(
+                    interactionSource = hover,
+                    indication = null,
+                    onDoubleClick = { onOpen(hit) },
+                    onClick = { onClick(hit) },
+                ).pointerHoverIcon(PointerIcon.Hand),
     ) {
         Row(
             verticalAlignment = Alignment.Top,
@@ -711,6 +790,86 @@ private fun ResultView(
                         .copy(alpha = 0.5f),
                 ),
         )
+    }
+}
+
+/**
+ * The selected result in its book: a few lines before and after it, the found line marked and its
+ * words highlighted, in the books' font and size; a button opens the book there.
+ */
+@Composable
+private fun PassagePreview(
+    hit: SearchResult,
+    pieces: List<String>?,
+    query: String,
+    bookFontCode: String,
+    textSize: Float,
+    loadContext: suspend (SearchResult) -> List<Line>,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val accent = JewelTheme.globalColors.outlines.focused
+    val ink = JewelTheme.globalColors.text.normal
+    val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
+    val currentLoadContext by rememberUpdatedState(loadContext)
+    val lines by produceState<List<Line>?>(null, hit.lineId) { value = currentLoadContext(hit) }
+    val fontFamily = FontCatalog.familyFor(bookFontCode)
+    val words = remember(query) { query.split(Regex("\\s+")).filter { it.length > 1 } }
+    val highlight = accent.copy(alpha = 0.25f)
+    val scroll = rememberScrollState()
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(10.dp))
+                .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(horizontal = 20.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(hit.bookTitle, fontSize = 17f.zoomed(), fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
+            if (place != null) {
+                Text(
+                    "· $place",
+                    fontSize = 13f.zoomed(),
+                    color = readingSecondary(),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            DefaultButton(onClick = onOpen) { Text(stringResource(Res.string.search_open_in_book)) }
+        }
+        if (categories.isNotEmpty()) Text(categories, fontSize = 12f.zoomed(), color = readingSecondary())
+        Divider(Orientation.Horizontal, Modifier.fillMaxWidth().padding(vertical = 10.dp))
+        VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f)) {
+            Column(Modifier.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                lines?.forEach { line ->
+                    val found = line.id == hit.lineId
+                    val text =
+                        remember(line.id, textSize, words, highlight) {
+                            words.fold(
+                                buildAnnotatedFromHtml(line.content, textSize),
+                            ) { acc, word -> highlightAnnotated(acc, word, highlight) }
+                        }
+                    Text(
+                        text = text,
+                        fontFamily = fontFamily,
+                        fontSize = textSize.sp,
+                        lineHeight = (textSize * 1.8f).sp,
+                        color = if (found) ink else readingSecondary(),
+                        textAlign = TextAlign.Justify,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(if (found) accent.copy(alpha = 0.07f) else Color.Transparent)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -848,13 +1007,13 @@ private fun CategoryTab(
 private val LOGO_WIDTH = 96.dp
 private const val LOGO_RATIO = 1556f / 715f
 
-private val COLUMN_MIN_WIDTH = 640.dp
-private val COLUMN_MAX_WIDTH = 860.dp
-private val PANEL_NARROW_WIDTH = 300.dp
-private val PANEL_MAX_WIDTH = 440.dp
+private val PAGE_MAX_WIDTH = 1700.dp
+private val HEADER_MAX_WIDTH = 900.dp
+private val LIST_MIN_WIDTH = 340.dp
+private val LIST_MAX_WIDTH = 520.dp
 
-// Below this the results take the whole width and the panel stays hidden
-private val PANEL_MIN_WIDTH = 1000.dp
+// Below this the list takes the whole width, and a result opens on click
+private val TWO_PANES_MIN_WIDTH = 1000.dp
 
 /** A titled part of the panel, under a thin divider. */
 @Composable

@@ -13,6 +13,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -47,8 +49,10 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -1318,11 +1322,10 @@ private fun SearchBar(
     val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
-    // Suggestions are for the one typing: none until the field was focused once (a restored results
-    // tab), then as before; losing the focus to a click in them must not hide them under the pointer
-    var engaged by remember { mutableStateOf(false) }
-    // Bumped each time the field gets the focus: the suggestions come back after a click outside
-    var focusCount by remember { mutableIntStateOf(0) }
+    // Bumped when the field gets the focus or a click: the suggestions open (again, after a click outside
+    // closed them). None before the first one (a restored results tab); losing the focus to a click in
+    // them doesn't hide them under the pointer
+    var openRequests by remember { mutableIntStateOf(0) }
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
@@ -1382,7 +1385,7 @@ private fun SearchBar(
         showTocEmptyState,
         showBookLoading,
         showTocLoading,
-        focusCount,
+        openRequests,
     ) {
         val shouldOpen =
             when {
@@ -1641,10 +1644,12 @@ private fun SearchBar(
                             else -> false
                         }
                     }.focusRequester(effectiveFocusRequester)
-                    .onFocusChanged {
-                        if (it.isFocused) {
-                            engaged = true
-                            focusCount++
+                    .onFocusChanged { if (it.isFocused) openRequests++ }
+                    // A click in the field (to move the caret) counts as outside the popup: it reopens it
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            openRequests++
                         }
                     },
             enabled = enabled,
@@ -1726,7 +1731,7 @@ private fun SearchBar(
         val a = anchor
         val showOverlay =
             isTabSelected &&
-                engaged &&
+                openRequests > 0 &&
                 popupVisible &&
                 a != null &&
                 (

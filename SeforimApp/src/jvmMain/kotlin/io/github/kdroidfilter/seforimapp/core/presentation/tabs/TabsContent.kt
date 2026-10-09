@@ -445,7 +445,7 @@ fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellAct
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q))
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)
             },
-            onQueryChange = { q -> viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetQuery(q)) },
+            onQueryChange = viewModel::setDraft,
             onGlobalExtendedChange = { extended ->
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(extended))
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.ExecuteSearch)

@@ -187,6 +187,8 @@ data class DesktopsState(
 @Serializable
 data class SearchPersistedState(
     val query: String = "",
+    // What the bar holds, typed but not searched yet (restored in the bar; [query] is what is searched)
+    val draftQuery: String = "",
     val globalExtended: Boolean = false,
     val datasetScope: String = "global",
     val filterCategoryId: Long = 0L,

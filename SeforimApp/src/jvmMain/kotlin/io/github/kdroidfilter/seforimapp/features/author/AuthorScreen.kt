@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,6 +57,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLa
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.ZoomButtons
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.PaneCard
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
@@ -246,7 +246,7 @@ private fun TextPane(
         .collectAsState()
     val scroll = rememberScrollState()
     VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
-        SelectionContainer {
+        SafeSelectionContainer(Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 28.dp)) {
                 Text(
                     AuthorNames.display(page.details.name).hebrewQuotes(),
@@ -309,7 +309,7 @@ private fun InfoPane(
     val details = page.details
     val scroll = rememberScrollState()
     VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
-        SelectionContainer {
+        SafeSelectionContainer(Modifier.fillMaxSize()) {
             Column(
                 Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),

@@ -115,6 +115,8 @@ data class SearchShellActions(
     val onShowOnlyCategory: (Long?) -> Unit = {},
     val onOpenBookAt: (bookId: Long, lineId: Long) -> Unit = { _, _ -> },
     val onSelectResult: (lineId: Long) -> Unit = {},
+    val onMoreFromBook: (bookId: Long) -> Unit = {},
+    val onBackFromBook: () -> Unit = {},
     val onOpenAuthor: (Long) -> Unit = {},
 )
 
@@ -397,7 +399,7 @@ private fun SearchResultContentMvi(
                                 stringResource(Res.string.search_back_to_all, visibleResults.firstOrNull()?.bookTitle.orEmpty()),
                                 JewelTheme.globalColors.outlines.focused,
                                 13.sp,
-                            ) { bookFilterIds.forEach { actions.onBookCheckedChange(it, false) } }
+                            ) { actions.onBackFromBook() }
                             Spacer(Modifier.height(4.dp))
                         }
                         val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
@@ -525,7 +527,7 @@ private fun SearchResultContentMvi(
                                                 }
                                             },
                                             onOpen = { result -> openResult(result, false) },
-                                            onMoreInBook = { actions.onBookCheckedChange(item.hit.bookId, true) },
+                                            onMoreInBook = { actions.onMoreFromBook(item.hit.bookId) },
                                         )
                                     }
                                     // Loading indicator at the end of the list (only for lazy loading)

@@ -602,6 +602,7 @@ private fun SearchResultContentMvi(
                                     )
                                 },
                                 onOpen = { openResult(shown.hit, false) },
+                                onOpenLine = { lineId -> actions.onOpenBookAt(shown.hit.bookId, lineId) },
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -828,6 +829,8 @@ private fun PassagePreview(
     textSize: Float,
     details: @Composable (SearchEntity.BookEntity) -> Unit,
     onOpen: () -> Unit,
+    // A click on a line opens the book there, in a new tab (the found line as the result does)
+    onOpenLine: (lineId: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val hit = preview.hit
@@ -896,11 +899,19 @@ private fun PassagePreview(
                                             highlightAnnotated(acc, word, highlight)
                                         }
                                     }
+                                val lineHover = remember { MutableInteractionSource() }
+                                val lineHovered by lineHover.collectIsHoveredAsState()
                                 Row(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
                                             .height(IntrinsicSize.Min)
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(if (lineHovered) accent.copy(alpha = 0.06f) else Color.Transparent)
+                                            .hoverable(lineHover)
+                                            .clickable(interactionSource = lineHover, indication = null) {
+                                                if (found) onOpen() else onOpenLine(line.id)
+                                            }.pointerHoverIcon(PointerIcon.Hand)
                                             .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
                                 ) {
                                     // The found line: a bar on its side, the text at full strength

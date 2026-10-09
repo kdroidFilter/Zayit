@@ -41,7 +41,9 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -110,7 +112,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.getDrawableResourceBytes
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.rememberResourceEnvironment
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -651,17 +653,20 @@ internal fun LogoImage(modifier: Modifier = Modifier) {
     val accent = JewelTheme.globalColors.outlines.focused
     val logoTint = if (isDark) accent else AccentColor.Gold.forMode(isDark = false)
     val tintAlpha = 0.25f
+    // Mipmapped downscaling (Medium, on Skia): the PNGs are far larger than the logo is ever shown
+    val logo = BitmapPainter(imageResource(Res.drawable.zayit_new_logo), filterQuality = FilterQuality.Medium)
+    val logoText = BitmapPainter(imageResource(Res.drawable.zayit_new_logo_text), filterQuality = FilterQuality.Medium)
 
     Box(modifier) {
         // Base layer: full logo with original colors
         Image(
-            painterResource(Res.drawable.zayit_new_logo),
+            logo,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
         )
         // Subtle tint overlay: SoftLight preserves transparency, tints only colored areas
         Image(
-            painterResource(Res.drawable.zayit_new_logo),
+            logo,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             alpha = tintAlpha,
@@ -669,7 +674,7 @@ internal fun LogoImage(modifier: Modifier = Modifier) {
         )
         // Text overlay: tint color painted through the text alpha mask
         Image(
-            painterResource(Res.drawable.zayit_new_logo_text),
+            logoText,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),

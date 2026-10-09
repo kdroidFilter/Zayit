@@ -567,6 +567,12 @@ private fun SearchResultContentMvi(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
+                        // Until the first result's passage is loaded, the pane says so
+                        if (preview == null && (items.isNotEmpty() || state.isLoading)) {
+                            Box(Modifier.weight(1f).fillMaxWidth().card(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        }
                         preview?.let { shown ->
                             PassagePreview(
                                 preview = shown,

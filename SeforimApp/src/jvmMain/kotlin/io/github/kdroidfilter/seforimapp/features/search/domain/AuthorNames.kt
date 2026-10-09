@@ -44,6 +44,12 @@ object AuthorNames {
         return "$HONORIFIC $name"
     }
 
+    /** A query typed as the name is shown (`הרב יוסף`), without the display-only honorific. */
+    fun withoutHonorific(query: String): String {
+        val trimmed = query.trimStart()
+        return if (trimmed.startsWith("$HONORIFIC ")) trimmed.removePrefix(HONORIFIC).trimStart() else query
+    }
+
     // `רמב"ם`, `מהר"ם פדובה`; but not `יוסף בן משה באב"ד`, whose quote is in a later word
     private fun isAcronym(name: String): Boolean = QUOTES.containsMatchIn(name.substringBefore(' '))
 

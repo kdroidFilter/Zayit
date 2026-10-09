@@ -49,6 +49,7 @@ fun TabsDestination.toShareLink(): String? =
         is TabsDestination.Favorites -> null
         is TabsDestination.Notes -> null
         is TabsDestination.Siddur -> null
+        is TabsDestination.Author -> null
     }
 
 /**

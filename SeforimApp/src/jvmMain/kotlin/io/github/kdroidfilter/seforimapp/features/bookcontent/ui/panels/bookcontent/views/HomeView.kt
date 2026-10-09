@@ -163,6 +163,8 @@ data class HomeSearchCallbacks(
     val onOpenJump: (ResolvedReference) -> Unit = {},
     val onPickAuthor: (AuthorHit) -> Unit = {},
     val onClearAuthor: () -> Unit = {},
+    val onOpenBook: (BookModel) -> Unit = {},
+    val onOpenAuthor: (AuthorHit) -> Unit = {},
 )
 
 /**
@@ -461,6 +463,8 @@ private fun HomeBody(
                                             referenceSearchState.edit { replace(0, length, "") }
                                         },
                                         onClearAuthor = { searchCallbacks.onClearAuthor() },
+                                        onOpenBook = { opened -> searchCallbacks.onOpenBook(opened.book) },
+                                        onOpenAuthor = { author -> searchCallbacks.onOpenAuthor(author) },
                                         tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
                                         tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
                                         selectedBook = searchUi.selectedScopeBook,
@@ -728,6 +732,7 @@ private fun SuggestionsPanel(
                     SuggestionRow(
                         parts = listOf(AuthorNames.display(author.name)),
                         onClick = { onPickAuthor(author) },
+                        hint = stringResource(Res.string.hint_open_or_search_inside),
                         kind = SuggestionKind.AUTHOR,
                         highlighted = rowIndex == focusedIndex,
                         showTabHint = rowIndex == focusedIndex,
@@ -753,6 +758,7 @@ private fun SuggestionsPanel(
                     SuggestionRow(
                         parts = dedupPath,
                         onClick = { onPickBook(book) },
+                        hint = stringResource(Res.string.hint_open_or_search_inside),
                         kind = SuggestionKind.BOOK,
                         highlighted = rowIndex == focusedIndex,
                         showTabHint = rowIndex == focusedIndex,
@@ -1142,6 +1148,9 @@ private fun SearchBar(
     // Authors the text may name; once one is picked, a chip shows it and the books are theirs
     authorSuggestions: ImmutableList<AuthorHit> = persistentListOf(),
     onPickAuthor: (AuthorHit) -> Unit = {},
+    // Enter or a click opens a book / an author's page; Tab picks it to search inside (onPickBook / onPickAuthor)
+    onOpenBook: (BookSuggestion) -> Unit = {},
+    onOpenAuthor: (AuthorHit) -> Unit = {},
     selectedAuthor: String? = null,
     onClearAuthor: () -> Unit = {},
     // The "search this text" row: offered while text is typed, Ctrl+Enter runs it from anywhere
@@ -1330,6 +1339,16 @@ private fun SearchBar(
             onPickAuthor(author)
         }
 
+        fun handleOpenAuthor(author: AuthorHit) {
+            onOpenAuthor(author)
+            dismissPopup()
+        }
+
+        fun handleOpenBook(book: BookSuggestion) {
+            onOpenBook(book)
+            dismissPopup()
+        }
+
         fun handleTextSearch() {
             val query = state.text.toString().trim()
             if (query.isEmpty()) return
@@ -1338,17 +1357,25 @@ private fun SearchBar(
         }
 
         // Commits the book-stage row at [index] (jumps, text search, authors, categories, books); returns the book picked
-        fun pickCatBookRow(index: Int): BookSuggestion? {
+        fun pickCatBookRow(
+            index: Int,
+            open: Boolean,
+        ) {
             val afterJumps = index - jumpCount
             val afterAuthors = afterJumps - textRowCount - authorCount
             when {
                 index < jumpCount -> handlePickJump(jumpSuggestions[index])
                 afterJumps < textRowCount -> handleTextSearch()
-                afterAuthors < 0 -> handlePickAuthor(authorSuggestions[afterJumps - textRowCount])
+                afterAuthors < 0 -> {
+                    val author = authorSuggestions[afterJumps - textRowCount]
+                    if (open) handleOpenAuthor(author) else handlePickAuthor(author)
+                }
                 afterAuthors < categoriesCount -> handlePickCategory(categorySuggestions[afterAuthors])
-                else -> return bookSuggestions.getOrNull(afterAuthors - categoriesCount)?.also { handlePickBook(it) }
+                else ->
+                    bookSuggestions.getOrNull(afterAuthors - categoriesCount)?.let { book ->
+                        if (open) handleOpenBook(book) else handlePickBook(book)
+                    }
             }
-            return null
         }
 
         fun handleSubmit() {
@@ -1448,8 +1475,7 @@ private fun SearchBar(
                                     }
 
                                     !isTocMode && focusedIndex in 0 until totalCatBook -> {
-                                        val picked = pickCatBookRow(focusedIndex)
-                                        if (picked != null && submitOnEnterInReference) handleSubmit()
+                                        pickCatBookRow(focusedIndex, open = true)
                                         true
                                     }
 
@@ -1499,7 +1525,7 @@ private fun SearchBar(
                                         }
 
                                         !isTocMode && focusedIndex in 0 until totalCatBook -> {
-                                            pickCatBookRow(focusedIndex)
+                                            pickCatBookRow(focusedIndex, open = false)
                                             true
                                         }
 
@@ -1651,7 +1677,7 @@ private fun SearchBar(
                         SuggestionsPanel(
                             jumpSuggestions = jumpSuggestions,
                             authorSuggestions = authorSuggestions,
-                            onPickAuthor = ::handlePickAuthor,
+                            onPickAuthor = ::handleOpenAuthor,
                             textSearchLabel =
                                 if (textSearchEnabled &&
                                     state.text.isNotBlank()
@@ -1666,7 +1692,7 @@ private fun SearchBar(
                             bookSuggestions = bookSuggestions,
                             onPickJump = ::handlePickJump,
                             onPickCategory = ::handlePickCategory,
-                            onPickBook = ::handlePickBook,
+                            onPickBook = ::handleOpenBook,
                             focusedIndex = focusedIndex,
                             emptyMessage = if (showBookEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
                             isLoading = showBookLoading,

@@ -1395,6 +1395,11 @@ private fun SearchBar(
                                 }
                             }
 
+                            // Arrows move through the open list: keep their KeyDown from moving the caret
+                            (ev.key == Key.DirectionDown || ev.key == Key.DirectionUp) &&
+                                ev.type == KeyEventType.KeyDown &&
+                                popupVisible -> true
+
                             ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
                                 val total = if (isTocMode) totalTocRows else totalCatBook
                                 if (total > 0) focusedIndex = (focusedIndex + 1).coerceAtMost(total - 1)

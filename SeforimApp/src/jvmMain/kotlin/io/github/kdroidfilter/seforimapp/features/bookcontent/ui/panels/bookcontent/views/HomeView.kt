@@ -650,8 +650,7 @@ internal fun FreezableCenter(
 @Composable
 internal fun LogoImage(modifier: Modifier = Modifier) {
     val isDark = JewelTheme.isDark
-    val accent = JewelTheme.globalColors.outlines.focused
-    val logoTint = if (isDark) accent else AccentColor.Gold.forMode(isDark = false)
+    val logoTint = logoTint()
     val tintAlpha = 0.25f
     // Mipmapped downscaling (Medium, on Skia): the PNGs are far larger than the logo is ever shown
     val logo = BitmapPainter(imageResource(Res.drawable.zayit_new_logo), filterQuality = FilterQuality.Medium)
@@ -680,6 +679,22 @@ internal fun LogoImage(modifier: Modifier = Modifier) {
             colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
         )
     }
+}
+
+/** The logo's tint: the accent in dark, gold in light. */
+@Composable
+private fun logoTint(): Color =
+    if (JewelTheme.isDark) JewelTheme.globalColors.outlines.focused else AccentColor.Gold.forMode(isDark = false)
+
+/** The logo's word alone (זית, without the olive branch), tinted as the full logo's text. */
+@Composable
+internal fun LogoWord(modifier: Modifier = Modifier) {
+    Image(
+        BitmapPainter(imageResource(Res.drawable.zayit_logo_word), filterQuality = FilterQuality.Medium),
+        contentDescription = null,
+        modifier = modifier,
+        colorFilter = ColorFilter.tint(logoTint(), BlendMode.SrcIn),
+    )
 }
 
 @Composable

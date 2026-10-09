@@ -37,6 +37,7 @@ import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
@@ -50,12 +51,18 @@ import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.features.author.AUTHOR_ERAS
+import io.github.kdroidfilter.seforimapp.features.author.authorYears
+import io.github.kdroidfilter.seforimapp.features.author.plainPersonLinks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
+import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -91,6 +98,8 @@ data class SearchShellActions(
     val onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
     val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
     val onShowOnlyCategory: (Long?) -> Unit = {},
+    val onOpenBook: (Long) -> Unit = {},
+    val onOpenAuthor: (Long) -> Unit = {},
 )
 
 @Composable
@@ -189,6 +198,8 @@ fun SearchResultInBookShellMvi(
     // The results' top categories, as tabs above them
     categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
     selectedCategoryIds: Set<Long>,
+    // The book or author the query names, beside the results
+    entity: SearchEntity?,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -223,6 +234,7 @@ fun SearchResultInBookShellMvi(
                 bookCounts = bookCounts,
                 categories = categories,
                 selectedCategoryIds = selectedCategoryIds,
+                entity = entity,
                 actions = actions,
                 tabId = tabId,
             )
@@ -239,6 +251,7 @@ private fun SearchResultContentMvi(
     bookCounts: Map<Long, Int>,
     categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
     selectedCategoryIds: Set<Long>,
+    entity: SearchEntity?,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -359,187 +372,200 @@ private fun SearchResultContentMvi(
 
     val keyHandler = remember { { _: KeyEvent -> false } }
 
-    Box(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
-        // One centered reading column for the bar, the status and the results, as on Google
-        Column(
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxHeight()
-                    .widthIn(max = 760.dp)
-                    .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            // Top persistent search toolbar
-            SearchToolbar(
-                initialQuery = state.query,
-                onSubmit = actions.onSubmit,
-                onQueryChange = actions.onQueryChange,
-            )
-
-            if (categories.size > 1) {
-                Spacer(Modifier.height(10.dp))
-                CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
-            }
-            Spacer(Modifier.height(12.dp))
-            val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
-            val totalResults =
-                maxOf(
-                    loadedResults,
-                    (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
-                )
-            // Only show top progress bar during initial search, not lazy loading
-            // (lazy loading has its own spinner at the bottom of the list)
-            val showProgress = state.isLoading
-            val hasTotal = (state.progressTotal ?: 0L) > 0L
-            val progressFraction by animateFloatAsState(
-                targetValue =
-                    if (showProgress && hasTotal) {
-                        val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
-                        (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                    } else {
-                        0f
-                    },
-                animationSpec = tween(durationMillis = 250, easing = LinearEasing),
-                label = "searchProgress",
-            )
-
-            // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
+        val showPanel = entity != null && maxWidth >= PANEL_MIN_WIDTH
+        // One centered reading column for the bar, the status and the results, as on Google,
+        // with the panel of the book or author the query names beside it
+        Row(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight()) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxHeight()
+                        .widthIn(max = 760.dp)
+                        .weight(1f, fill = false)
+                        .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                SearchStatusLine(
-                    total = totalResults,
-                    isLoading = showProgress,
-                    globalExtended = state.globalExtended,
-                    baseBooksHadNoResults = state.baseBooksHadNoResults,
-                    onGlobalExtendedChange = actions.onGlobalExtendedChange,
-                    modifier = Modifier.padding(end = 12.dp),
+                // Top persistent search toolbar
+                SearchToolbar(
+                    initialQuery = state.query,
+                    onSubmit = actions.onSubmit,
+                    onQueryChange = actions.onQueryChange,
                 )
 
-                // The progress shows while searching only
-                if (showProgress) {
+                if (categories.size > 1) {
+                    Spacer(Modifier.height(10.dp))
+                    CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
+                }
+                Spacer(Modifier.height(12.dp))
+                val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
+                val totalResults =
+                    maxOf(
+                        loadedResults,
+                        (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
+                    )
+                // Only show top progress bar during initial search, not lazy loading
+                // (lazy loading has its own spinner at the bottom of the list)
+                val showProgress = state.isLoading
+                val hasTotal = (state.progressTotal ?: 0L) > 0L
+                val progressFraction by animateFloatAsState(
+                    targetValue =
+                        if (showProgress && hasTotal) {
+                            val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
+                            (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                        } else {
+                            0f
+                        },
+                    animationSpec = tween(durationMillis = 250, easing = LinearEasing),
+                    label = "searchProgress",
+                )
+
+                // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SearchStatusLine(
+                        total = totalResults,
+                        isLoading = showProgress,
+                        globalExtended = state.globalExtended,
+                        baseBooksHadNoResults = state.baseBooksHadNoResults,
+                        onGlobalExtendedChange = actions.onGlobalExtendedChange,
+                        modifier = Modifier.padding(end = 12.dp),
+                    )
+
+                    // The progress shows while searching only
+                    if (showProgress) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .height(4.dp)
+                                    .weight(1f)
+                                    .clip(RoundedCornerShape(percent = 50))
+                                    .background(
+                                        JewelTheme.globalColors.borders.disabled
+                                            .copy(alpha = 0.6f),
+                                    ),
+                        ) {
+                            if (showProgress && progressFraction > 0f) {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxHeight()
+                                            .fillMaxWidth(progressFraction)
+                                            .background(JewelTheme.globalColors.outlines.focused),
+                                )
+                            }
+                        }
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
+
+                    // Reserve space for the cancel button to prevent width jumps
                     Box(
-                        modifier =
-                            Modifier
-                                .height(4.dp)
-                                .weight(1f)
-                                .clip(RoundedCornerShape(percent = 50))
-                                .background(
-                                    JewelTheme.globalColors.borders.disabled
-                                        .copy(alpha = 0.6f),
-                                ),
+                        modifier = Modifier.width(40.dp).height(28.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        if (showProgress && progressFraction > 0f) {
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .fillMaxHeight()
-                                        .fillMaxWidth(progressFraction)
-                                        .background(JewelTheme.globalColors.outlines.focused),
+                        // Only show cancel during initial search, not lazy loading
+                        if (state.isLoading) {
+                            IconActionButton(
+                                key = AllIconsKeys.Windows.Close,
+                                onClick = actions.onCancelSearch,
+                                contentDescription = stringResource(Res.string.search_stop),
                             )
                         }
                     }
-                } else {
-                    Spacer(Modifier.weight(1f))
                 }
 
-                // Reserve space for the cancel button to prevent width jumps
+                Spacer(Modifier.height(8.dp))
+
+                // Inline progress above replaces the old loading row/spinner
+
+                // Results list
                 Box(
-                    modifier = Modifier.width(40.dp).height(28.dp),
-                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground),
                 ) {
-                    // Only show cancel during initial search, not lazy loading
-                    if (state.isLoading) {
-                        IconActionButton(
-                            key = AllIconsKeys.Windows.Close,
-                            onClick = actions.onCancelSearch,
-                            contentDescription = stringResource(Res.string.search_stop),
-                        )
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Inline progress above replaces the old loading row/spinner
-
-            // Results list
-            Box(
-                modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground),
-            ) {
-                if (visibleResults.isEmpty()) {
-                    if (state.isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                    if (visibleResults.isEmpty()) {
+                        if (state.isLoading) {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                            }
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
+                            }
                         }
                     } else {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
-                        }
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                        ) {
-                            itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
-                                val windowInfo = LocalWindowInfo.current
-                                ResultView(
-                                    item = item,
-                                    findQuery = activeFindQuery,
-                                    bookFontCode = bookFontCode,
-                                    breadcrumbs = breadcrumbs,
-                                    onRequestBreadcrumb = actions.onRequestBreadcrumb,
-                                    onOpenResult = { result ->
-                                        val mods = windowInfo.keyboardModifiers
-                                        val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                        actions.onOpenResult(result, openInNewTab)
-                                    },
-                                    onMoreInBook = { actions.onBookCheckedChange(item.hit.bookId, true) },
-                                )
-                            }
-                            // Loading indicator at the end of the list (only for lazy loading)
-                            if (state.isLoadingMore) {
-                                item {
-                                    Box(
-                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularProgressIndicator()
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            LazyColumn(
+                                state = listState,
+                                modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
+                                    val windowInfo = LocalWindowInfo.current
+                                    ResultView(
+                                        item = item,
+                                        findQuery = activeFindQuery,
+                                        bookFontCode = bookFontCode,
+                                        breadcrumbs = breadcrumbs,
+                                        onRequestBreadcrumb = actions.onRequestBreadcrumb,
+                                        onOpenResult = { result ->
+                                            val mods = windowInfo.keyboardModifiers
+                                            val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
+                                            actions.onOpenResult(result, openInNewTab)
+                                        },
+                                        onMoreInBook = { actions.onBookCheckedChange(item.hit.bookId, true) },
+                                    )
+                                }
+                                // Loading indicator at the end of the list (only for lazy loading)
+                                if (state.isLoadingMore) {
+                                    item {
+                                        Box(
+                                            Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            CircularProgressIndicator()
+                                        }
                                     }
                                 }
                             }
+                            StableListScrollbar(
+                                listState = listState,
+                                loadedCount = items.size,
+                                totalCount = items.size,
+                                modifier = Modifier.align(Alignment.CenterEnd),
+                            )
                         }
-                        StableListScrollbar(
-                            listState = listState,
-                            loadedCount = items.size,
-                            totalCount = items.size,
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                        )
                     }
-                }
 
-                // Loader overlay while applying filters (category/book/TOC) with quick fade
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isFiltering,
-                    enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
-                    exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing)),
-                ) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxSize()
-                                .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
-                                .zIndex(1f),
-                        contentAlignment = Alignment.Center,
+                    // Loader overlay while applying filters (category/book/TOC) with quick fade
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isFiltering,
+                        enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
+                        exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing)),
                     ) {
-                        CircularProgressIndicator()
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
+                                    .zIndex(1f),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 }
+            }
+            if (showPanel && entity != null) {
+                EntityPanel(
+                    entity = entity,
+                    onOpenBook = actions.onOpenBook,
+                    onSearchInBook = { actions.onBookCheckedChange(it, true) },
+                    onOpenAuthor = actions.onOpenAuthor,
+                    modifier = Modifier.padding(top = 112.dp, end = 16.dp).width(PANEL_WIDTH),
+                )
             }
         }
 
@@ -827,6 +853,86 @@ private fun CategoryTab(
         Text(label, fontSize = 13.sp, color = if (selected) accent else JewelTheme.globalColors.text.normal, maxLines = 1)
         if (count != null) {
             Text(count.toString(), fontSize = 11.sp, color = JewelTheme.globalColors.text.info, maxLines = 1)
+        }
+    }
+}
+
+private val PANEL_WIDTH = 300.dp
+
+// Below this the results take the whole width and the panel stays hidden
+private val PANEL_MIN_WIDTH = 1000.dp
+
+/** The book or author a query names, as Google's knowledge panel: what it is, and buttons to go there. */
+@Composable
+private fun EntityPanel(
+    entity: SearchEntity,
+    onOpenBook: (Long) -> Unit,
+    onSearchInBook: (Long) -> Unit,
+    onOpenAuthor: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val grey = JewelTheme.globalColors.text.info
+    val shape = RoundedCornerShape(12.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(16.dp),
+    ) {
+        when (entity) {
+            is SearchEntity.BookEntity -> {
+                val book = entity.book
+                Text(book.title, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
+                if (entity.categories.isNotEmpty()) {
+                    Text(entity.categories.joinToString(" › "), fontSize = 12.sp, color = grey)
+                }
+                book.authors.forEach { author ->
+                    ResultLink(
+                        AuthorNames.display(author.name),
+                        JewelTheme.globalColors.outlines.focused,
+                        14.sp,
+                    ) { onOpenAuthor(author.id) }
+                }
+                book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
+                    Text(it, fontSize = 13.sp, lineHeight = 21.sp, color = grey, maxLines = 6, overflow = TextOverflow.Ellipsis)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
+                    DefaultButton(onClick = { onOpenBook(book.id) }) { Text(stringResource(Res.string.row_action_open)) }
+                    OutlinedButton(onClick = { onSearchInBook(book.id) }) { Text(stringResource(Res.string.row_action_search_inside)) }
+                }
+            }
+
+            is SearchEntity.AuthorEntity -> {
+                val details = entity.details
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(WritingHand, contentDescription = null, tint = grey, modifier = Modifier.size(20.dp))
+                    Text(
+                        AuthorNames.display(details.name),
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = JewelTheme.globalColors.text.normal,
+                    )
+                }
+                val facts = listOfNotNull(details.era?.let { AUTHOR_ERAS[it] }, authorYears(details))
+                if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
+                details.bio?.summary?.let {
+                    Text(
+                        plainPersonLinks(it).replace("**", ""),
+                        fontSize = 13.sp,
+                        lineHeight = 21.sp,
+                        color = grey,
+                        maxLines = 7,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Text(stringResource(Res.string.author_books_count, details.books.size), fontSize = 12.sp, color = grey)
+                DefaultButton(onClick = { onOpenAuthor(details.id) }, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(stringResource(Res.string.search_panel_author_page))
+                }
+            }
         }
     }
 }

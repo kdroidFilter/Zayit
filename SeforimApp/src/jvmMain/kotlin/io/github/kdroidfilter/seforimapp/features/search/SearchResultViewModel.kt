@@ -1978,4 +1978,4 @@ class SearchResultViewModel(
     }
 }
 
-private const val CONTEXT_LINES = 4
+private const val CONTEXT_LINES = 2

@@ -27,8 +27,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.Key
@@ -41,12 +44,15 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -714,7 +720,7 @@ private fun ResultView(
     val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
     val pieces = breadcrumbs[hit.lineId]
     LaunchedEffect(hit.lineId) { if (pieces == null) currentOnRequestBreadcrumb(hit) }
-    val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
+    val place = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle).second }
 
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
@@ -727,11 +733,18 @@ private fun ResultView(
                 .clip(RoundedCornerShape(6.dp))
                 .background(
                     when {
-                        selected -> accent.copy(alpha = 0.14f)
-                        hovered -> accent.copy(alpha = 0.06f)
+                        selected -> accent.copy(alpha = 0.10f)
+                        hovered -> accent.copy(alpha = 0.05f)
                         else -> Color.Transparent
                     },
-                ).hoverable(hover)
+                ).drawBehind {
+                    // The selected row's bar, on its start side
+                    if (selected) {
+                        val bar = 3.dp.toPx()
+                        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - bar else 0f
+                        drawRect(accent, topLeft = Offset(x, 0f), size = Size(bar, size.height))
+                    }
+                }.hoverable(hover)
                 .combinedClickable(
                     interactionSource = hover,
                     indication = null,
@@ -765,9 +778,6 @@ private fun ResultView(
                 }
                 Snippet(hit, findQuery, bookFontCode)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (categories.isNotEmpty()) {
-                        Text(categories, color = grey, fontSize = 11f.zoomed(), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
                     if (item.more > 0) {
                         ResultLink(
                             stringResource(Res.string.search_more_from_book, item.more, hit.bookTitle),
@@ -793,8 +803,9 @@ private fun ResultView(
 }
 
 /**
- * The selected result in its book: a few lines before and after it, the found line marked and its
- * words highlighted, in the books' font and size; a button opens the book there.
+ * The selected result in its book, to read without opening it: its place as a title, then the
+ * found line marked by a bar, between the lines around it, faded; in the books' font and size, at a
+ * reading width. A button opens the book there.
  */
 @Composable
 private fun PassagePreview(
@@ -814,64 +825,79 @@ private fun PassagePreview(
     val lines by produceState<List<Line>?>(null, hit.lineId) { value = currentLoadContext(hit) }
     val fontFamily = FontCatalog.familyFor(bookFontCode)
     val words = remember(query) { query.split(Regex("\\s+")).filter { it.length > 1 } }
-    val highlight = accent.copy(alpha = 0.25f)
+    val highlight = accent.copy(alpha = 0.22f)
     val scroll = rememberScrollState()
+    // The found line in view, once laid out
+    var foundTop by remember(hit.lineId) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(foundTop) { foundTop?.let { scroll.animateScrollTo((it - FOUND_LINE_MARGIN).coerceAtLeast(0)) } }
+
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(10.dp))
                 .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .background(JewelTheme.globalColors.panelBackground),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(hit.bookTitle, fontSize = 17f.zoomed(), fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
-            if (place != null) {
-                Text(
-                    "· $place",
-                    fontSize = 13f.zoomed(),
-                    color = readingSecondary(),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
+        Column(Modifier.padding(start = 28.dp, end = 28.dp, top = 18.dp, bottom = 14.dp)) {
+            if (categories.isNotEmpty()) Text(categories, fontSize = 12f.zoomed(), color = readingSecondary(), maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(hit.bookTitle, fontSize = 20f.zoomed(), fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
+                    if (place != null) Text(place, fontSize = 14f.zoomed(), color = readingSecondary(), maxLines = 1)
+                }
+                OutlinedButton(onClick = onOpen) { Text(stringResource(Res.string.search_open_in_book)) }
             }
-            Spacer(Modifier.weight(1f))
-            DefaultButton(onClick = onOpen) { Text(stringResource(Res.string.search_open_in_book)) }
         }
-        if (categories.isNotEmpty()) Text(categories, fontSize = 12f.zoomed(), color = readingSecondary())
-        Divider(Orientation.Horizontal, Modifier.fillMaxWidth().padding(vertical = 10.dp))
-        VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f)) {
+        Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
+        VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f).fillMaxWidth()) {
             // The ScrollState overload scrolls its content itself
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                lines?.forEach { line ->
-                    val found = line.id == hit.lineId
-                    val text =
-                        remember(line.id, textSize, words, highlight) {
-                            words.fold(
-                                buildAnnotatedFromHtml(line.content, textSize),
-                            ) { acc, word -> highlightAnnotated(acc, word, highlight) }
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.widthIn(max = READING_WIDTH).fillMaxWidth().padding(horizontal = 28.dp, vertical = 22.dp),
+                ) {
+                    lines?.forEach { line ->
+                        val found = line.id == hit.lineId
+                        val text =
+                            remember(line.id, textSize, words, highlight) {
+                                words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
+                                    highlightAnnotated(acc, word, highlight)
+                                }
+                            }
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min)
+                                    .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
+                        ) {
+                            // The found line: a bar on its side, the text at full strength
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .fillMaxHeight()
+                                    .background(if (found) accent else Color.Transparent),
+                            )
+                            Text(
+                                text = text,
+                                fontFamily = fontFamily,
+                                fontSize = textSize.sp,
+                                lineHeight = (textSize * 1.8f).sp,
+                                color = if (found) ink else ink.copy(alpha = 0.45f),
+                                textAlign = TextAlign.Justify,
+                                modifier = Modifier.weight(1f).padding(start = 14.dp),
+                            )
                         }
-                    Text(
-                        text = text,
-                        fontFamily = fontFamily,
-                        fontSize = textSize.sp,
-                        lineHeight = (textSize * 1.8f).sp,
-                        color = if (found) ink else readingSecondary(),
-                        textAlign = TextAlign.Justify,
-                        modifier =
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(if (found) accent.copy(alpha = 0.07f) else Color.Transparent)
-                                .padding(horizontal = 8.dp, vertical = 4.dp),
-                    )
+                    }
                 }
             }
         }
     }
 }
+
+private val READING_WIDTH = 760.dp
+private const val FOUND_LINE_MARGIN = 40
 
 /** A passage: two lines of grey text, the matched words bold in the text's color. */
 @Composable

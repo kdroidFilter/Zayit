@@ -13,6 +13,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
@@ -24,6 +26,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,15 +39,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.*
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -66,6 +74,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.presentation.components.rememberPillTextFieldStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
@@ -83,6 +92,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Communi
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
+import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService.AuthorHit
@@ -107,7 +117,7 @@ import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.getDrawableResourceBytes
-import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.imageResource
 import org.jetbrains.compose.resources.rememberResourceEnvironment
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
@@ -169,12 +179,12 @@ private fun catBookRows(
     categories: List<CategorySuggestion>,
     books: List<BookSuggestion>,
 ): ImmutableList<CatBookRow> {
-    val key = query.matchKey()
+    val key = query.searchKey()
     val (exactAuthors, otherAuthors) =
         authors.partition { author ->
-            listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.matchKey() == key }
+            listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.searchKey() == key }
         }
-    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.matchKey() == key }
+    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.searchKey() == key }
     return buildList {
         jumps.mapTo(this) { CatBookRow.Jump(it) }
         exactBooks.mapTo(this) { CatBookRow.Book(it) }
@@ -185,13 +195,6 @@ private fun catBookRows(
         otherBooks.mapTo(this) { CatBookRow.Book(it) }
     }.toImmutableList()
 }
-
-// Compares names as typed: without nikud, quotes and extra spaces
-private fun String.matchKey(): String =
-    replace(Regex("[\u0591-\u05C7]"), "")
-        .replace(Regex("[\"'״׳]"), "")
-        .replace(Regex("\\s+"), " ")
-        .trim()
 
 @Immutable
 private data class TocSuggestion(
@@ -384,59 +387,6 @@ private fun HomeBody(
                 modifier = Modifier.fillMaxSize().padding(8.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                // Keep state outside the sections so it persists across their recompositions
-                val scope = rememberCoroutineScope()
-
-                fun focusAfterDelay(
-                    @StructuredScope scope: CoroutineScope,
-                    ms: Long,
-                    focusRequester: FocusRequester,
-                ) {
-                    scope.launch {
-                        delay(ms.milliseconds)
-                        focusRequester.requestFocus()
-                    }
-                }
-
-                val referenceSearchState = remember { TextFieldState() }
-                val tocSearchState = remember { TextFieldState() }
-                var skipNextReferenceQuery by remember { mutableStateOf(false) }
-                var skipNextTocQuery by remember { mutableStateOf(false) }
-                var tocEditedSinceBook by remember { mutableStateOf(false) }
-                // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
-                // can reliably return focus to it, allowing immediate Enter to submit.
-                val mainSearchFocusRequester = remember { FocusRequester() }
-                // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
-                LaunchedEffect(Unit) {
-                    snapshotFlow { referenceSearchState.text.toString() }.collect { qRaw ->
-                        if (skipNextReferenceQuery) {
-                            skipNextReferenceQuery = false
-                        } else {
-                            searchCallbacks.onReferenceQueryChanged(qRaw)
-                        }
-                    }
-                }
-                // Forward toc input changes to the ViewModel (ignored until a book is selected)
-                LaunchedEffect(Unit) {
-                    snapshotFlow { tocSearchState.text.toString() }.collect { qRaw ->
-                        if (skipNextTocQuery) {
-                            skipNextTocQuery = false
-                            tocEditedSinceBook = qRaw.isNotBlank()
-                        } else {
-                            tocEditedSinceBook = qRaw.isNotBlank()
-                            searchCallbacks.onTocQueryChanged(qRaw)
-                        }
-                    }
-                }
-
-                fun searchText(query: String) {
-                    if (query.isNotBlank()) searchCallbacks.onSubmitTextSearch(query)
-                }
-
-                fun openReference() {
-                    searchCallbacks.onOpenReference()
-                }
-
                 // Main search field focus handled inside SearchBar via autoFocus
 
                 val homeContentModifier =
@@ -468,98 +418,7 @@ private fun HomeBody(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Box(homeContentModifier) {
-                                    // Back to the bar once a book is picked, to type in its TOC
-                                    LaunchedEffect(searchUi.selectedScopeBook?.id) {
-                                        if (searchUi.selectedScopeBook != null) {
-                                            delay(80.milliseconds)
-                                            mainSearchFocusRequester.requestFocus()
-                                        }
-                                    }
-                                    val mappedBookSuggestionsForBar =
-                                        searchUi.bookSuggestions
-                                            .map { bs ->
-                                                BookSuggestion(bs.book, bs.path, bs.exactAcronym)
-                                            }.toImmutableList()
-                                    val mappedTocSuggestionsForBar =
-                                        searchUi.tocSuggestions.map { ts ->
-                                            TocSuggestion(ts.toc, ts.path)
-                                        }
-                                    val breadcrumbSeparatorTop = stringResource(Res.string.breadcrumb_separator)
-                                    val isTocInTopBar = searchUi.selectedScopeBook != null
-                                    SearchBar(
-                                        state = if (isTocInTopBar) tocSearchState else referenceSearchState,
-                                        onSubmit = { openReference() },
-                                        modifier = Modifier,
-                                        focusRequester = mainSearchFocusRequester,
-                                        // A picked TOC entry fills the field with its path: nothing to search then
-                                        // An author's books are picked, not searched in: no text row then
-                                        textSearchEnabled = searchUi.selectedScopeToc == null && searchUi.selectedScopeAuthor == null,
-                                        textSearchInBook = searchUi.selectedScopeBook?.title,
-                                        onTextSearch = ::searchText,
-                                        // Before a book is picked: go-to rows, the text search and books; after: its TOC
-                                        suggestionsVisible = if (!isTocInTopBar) searchUi.suggestionsVisible else false,
-                                        categorySuggestions = persistentListOf(),
-                                        bookSuggestions = if (!isTocInTopBar) mappedBookSuggestionsForBar else persistentListOf(),
-                                        jumpSuggestions =
-                                            if (!isTocInTopBar) searchUi.jumpSuggestions.toImmutableList() else persistentListOf(),
-                                        onPickJump = { jump -> searchCallbacks.onOpenJump(jump) },
-                                        authorSuggestions =
-                                            if (!isTocInTopBar) searchUi.authorSuggestions.toImmutableList() else persistentListOf(),
-                                        selectedAuthor = searchUi.selectedScopeAuthor?.name,
-                                        onPickAuthor = { author ->
-                                            searchCallbacks.onPickAuthor(author)
-                                            skipNextReferenceQuery = true
-                                            referenceSearchState.edit { replace(0, length, "") }
-                                        },
-                                        onClearAuthor = { searchCallbacks.onClearAuthor() },
-                                        onOpenBook = { opened -> searchCallbacks.onOpenBook(opened.book) },
-                                        onOpenAuthor = { author -> searchCallbacks.onOpenAuthor(author) },
-                                        tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
-                                        tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
-                                        selectedBook = searchUi.selectedScopeBook,
-                                        placeholderText =
-                                            if (isTocInTopBar) {
-                                                stringResource(
-                                                    Res.string.search_in_book_placeholder,
-                                                )
-                                            } else {
-                                                null
-                                            },
-                                        submitOnEnterInReference = isTocInTopBar,
-                                        onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
-                                        isBookLoading = searchUi.isReferenceLoading && !isTocInTopBar,
-                                        isTocLoading = searchUi.isTocLoading && isTocInTopBar,
-                                        onPickBook = { picked ->
-                                            searchCallbacks.onPickBook(picked.book)
-                                            skipNextReferenceQuery = true
-                                            referenceSearchState.edit { replace(0, length, "") }
-                                            skipNextTocQuery = true
-                                            tocSearchState.edit { replace(0, length, "") }
-                                            skipNextTocQuery = false
-                                            tocEditedSinceBook = false
-                                            focusAfterDelay(scope, 80, mainSearchFocusRequester)
-                                        },
-                                        onPickToc = { picked ->
-                                            searchCallbacks.onPickToc(picked.toc)
-                                            val dedup = dedupAdjacent(picked.path)
-                                            val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
-                                            val display = stripped.joinToString(breadcrumbSeparatorTop)
-                                            skipNextTocQuery = true
-                                            tocSearchState.edit { replace(0, length, display) }
-                                            tocEditedSinceBook = true
-                                        },
-                                        onClearBook = {
-                                            searchCallbacks.onReferenceQueryChanged("")
-                                            searchCallbacks.onTocQueryChanged("")
-                                            skipNextReferenceQuery = true
-                                            skipNextTocQuery = true
-                                            referenceSearchState.edit { replace(0, length, "") }
-                                            tocSearchState.edit { replace(0, length, "") }
-                                            skipNextTocQuery = false
-                                            tocEditedSinceBook = false
-                                        },
-                                        canClearBookOnBackspace = { !tocEditedSinceBook },
-                                    )
+                                    UnifiedSearchBar(searchUi = searchUi, searchCallbacks = searchCallbacks)
                                 }
                             }
                         }
@@ -576,6 +435,189 @@ private fun HomeBody(
         }
         HomeWidgetsOverlay(widgetsState, widgetsLayout)
     }
+}
+
+/**
+ * The one smart search bar (references, books, authors, texts) with its suggestions: the home
+ * page's, reused by the search results page. [initialText] fills the field without suggesting
+ * (the results page's query); a text search goes to [HomeSearchCallbacks.onSubmitTextSearch].
+ */
+@Composable
+internal fun UnifiedSearchBar(
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks,
+    modifier: Modifier = Modifier,
+    initialText: String = "",
+    autoFocus: Boolean = true,
+    // The typed text, as it changes (the results page keeps it for the tab's restore)
+    onTextChange: (String) -> Unit = {},
+) {
+    // Keep state outside the sections so it persists across their recompositions
+    val scope = rememberCoroutineScope()
+
+    fun focusAfterDelay(
+        @StructuredScope scope: CoroutineScope,
+        ms: Long,
+        focusRequester: FocusRequester,
+    ) {
+        scope.launch {
+            delay(ms.milliseconds)
+            focusRequester.requestFocus()
+        }
+    }
+
+    val referenceSearchState = remember { TextFieldState() }
+    val currentOnTextChange by rememberUpdatedState(onTextChange)
+    val currentBookPicked by rememberUpdatedState(searchUi.selectedScopeBook != null)
+    val tocSearchState = remember { TextFieldState() }
+    var skipNextReferenceQuery by remember { mutableStateOf(false) }
+    var skipNextTocQuery by remember { mutableStateOf(false) }
+    var tocEditedSinceBook by remember { mutableStateOf(false) }
+    // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
+    // can reliably return focus to it, allowing immediate Enter to submit.
+    val mainSearchFocusRequester = remember { FocusRequester() }
+    // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
+    LaunchedEffect(Unit) {
+        snapshotFlow { referenceSearchState.text.toString() }.collect { qRaw ->
+            currentOnTextChange(qRaw)
+            if (skipNextReferenceQuery) {
+                skipNextReferenceQuery = false
+            } else {
+                searchCallbacks.onReferenceQueryChanged(qRaw)
+            }
+        }
+    }
+    // Forward toc input changes to the ViewModel (ignored until a book is selected)
+    LaunchedEffect(Unit) {
+        snapshotFlow { tocSearchState.text.toString() }.collect { qRaw ->
+            // In a book, the typed text is also the search's query
+            if (currentBookPicked) currentOnTextChange(qRaw)
+            if (skipNextTocQuery) {
+                skipNextTocQuery = false
+                tocEditedSinceBook = qRaw.isNotBlank()
+            } else {
+                tocEditedSinceBook = qRaw.isNotBlank()
+                searchCallbacks.onTocQueryChanged(qRaw)
+            }
+        }
+    }
+
+    fun searchText(query: String) {
+        if (query.isNotBlank()) searchCallbacks.onSubmitTextSearch(query)
+    }
+
+    fun openReference() {
+        searchCallbacks.onOpenReference()
+    }
+
+    // The results page shows its query in the field: the book's field once the bar is in a book (its
+    // search's scope), else the main one. The suggestions follow it as typed text (they show on focus)
+    // Seeded once per query, and again only when a restore puts the bar in its book; never over what the
+    // user does with the bar (picking or clearing a book)
+    val inBook = searchUi.selectedScopeBook != null && searchUi.selectedScopeToc == null
+    var seededQuery by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(initialText, inBook) {
+        if (initialText.isEmpty()) return@LaunchedEffect
+        val restoredBook = inBook && !searchUi.bookPickedByUser
+        if (seededQuery == initialText && !restoredBook) return@LaunchedEffect
+        seededQuery = initialText
+        val field = if (inBook) tocSearchState else referenceSearchState
+        if (field.text.toString() != initialText) field.edit { replace(0, length, initialText) }
+    }
+
+    // Back to the bar once a book is picked, to type in its TOC
+    LaunchedEffect(searchUi.selectedScopeBook?.id) {
+        if (searchUi.selectedScopeBook != null && searchUi.bookPickedByUser) {
+            delay(80.milliseconds)
+            mainSearchFocusRequester.requestFocus()
+        }
+    }
+    val mappedBookSuggestionsForBar =
+        searchUi.bookSuggestions
+            .map { bs ->
+                BookSuggestion(bs.book, bs.path, bs.exactAcronym)
+            }.toImmutableList()
+    val mappedTocSuggestionsForBar =
+        searchUi.tocSuggestions.map { ts ->
+            TocSuggestion(ts.toc, ts.path)
+        }
+    val breadcrumbSeparatorTop = stringResource(Res.string.breadcrumb_separator)
+    val isTocInTopBar = searchUi.selectedScopeBook != null
+    SearchBar(
+        state = if (isTocInTopBar) tocSearchState else referenceSearchState,
+        onSubmit = { openReference() },
+        modifier = modifier,
+        focusRequester = mainSearchFocusRequester,
+        autoFocus = autoFocus,
+        // A picked TOC entry fills the field with its path: nothing to search then
+        // An author's books are picked, not searched in: no text row then
+        textSearchEnabled = searchUi.selectedScopeToc == null && searchUi.selectedScopeAuthor == null,
+        textSearchInBook = searchUi.selectedScopeBook?.title,
+        onTextSearch = ::searchText,
+        // Before a book is picked: go-to rows, the text search and books; after: its TOC
+        suggestionsVisible = if (!isTocInTopBar) searchUi.suggestionsVisible else false,
+        categorySuggestions = persistentListOf(),
+        bookSuggestions = if (!isTocInTopBar) mappedBookSuggestionsForBar else persistentListOf(),
+        jumpSuggestions =
+            if (!isTocInTopBar) searchUi.jumpSuggestions.toImmutableList() else persistentListOf(),
+        onPickJump = { jump -> searchCallbacks.onOpenJump(jump) },
+        authorSuggestions =
+            if (!isTocInTopBar) searchUi.authorSuggestions.toImmutableList() else persistentListOf(),
+        selectedAuthor = searchUi.selectedScopeAuthor?.name,
+        onPickAuthor = { author ->
+            searchCallbacks.onPickAuthor(author)
+            skipNextReferenceQuery = true
+            referenceSearchState.edit { replace(0, length, "") }
+        },
+        onClearAuthor = { searchCallbacks.onClearAuthor() },
+        onOpenBook = { opened -> searchCallbacks.onOpenBook(opened.book) },
+        onOpenAuthor = { author -> searchCallbacks.onOpenAuthor(author) },
+        tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
+        tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
+        selectedBook = searchUi.selectedScopeBook,
+        placeholderText =
+            if (isTocInTopBar) {
+                stringResource(
+                    Res.string.search_in_book_placeholder,
+                )
+            } else {
+                null
+            },
+        submitOnEnterInReference = isTocInTopBar,
+        onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
+        isBookLoading = searchUi.isReferenceLoading && !isTocInTopBar,
+        isTocLoading = searchUi.isTocLoading && isTocInTopBar,
+        onPickBook = { picked ->
+            searchCallbacks.onPickBook(picked.book)
+            skipNextReferenceQuery = true
+            referenceSearchState.edit { replace(0, length, "") }
+            skipNextTocQuery = true
+            tocSearchState.edit { replace(0, length, "") }
+            skipNextTocQuery = false
+            tocEditedSinceBook = false
+            focusAfterDelay(scope, 80, mainSearchFocusRequester)
+        },
+        onPickToc = { picked ->
+            searchCallbacks.onPickToc(picked.toc)
+            val dedup = dedupAdjacent(picked.path)
+            val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
+            val display = stripped.joinToString(breadcrumbSeparatorTop)
+            skipNextTocQuery = true
+            tocSearchState.edit { replace(0, length, display) }
+            tocEditedSinceBook = true
+        },
+        onClearBook = {
+            searchCallbacks.onReferenceQueryChanged("")
+            searchCallbacks.onTocQueryChanged("")
+            skipNextReferenceQuery = true
+            skipNextTocQuery = true
+            referenceSearchState.edit { replace(0, length, "") }
+            tocSearchState.edit { replace(0, length, "") }
+            skipNextTocQuery = false
+            tocEditedSinceBook = false
+        },
+        canClearBookOnBackspace = { !tocEditedSinceBook },
+    )
 }
 
 /**
@@ -625,22 +667,24 @@ internal fun FreezableCenter(
  * In dark mode: accent color tint from the current theme.
  */
 @Composable
-private fun LogoImage(modifier: Modifier = Modifier) {
+internal fun LogoImage(modifier: Modifier = Modifier) {
     val isDark = JewelTheme.isDark
-    val accent = JewelTheme.globalColors.outlines.focused
-    val logoTint = if (isDark) accent else AccentColor.Gold.forMode(isDark = false)
+    val logoTint = logoTint()
     val tintAlpha = 0.25f
+    // Mipmapped downscaling (Medium, on Skia): the PNGs are far larger than the logo is ever shown
+    val logo = BitmapPainter(imageResource(Res.drawable.zayit_new_logo), filterQuality = FilterQuality.Medium)
+    val logoText = BitmapPainter(imageResource(Res.drawable.zayit_new_logo_text), filterQuality = FilterQuality.Medium)
 
     Box(modifier) {
         // Base layer: full logo with original colors
         Image(
-            painterResource(Res.drawable.zayit_new_logo),
+            logo,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
         )
         // Subtle tint overlay: SoftLight preserves transparency, tints only colored areas
         Image(
-            painterResource(Res.drawable.zayit_new_logo),
+            logo,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             alpha = tintAlpha,
@@ -648,12 +692,30 @@ private fun LogoImage(modifier: Modifier = Modifier) {
         )
         // Text overlay: tint color painted through the text alpha mask
         Image(
-            painterResource(Res.drawable.zayit_new_logo_text),
+            logoText,
             contentDescription = null,
             modifier = Modifier.fillMaxSize(),
             colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
         )
     }
+}
+
+/** The logo's tint: the accent in dark, gold in light. */
+@Composable
+private fun logoTint(): Color =
+    if (JewelTheme.isDark) JewelTheme.globalColors.outlines.focused else AccentColor.Gold.forMode(isDark = false)
+
+/**
+ * The logo's olive branch alone, in its own colors. Its PNG is pre-scaled (Lanczos) to twice the size
+ * it is shown at: Skia's sampling aliases on big downscales, the full logo's detail turned to pixels.
+ */
+@Composable
+internal fun LogoBranch(modifier: Modifier = Modifier) {
+    Image(
+        BitmapPainter(imageResource(Res.drawable.zayit_logo_branch), filterQuality = FilterQuality.High),
+        contentDescription = null,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -1260,6 +1322,11 @@ private fun SearchBar(
     val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
+    // Bumped when the field gets the focus or a click: the suggestions open (again, after a click outside
+    // closed them). None before the first one (a restored results tab); losing the focus to a click in
+    // them doesn't hide them under the pointer
+    var openRequests by remember { mutableIntStateOf(0) }
+    var handledOpenRequests by remember { mutableIntStateOf(0) }
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
@@ -1319,6 +1386,7 @@ private fun SearchBar(
         showTocEmptyState,
         showBookLoading,
         showTocLoading,
+        openRequests,
     ) {
         val shouldOpen =
             when {
@@ -1330,8 +1398,12 @@ private fun SearchBar(
                 showTocLoading -> true
                 else -> false
             }
+        // A reopen request alone (a click in the field, which also closed the list as a click outside it)
+        // keeps the highlighted row; new suggestions start from the first
+        val keepRow = openRequests != handledOpenRequests && shouldOpen && focusedIndex >= 0
+        handledOpenRequests = openRequests
         popupVisible = shouldOpen
-        focusedIndex = if (shouldOpen && (showTocSuggestions || showCategorySuggestions)) 0 else -1
+        if (!keepRow) focusedIndex = if (shouldOpen && (showTocSuggestions || showCategorySuggestions)) 0 else -1
     }
 
     var anchor by remember { mutableStateOf<AnchorBounds?>(null) }
@@ -1430,6 +1502,7 @@ private fun SearchBar(
 
         TextField(
             state = state,
+            style = rememberPillTextFieldStyle(),
             modifier =
                 Modifier
                     .fillMaxWidth()
@@ -1575,7 +1648,15 @@ private fun SearchBar(
 
                             else -> false
                         }
-                    }.focusRequester(effectiveFocusRequester),
+                    }.focusRequester(effectiveFocusRequester)
+                    .onFocusChanged { if (it.isFocused) openRequests++ }
+                    // A click in the field (to move the caret) counts as outside the popup: it reopens it
+                    .pointerInput(Unit) {
+                        awaitEachGesture {
+                            awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                            openRequests++
+                        }
+                    },
             enabled = enabled,
             placeholder = {
                 if (placeholderText != null) {
@@ -1602,18 +1683,31 @@ private fun SearchBar(
                     }
                 }
             },
+            // Clears the typed text, keeping the picked book
+            trailingIcon = {
+                if (state.text.isNotEmpty()) {
+                    Icon(
+                        AllIconsKeys.Actions.Close,
+                        stringResource(Res.string.search_clear),
+                        Modifier
+                            .clickable {
+                                state.clearText()
+                                effectiveFocusRequester.requestFocus()
+                            }.pointerHoverIcon(PointerIcon.Hand),
+                    )
+                }
+            },
             leadingIcon = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton({ if (textSearchEnabled) handleTextSearch() else handleSubmit() }) {
-                        Icon(
-                            key = AllIconsKeys.Actions.Find,
-                            contentDescription = stringResource(Res.string.search_icon_description),
-                            modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
-                        )
-                    }
+                    // A sign that it's a search field, not a button: Enter and the rows search
+                    Icon(
+                        key = AllIconsKeys.Actions.Find,
+                        contentDescription = stringResource(Res.string.search_icon_description),
+                        modifier = Modifier.size(16.dp),
+                    )
                     if (selectedBook != null && onClearBook != null) {
                         SelectedBookChip(
                             title = selectedBook.title,
@@ -1642,6 +1736,7 @@ private fun SearchBar(
         val a = anchor
         val showOverlay =
             isTabSelected &&
+                openRequests > 0 &&
                 popupVisible &&
                 a != null &&
                 (
@@ -1681,7 +1776,9 @@ private fun SearchBar(
                 }
             Popup(
                 popupPositionProvider = provider,
-                properties = PopupProperties(focusable = false),
+                // A click outside closes it, as any menu; the field's focus brings it back
+                properties = PopupProperties(focusable = false, dismissOnClickOutside = true),
+                onDismissRequest = { popupVisible = false },
             ) {
                 val widthDp = with(LocalDensity.current) { a.size.width.toDp() }
                 Box(Modifier.width(widthDp)) {

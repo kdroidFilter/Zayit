@@ -154,6 +154,9 @@ sealed interface BookContentEvent {
 
     data object ToggleSources : BookContentEvent
 
+    /** Shows or hides the book-details pane (in every tab: one setting). */
+    data object ToggleBookDetails : BookContentEvent
+
     data object CycleDiacritics : BookContentEvent
 
     data class ContentScrolled(
@@ -209,6 +212,11 @@ sealed interface BookContentEvent {
     data class OpenCommentaryTarget(
         val bookId: Long,
         val lineId: Long?,
+    ) : BookContentEvent
+
+    // Opens an author's page in a new tab
+    data class OpenAuthor(
+        val authorId: Long,
     ) : BookContentEvent
 
     data class SelectedCommentatorsChanged(

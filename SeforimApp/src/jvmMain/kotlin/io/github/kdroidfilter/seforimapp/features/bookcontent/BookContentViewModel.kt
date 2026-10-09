@@ -27,6 +27,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookContentUseCaseFactory
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.altTocIdOfSearchMatch
+import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
@@ -35,11 +37,13 @@ import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import java.util.UUID
 
 /** Simplified ViewModel for the book content screen */
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -252,6 +256,18 @@ class BookContentViewModel(
                     )
                 },
             )
+
+    private val bookDetailsLoader = BookDetailsLoader(repository)
+
+    /** The book's details (categories, authors, main parts), for the book-details pane. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val bookDetailsFlow: StateFlow<SearchEntity.BookEntity?> =
+        uiState
+            .map { it.navigation.selectedBook?.id }
+            .distinctUntilChanged()
+            .mapLatest { id -> id?.let { bookDetailsLoader.load(it) } }
+            .flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     init {
         initialize(savedStateHandle)
@@ -601,6 +617,9 @@ class BookContentViewModel(
                 BookContentEvent.ToggleSources ->
                     contentUseCase.toggleSources()
 
+                BookContentEvent.ToggleBookDetails ->
+                    appSettings.setBookDetailsPaneVisible(!appSettings.isBookDetailsPaneVisible())
+
                 BookContentEvent.CycleDiacritics ->
                     cycleDiacriticsForCurrentCategory()
 
@@ -627,6 +646,11 @@ class BookContentViewModel(
 
                 is BookContentEvent.OpenCommentaryTarget ->
                     event.lineId?.let { openCommentaryTarget(event.bookId, it) }
+
+                is BookContentEvent.OpenAuthor ->
+                    desktopManager.tabsViewModelFor(tabId)?.openTab(
+                        TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = event.authorId),
+                    )
 
                 // Commentaries
                 is BookContentEvent.CommentariesTabSelected ->

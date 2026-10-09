@@ -6,27 +6,35 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.rememberScrollbarAdapter
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -34,29 +42,43 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
+import io.github.kdroidfilter.seforimapp.features.author.AUTHOR_ERAS
+import io.github.kdroidfilter.seforimapp.features.author.authorYears
+import io.github.kdroidfilter.seforimapp.features.author.plainPersonLinks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LogoBranch
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.UnifiedSearchBar
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookdetails.BookDetails
+import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
+import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -68,9 +90,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.*
+import java.text.NumberFormat
 
 @Stable
 data class SearchShellActions(
@@ -87,84 +111,13 @@ data class SearchShellActions(
     val onEnsureScopeBookForToc: (Long) -> Unit,
     val onTocToggle: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry, Boolean) -> Unit,
     val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
+    val onShowOnlyCategory: (Long?) -> Unit = {},
+    val onOpenBookAt: (bookId: Long, lineId: Long) -> Unit = { _, _ -> },
+    val onSelectResult: (lineId: Long) -> Unit = {},
+    val onMoreFromBook: (bookId: Long) -> Unit = {},
+    val onBackFromBook: () -> Unit = {},
+    val onOpenAuthor: (Long) -> Unit = {},
 )
-
-@Composable
-private fun SearchToolbar(
-    initialQuery: String,
-    onSubmit: (query: String) -> Unit,
-    onQueryChange: (String) -> Unit,
-    globalExtended: Boolean,
-    onGlobalExtendedChange: (Boolean) -> Unit,
-    baseBooksHadNoResults: Boolean = false,
-) {
-    val searchState = remember { TextFieldState() }
-    val currentOnQueryChange by rememberUpdatedState(onQueryChange)
-
-    // Keep the field in sync with initial/current query
-    LaunchedEffect(initialQuery) {
-        val text = searchState.text.toString()
-        if (text != initialQuery) {
-            searchState.edit { replace(0, length, initialQuery) }
-        }
-    }
-
-    // Persist live edits so session restore reopens with the last typed text
-    LaunchedEffect(Unit) {
-        snapshotFlow { searchState.text.toString() }.distinctUntilChanged().collect { q -> currentOnQueryChange(q) }
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Query field
-        TextField(
-            state = searchState,
-            modifier =
-                Modifier.weight(1f).height(36.dp).onPreviewKeyEvent { ev ->
-                    if ((ev.key == androidx.compose.ui.input.key.Key.Enter || ev.key == androidx.compose.ui.input.key.Key.NumPadEnter) &&
-                        ev.type == androidx.compose.ui.input.key.KeyEventType.KeyUp
-                    ) {
-                        val q = searchState.text.toString()
-                        onSubmit(q)
-                        true
-                    } else {
-                        false
-                    }
-                },
-            placeholder = { Text(stringResource(Res.string.search_placeholder)) },
-            leadingIcon = {
-                IconButton(modifier = Modifier.pointerHoverIcon(PointerIcon.Hand), onClick = {
-                    val q = searchState.text.toString()
-                    onSubmit(q)
-                }) {
-                    Icon(
-                        key = AllIconsKeys.Actions.Find,
-                        contentDescription = stringResource(Res.string.search_icon_description),
-                    )
-                }
-            },
-            textStyle =
-                androidx.compose.ui.text
-                    .TextStyle(fontSize = 13.sp),
-        )
-
-        // Global extended toggle (default off → base books only)
-        CustomToggleableChip(
-            checked = globalExtended,
-            onClick = onGlobalExtendedChange,
-            tooltipText =
-                if (baseBooksHadNoResults) {
-                    stringResource(Res.string.search_extended_no_base_results)
-                } else {
-                    stringResource(Res.string.search_extended_tooltip)
-                },
-            enabled = !baseBooksHadNoResults,
-        )
-    }
-}
 
 /**
  * The text of a search tab: the results, or the book opened from them. Its facet panes (category
@@ -181,7 +134,18 @@ fun SearchResultInBookShellMvi(
     isFiltering: Boolean,
     breadcrumbs: ImmutableMap<Long, List<String>>,
     bookCounts: Map<Long, Int>,
-    loadBookHits: suspend (Long) -> List<SearchResult>,
+    // The results' top categories, as tabs above them
+    categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
+    // The books the results were narrowed to ("more from this book")
+    bookFilterIds: Set<Long>,
+    // The book or author the query names, beside the results
+    entity: SearchEntity?,
+    // The home page's bar state and callbacks, for the same bar here
+    homeSearchUi: SearchHomeUiState,
+    homeSearchCallbacks: HomeSearchCallbacks,
+    // The selected result, read beside the list
+    preview: SearchResultViewModel.PassagePreview?,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -191,12 +155,8 @@ fun SearchResultInBookShellMvi(
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
 
-    val panelCardModifier =
-        Modifier
-            .fillMaxSize()
-            .padding(vertical = 6.dp, horizontal = 4.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(JewelTheme.globalColors.panelBackground)
+    // The panes inside bring their own gap, as the book's
+    val panelCardModifier = Modifier.fillMaxSize()
 
     val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
     if (showBookContent) {
@@ -214,7 +174,13 @@ fun SearchResultInBookShellMvi(
                 isFiltering = isFiltering,
                 breadcrumbs = breadcrumbs,
                 bookCounts = bookCounts,
-                loadBookHits = loadBookHits,
+                categories = categories,
+                selectedCategoryIds = selectedCategoryIds,
+                bookFilterIds = bookFilterIds,
+                entity = entity,
+                homeSearchUi = homeSearchUi,
+                homeSearchCallbacks = homeSearchCallbacks,
+                preview = preview,
                 actions = actions,
                 tabId = tabId,
             )
@@ -229,41 +195,30 @@ private fun SearchResultContentMvi(
     isFiltering: Boolean,
     breadcrumbs: ImmutableMap<Long, List<String>>,
     bookCounts: Map<Long, Int>,
-    loadBookHits: suspend (Long) -> List<SearchResult>,
+    categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
+    bookFilterIds: Set<Long>,
+    entity: SearchEntity?,
+    homeSearchUi: SearchHomeUiState,
+    homeSearchCallbacks: HomeSearchCallbacks,
+    preview: SearchResultViewModel.PassagePreview?,
     actions: SearchShellActions,
     tabId: String,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     val listState = rememberLazyListState()
-    // Group consecutive same-book results into Google-style cards. Cards are derived
-    // purely from the loaded list, so an already-shown card never grows beyond its cap.
-    val groups = remember(visibleResults, bookCounts) { groupResultsByBook(visibleResults, bookCounts) }
-    val lineToGroupIndex =
-        remember(groups) {
+    // A flat list by relevance, as on Google: at most two passages of a book in a row
+    // Narrowed to a book ("more from it"), or searched in one from the start (home's book / TOC scope):
+    // all its passages show
+    val inBook = bookFilterIds.isNotEmpty()
+    val oneBook = inBook || state.scopeBook != null || state.scopeTocId != null
+    val items = remember(visibleResults, bookCounts, oneBook) { flattenResults(visibleResults, bookCounts, oneBook) }
+    val lineToItemIndex =
+        remember(items) {
             buildMap {
-                groups.forEachIndexed { gi, g -> g.allLineIds.forEach { put(it, gi) } }
+                items.forEachIndexed { index, item -> item.lineIds.forEach { put(it, index) } }
             }
         }
-    // Expansion state, hoisted so it survives LazyColumn item recycling and regrouping.
-    val expandedBooks = remember { mutableStateMapOf<Long, Boolean>() }
-    val expandedHits = remember { mutableStateMapOf<Long, List<SearchResult>>() }
-    val contentScope = rememberCoroutineScope()
-    val currentLoadBookHits by rememberUpdatedState(loadBookHits)
-    val onToggleExpand: (BookGroup) -> Unit = { group ->
-        val id = group.bookId
-        if (expandedBooks[id] == true) {
-            expandedBooks[id] = false
-        } else {
-            expandedBooks[id] = true
-            val loadedCount = 1 + group.secondaries.size
-            if (group.totalCount > loadedCount && id !in expandedHits) {
-                contentScope.launch {
-                    // Always store (even an empty result) so the loading spinner resolves.
-                    expandedHits[id] = runCatching { currentLoadBookHits(id) }.getOrDefault(emptyList())
-                }
-            }
-        }
-    }
     val findQuery by appSettings.findQueryFlow(tabId).collectAsState("")
     val showFind by appSettings.findBarOpenFlow(tabId).collectAsState()
     val findFocusRequest by appSettings.findFocusRequestFlow(tabId).collectAsState()
@@ -278,14 +233,7 @@ private fun SearchResultContentMvi(
         animationSpec = zoomAnimSpec,
         label = "searchMainTextSizeAnim",
     )
-    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
-    val mainLineHeight by animateFloatAsState(
-        targetValue = rawLineHeight,
-        animationSpec = zoomAnimSpec,
-        label = "searchLineHeightAnim",
-    )
     val bookFontCode by appSettings.bookFontCodeFlow.collectAsState()
-    val hebrewFontFamily: FontFamily = FontCatalog.familyFor(bookFontCode)
     // Auxiliary size for small labels
     val commentSize by animateFloatAsState(
         targetValue = mainTextSize * 0.875f,
@@ -299,8 +247,8 @@ private fun SearchResultContentMvi(
             .distinctUntilChanged()
             .filter { !state.isLoading }
             .collect { (index, offset) ->
-                // index is a group index; anchor on the group's primary line
-                val anchorId = groups.getOrNull(index)?.primary?.lineId ?: -1L
+                // index is an item index; anchor on the item's passage
+                val anchorId = items.getOrNull(index)?.hit?.lineId ?: -1L
                 actions.onScroll(anchorId, 0, index, offset)
             }
     }
@@ -308,9 +256,9 @@ private fun SearchResultContentMvi(
     // Restore scroll/anchor when a new anchor timestamp is emitted.
     // We restore exactly once per timestamp to handle new searches and filter changes.
     var lastRestoredTs by remember { mutableLongStateOf(0L) }
-    LaunchedEffect(state.scrollToAnchorTimestamp, groups) {
-        if (groups.isNotEmpty() && lastRestoredTs != state.scrollToAnchorTimestamp) {
-            val anchorIdx = if (state.anchorId > 0) lineToGroupIndex[state.anchorId] else null
+    LaunchedEffect(state.scrollToAnchorTimestamp, items) {
+        if (items.isNotEmpty() && lastRestoredTs != state.scrollToAnchorTimestamp) {
+            val anchorIdx = if (state.anchorId > 0) lineToItemIndex[state.anchorId] else null
             val targetIndex = anchorIdx ?: state.scrollIndex
             val targetOffset = state.scrollOffset
             if (targetIndex >= 0) {
@@ -363,8 +311,8 @@ private fun SearchResultContentMvi(
                     ?.first ?: -1
             if (start >= 0) {
                 currentHitIndex = i
-                val groupIndex = lineToGroupIndex[vis[i].lineId] ?: 0
-                scope.launch { listState.scrollToItem(groupIndex, 24) }
+                val itemIndex = lineToItemIndex[vis[i].lineId] ?: 0
+                scope.launch { listState.scrollToItem(itemIndex, 24) }
                 break
             }
         }
@@ -378,181 +326,292 @@ private fun SearchResultContentMvi(
 
     val keyHandler = remember { { _: KeyEvent -> false } }
 
-    Box(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
-        Column(modifier = Modifier.fillMaxSize().padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            // Top persistent search toolbar
-            SearchToolbar(
-                initialQuery = state.query,
-                onSubmit = actions.onSubmit,
-                onQueryChange = actions.onQueryChange,
-                globalExtended = state.globalExtended,
-                onGlobalExtendedChange = actions.onGlobalExtendedChange,
-                baseBooksHadNoResults = state.baseBooksHadNoResults,
-            )
+    // What the bar is filled with: the typed draft when the tab opens (restored), then each executed
+    // query; never the live draft, which would write the field back while the user types or clears it
+    val barText = remember(state.executedQuery) { state.draftQuery.ifEmpty { state.executedQuery } }
 
-            Spacer(Modifier.height(12.dp))
-            val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
-            val totalResults =
-                maxOf(
-                    loadedResults,
-                    (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
-                )
-            // Only show top progress bar during initial search, not lazy loading
-            // (lazy loading has its own spinner at the bottom of the list)
-            val showProgress = state.isLoading
-            val hasTotal = (state.progressTotal ?: 0L) > 0L
-            val headerText =
-                if (showProgress && hasTotal) {
-                    stringResource(Res.string.search_result_count, loadedResults, totalResults)
-                } else {
-                    stringResource(Res.string.search_result_count_complete, totalResults)
+    // The selection lives in the ViewModel, as the preview it drives
+    val selectedLineId = preview?.hit?.lineId
+    val showBookDetails by appSettings.bookDetailsPaneFlow.collectAsState()
+    val listFocus = remember { FocusRequester() }
+    val windowInfo = LocalWindowInfo.current
+
+    // In a new tab by default; [inPlace] (Ctrl, or the preview's button) opens it in this tab
+    fun openResult(
+        result: SearchResult,
+        inPlace: Boolean,
+    ) {
+        actions.onOpenResult(result, !inPlace)
+    }
+
+    // Up and down move the selection through the list, Enter opens it
+    fun onListKey(event: KeyEvent): Boolean {
+        if (event.type != KeyEventType.KeyDown || items.isEmpty()) return false
+        val index = items.indexOfFirst { it.hit.lineId == selectedLineId }.coerceAtLeast(0)
+        val next =
+            when (event.key) {
+                Key.DirectionDown -> (index + 1).coerceAtMost(items.lastIndex)
+                Key.DirectionUp -> (index - 1).coerceAtLeast(0)
+                Key.Enter, Key.NumPadEnter -> {
+                    preview?.let { openResult(it.hit, false) }
+                    return true
                 }
-            val progressFraction by animateFloatAsState(
-                targetValue =
-                    if (showProgress && hasTotal) {
-                        val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
-                        (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                    } else {
-                        0f
-                    },
-                animationSpec = tween(durationMillis = 250, easing = LinearEasing),
-                label = "searchProgress",
-            )
-
-            // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = headerText,
-                    modifier = Modifier.padding(end = 12.dp),
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                )
-
-                Box(
-                    modifier =
-                        Modifier
-                            .height(4.dp)
-                            .weight(1f)
-                            .clip(RoundedCornerShape(percent = 50))
-                            .background(
-                                JewelTheme.globalColors.borders.disabled
-                                    .copy(alpha = 0.6f),
-                            ),
-                ) {
-                    if (showProgress && progressFraction > 0f) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxHeight()
-                                    .fillMaxWidth(progressFraction)
-                                    .background(JewelTheme.globalColors.outlines.focused),
-                        )
-                    }
-                }
-
-                // Reserve space for the cancel button to prevent width jumps
-                Box(
-                    modifier = Modifier.width(40.dp).height(28.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    // Only show cancel during initial search, not lazy loading
-                    if (state.isLoading) {
-                        IconActionButton(
-                            key = AllIconsKeys.Windows.Close,
-                            onClick = actions.onCancelSearch,
-                            contentDescription = stringResource(Res.string.search_stop),
-                        )
-                    }
-                }
+                else -> return false
             }
+        actions.onSelectResult(items[next].hit.lineId)
+        scope.launch { listState.animateScrollToItem(next) }
+        return true
+    }
 
-            Spacer(Modifier.height(8.dp))
-
-            // Inline progress above replaces the old loading row/spinner
-
-            // Results list
-            Box(
-                modifier = Modifier.fillMaxSize().background(JewelTheme.globalColors.panelBackground),
-            ) {
-                if (visibleResults.isEmpty()) {
-                    if (state.isLoading) {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
-                        }
-                    } else {
-                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
-                        }
-                    }
-                } else {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize().padding(start = 32.dp, end = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
+    BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
+        // Wide windows read the selected passage beside the list, as a mail client
+        val twoPanes = maxWidth >= TWO_PANES_MIN_WIDTH
+        val listWidth = (maxWidth * 0.34f).coerceIn(LIST_MIN_WIDTH, LIST_MAX_WIDTH)
+        Column(
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxHeight(),
+        ) {
+            Row(Modifier.fillMaxSize()) {
+                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
+                // One card: the bar, the tabs and the status over the list, as a mail client's search
+                Column(listModifier.fillMaxHeight().card()) {
+                    Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp)) {
+                        // The home page's smart bar: references, books and authors open; a text search runs here
+                        // The logo beside the bar, as Google's
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            // One card per book group; primary line's id is unique per group
-                            itemsIndexed(items = groups, key = { _, g -> g.primary.lineId }) { _, group ->
-                                val windowInfo = LocalWindowInfo.current
-                                BookResultCard(
-                                    group = group,
-                                    textSize = mainTextSize,
-                                    lineHeight = mainLineHeight,
-                                    fontFamily = hebrewFontFamily,
-                                    findQuery = activeFindQuery,
-                                    bookFontCode = bookFontCode,
-                                    breadcrumbs = breadcrumbs,
-                                    onRequestBreadcrumb = actions.onRequestBreadcrumb,
-                                    onOpenResult = { result ->
-                                        val mods = windowInfo.keyboardModifiers
-                                        val openInNewTab = !(mods.isCtrlPressed || mods.isMetaPressed)
-                                        actions.onOpenResult(result, openInNewTab)
-                                    },
-                                    isExpanded = expandedBooks[group.bookId] == true,
-                                    expandedHits = expandedHits[group.bookId],
-                                    onToggleExpand = onToggleExpand,
-                                )
-                            }
-                            // Loading indicator at the end of the list (only for lazy loading)
-                            if (state.isLoadingMore) {
-                                item {
-                                    Box(
-                                        Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        CircularProgressIndicator()
+                            LogoBranch(Modifier.height(LOGO_HEIGHT).aspectRatio(LOGO_RATIO))
+                            UnifiedSearchBar(
+                                searchUi = homeSearchUi,
+                                searchCallbacks = homeSearchCallbacks,
+                                modifier = Modifier.weight(1f),
+                                initialText = barText,
+                                autoFocus = false,
+                                onTextChange = actions.onQueryChange,
+                            )
+                        }
+
+                        // Always there, as Google's, even with one category: "הכל" also undoes a kept filter
+                        if (categories.isNotEmpty()) {
+                            Spacer(Modifier.height(10.dp))
+                            CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        // Inside one book: the way back to all the results
+                        if (inBook) {
+                            ResultLink(
+                                stringResource(Res.string.search_back_to_all, visibleResults.firstOrNull()?.bookTitle.orEmpty()),
+                                JewelTheme.globalColors.outlines.focused,
+                                13.sp,
+                            ) { actions.onBackFromBook() }
+                            Spacer(Modifier.height(4.dp))
+                        }
+                        val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
+                        val totalResults =
+                            maxOf(
+                                loadedResults,
+                                (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
+                            )
+                        // Only show top progress bar during initial search, not lazy loading
+                        // (lazy loading has its own spinner at the bottom of the list)
+                        val showProgress = state.isLoading
+                        val hasTotal = (state.progressTotal ?: 0L) > 0L
+                        val progressFraction by animateFloatAsState(
+                            targetValue =
+                                if (showProgress && hasTotal) {
+                                    val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
+                                    (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                },
+                            animationSpec = tween(durationMillis = 250, easing = LinearEasing),
+                            label = "searchProgress",
+                        )
+
+                        // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SearchStatusLine(
+                                // In one book, where it searched: no base/all books choice there
+                                scope = if (oneBook) state.scopeBook?.title ?: visibleResults.firstOrNull()?.bookTitle else null,
+                                total = totalResults,
+                                isLoading = showProgress,
+                                globalExtended = state.globalExtended,
+                                baseBooksHadNoResults = state.baseBooksHadNoResults,
+                                onGlobalExtendedChange = actions.onGlobalExtendedChange,
+                                modifier = Modifier.padding(end = 12.dp),
+                            )
+
+                            // The progress shows while searching only
+                            if (showProgress) {
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .height(4.dp)
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(percent = 50))
+                                            .background(
+                                                JewelTheme.globalColors.borders.disabled
+                                                    .copy(alpha = 0.6f),
+                                            ),
+                                ) {
+                                    if (showProgress && progressFraction > 0f) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(progressFraction)
+                                                    .background(JewelTheme.globalColors.outlines.focused),
+                                        )
                                     }
+                                }
+                            } else {
+                                Spacer(Modifier.weight(1f))
+                            }
+
+                            // Reserve space for the cancel button to prevent width jumps
+                            Box(
+                                modifier = Modifier.width(40.dp).height(28.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                // Only show cancel during initial search, not lazy loading
+                                if (state.isLoading) {
+                                    IconActionButton(
+                                        key = AllIconsKeys.Windows.Close,
+                                        onClick = actions.onCancelSearch,
+                                        contentDescription = stringResource(Res.string.search_stop),
+                                    )
                                 }
                             }
                         }
-                        StableListScrollbar(
-                            listState = listState,
-                            loadedCount = groups.size,
-                            totalCount = maxOf(bookCounts.size, groups.size),
-                            modifier = Modifier.align(Alignment.CenterEnd),
-                        )
                     }
-                }
-
-                // Loader overlay while applying filters (category/book/TOC) with quick fade
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = isFiltering,
-                    enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
-                    exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing)),
-                ) {
+                    Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
                     Box(
                         modifier =
                             Modifier
-                                .fillMaxSize()
-                                .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
-                                .zIndex(1f),
-                        contentAlignment = Alignment.Center,
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .focusRequester(listFocus)
+                                .onPreviewKeyEvent(::onListKey)
+                                .focusable(),
                     ) {
-                        CircularProgressIndicator()
+                        if (visibleResults.isEmpty()) {
+                            if (state.isLoading) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                                }
+                            } else {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
+                                }
+                            }
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
+                                        ResultView(
+                                            item = item,
+                                            selected = item.hit.lineId == selectedLineId,
+                                            findQuery = activeFindQuery,
+                                            bookFontCode = bookFontCode,
+                                            breadcrumbs = breadcrumbs,
+                                            onRequestBreadcrumb = actions.onRequestBreadcrumb,
+                                            // Wide: a click shows the passage beside the list, a double click opens it; narrow: opens it
+                                            onClick = { result ->
+                                                if (twoPanes) {
+                                                    actions.onSelectResult(result.lineId)
+                                                    listFocus.requestFocus()
+                                                } else {
+                                                    val mods = windowInfo.keyboardModifiers
+                                                    openResult(result, mods.isCtrlPressed || mods.isMetaPressed)
+                                                }
+                                            },
+                                            onOpen = { result -> openResult(result, false) },
+                                            onMoreInBook = { actions.onMoreFromBook(item.hit.bookId) },
+                                        )
+                                    }
+                                    // Loading indicator at the end of the list (only for lazy loading)
+                                    if (state.isLoadingMore) {
+                                        item {
+                                            Box(
+                                                Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                CircularProgressIndicator()
+                                            }
+                                        }
+                                    }
+                                }
+                                StableListScrollbar(
+                                    listState = listState,
+                                    loadedCount = items.size,
+                                    totalCount = items.size,
+                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                )
+                            }
+                        }
+
+                        // Loader overlay while applying filters (category/book/TOC) with quick fade
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isFiltering,
+                            enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
+                            exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing)),
+                        ) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
+                                        .zIndex(1f),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                }
+                if (twoPanes) {
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
+                        // The query's book is already in the details pane when a result of it is shown
+                        val duplicate =
+                            entity is SearchEntity.BookEntity && showBookDetails && entity.book.id == preview?.hit?.bookId
+                        if (entity != null && !duplicate) {
+                            EntityPanel(
+                                entity = entity,
+                                onOpenBookAt = actions.onOpenBookAt,
+                                onOpenAuthor = actions.onOpenAuthor,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                        // Until the first result's passage is loaded, the pane says so
+                        if (preview == null && (items.isNotEmpty() || state.isLoading)) {
+                            Box(Modifier.weight(1f).fillMaxWidth().card(), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                        preview?.let { shown ->
+                            PassagePreview(
+                                preview = shown,
+                                pieces = breadcrumbs[shown.hit.lineId],
+                                query = state.executedQuery,
+                                bookFontCode = bookFontCode,
+                                // The passage follows the zoom, as the books
+                                textSize = mainTextSize,
+                                onOpen = { openResult(shown.hit, false) },
+                                onOpenLine = { lineId -> actions.onOpenBookAt(shown.hit.bookId, lineId) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
@@ -579,70 +638,40 @@ private fun SearchResultContentMvi(
     }
 }
 
-/**
- * A book group for the grouped (Google-style) results view: a primary hit plus the
- * secondary hits of the same book that were loaded contiguously after it.
- * [totalCount] is the exact facet count for the book (may exceed loaded hits).
- */
+/** One result of the flat list: a passage, and how many more its book has ([more], on the book's first result only). */
 @Stable
-private data class BookGroup(
-    val bookId: Long,
-    val bookTitle: String,
-    val primary: SearchResult,
-    val secondaries: List<SearchResult>,
-    val totalCount: Int,
+private data class ResultItem(
+    val hit: SearchResult,
+    val more: Int,
 ) {
-    val allLineIds: List<Long>
-        get() =
-            buildList(secondaries.size + 1) {
-                add(primary.lineId)
-                secondaries.forEach { add(it.lineId) }
-            }
+    val lineIds: List<Long> get() = listOf(hit.lineId)
 }
 
 /**
- * Group results into one [BookGroup] per book, in first-appearance (relevance) order.
- * A book gets exactly one card: the first time it appears it opens a group, and the same-book
- * hits that immediately follow become its preview secondaries. Once another book intervenes,
- * the group is sealed — later hits of an already-seen book are dropped from the list so the
- * same book never reappears lower down (they are still counted via facets and fetched on expand).
- * The fold is deterministic over the prefix, so earlier cards stay put as more pages load.
- * [bookCounts] gives the exact per-book total (from Lucene facets), coerced to the loaded count.
+ * The results in relevance order, one passage per run of a book (its next ones are behind the
+ * "more" link), and a passage whose text was already shown (the same prayer in two siddurim
+ * sections) dropped. A book may come back lower with a later run. [bookCounts] (exact per-book
+ * totals) gives the "more in this book" count of a book's first result.
  */
-private fun groupResultsByBook(
+private fun flattenResults(
     results: List<SearchResult>,
     bookCounts: Map<Long, Int>,
-): List<BookGroup> {
-    if (results.isEmpty()) return emptyList()
-    val groups = ArrayList<BookGroup>()
-    val seen = HashSet<Long>()
-    var primary: SearchResult? = null
-    var secondaries: ArrayList<SearchResult>? = null
-
-    fun seal() {
-        val p = primary ?: return
-        val secs = secondaries ?: emptyList<SearchResult>()
-        val total = (bookCounts[p.bookId] ?: (1 + secs.size)).coerceAtLeast(1 + secs.size)
-        groups.add(BookGroup(p.bookId, p.bookTitle, p, secs, total))
-    }
-
+    // Inside one book ("more from it"), every passage shows, without "more" links
+    oneBook: Boolean,
+): List<ResultItem> {
+    if (oneBook) return results.map { ResultItem(it, more = 0) }
+    val items = ArrayList<ResultItem>()
+    val booksSeen = HashSet<Long>()
+    val textsSeen = HashSet<String>()
+    var runBook = -1L
     for (r in results) {
-        when {
-            // Continuation of the book currently being built → keep as a preview secondary.
-            primary != null && r.bookId == primary.bookId -> secondaries!!.add(r)
-            // A book already shown above → skip so it never appears as a second card.
-            r.bookId in seen -> Unit
-            // A new book → seal the current group and open one for this book.
-            else -> {
-                seal()
-                seen.add(r.bookId)
-                primary = r
-                secondaries = ArrayList()
-            }
-        }
+        if (r.bookId == runBook) continue
+        runBook = r.bookId
+        if (!textsSeen.add(r.snippet.replace(HTML_TAG, "").searchKey())) continue
+        val more = if (booksSeen.add(r.bookId)) ((bookCounts[r.bookId] ?: 1) - 1).coerceAtLeast(0) else 0
+        items += ResultItem(r, more)
     }
-    seal()
-    return groups
+    return items
 }
 
 // "Gilt" — the matched search term glows gold like a gilded letter (Torah-ornament palette).
@@ -660,10 +689,11 @@ private fun rememberSnippetDisplay(
     textSize: Float,
     findQuery: String?,
     bookFontCode: String,
+    // The matched words' color: gilt by default, the text's own for Google-like plain bold
+    boldColor: Color = giltColor(),
 ): AnnotatedString {
     // On macOS, some Hebrew fonts lack bold faces; scale slightly to keep emphasis visible.
     val boldScaleForPlatform = FontCatalog.boldScaleFor(bookFontCode)
-    val boldColor = giltColor()
     val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
     val annotated =
         remember(snippet, textSize, boldScaleForPlatform, boldColor, footnoteMarkerColor) {
@@ -681,250 +711,468 @@ private fun rememberSnippetDisplay(
     return remember(annotated, findQuery, baseHl) { highlightAnnotated(annotated, findQuery, baseHl) }
 }
 
-/** Last breadcrumb piece (the TOC leaf) for a result, or null if not resolvable/cached. */
-private fun tocLeafOf(
-    pieces: List<String>?,
-    bookTitle: String,
-): String? {
-    val list = pieces ?: return null
-    val bookIndex = list.indexOfFirst { it == bookTitle }
-    return if (bookIndex >= 0 && bookIndex < list.lastIndex) list.last() else null
-}
+// Secondary text a dark grey: the theme's info grey is too faint to read a passage in
+@Composable
+internal fun readingSecondary(): Color =
+    JewelTheme.globalColors.text.normal
+        .copy(alpha = 0.72f)
 
 /**
- * Google-style card: a book header with its exact result count, the primary hit shown
- * prominently, a few secondary hits indented, and an inline expander for the rest.
+ * A result as on Google: its categories in small, the book as the bold title with the passage's
+ * place beside it in grey, the passage in grey with the matched words bold, then a link to the
+ * book's other results.
  */
 @Composable
-private fun BookResultCard(
-    group: BookGroup,
-    textSize: Float,
-    lineHeight: Float,
-    fontFamily: FontFamily,
+private fun ResultView(
+    item: ResultItem,
+    selected: Boolean,
     findQuery: String?,
     bookFontCode: String,
     breadcrumbs: ImmutableMap<Long, List<String>>,
     onRequestBreadcrumb: (SearchResult) -> Unit,
-    onOpenResult: (SearchResult) -> Unit,
-    isExpanded: Boolean,
-    expandedHits: List<SearchResult>?,
-    onToggleExpand: (BookGroup) -> Unit,
+    onClick: (SearchResult) -> Unit,
+    onOpen: (SearchResult) -> Unit,
+    onMoreInBook: () -> Unit,
 ) {
-    val collapsedCap = 3
-    val loadedCount = 1 + group.secondaries.size
-    val needsFetch = group.totalCount > loadedCount
-    val isLoadingExpand = isExpanded && needsFetch && expandedHits == null
+    val hit = item.hit
+    // Titles in the app's text color, bold, as every other text; the rest grey
+    val ink = JewelTheme.globalColors.text.normal
+    val grey = readingSecondary()
+    val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
+    val pieces = breadcrumbs[hit.lineId]
+    LaunchedEffect(hit.lineId) { if (pieces == null) currentOnRequestBreadcrumb(hit) }
+    val place = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle).second }
 
-    // Hits to render: full set when expanded+fetched, all loaded when expanded, capped otherwise.
-    val effectiveHits: List<SearchResult> =
-        when {
-            isExpanded && !expandedHits.isNullOrEmpty() -> expandedHits
-            isExpanded ->
-                buildList {
-                    add(group.primary)
-                    addAll(group.secondaries)
-                }
-            else ->
-                buildList {
-                    add(group.primary)
-                    addAll(group.secondaries.take(collapsedCap))
-                }
-        }
-    val primary = effectiveHits.first()
-    val secondaries = effectiveHits.drop(1)
-    val remaining = (group.totalCount - effectiveHits.size).coerceAtLeast(0)
-    val showExpander = isExpanded || remaining > 0
-
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
     val accent = JewelTheme.globalColors.outlines.focused
-    val cardShape = RoundedCornerShape(14.dp)
-
-    Box(
+    // A row as the history's: hover tint, a divider under it
+    Column(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .shadow(elevation = 2.dp, shape = cardShape)
-                .clip(cardShape)
-                .background(JewelTheme.globalColors.panelBackground)
-                .border(1.dp, JewelTheme.globalColors.borders.normal, cardShape),
+                .clip(RoundedCornerShape(6.dp))
+                .background(
+                    when {
+                        selected -> accent.copy(alpha = 0.10f)
+                        hovered -> accent.copy(alpha = 0.05f)
+                        else -> Color.Transparent
+                    },
+                ).drawBehind {
+                    // The selected row's bar, on its start side
+                    if (selected) {
+                        val bar = 3.dp.toPx()
+                        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - bar else 0f
+                        drawRect(accent, topLeft = Offset(x, 0f), size = Size(bar, size.height))
+                    }
+                }.hoverable(hover)
+                .combinedClickable(
+                    interactionSource = hover,
+                    indication = null,
+                    onDoubleClick = { onOpen(hit) },
+                    onClick = { onClick(hit) },
+                ).pointerHoverIcon(PointerIcon.Hand),
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 14.dp)) {
-            // Header: book title (sans, bold) + filled count chip
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Text(
-                    text = group.bookTitle,
-                    color = JewelTheme.globalColors.text.normal,
-                    fontSize = (textSize * 1.15f).sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .clickable { onOpenResult(group.primary) },
-                )
-                if (group.totalCount > 1) {
-                    Spacer(Modifier.width(10.dp))
-                    Box(
-                        modifier =
-                            Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(accent)
-                                .padding(horizontal = 9.dp, vertical = 4.dp),
-                    ) {
+        Row(
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(hit.bookTitle, color = ink, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    if (place != null) {
                         Text(
-                            text = group.totalCount.toString(),
-                            color = Color.White,
-                            fontSize = (textSize * 0.8f).sp,
-                            fontWeight = FontWeight.Bold,
+                            "· $place",
+                            color = grey,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
                         )
                     }
                 }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // Primary hit: serif snippet (gilt term) with its location on the side,
-            // consistent with the secondaries below so the snippets read as one list.
-            val primaryPieces = breadcrumbs[primary.lineId]
-            val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
-            LaunchedEffect(primary.lineId) { if (primaryPieces == null) currentOnRequestBreadcrumb(primary) }
-            val primaryLeaf = remember(primaryPieces, primary.bookTitle) { tocLeafOf(primaryPieces, primary.bookTitle) }
-            val primaryDisplay = rememberSnippetDisplay(primary.snippet, textSize, findQuery, bookFontCode)
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(6.dp))
-                        .clickable { onOpenResult(primary) }
-                        .pointerHoverIcon(PointerIcon.Hand)
-                        .padding(vertical = 5.dp),
-            ) {
-                // Reference column (leading): the location, aligned like a concordance index.
-                Text(
-                    text = primaryLeaf.orEmpty(),
-                    color = accent,
-                    fontSize = (textSize * 0.78f).sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    modifier = Modifier.widthIn(min = (textSize * 4.4f).dp).padding(top = (textSize * 0.22f).dp),
-                )
-                Spacer(Modifier.width(14.dp))
-                Text(
-                    text = primaryDisplay,
-                    color = JewelTheme.globalColors.text.normal,
-                    fontFamily = fontFamily,
-                    lineHeight = (textSize * lineHeight).sp,
-                    fontSize = textSize.sp,
-                    textAlign = TextAlign.Justify,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-
-            // Secondary hits: a thin divider tops every row (the first one also separates them
-            // from the primary). Each row is a fixed two-line height, so rows are uniform.
-            if (secondaries.isNotEmpty()) {
-                val dividerColor =
-                    JewelTheme.globalColors.borders.normal
-                        .copy(alpha = 0.7f)
-                val secRow: @Composable (SearchResult) -> Unit = { sec ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Box(Modifier.fillMaxWidth().height(1.dp).background(dividerColor))
-                        SecondaryResultRow(
-                            result = sec,
-                            textSize = textSize,
-                            lineHeight = lineHeight,
-                            fontFamily = fontFamily,
-                            findQuery = findQuery,
-                            bookFontCode = bookFontCode,
-                            pieces = breadcrumbs[sec.lineId],
-                            onRequestBreadcrumb = onRequestBreadcrumb,
-                            onClick = { onOpenResult(sec) },
+                Snippet(hit, findQuery, bookFontCode)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (item.more > 0) {
+                        ResultLink(
+                            stringResource(Res.string.search_more_from_book, item.more, hit.bookTitle),
+                            accent,
+                            11.sp,
+                            onClick = onMoreInBook,
                         )
                     }
-                }
-                Spacer(Modifier.height(4.dp))
-                if (isExpanded) {
-                    // A non-lazy scrolling Column so the height ADAPTS to the content (a
-                    // LazyColumn with fillMaxSize would always take the max). It grows with the
-                    // results, caps at ~4 rows, then scrolls. The expand already loads every hit,
-                    // so a plain Column is fine and its ScrollState gives an exact, stable thumb.
-                    val secScroll = rememberScrollState()
-                    val showBar = secScroll.maxValue > 0
-                    val maxViewportDp = (textSize * lineHeight * 2f + 31f) * 4f
-                    Box(modifier = Modifier.fillMaxWidth().heightIn(max = maxViewportDp.dp)) {
-                        Column(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .verticalScroll(secScroll)
-                                    .padding(end = if (showBar) 12.dp else 0.dp),
-                        ) {
-                            secondaries.forEach { sec -> secRow(sec) }
-                        }
-                        if (showBar) {
-                            VerticalScrollbar(
-                                modifier = Modifier.align(Alignment.CenterEnd),
-                                adapter = rememberScrollbarAdapter(secScroll),
-                            )
-                        }
-                    }
-                } else {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        secondaries.forEach { sec -> secRow(sec) }
-                    }
-                }
-            }
-
-            // Inline expander
-            if (showExpander) {
-                Spacer(Modifier.height(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .pointerHoverIcon(PointerIcon.Hand)
-                            .clickable { onToggleExpand(group) }
-                            .padding(vertical = 4.dp, horizontal = 6.dp),
-                ) {
-                    if (isLoadingExpand) {
-                        CircularProgressIndicator(modifier = Modifier.size(12.dp))
-                        Spacer(Modifier.width(6.dp))
-                    }
-                    Text(
-                        text =
-                            if (isExpanded) {
-                                stringResource(Res.string.search_collapse)
-                            } else {
-                                stringResource(Res.string.search_more_in_book, remaining)
-                            },
-                        color = accent,
-                        fontSize = (textSize * 0.85f).sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Icon(
-                        key = if (isExpanded) AllIconsKeys.General.ChevronUp else AllIconsKeys.General.ChevronDown,
-                        contentDescription = stringResource(Res.string.chevron_icon_description),
-                        modifier = Modifier.padding(start = 2.dp),
-                    )
                 }
             }
         }
-
-        // Book "binding": a bold accent strip on the start (right, in RTL) edge.
         Box(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterStart)
-                    .fillMaxHeight()
-                    .width(4.dp)
-                    .background(accent),
+            Modifier
+                .fillMaxWidth()
+                .padding(start = 8.dp)
+                .height(1.dp)
+                .background(
+                    JewelTheme.globalColors.borders.normal
+                        .copy(alpha = 0.5f),
+                ),
         )
+    }
+}
+
+/**
+ * The selected result in its book, to read without opening it: its place as a title, then the
+ * found line marked by a bar, between the lines around it, faded; in the books' font and size, over
+ * the whole width as the book's text. A click on a line opens the book there.
+ */
+@Composable
+private fun PassagePreview(
+    preview: SearchResultViewModel.PassagePreview,
+    pieces: List<String>?,
+    query: String,
+    bookFontCode: String,
+    textSize: Float,
+    onOpen: () -> Unit,
+    // A click on a line opens the book there, in a new tab (the found line as the result does)
+    onOpenLine: (lineId: Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hit = preview.hit
+    val accent = JewelTheme.globalColors.outlines.focused
+    val ink = JewelTheme.globalColors.text.normal
+    val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
+    val lines = preview.lines
+    val fontFamily = FontCatalog.familyFor(bookFontCode)
+    // The words the engine matched, as bold in the result's snippet (its variants: מן העין for מהעין),
+    // so the preview marks the same ones as the list
+    val words =
+        remember(hit.snippet, query) {
+            BOLD_SPAN
+                .findAll(hit.snippet)
+                .map { it.groupValues[1].replace(HTML_TAG, "").trim() }
+                .filter { it.length > 1 }
+                .distinct()
+                .toList()
+                .ifEmpty { query.split(Regex("\\s+")).filter { it.length > 1 } }
+        }
+    val highlight = accent.copy(alpha = 0.22f)
+    val scroll = rememberScrollState()
+    // The found line in view, once laid out
+    var foundTop by remember(hit.lineId) { mutableStateOf<Int?>(null) }
+    LaunchedEffect(foundTop) { foundTop?.let { scroll.animateScrollTo((it - FOUND_LINE_MARGIN).coerceAtLeast(0)) } }
+
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .card(),
+    ) {
+        Column(Modifier.padding(start = 28.dp, end = 28.dp, top = 18.dp, bottom = 14.dp)) {
+            if (categories.isNotEmpty()) Text(categories, fontSize = 12.sp, color = readingSecondary(), maxLines = 1)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(hit.bookTitle, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = ink, maxLines = 1)
+                    if (place != null) Text(place, fontSize = 14.sp, color = readingSecondary(), maxLines = 1)
+                }
+            }
+        }
+        Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
+        VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f).fillMaxWidth()) {
+            // The ScrollState overload scrolls its content itself
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    // The whole width, as the book's text
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
+                ) {
+                    lines.forEach { line ->
+                        val found = line.id == hit.lineId
+                        val text =
+                            remember(line.id, textSize, words, highlight) {
+                                words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
+                                    highlightAnnotated(acc, word, highlight)
+                                }
+                            }
+                        val lineHover = remember { MutableInteractionSource() }
+                        val lineHovered by lineHover.collectIsHoveredAsState()
+                        Row(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(if (lineHovered) accent.copy(alpha = 0.06f) else Color.Transparent)
+                                    .hoverable(lineHover)
+                                    .clickable(interactionSource = lineHover, indication = null) {
+                                        if (found) onOpen() else onOpenLine(line.id)
+                                    }.pointerHoverIcon(PointerIcon.Hand)
+                                    .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
+                        ) {
+                            // The found line: a bar on its side, the text at full strength
+                            Box(
+                                Modifier
+                                    .width(3.dp)
+                                    .fillMaxHeight()
+                                    .background(if (found) accent else Color.Transparent),
+                            )
+                            Text(
+                                text = text,
+                                fontFamily = fontFamily,
+                                fontSize = textSize.sp,
+                                lineHeight = (textSize * 1.8f).sp,
+                                color = if (found) ink else ink.copy(alpha = 0.45f),
+                                textAlign = TextAlign.Justify,
+                                modifier = Modifier.weight(1f).padding(start = 14.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)
+private const val FOUND_LINE_MARGIN = 40
+
+/** A passage: two lines of grey text, the matched words bold in the text's color. */
+@Composable
+private fun Snippet(
+    hit: SearchResult,
+    findQuery: String?,
+    bookFontCode: String,
+) {
+    val ink = JewelTheme.globalColors.text.normal
+    val display = rememberSnippetDisplay(hit.snippet, SNIPPET_SIZE, findQuery, bookFontCode, boldColor = ink)
+    Text(
+        text = display,
+        color = readingSecondary(),
+        fontSize = SNIPPET_SIZE.sp,
+        lineHeight = (SNIPPET_SIZE * 1.65f).sp,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.padding(vertical = 2.dp),
+    )
+}
+
+private const val SNIPPET_SIZE = 13f
+
+/** The result's categories (הלכה › ראשונים) and its place in the book (סימן קד), once its breadcrumb is known. */
+private fun categoriesAndPlace(
+    pieces: List<String>?,
+    bookTitle: String,
+): Pair<String, String?> {
+    val bookIndex = pieces?.indexOf(bookTitle) ?: -1
+    if (pieces == null || bookIndex < 0) return "" to null
+    val place =
+        pieces
+            .drop(bookIndex + 1)
+            .filter { it.isNotBlank() }
+            .joinToString(", ")
+            .ifBlank { null }
+    return pieces.take(bookIndex).joinToString(" › ") to place
+}
+
+/** A text link in [color], underlined on hover. */
+@Composable
+internal fun ResultLink(
+    text: String,
+    color: Color,
+    fontSize: TextUnit,
+    fontWeight: FontWeight? = null,
+    onClick: () -> Unit,
+) {
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+    Text(
+        text = text,
+        color = color,
+        fontSize = fontSize,
+        fontWeight = fontWeight,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textDecoration = if (hovered) TextDecoration.Underline else null,
+        modifier = Modifier.hoverable(hover).pointerHoverIcon(PointerIcon.Hand).clickable(onClick = onClick),
+    )
+}
+
+/**
+ * The results' top categories as tabs, as Google's "All · Images · News": "הכל", the five most
+ * frequent, the rest behind "עוד". One at a time.
+ */
+@Composable
+private fun CategoryTabs(
+    categories: List<SearchResultViewModel.SearchTreeCategory>,
+    selectedCategoryIds: Set<Long>,
+    onShowOnly: (Long?) -> Unit,
+) {
+    val sorted = remember(categories) { categories.sortedByDescending { it.count } }
+    val selected = sorted.firstOrNull { it.category.id in selectedCategoryIds }?.category?.id
+    var showAll by remember(categories) { mutableStateOf(false) }
+    val shown =
+        if (showAll) {
+            sorted
+        } else {
+            sorted.take(TOP_TABS) + sorted.drop(TOP_TABS).filter { it.category.id == selected }
+        }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        CategoryTab(stringResource(Res.string.search_tab_all), selected == null) { onShowOnly(null) }
+        shown.forEach { node ->
+            CategoryTab(node.category.title, selected == node.category.id) { onShowOnly(node.category.id) }
+        }
+        if (sorted.size > TOP_TABS) {
+            CategoryTab(stringResource(if (showAll) Res.string.search_tabs_less else Res.string.search_tabs_more), false) {
+                showAll = !showAll
+            }
+        }
+    }
+}
+
+private const val TOP_TABS = 5
+
+@Composable
+private fun CategoryTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    val accent = JewelTheme.globalColors.outlines.focused
+    val shape = RoundedCornerShape(50)
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+    Box(
+        modifier =
+            Modifier
+                .clip(shape)
+                .background(
+                    when {
+                        selected -> accent.copy(alpha = 0.15f)
+                        hovered ->
+                            JewelTheme.globalColors.text.normal
+                                .copy(alpha = 0.06f)
+                        else -> Color.Transparent
+                    },
+                ).border(1.dp, if (selected) accent else JewelTheme.globalColors.borders.normal, shape)
+                .hoverable(hover)
+                .clickable(onClick = onClick)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+    ) {
+        Text(label, fontSize = 13.sp, color = if (selected) accent else JewelTheme.globalColors.text.normal, maxLines = 1)
+    }
+}
+
+private val LOGO_HEIGHT = 44.dp
+private const val LOGO_RATIO = 634f / 684f
+
+/** The page's panes, as the book's (PaneCard): a small gap around, rounded, on the panel's background, no border. */
+@Composable
+private fun Modifier.card(): Modifier =
+    padding(vertical = 6.dp, horizontal = 4.dp)
+        .clip(RoundedCornerShape(12.dp))
+        .background(JewelTheme.globalColors.panelBackground)
+
+private val LIST_MIN_WIDTH = 380.dp
+private val LIST_MAX_WIDTH = 580.dp
+
+// Below this the list takes the whole width, and a result opens on click
+private val TWO_PANES_MIN_WIDTH = 1000.dp
+
+/** The book or author a query names, as Google's knowledge panel: what it is, and buttons to go there. */
+@Composable
+private fun EntityPanel(
+    entity: SearchEntity,
+    onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
+    onOpenAuthor: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.card().padding(16.dp)) {
+        EntityDetails(entity, onOpenBookAt, onOpenAuthor)
+    }
+}
+
+/** What the panel shows of a book (categories, author, parts) or an author (era, bio, books). */
+@Composable
+private fun ColumnScope.EntityDetails(
+    entity: SearchEntity,
+    onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
+    onOpenAuthor: (Long) -> Unit,
+) {
+    val grey = readingSecondary()
+    when (entity) {
+        is SearchEntity.BookEntity -> BookDetails(entity, onOpenBookAt, onOpenAuthor)
+
+        is SearchEntity.AuthorEntity -> {
+            val details = entity.details
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(WritingHand, contentDescription = null, tint = grey, modifier = Modifier.size(20.dp))
+                Text(
+                    AuthorNames.display(details.name),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = JewelTheme.globalColors.text.normal,
+                )
+            }
+            val facts = listOfNotNull(details.era?.let { AUTHOR_ERAS[it] }, authorYears(details))
+            if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
+            details.bio?.summary?.let {
+                Text(
+                    plainPersonLinks(it).replace("**", ""),
+                    fontSize = 13.sp,
+                    lineHeight = 21.sp,
+                    color = grey,
+                    maxLines = 7,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Text(stringResource(Res.string.author_books_count, details.books.size), fontSize = 12.sp, color = grey)
+            DefaultButton(onClick = { onOpenAuthor(details.id) }, modifier = Modifier.padding(top = 4.dp)) {
+                Text(stringResource(Res.string.search_panel_author_page))
+            }
+        }
+    }
+}
+
+/**
+ * Where the search looked and how many it found, with the other choice as a link: the base books
+ * (the default) or all of them; when the base books had nothing, says so.
+ */
+@Composable
+private fun SearchStatusLine(
+    scope: String?,
+    total: Int,
+    isLoading: Boolean,
+    globalExtended: Boolean,
+    baseBooksHadNoResults: Boolean,
+    onGlobalExtendedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val grey = readingSecondary()
+    val count = remember(total) { NumberFormat.getIntegerInstance().format(total) }
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text =
+                when {
+                    isLoading -> stringResource(Res.string.search_searching)
+                    scope != null -> stringResource(Res.string.search_status_in, count, scope)
+                    baseBooksHadNoResults -> stringResource(Res.string.search_status_fallback, count)
+                    globalExtended -> stringResource(Res.string.search_status_all, count)
+                    else -> stringResource(Res.string.search_status_base, count)
+                },
+            color = grey,
+            fontSize = 13.sp,
+            maxLines = 1,
+        )
+        if (!isLoading && !baseBooksHadNoResults && scope == null) {
+            Text("·", color = grey, fontSize = 13.sp)
+            ResultLink(
+                stringResource(if (globalExtended) Res.string.search_switch_base else Res.string.search_switch_all),
+                JewelTheme.globalColors.outlines.focused,
+                13.sp,
+            ) { onGlobalExtendedChange(!globalExtended) }
+        }
     }
 }
 
@@ -985,53 +1233,4 @@ private fun StableListScrollbar(
         },
         modifier = modifier,
     )
-}
-
-@Composable
-private fun SecondaryResultRow(
-    result: SearchResult,
-    textSize: Float,
-    lineHeight: Float,
-    fontFamily: FontFamily,
-    findQuery: String?,
-    bookFontCode: String,
-    pieces: List<String>?,
-    onRequestBreadcrumb: (SearchResult) -> Unit,
-    onClick: () -> Unit,
-) {
-    val currentOnRequestBreadcrumb by rememberUpdatedState(onRequestBreadcrumb)
-    LaunchedEffect(result.lineId) { if (pieces == null) currentOnRequestBreadcrumb(result) }
-    val tocLeaf = remember(pieces, result.bookTitle) { tocLeafOf(pieces, result.bookTitle) }
-    val display = rememberSnippetDisplay(result.snippet, textSize, findQuery, bookFontCode)
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
-                .clickable(onClick = onClick)
-                .pointerHoverIcon(PointerIcon.Hand)
-                .padding(top = 9.dp, bottom = 9.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        // Reference column (leading), aligned with the primary's.
-        Text(
-            text = tocLeaf.orEmpty(),
-            color = JewelTheme.globalColors.text.disabledSelected,
-            fontSize = (textSize * 0.72f).sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            modifier = Modifier.widthIn(min = (textSize * 4.4f).dp).padding(top = (textSize * 0.18f).dp),
-        )
-        Spacer(Modifier.width(14.dp))
-        Text(
-            text = display,
-            color = JewelTheme.globalColors.text.normal,
-            fontFamily = fontFamily,
-            lineHeight = (textSize * lineHeight).sp,
-            fontSize = (textSize * 0.92f).sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
-        )
-    }
 }

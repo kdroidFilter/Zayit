@@ -50,6 +50,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.SourcesPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.TargumPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.isBookTextShown
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookdetails.BookDetailsPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.SearchBookTocPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
@@ -73,6 +74,7 @@ import seforimapp.seforimapp.generated.resources.book_list
 import seforimapp.seforimapp.generated.resources.commentaries
 import seforimapp.seforimapp.generated.resources.links
 import seforimapp.seforimapp.generated.resources.notes_pane
+import seforimapp.seforimapp.generated.resources.search_book_details
 import seforimapp.seforimapp.generated.resources.sources
 import seforimapp.seforimapp.generated.resources.table_of_contents
 import kotlin.math.roundToInt
@@ -137,6 +139,15 @@ enum class ReaderPane(
         Res.string.sources,
         SatellitePlacement.Docked(DockSide.Bottom, order = 1, extent = 120.dp),
         toggle = BookContentEvent.ToggleSources,
+        navigation = false,
+    ),
+
+    // The book's details (authors, parts): sized by the dock, no split percentage of its own
+    BookDetails(
+        "book-details",
+        Res.string.search_book_details,
+        SatellitePlacement.Docked(DockSide.Left, order = 1, extent = 280.dp),
+        toggle = BookContentEvent.ToggleBookDetails,
         navigation = false,
     ),
     ;
@@ -380,9 +391,11 @@ private fun selectedTabDemand(
             is TabsDestination.Home, is TabsDestination.BookContent, is TabsDestination.Search -> {
                 val viewModel = tabBookViewModel(session.ownerOf(tabId), destination)
                 val uiState by viewModel.uiState.collectAsState()
+                val bookDetails by LocalAppGraph.current.appSettings.bookDetailsPaneFlow
+                    .collectAsState()
                 PaneDemand(
                     tabId,
-                    desiredPanes(uiState, isSearch = destination is TabsDestination.Search),
+                    desiredPanes(uiState, isSearch = destination is TabsDestination.Search, bookDetails = bookDetails),
                     viewModel::onEvent,
                     uiState.layout,
                 )
@@ -494,6 +507,8 @@ private fun writeBack(
         ReaderPane.Notes -> layout.notesSplitState.positionPercentage = ratio
         ReaderPane.Targum -> layout.targumSplitState.positionPercentage = ratio
         ReaderPane.Comments, ReaderPane.Sources -> layout.contentSplitState.positionPercentage = ratio
+        // Never planned (see plannedExtents): its size is the dock's own
+        ReaderPane.BookDetails -> Unit
     }
 }
 
@@ -505,6 +520,7 @@ private fun ReaderPane.position(layout: LayoutState): Float =
         ReaderPane.Notes -> layout.notesSplitState.positionPercentage
         ReaderPane.Targum -> layout.targumSplitState.positionPercentage
         ReaderPane.Comments, ReaderPane.Sources -> layout.contentSplitState.positionPercentage
+        ReaderPane.BookDetails -> 0f
     }
 
 /** The first pane's minimum of this pane's split (the text, for the line panes), in dp. */
@@ -524,9 +540,13 @@ private const val SPLIT_SECOND_MIN_DP = 200f
 private fun desiredPanes(
     uiState: BookContentState,
     isSearch: Boolean,
+    bookDetails: Boolean,
 ): Set<ReaderPane> =
     buildSet {
-        if (uiState.navigation.isVisible) add(ReaderPane.Tree)
+        // A book's details, or a search's selected result's: one setting for every tab
+        if (bookDetails && (isSearch || isBookTextShown(uiState))) add(ReaderPane.BookDetails)
+        // A search filters by its category tabs, not by the library tree
+        if (!isSearch && uiState.navigation.isVisible) add(ReaderPane.Tree)
         if (uiState.toc.isVisible) add(ReaderPane.Toc)
         if (!isSearch && uiState.notes.isVisible) add(ReaderPane.Notes)
         // The line panes exist only while a book is on screen.
@@ -596,6 +616,24 @@ private fun BookPaneBody(
                     onConsumeDraft = { tabUi.noteDraft = null },
                     modifier = modifier,
                 )
+            ReaderPane.BookDetails -> {
+                // In a search's results, the selected result's book; else the tab's book
+                val details =
+                    if (search != null && !isBookTextShown(uiState)) {
+                        val preview by tabSearchViewModel(owner, search).previewFlow.collectAsState()
+                        preview?.book
+                    } else {
+                        val book by viewModel.bookDetailsFlow.collectAsState()
+                        book
+                    }
+                BookDetailsPane(
+                    book = details,
+                    onHide = { onEvent(BookContentEvent.ToggleBookDetails) },
+                    onOpenBookAt = { bookId, lineId -> onEvent(BookContentEvent.OpenCommentaryTarget(bookId, lineId)) },
+                    onOpenAuthor = { onEvent(BookContentEvent.OpenAuthor(it)) },
+                    modifier = modifier,
+                )
+            }
             ReaderPane.Targum, ReaderPane.Comments, ReaderPane.Sources -> {
                 val book = uiState.navigation.selectedBook ?: return@BookTextMenus
                 val connections = tabUi.connections(book.id)

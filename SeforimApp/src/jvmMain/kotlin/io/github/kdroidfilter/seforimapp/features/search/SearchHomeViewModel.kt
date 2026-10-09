@@ -118,6 +118,8 @@ data class SearchHomeUiState(
     val selectedScopeCategory: Category? = null,
     val selectedScopeBook: Book? = null,
     val selectedScopeToc: TocEntry? = null,
+    // The book was picked by the user (back to the bar to type in its TOC), not put back by a restore
+    val bookPickedByUser: Boolean = false,
     val userDisplayName: String = "",
     val userCommunityCode: String? = null,
     val pairedReferenceHints: List<Pair<String, String>> = emptyList(),
@@ -129,6 +131,8 @@ class SearchHomeViewModel(
     private val repository: SeforimRepository,
     private val lookup: LuceneLookupSearchService,
     private val appSettings: AppSettings,
+    // The home page's greeting needs the user's profile; a results tab's bar doesn't
+    observeProfile: Boolean = true,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchHomeUiState())
     val uiState: StateFlow<SearchHomeUiState> = _uiState.asStateFlow()
@@ -210,6 +214,12 @@ class SearchHomeViewModel(
 
     init {
         // Observe changes in user profile and keep display name in sync
+        if (observeProfile) observeProfile()
+        // Debounced suggestions based on reference query
+        observeQueries()
+    }
+
+    private fun observeProfile() {
         viewModelScope.launch {
             appSettings.userFirstNameFlow
                 .combine(appSettings.userLastNameFlow) { f, l -> "$f $l".trim() }
@@ -224,7 +234,9 @@ class SearchHomeViewModel(
                     _uiState.value = _uiState.value.copy(userCommunityCode = code)
                 }
         }
-        // Debounced suggestions based on reference query
+    }
+
+    private fun observeQueries() {
         viewModelScope.launch {
             referenceQuery
                 .debounce(120)
@@ -379,15 +391,7 @@ class SearchHomeViewModel(
                                     isTocLoading = true,
                                     tocSuggestionsVisible = true,
                                 )
-                            val suggestions =
-                                cached
-                                    .asSequence()
-                                    .filter { it.toc.text.contains(q, ignoreCase = true) }
-                                    .sortedWith(
-                                        compareBy<TocSuggestionDto> { matchRank(it.toc.text, q) }
-                                            .thenBy { it.toc.level }
-                                            .thenBy { it.toc.text.length },
-                                    ).toList()
+                            val suggestions = tocMatching(cached, q)
                             _uiState.value =
                                 _uiState.value.copy(
                                     tocSuggestions = suggestions,
@@ -399,6 +403,20 @@ class SearchHomeViewModel(
                 }
         }
     }
+
+    // The TOC entries containing [q], best matches first
+    private fun tocMatching(
+        entries: List<TocSuggestionDto>,
+        q: String,
+    ): List<TocSuggestionDto> =
+        entries
+            .asSequence()
+            .filter { it.toc.text.contains(q, ignoreCase = true) }
+            .sortedWith(
+                compareBy<TocSuggestionDto> { matchRank(it.toc.text, q) }
+                    .thenBy { it.toc.level }
+                    .thenBy { it.toc.text.length },
+            ).toList()
 
     fun onReferenceQueryChanged(query: String) {
         referenceQuery.value = query
@@ -471,7 +489,11 @@ class SearchHomeViewModel(
         _uiState.value = _uiState.value.copy(selectedScopeAuthor = null, bookSuggestions = emptyList(), suggestionsVisible = false)
     }
 
-    fun onPickBook(book: Book) {
+    fun onPickBook(
+        book: Book,
+        // False to only show the book picked (a restored results tab), its TOC staying closed
+        showSuggestions: Boolean = true,
+    ) {
         authorBooks = emptyList()
         // Update synchronously first
         _uiState.value =
@@ -480,6 +502,7 @@ class SearchHomeViewModel(
                 selectedScopeCategory = null,
                 selectedScopeBook = book,
                 selectedScopeToc = null,
+                bookPickedByUser = showSuggestions,
                 suggestionsVisible = false,
                 tocSuggestionsVisible = false,
                 tocSuggestions = emptyList(),
@@ -508,11 +531,14 @@ class SearchHomeViewModel(
                     tocCache[book.id] = built
                     built
                 }
-            val initialSuggestions = tocEntries.take(maxTocPredictive)
+            // A text typed before the TOC was loaded (a restored tab's query) filters it now
+            val typed = tocQuery.value.trim()
+            val initialSuggestions =
+                if (typed.length < minTocPrefixLen) tocEntries.take(maxTocPredictive) else tocMatching(tocEntries, typed)
             _uiState.value =
                 _uiState.value.copy(
                     tocSuggestions = initialSuggestions,
-                    tocSuggestionsVisible = initialSuggestions.isNotEmpty(),
+                    tocSuggestionsVisible = showSuggestions && initialSuggestions.isNotEmpty(),
                     isTocLoading = false,
                 )
         }
@@ -578,6 +604,37 @@ class SearchHomeViewModel(
             )
     }
 
+    /**
+     * Puts the bar where [scope] searched, as a results tab opens, so that what it shows is where it
+     * searches: a book (a TOC entry's whole book), shown as its chip. A category, which the bar has no
+     * chip for, leaves it everywhere.
+     */
+    fun showScope(scope: SearchScope) {
+        val bookId =
+            when (scope) {
+                is SearchScope.Book -> scope.bookId
+                is SearchScope.Toc -> scope.bookId
+                else -> return
+            }
+        viewModelScope.launch {
+            runSuspendCatching { repository.getBookCore(bookId) }.getOrNull()?.let { onPickBook(it, showSuggestions = false) }
+        }
+    }
+
+    /** Where the bar searches: its picked TOC entry, book or category, else everywhere. */
+    fun barScope(): SearchScope {
+        val selected = _uiState.value
+        return when {
+            // An alternative-TOC entry has no main-TOC scope: search its whole book
+            selected.selectedScopeToc != null && !selected.selectedScopeToc.isAltTocEntry() ->
+                SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
+            selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
+            selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
+            selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
+            else -> SearchScope.Global
+        }
+    }
+
     suspend fun submitSearch(
         query: String,
         currentTabId: String,
@@ -598,16 +655,7 @@ class SearchHomeViewModel(
 
         // Persist the selected scope as both the fetch scope and the view filter
         val selected = _uiState.value
-        val scope =
-            when {
-                // An alternative-TOC entry has no main-TOC scope: search its whole book
-                selected.selectedScopeToc != null && !selected.selectedScopeToc.isAltTocEntry() ->
-                    SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
-                selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
-                selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
-                selected.selectedScopeCategory != null -> SearchScope.Category(selected.selectedScopeCategory.id)
-                else -> SearchScope.Global
-            }
+        val scope = barScope()
 
         persistedStore.update(currentTabId) { current ->
             val nextSearch =

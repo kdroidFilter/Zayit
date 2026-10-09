@@ -71,6 +71,10 @@ class AppSettings(
     val showHomeWallpaperFlow: StateFlow<Boolean> = _showHomeWallpaperFlow.asStateFlow()
 
     // StateFlow for compact mode
+    private val _bookDetailsPaneFlow = MutableStateFlow(isBookDetailsPaneVisible())
+
+    // The book-details pane (a book's, a search result's), shown or hidden in every tab
+    val bookDetailsPaneFlow: StateFlow<Boolean> = _bookDetailsPaneFlow.asStateFlow()
     private val _compactModeFlow = MutableStateFlow(isCompactModeEnabled())
     val compactModeFlow: StateFlow<Boolean> = _compactModeFlow.asStateFlow()
 
@@ -318,6 +322,13 @@ class AppSettings(
     fun setShowHomeWallpaperEnabled(enabled: Boolean) {
         settings[KEY_SHOW_HOME_WALLPAPER] = enabled
         _showHomeWallpaperFlow.value = enabled
+    }
+
+    fun isBookDetailsPaneVisible(): Boolean = settings[KEY_BOOK_DETAILS_PANE, true]
+
+    fun setBookDetailsPaneVisible(visible: Boolean) {
+        settings[KEY_BOOK_DETAILS_PANE] = visible
+        _bookDetailsPaneFlow.value = visible
     }
 
     // Compact mode for vertical bars
@@ -657,5 +668,6 @@ class AppSettings(
 
         // Compact mode for vertical bars
         private const val KEY_COMPACT_MODE = "compact_mode"
+        private const val KEY_BOOK_DETAILS_PANE = "book_details_pane"
     }
 }

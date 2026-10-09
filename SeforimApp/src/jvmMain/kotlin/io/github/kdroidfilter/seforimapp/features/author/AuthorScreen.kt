@@ -72,13 +72,11 @@ import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
-import org.jetbrains.jewel.ui.component.InlineWarningBanner
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.author_bio_ai_notice
-import seforimapp.seforimapp.generated.resources.author_bio_ai_notice_dismiss
 import seforimapp.seforimapp.generated.resources.author_bio_license
 import seforimapp.seforimapp.generated.resources.author_books
 import seforimapp.seforimapp.generated.resources.author_books_pane
@@ -259,11 +257,11 @@ private fun TextPane(
                 Spacer(Modifier.height(6.dp))
                 Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
             }
-            Spacer(Modifier.height(20.dp))
             if (page.details.bio != null) {
-                AiNotice()
-                Spacer(Modifier.height(20.dp))
+                Spacer(Modifier.height(4.dp))
+                Text(stringResource(Res.string.author_bio_ai_notice), fontSize = 12.sp, color = JewelTheme.globalColors.text.disabled)
             }
+            Spacer(Modifier.height(20.dp))
             page.details.bio?.summary?.let {
                 ProseMarkdown(
                     plainPersonLinks(it),
@@ -278,24 +276,6 @@ private fun TextPane(
             }
         }
     }
-}
-
-/** Tells the biography was written by AI and not reviewed, until the user dismisses it for good. */
-@Composable
-private fun AiNotice() {
-    val appSettings = LocalAppGraph.current.appSettings
-    var dismissed by remember { mutableStateOf(appSettings.isAuthorBioAiNoticeDismissed()) }
-    if (dismissed) return
-    val dismissLabel = stringResource(Res.string.author_bio_ai_notice_dismiss)
-    InlineWarningBanner(
-        text = stringResource(Res.string.author_bio_ai_notice),
-        linkActions = {
-            action(dismissLabel, onClick = {
-                appSettings.setAuthorBioAiNoticeDismissed(true)
-                dismissed = true
-            })
-        },
-    )
 }
 
 /** The author's books by category, opened in a tab; categories fold when there are many. */

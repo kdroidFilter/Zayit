@@ -109,7 +109,7 @@ fun AuthorTabContent(
     val page by produceState<AuthorPage>(AuthorPage.Loading, authorId) {
         value =
             withContext(Dispatchers.IO) {
-                appGraph.repository.getAuthorDetails(authorId)?.let { details ->
+                appGraph.repository.getAuthorDetails(authorId)?.withHebrewQuotes()?.let { details ->
                     val categories =
                         details.books
                             .map { it.categoryId }
@@ -118,13 +118,14 @@ fun AuthorTabContent(
                                 appGraph.repository
                                     .getCategory(id)
                                     ?.title
+                                    ?.hebrewQuotes()
                                     .orEmpty()
                             }
                     AuthorPage.Loaded(details, categories, BioText.of(details.bio?.bodyMd))
                 } ?: AuthorPage.Missing
             }
     }
-    val displayName = (page as? AuthorPage.Loaded)?.let { AuthorNames.display(it.details.name) }
+    val displayName = (page as? AuthorPage.Loaded)?.let { AuthorNames.display(it.details.name).hebrewQuotes() }
     LaunchedEffect(tabId, displayName) {
         if (displayName != null) appGraph.tabTitleUpdateManager.updateTabTitle(tabId, displayName, TabType.AUTHOR)
     }
@@ -244,7 +245,7 @@ private fun TextPane(
     VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 28.dp)) {
             Text(
-                AuthorNames.display(page.details.name),
+                AuthorNames.display(page.details.name).hebrewQuotes(),
                 fontSize = (textSize * NAME_SCALE).sp,
                 fontWeight = FontWeight.SemiBold,
                 fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
@@ -472,6 +473,31 @@ private data class BioText(
 
 // The biographies link every person they name to a search: shown as plain text, only books stay links
 private fun plainPersonLinks(markdown: String): String = markdown.replace(Regex("""\[([^\]]+)]\(zayit://search/[^)]*\)"""), "$1")
+
+/** The page's texts with Hebrew geresh and gershayim (רמב״ם, ר׳) instead of ASCII quotes; the name stays raw for its honorific. */
+private fun AuthorDetails.withHebrewQuotes(): AuthorDetails =
+    copy(
+        aliases = aliases.map { it.hebrewQuotes() },
+        bio = bio?.let { it.copy(summary = it.summary?.markdownHebrewQuotes(), bodyMd = it.bodyMd.markdownHebrewQuotes()) },
+        books = books.map { it.copy(title = it.title.hebrewQuotes()) },
+    )
+
+private val GERSHAYIM = Regex("""(?<=\p{InHebrew})["“”](?=\p{InHebrew})""")
+private val GERESH = Regex("""(?<=\p{InHebrew})['‘’]""")
+private val LINK_TARGET = Regex("""]\([^)]*\)""")
+
+private fun String.hebrewQuotes(): String = replace(GERSHAYIM, "״").replace(GERESH, "׳")
+
+/** Like [hebrewQuotes], leaving link targets untouched. */
+private fun String.markdownHebrewQuotes(): String {
+    val out = StringBuilder()
+    var last = 0
+    LINK_TARGET.findAll(this).forEach { link ->
+        out.append(substring(last, link.range.first).hebrewQuotes()).append(link.value)
+        last = link.range.last + 1
+    }
+    return out.append(substring(last).hebrewQuotes()).toString()
+}
 
 private fun String.withoutNikud(): String = replace(Regex("[֑-ׇ]"), "").replace(Regex("\\s+"), " ").trim()
 

@@ -67,6 +67,8 @@ data class SearchUiState(
     // The query the current results were actually searched with (frozen at search time). Used for
     // the embedding highlight, so typing in the field WITHOUT pressing Enter never re-highlights.
     val executedQuery: String = "",
+    // The bar's text as typed, kept apart from the searched query so a restore searches what was shown
+    val draftQuery: String = "",
     val globalExtended: Boolean = false,
     val baseBooksHadNoResults: Boolean = false,
     val isLoading: Boolean = false,
@@ -764,6 +766,7 @@ class SearchResultViewModel(
         _uiState.value =
             _uiState.value.copy(
                 query = initialQuery,
+                draftQuery = persisted.draftQuery.ifBlank { initialQuery },
                 globalExtended = persisted.globalExtended,
                 scrollIndex = persisted.scrollIndex,
                 scrollOffset = persisted.scrollOffset,
@@ -816,6 +819,7 @@ class SearchResultViewModel(
                 _uiState.value.copy(
                     results = cached.results,
                     executedQuery = initialQuery,
+                    draftQuery = persisted.draftQuery.ifBlank { initialQuery },
                     isLoading = false,
                     hasMore = cached.hasMore,
                     progressCurrent = cached.results.size,
@@ -950,12 +954,17 @@ class SearchResultViewModel(
 
     // Caching continuation removed: searches are executed fresh.
 
+    /** The bar's text as the user types it: shown back on restore, never searched by itself. */
+    fun setDraft(text: String) {
+        _uiState.value = _uiState.value.copy(draftQuery = text)
+        updatePersistedSearch { it.copy(draftQuery = text) }
+    }
+
     /**
-     * Update the search query in UI state and persist it for this tab.
-     * Does not trigger a search by itself; callers should invoke [executeSearch].
+     * The query to search next, persisted for this tab. Does not trigger a search by itself (callers
+     * invoke [executeSearch]), nor touch the status or the tab title, which follow the executed search.
      */
     fun setQuery(query: String) {
-        // The typed text only: the status and the tab title follow the executed search (executeSearch)
         val q = query.trim()
         _uiState.value = _uiState.value.copy(query = q)
         updatePersistedSearch { it.copy(query = q) }
@@ -966,8 +975,10 @@ class SearchResultViewModel(
         if (q.isBlank()) return
         dropBeforeBook()
         newSearchGeneration()
-        // The tab is named after the search it shows
+        // The tab is named after the search it shows; the bar holds it
         titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
+        _uiState.value = _uiState.value.copy(draftQuery = q)
+        updatePersistedSearch { it.copy(draftQuery = q) }
         // Record the executed search into the visit history (deduplicated by query and scope)
         val persisted = persistedSearchState()
         val scope = persisted.scope

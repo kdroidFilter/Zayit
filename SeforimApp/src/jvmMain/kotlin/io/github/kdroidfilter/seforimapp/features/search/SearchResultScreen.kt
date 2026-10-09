@@ -373,7 +373,8 @@ private fun SearchResultContentMvi(
                     .fillMaxHeight(),
         ) {
             Row(Modifier.fillMaxSize()) {
-                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
+                // Narrow: the list takes what the details pane leaves
+                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.weight(1f)
                 // One card: the bar, the tabs and the status over the list, as a mail client's search
                 Column(listModifier.fillMaxHeight().card()) {
                     Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp)) {
@@ -388,7 +389,7 @@ private fun SearchResultContentMvi(
                                 searchUi = homeSearchUi,
                                 searchCallbacks = homeSearchCallbacks,
                                 modifier = Modifier.weight(1f),
-                                initialText = state.query,
+                                initialText = state.draftQuery.ifEmpty { state.executedQuery },
                                 autoFocus = false,
                                 onTextChange = actions.onQueryChange,
                             )
@@ -612,20 +613,21 @@ private fun SearchResultContentMvi(
                             )
                         }
                     }
-                    // The book's details (author, parts): a pane at the side, hidden or shown as the book's panes
-                    val book = preview?.book
-                    if (showBookDetails && book != null) {
-                        Column(Modifier.width(DETAILS_PANE_WIDTH).fillMaxHeight().card()) {
-                            PaneHeader(
-                                label = stringResource(Res.string.search_book_details),
-                                onHide = { appSettings.setSearchBookDetailsVisible(false) },
-                            )
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                            ) {
-                                EntityDetails(entity = book, onOpenBookAt = actions.onOpenBookAt, onOpenAuthor = actions.onOpenAuthor)
-                            }
+                }
+                // The book's details (author, parts): a pane at the side, whatever the width, as its toggle in the
+                // end bar: shown or hidden there only
+                val book = preview?.book
+                if (showBookDetails && book != null) {
+                    Column(Modifier.width(DETAILS_PANE_WIDTH).fillMaxHeight().card()) {
+                        PaneHeader(
+                            label = stringResource(Res.string.search_book_details),
+                            onHide = { appSettings.setSearchBookDetailsVisible(false) },
+                        )
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
+                        ) {
+                            EntityDetails(entity = book, onOpenBookAt = actions.onOpenBookAt, onOpenAuthor = actions.onOpenAuthor)
                         }
                     }
                 }

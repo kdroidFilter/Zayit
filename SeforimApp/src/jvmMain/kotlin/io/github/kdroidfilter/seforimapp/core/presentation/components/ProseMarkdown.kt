@@ -12,8 +12,10 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -22,17 +24,18 @@ import org.jetbrains.compose.resources.Font
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.code.highlighting.NoOpCodeHighlighter
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.foundation.theme.LocalContentColor
 import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.intui.markdown.standalone.ProvideMarkdownStyling
-import org.jetbrains.jewel.intui.markdown.standalone.dark
-import org.jetbrains.jewel.intui.markdown.standalone.light
 import org.jetbrains.jewel.intui.markdown.standalone.styling.dark
 import org.jetbrains.jewel.intui.markdown.standalone.styling.light
+import org.jetbrains.jewel.markdown.MarkdownBlock
 import org.jetbrains.jewel.markdown.extensions.autolink.AutolinkProcessorExtension
 import org.jetbrains.jewel.markdown.processing.MarkdownProcessor
+import org.jetbrains.jewel.markdown.rendering.DefaultMarkdownBlockRenderer
 import org.jetbrains.jewel.markdown.rendering.InlinesStyling
-import org.jetbrains.jewel.markdown.rendering.MarkdownBlockRenderer
 import org.jetbrains.jewel.markdown.rendering.MarkdownStyling
+import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.typography
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
@@ -40,7 +43,7 @@ import seforimapp.seforimapp.generated.resources.notoserifhebrew
 /**
  * Markdown prose laid out in place (no scrolling of its own), for pages that scroll as a whole:
  * the app's Hebrew serif at [fontSize] with a reading [lineHeight], links in the accent color,
- * underlined on hover, opened by [onUrlClick].
+ * underlined on hover, opened by [onUrlClick]; paragraphs are justified.
  */
 @Composable
 fun ProseMarkdown(
@@ -85,10 +88,7 @@ fun ProseMarkdown(
                 MarkdownStyling.light(baseTextStyle = textStyle, inlinesStyling = inlines, blockVerticalSpacing = 12.dp, heading = heading)
             }
         }
-    val renderer =
-        remember(styling) {
-            if (isDark) MarkdownBlockRenderer.dark(styling = styling) else MarkdownBlockRenderer.light(styling = styling)
-        }
+    val renderer = remember(styling) { JustifiedRenderer(styling) }
     val processor = remember { MarkdownProcessor(listOf(AutolinkProcessorExtension)) }
     val blocks by produceState(emptyList(), markdown) { value = processor.processMarkdownDocument(markdown) }
 
@@ -98,5 +98,31 @@ fun ProseMarkdown(
                 renderer.RenderBlock(block = block, enabled = true, onUrlClick = onUrlClick, modifier = Modifier.fillMaxWidth())
             }
         }
+    }
+}
+
+/** Jewel's renderer (the same for light and dark), with justified paragraphs. */
+private class JustifiedRenderer(
+    styling: MarkdownStyling,
+) : DefaultMarkdownBlockRenderer(styling) {
+    @Composable
+    override fun RenderParagraph(
+        block: MarkdownBlock.Paragraph,
+        styling: MarkdownStyling.Paragraph,
+        enabled: Boolean,
+        onUrlClick: (String) -> Unit,
+        modifier: Modifier,
+    ) {
+        val text =
+            remember(block, styling, enabled, onUrlClick) {
+                inlineRenderer.renderAsAnnotatedString(block.inlineContent, styling.inlinesStyling, enabled, onUrlClick)
+            }
+        val style = styling.inlinesStyling.textStyle
+        Text(
+            text,
+            modifier,
+            style = style.copy(color = style.color.takeOrElse { LocalContentColor.current }),
+            textAlign = TextAlign.Justify,
+        )
     }
 }

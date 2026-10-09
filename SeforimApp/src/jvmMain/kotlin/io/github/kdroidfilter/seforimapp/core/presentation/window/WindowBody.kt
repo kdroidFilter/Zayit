@@ -155,7 +155,7 @@ private fun ReaderBar(
                 uiState = uiState,
                 onEvent = viewModel::onEvent,
                 diacritics = diacritics,
-                extraTopContent = {
+                extraBottomContent = {
                     if (destination is TabsDestination.Search && !isBookTextShown(uiState)) SearchBookDetailsToggle()
                 },
             )

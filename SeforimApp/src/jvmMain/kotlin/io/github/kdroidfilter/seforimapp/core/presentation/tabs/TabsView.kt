@@ -88,6 +88,7 @@ import io.github.kdroidfilter.seforimapp.icons.Link
 import io.github.kdroidfilter.seforimapp.icons.NotebookPen
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
+import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -227,6 +228,8 @@ private fun TabStripScope.DefaultTabShowcase(
                                             rememberTintedVectorPainter(NotebookPen, JewelTheme.contentColor)
                                         } else if (tabItem.tabType == TabType.SIDDUR) {
                                             rememberTintedVectorPainter(JournalBookmark, JewelTheme.contentColor)
+                                        } else if (tabItem.tabType == TabType.AUTHOR) {
+                                            rememberTintedVectorPainter(WritingHand, JewelTheme.contentColor)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -316,6 +319,8 @@ private fun TabStripScope.DefaultTabShowcase(
                                             rememberTintedVectorPainter(NotebookPen, JewelTheme.globalColors.text.normal)
                                         } else if (tabItem.tabType == TabType.SIDDUR) {
                                             rememberTintedVectorPainter(JournalBookmark, JewelTheme.globalColors.text.normal)
+                                        } else if (tabItem.tabType == TabType.AUTHOR) {
+                                            rememberTintedVectorPainter(WritingHand, JewelTheme.globalColors.text.normal)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(

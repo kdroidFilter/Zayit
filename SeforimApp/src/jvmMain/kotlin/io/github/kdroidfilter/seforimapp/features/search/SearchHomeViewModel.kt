@@ -666,6 +666,29 @@ class SearchHomeViewModel(
         )
     }
 
+    /** Opens [book] at its start in the current tab. */
+    suspend fun openBook(
+        book: Book,
+        currentTabId: String,
+    ) {
+        persistedStore.update(currentTabId) { current ->
+            current.copy(bookContent = current.bookContent.copy(selectedBookId = book.id))
+        }
+        _uiState.value = _uiState.value.copy(suggestionsVisible = false)
+        _navigationEvents.send(SearchHomeNavigationEvent.NavigateToBookContent(bookId = book.id, tabId = currentTabId, lineId = null))
+    }
+
+    /** Opens the page of [author] in the current tab. */
+    suspend fun openAuthor(
+        author: AuthorHit,
+        currentTabId: String,
+    ) {
+        _uiState.value = _uiState.value.copy(suggestionsVisible = false)
+        _navigationEvents.send(
+            SearchHomeNavigationEvent.NavigateToDeepLink(TabsDestination.Author(tabId = currentTabId, authorId = author.id)),
+        )
+    }
+
     /** Opens the place a typed reference resolved to, in the current tab. */
     suspend fun openJump(
         jump: ResolvedReference,

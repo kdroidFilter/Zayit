@@ -62,6 +62,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
 import io.github.kdroidfilter.seforimapp.icons.NotebookPen
+import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimapp.icons.homeTabs
 import kotlinx.coroutines.flow.combine
@@ -376,6 +377,13 @@ internal fun PopupRow(
             TabType.SIDDUR ->
                 Image(
                     painter = rememberVectorPainter(JournalBookmark),
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp),
+                    colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
+                )
+            TabType.AUTHOR ->
+                Image(
+                    painter = rememberVectorPainter(WritingHand),
                     contentDescription = null,
                     modifier = Modifier.size(15.dp),
                     colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),

@@ -356,18 +356,16 @@ private fun SearchTabContent(
 ) {
     val viewModel = tabSearchViewModel(tabOwner, destination)
     val actions = rememberSearchShellActions(viewModel)
-    // The home bar here: its text search runs in this tab, in the base or all books as chosen
-    // (only Ctrl+Enter widens it), in the bar's picked book if any
+    // The home bar here: its text search runs in this tab, where the bar says (its picked book or
+    // category, else everywhere), in the base or all books as chosen (only Ctrl+Enter widens it)
+    val searchHomeViewModel = LocalOpenWindow.current.searchHomeViewModel
     val barCallbacks =
-        remember(homeSearchCallbacks, viewModel, homeSearchUi.selectedScopeBook) {
+        remember(homeSearchCallbacks, viewModel, searchHomeViewModel) {
             homeSearchCallbacks.copy(
                 onGlobalExtendedChange = { extended ->
                     if (extended) viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(true))
                 },
-                onSubmitTextSearch = { query ->
-                    val book = homeSearchUi.selectedScopeBook
-                    if (book != null) viewModel.searchInBook(query, book.id) else actions.onSubmit(query)
-                },
+                onSubmitTextSearch = { query -> viewModel.searchFromBar(query, searchHomeViewModel.barScope()) },
             )
         }
     val bookVm = tabBookViewModel(tabOwner, destination)

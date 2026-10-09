@@ -313,6 +313,7 @@
     <!-- Book names only (for reference-mode first field) -->
 
     <!-- TOC examples (for second field when no book yet) -->
+    <string name="search_in_book_placeholder">מה לחפש בספר זה? פרק, סימן או כל מילה</string>
     <string name="row_action_open">פתיחה</string>
     <string name="row_action_search_inside">חיפוש בתוך</string>
     <string name="row_action_search">חיפוש</string>

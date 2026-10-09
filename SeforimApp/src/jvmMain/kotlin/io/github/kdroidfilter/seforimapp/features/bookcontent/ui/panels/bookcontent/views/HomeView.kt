@@ -517,7 +517,14 @@ private fun HomeBody(
                                         tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
                                         tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
                                         selectedBook = searchUi.selectedScopeBook,
-                                        placeholderText = null,
+                                        placeholderText =
+                                            if (isTocInTopBar) {
+                                                stringResource(
+                                                    Res.string.search_in_book_placeholder,
+                                                )
+                                            } else {
+                                                null
+                                            },
                                         submitOnEnterInReference = isTocInTopBar,
                                         onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
                                         isBookLoading = searchUi.isReferenceLoading && !isTocInTopBar,
@@ -1232,12 +1239,8 @@ private fun SearchBar(
             stringResource(Res.string.text_hint_5),
         )
 
-    // The one bar takes references and texts alike: show both, in turn; in a picked book, texts to search in it
-    val hints =
-        when {
-            selectedBook != null -> textHints
-            else -> referenceHints.zip(textHints).flatMap { (reference, text) -> listOf(reference, text) }
-        }
+    // The one bar takes references and texts alike: show both, in turn
+    val hints = referenceHints.zip(textHints).flatMap { (reference, text) -> listOf(reference, text) }
 
     // Disable placeholder animation while user is typing
     val isUserTyping by remember { derivedStateOf { state.text.isNotEmpty() } }

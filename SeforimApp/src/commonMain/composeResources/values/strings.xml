@@ -288,6 +288,7 @@
 
     <!-- Home Page View -->
     <string name="search_text_row">חיפוש במאגר: %1$s</string>
+    <string name="author_books_count">%1$d ספרים</string>
     <string name="search_text_row_in_book">חיפוש בתוך %2$s: %1$s</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
     <string name="remove_selected_book">הסר ספר שנבחר</string>

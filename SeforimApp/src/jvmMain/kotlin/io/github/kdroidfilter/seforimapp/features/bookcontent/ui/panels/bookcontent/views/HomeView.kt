@@ -170,7 +170,9 @@ private fun catBookRows(
 ): ImmutableList<CatBookRow> {
     val key = query.matchKey()
     val (exactAuthors, otherAuthors) =
-        authors.partition { it.name.matchKey() == key || AuthorNames.display(it.name).matchKey() == key }
+        authors.partition { author ->
+            listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.matchKey() == key }
+        }
     val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.matchKey() == key }
     return buildList {
         jumps.mapTo(this) { CatBookRow.Jump(it) }
@@ -778,7 +780,13 @@ private fun SuggestionsPanel(
 
                         is CatBookRow.Author ->
                             SuggestionRow(
-                                parts = listOf(AuthorNames.display(row.hit.name)),
+                                parts =
+                                    listOf(
+                                        AuthorNames.display(row.hit.name) +
+                                            row.hit.alias
+                                                ?.let { " ($it)" }
+                                                .orEmpty(),
+                                    ),
                                 onClick = { onPickAuthor(row.hit) },
                                 hint = stringResource(Res.string.hint_open_or_search_inside),
                                 kind = SuggestionKind.AUTHOR,

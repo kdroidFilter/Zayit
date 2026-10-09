@@ -578,6 +578,26 @@ class SearchHomeViewModel(
             )
     }
 
+    /** Puts the bar where [scope] searched (its book, TOC entry or category), as a results tab opens. */
+    fun showScope(scope: SearchScope) {
+        viewModelScope.launch {
+            when (scope) {
+                SearchScope.Global -> Unit
+                is SearchScope.Category ->
+                    runSuspendCatching {
+                        repository.getCategory(
+                            scope.categoryId,
+                        )
+                    }.getOrNull()?.let(::onPickCategory)
+                is SearchScope.Book -> runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let(::onPickBook)
+                is SearchScope.Toc -> {
+                    runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let(::onPickBook)
+                    runSuspendCatching { repository.getTocEntry(scope.tocId) }.getOrNull()?.let(::onPickToc)
+                }
+            }
+        }
+    }
+
     /** Where the bar searches: its picked TOC entry, book or category, else everywhere. */
     fun barScope(): SearchScope {
         val selected = _uiState.value

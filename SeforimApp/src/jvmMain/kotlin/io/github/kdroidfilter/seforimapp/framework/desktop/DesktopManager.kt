@@ -149,6 +149,9 @@ class DesktopManager(
     /** True while [tabId] is open in any window. */
     fun isTabOpen(tabId: String): Boolean = sessionOf(tabId) != null
 
+    /** A search bar's state of its own, for a tab that has its bar (the search results'). */
+    fun newSearchBarViewModel(): SearchHomeViewModel = searchHomeViewModelFactory()
+
     /**
      * The [TabsViewModel] of the window currently hosting [tabId]. Per-tab ViewModels navigate
      * through this instead of a fixed window reference, so a tab dragged to another window keeps

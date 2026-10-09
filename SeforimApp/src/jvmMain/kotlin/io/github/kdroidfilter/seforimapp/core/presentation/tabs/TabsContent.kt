@@ -51,7 +51,7 @@ import io.github.kdroidfilter.seforimapp.features.favorites.FavoritesTabContent
 import io.github.kdroidfilter.seforimapp.features.history.HistoryTabContent
 import io.github.kdroidfilter.seforimapp.features.notes.NotesTabContent
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeNavigationEvent
-import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultInBookShellMvi
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchShellActions
@@ -118,54 +118,7 @@ fun TabsContent() {
     val scope = rememberCoroutineScope()
     val latestCurrentTabId by rememberUpdatedState(currentTabId)
 
-    fun launchSubmitSearch(
-        @StructuredScope scope: CoroutineScope,
-        query: String,
-        tabId: String,
-    ) {
-        scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
-    }
-
-    fun launchOpenReference(
-        @StructuredScope scope: CoroutineScope,
-        tabId: String,
-    ) {
-        scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
-    }
-
-    val homeSearchCallbacks =
-        remember(searchHomeViewModel, scope) {
-            HomeSearchCallbacks(
-                onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
-                onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
-                onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
-                onSubmitTextSearch = { query ->
-                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
-                    launchSubmitSearch(scope, query, tabId)
-                },
-                onOpenReference = {
-                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
-                    launchOpenReference(scope, tabId)
-                },
-                onPickCategory = searchHomeViewModel::onPickCategory,
-                onPickBook = searchHomeViewModel::onPickBook,
-                onPickToc = searchHomeViewModel::onPickToc,
-                onPickAuthor = searchHomeViewModel::onPickAuthor,
-                onOpenBook = { book ->
-                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
-                    scope.launch { searchHomeViewModel.openBook(book, tabId) }
-                },
-                onOpenAuthor = { author ->
-                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
-                    scope.launch { searchHomeViewModel.openAuthor(author, tabId) }
-                },
-                onClearAuthor = searchHomeViewModel::onClearAuthor,
-                onOpenJump = { jump ->
-                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
-                    scope.launch { searchHomeViewModel.openJump(jump, tabId) }
-                },
-            )
-        }
+    val homeSearchCallbacks = rememberHomeSearchCallbacks(searchHomeViewModel) { latestCurrentTabId }
 
     // Dismiss suggestions when navigating away from Home
     val currentDestination = currentTabId?.let(session::item)?.destination
@@ -177,30 +130,7 @@ fun TabsContent() {
 
     // Collect navigation events from SearchHomeViewModel and perform navigation
     LaunchedEffect(searchHomeViewModel, tabsViewModel) {
-        searchHomeViewModel.navigationEvents.collect { event ->
-            when (event) {
-                is SearchHomeNavigationEvent.NavigateToSearch -> {
-                    tabsViewModel.replaceCurrentTabDestination(
-                        TabsDestination.Search(
-                            searchQuery = event.query,
-                            tabId = event.tabId,
-                        ),
-                    )
-                }
-                is SearchHomeNavigationEvent.NavigateToBookContent -> {
-                    tabsViewModel.replaceCurrentTabDestination(
-                        TabsDestination.BookContent(
-                            bookId = event.bookId,
-                            tabId = event.tabId,
-                            lineId = event.lineId,
-                        ),
-                    )
-                }
-                is SearchHomeNavigationEvent.NavigateToDeepLink -> {
-                    tabsViewModel.replaceCurrentTabDestination(event.destination)
-                }
-            }
-        }
+        searchHomeViewModel.navigationEvents.collect { event -> navigate(event, tabsViewModel) }
     }
 
     // Holds per-tab saveable UI state across a destination change of the same tab.
@@ -274,8 +204,6 @@ fun TabsContent() {
                                         tabOwner = tabOwner,
                                         destination = destination,
                                         isSelected = isSelected,
-                                        homeSearchUi = searchUi,
-                                        homeSearchCallbacks = homeSearchCallbacks,
                                     )
                                 }
 
@@ -351,21 +279,30 @@ private fun SearchTabContent(
     tabOwner: SimpleTabViewModelOwner,
     destination: TabsDestination.Search,
     isSelected: Boolean,
-    homeSearchUi: SearchHomeUiState,
-    homeSearchCallbacks: HomeSearchCallbacks,
 ) {
     val viewModel = tabSearchViewModel(tabOwner, destination)
     val actions = rememberSearchShellActions(viewModel)
+    // The tab's own bar state, opened where its search looked: one truth per tab, not the window's
+    val desktopManager = LocalAppGraph.current.desktopManager
+    val tabsViewModel = LocalOpenWindow.current.tabsViewModel
+    val barViewModel =
+        viewModel(viewModelStoreOwner = tabOwner, key = "search-bar") {
+            desktopManager.newSearchBarViewModel().apply { showScope(viewModel.searchScope) }
+        }
+    val homeSearchUi by barViewModel.uiState.collectAsState()
+    LaunchedEffect(barViewModel, tabsViewModel) {
+        barViewModel.navigationEvents.collect { event -> navigate(event, tabsViewModel) }
+    }
+    val homeSearchCallbacks = rememberHomeSearchCallbacks(barViewModel) { destination.tabId }
     // The home bar here: its text search runs in this tab, where the bar says (its picked book or
     // category, else everywhere), in the base or all books as chosen (only Ctrl+Enter widens it)
-    val searchHomeViewModel = LocalOpenWindow.current.searchHomeViewModel
     val barCallbacks =
-        remember(homeSearchCallbacks, viewModel, searchHomeViewModel) {
+        remember(homeSearchCallbacks, viewModel, barViewModel) {
             homeSearchCallbacks.copy(
                 onGlobalExtendedChange = { extended ->
                     if (extended) viewModel.onEvent(SearchResultViewModel.SearchResultEvents.SetGlobalExtended(true))
                 },
-                onSubmitTextSearch = { query -> viewModel.searchFromBar(query, searchHomeViewModel.barScope()) },
+                onSubmitTextSearch = { query -> viewModel.searchFromBar(query, barViewModel.barScope()) },
             )
         }
     val bookVm = tabBookViewModel(tabOwner, destination)
@@ -410,6 +347,93 @@ private fun SearchTabContent(
         actions = actions,
         tabUi = tabUi(tabOwner),
     )
+}
+
+/** Performs a search bar's navigation (open a book, a reference, an author, the results) in the current tab. */
+private fun navigate(
+    event: SearchHomeNavigationEvent,
+    tabsViewModel: TabsViewModel,
+) {
+    when (event) {
+        is SearchHomeNavigationEvent.NavigateToSearch -> {
+            tabsViewModel.replaceCurrentTabDestination(
+                TabsDestination.Search(
+                    searchQuery = event.query,
+                    tabId = event.tabId,
+                ),
+            )
+        }
+        is SearchHomeNavigationEvent.NavigateToBookContent -> {
+            tabsViewModel.replaceCurrentTabDestination(
+                TabsDestination.BookContent(
+                    bookId = event.bookId,
+                    tabId = event.tabId,
+                    lineId = event.lineId,
+                ),
+            )
+        }
+        is SearchHomeNavigationEvent.NavigateToDeepLink -> {
+            tabsViewModel.replaceCurrentTabDestination(event.destination)
+        }
+    }
+}
+
+/** The callbacks of a search bar's state, acting in the tab [currentTabId] returns. */
+@Composable
+private fun rememberHomeSearchCallbacks(
+    searchHomeViewModel: SearchHomeViewModel,
+    currentTabId: () -> String?,
+): HomeSearchCallbacks {
+    val scope = rememberCoroutineScope()
+    val latestCurrentTabId by rememberUpdatedState(currentTabId)
+
+    fun launchSubmitSearch(
+        @StructuredScope scope: CoroutineScope,
+        query: String,
+        tabId: String,
+    ) {
+        scope.launch { searchHomeViewModel.submitSearch(query, tabId) }
+    }
+
+    fun launchOpenReference(
+        @StructuredScope scope: CoroutineScope,
+        tabId: String,
+    ) {
+        scope.launch { searchHomeViewModel.openSelectedReferenceInCurrentTab(tabId) }
+    }
+
+    return remember(searchHomeViewModel, scope) {
+        HomeSearchCallbacks(
+            onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
+            onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
+            onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
+            onSubmitTextSearch = { query ->
+                val tabId = latestCurrentTabId() ?: return@HomeSearchCallbacks
+                launchSubmitSearch(scope, query, tabId)
+            },
+            onOpenReference = {
+                val tabId = latestCurrentTabId() ?: return@HomeSearchCallbacks
+                launchOpenReference(scope, tabId)
+            },
+            onPickCategory = searchHomeViewModel::onPickCategory,
+            onPickBook = searchHomeViewModel::onPickBook,
+            onPickToc = searchHomeViewModel::onPickToc,
+            onPickAuthor = searchHomeViewModel::onPickAuthor,
+            onOpenBook = { book ->
+                val tabId = latestCurrentTabId() ?: return@HomeSearchCallbacks
+                scope.launch { searchHomeViewModel.openBook(book, tabId) }
+            },
+            onOpenAuthor = { author ->
+                val tabId = latestCurrentTabId() ?: return@HomeSearchCallbacks
+                scope.launch { searchHomeViewModel.openAuthor(author, tabId) }
+            },
+            onClearAuthor = searchHomeViewModel::onClearAuthor,
+            onOpenJump = { jump ->
+                val tabId = latestCurrentTabId() ?: return@HomeSearchCallbacks
+                scope.launch { searchHomeViewModel.openJump(jump, tabId) }
+            },
+        )
+    }
 }
 
 /** What the search screen and its facet panes do with the user's input. */

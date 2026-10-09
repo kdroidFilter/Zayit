@@ -508,9 +508,15 @@ internal fun UnifiedSearchBar(
 
     // The results page shows its query in the field: the book's field once the bar is in a book (its
     // search's scope), else the main one. The suggestions follow it as typed text (they show on focus)
+    // Seeded once per query, and again only when a restore puts the bar in its book; never over what the
+    // user does with the bar (picking or clearing a book)
     val inBook = searchUi.selectedScopeBook != null && searchUi.selectedScopeToc == null
+    var seededQuery by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(initialText, inBook) {
         if (initialText.isEmpty()) return@LaunchedEffect
+        val restoredBook = inBook && !searchUi.bookPickedByUser
+        if (seededQuery == initialText && !restoredBook) return@LaunchedEffect
+        seededQuery = initialText
         val field = if (inBook) tocSearchState else referenceSearchState
         if (field.text.toString() != initialText) field.edit { replace(0, length, initialText) }
     }
@@ -1312,8 +1318,9 @@ private fun SearchBar(
     val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
-    // Suggestions are for the one typing: none while the field isn't focused (a restored results tab)
-    var fieldFocused by remember { mutableStateOf(false) }
+    // Suggestions are for the one typing: none until the field was focused once (a restored results
+    // tab), then as before; losing the focus to a click in them must not hide them under the pointer
+    var engaged by remember { mutableStateOf(false) }
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
@@ -1631,7 +1638,7 @@ private fun SearchBar(
                             else -> false
                         }
                     }.focusRequester(effectiveFocusRequester)
-                    .onFocusChanged { fieldFocused = it.isFocused },
+                    .onFocusChanged { if (it.isFocused) engaged = true },
             enabled = enabled,
             placeholder = {
                 if (placeholderText != null) {
@@ -1677,13 +1684,12 @@ private fun SearchBar(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton({ if (textSearchEnabled) handleTextSearch() else handleSubmit() }) {
-                        Icon(
-                            key = AllIconsKeys.Actions.Find,
-                            contentDescription = stringResource(Res.string.search_icon_description),
-                            modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
-                        )
-                    }
+                    // A sign that it's a search field, not a button: Enter and the rows search
+                    Icon(
+                        key = AllIconsKeys.Actions.Find,
+                        contentDescription = stringResource(Res.string.search_icon_description),
+                        modifier = Modifier.size(16.dp),
+                    )
                     if (selectedBook != null && onClearBook != null) {
                         SelectedBookChip(
                             title = selectedBook.title,
@@ -1712,7 +1718,7 @@ private fun SearchBar(
         val a = anchor
         val showOverlay =
             isTabSelected &&
-                fieldFocused &&
+                engaged &&
                 popupVisible &&
                 a != null &&
                 (

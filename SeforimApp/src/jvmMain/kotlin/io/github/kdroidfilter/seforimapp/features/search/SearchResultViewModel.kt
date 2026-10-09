@@ -955,13 +955,10 @@ class SearchResultViewModel(
      * Does not trigger a search by itself; callers should invoke [executeSearch].
      */
     fun setQuery(query: String) {
+        // The typed text only: the status and the tab title follow the executed search (executeSearch)
         val q = query.trim()
-        _uiState.value = _uiState.value.copy(query = q, baseBooksHadNoResults = false)
+        _uiState.value = _uiState.value.copy(query = q)
         updatePersistedSearch { it.copy(query = q) }
-        if (q.isNotEmpty()) {
-            // Keep the tab title synced with the current query
-            titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
-        }
     }
 
     fun executeSearch() {
@@ -969,6 +966,8 @@ class SearchResultViewModel(
         if (q.isBlank()) return
         dropBeforeBook()
         newSearchGeneration()
+        // The tab is named after the search it shows
+        titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
         // Record the executed search into the visit history (deduplicated by query and scope)
         val persisted = persistedSearchState()
         val scope = persisted.scope

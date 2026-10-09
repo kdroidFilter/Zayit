@@ -131,6 +131,8 @@ class SearchHomeViewModel(
     private val repository: SeforimRepository,
     private val lookup: LuceneLookupSearchService,
     private val appSettings: AppSettings,
+    // The home page's greeting needs the user's profile; a results tab's bar doesn't
+    observeProfile: Boolean = true,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SearchHomeUiState())
     val uiState: StateFlow<SearchHomeUiState> = _uiState.asStateFlow()
@@ -212,6 +214,12 @@ class SearchHomeViewModel(
 
     init {
         // Observe changes in user profile and keep display name in sync
+        if (observeProfile) observeProfile()
+        // Debounced suggestions based on reference query
+        observeQueries()
+    }
+
+    private fun observeProfile() {
         viewModelScope.launch {
             appSettings.userFirstNameFlow
                 .combine(appSettings.userLastNameFlow) { f, l -> "$f $l".trim() }
@@ -226,7 +234,9 @@ class SearchHomeViewModel(
                     _uiState.value = _uiState.value.copy(userCommunityCode = code)
                 }
         }
-        // Debounced suggestions based on reference query
+    }
+
+    private fun observeQueries() {
         viewModelScope.launch {
             referenceQuery
                 .debounce(120)
@@ -594,24 +604,20 @@ class SearchHomeViewModel(
             )
     }
 
-    /** Puts the bar where [scope] searched (its book, TOC entry or category), as a results tab opens. */
+    /**
+     * Puts the bar where [scope] searched, as a results tab opens, so that what it shows is where it
+     * searches: a book (a TOC entry's whole book), shown as its chip. A category, which the bar has no
+     * chip for, leaves it everywhere.
+     */
     fun showScope(scope: SearchScope) {
-        viewModelScope.launch {
+        val bookId =
             when (scope) {
-                SearchScope.Global -> Unit
-                is SearchScope.Category ->
-                    runSuspendCatching {
-                        repository.getCategory(
-                            scope.categoryId,
-                        )
-                    }.getOrNull()?.let(::onPickCategory)
-                is SearchScope.Book ->
-                    runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let { onPickBook(it, showSuggestions = false) }
-                is SearchScope.Toc -> {
-                    runSuspendCatching { repository.getBookCore(scope.bookId) }.getOrNull()?.let { onPickBook(it, showSuggestions = false) }
-                    runSuspendCatching { repository.getTocEntry(scope.tocId) }.getOrNull()?.let(::onPickToc)
-                }
+                is SearchScope.Book -> scope.bookId
+                is SearchScope.Toc -> scope.bookId
+                else -> return
             }
+        viewModelScope.launch {
+            runSuspendCatching { repository.getBookCore(bookId) }.getOrNull()?.let { onPickBook(it, showSuggestions = false) }
         }
     }
 

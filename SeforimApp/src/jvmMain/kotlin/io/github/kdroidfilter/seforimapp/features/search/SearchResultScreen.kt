@@ -641,8 +641,6 @@ private data class ResultItem(
     val lineIds: List<Long> get() = listOf(hit.lineId)
 }
 
-private val HTML_TAG = Regex("<[^>]+>")
-
 /**
  * The results in relevance order, one passage per run of a book (its next ones are behind the
  * "more" link), and a passage whose text was already shown (the same prayer in two siddurim

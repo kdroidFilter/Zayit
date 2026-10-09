@@ -1664,6 +1664,8 @@ private fun SearchBar(
             },
             leadingIcon = {
                 Row(
+                    // The gap between the icon (or chip) and the text
+                    modifier = Modifier.padding(end = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -1681,7 +1683,6 @@ private fun SearchBar(
                                 effectiveFocusRequester.requestFocus()
                             },
                         )
-                        Spacer(Modifier.width(8.dp))
                     } else if (selectedAuthor != null) {
                         SelectedBookChip(
                             title = AuthorNames.display(selectedAuthor),
@@ -1690,7 +1691,6 @@ private fun SearchBar(
                                 effectiveFocusRequester.requestFocus()
                             },
                         )
-                        Spacer(Modifier.width(8.dp))
                     }
                 }
             },

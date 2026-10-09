@@ -394,6 +394,9 @@ private fun SearchResultContentMvi(
     CompositionLocalProvider(LocalResultZoom provides mainTextSize / AppSettings.DEFAULT_TEXT_SIZE) {
         BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
             val showPanel = entity != null && maxWidth >= PANEL_MIN_WIDTH
+            // Wide screens get wider columns: a fixed width would leave most of them empty
+            val columnWidth = (maxWidth * 0.55f).coerceIn(COLUMN_MIN_WIDTH, COLUMN_MAX_WIDTH)
+            val panelWidth = (maxWidth * 0.22f).coerceIn(PANEL_NARROW_WIDTH, PANEL_MAX_WIDTH)
             // One centered reading column for the bar, the status and the results, as on Google,
             // with the panel of the book or author the query names beside it
             Row(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight()) {
@@ -401,7 +404,7 @@ private fun SearchResultContentMvi(
                     modifier =
                         Modifier
                             .fillMaxHeight()
-                            .widthIn(max = 760.dp)
+                            .widthIn(max = columnWidth)
                             .weight(1f, fill = false)
                             .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -582,9 +585,8 @@ private fun SearchResultContentMvi(
                     EntityPanel(
                         entity = entity,
                         onOpenBook = actions.onOpenBook,
-                        onSearchInBook = { actions.onBookCheckedChange(it, true) },
                         onOpenAuthor = actions.onOpenAuthor,
-                        modifier = Modifier.padding(top = 112.dp, end = 16.dp).width(PANEL_WIDTH),
+                        modifier = Modifier.padding(top = 112.dp, end = 16.dp).width(panelWidth),
                     )
                 }
             }
@@ -885,7 +887,10 @@ private fun CategoryTab(
     }
 }
 
-private val PANEL_WIDTH = 300.dp
+private val COLUMN_MIN_WIDTH = 760.dp
+private val COLUMN_MAX_WIDTH = 1100.dp
+private val PANEL_NARROW_WIDTH = 300.dp
+private val PANEL_MAX_WIDTH = 440.dp
 
 // Below this the results take the whole width and the panel stays hidden
 private val PANEL_MIN_WIDTH = 1000.dp
@@ -895,7 +900,6 @@ private val PANEL_MIN_WIDTH = 1000.dp
 private fun EntityPanel(
     entity: SearchEntity,
     onOpenBook: (Long) -> Unit,
-    onSearchInBook: (Long) -> Unit,
     onOpenAuthor: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -934,9 +938,8 @@ private fun EntityPanel(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 4.dp)) {
-                    DefaultButton(onClick = { onOpenBook(book.id) }) { Text(stringResource(Res.string.row_action_open)) }
-                    OutlinedButton(onClick = { onSearchInBook(book.id) }) { Text(stringResource(Res.string.row_action_search_inside)) }
+                DefaultButton(onClick = { onOpenBook(book.id) }, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(stringResource(Res.string.row_action_open))
                 }
             }
 

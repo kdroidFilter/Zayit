@@ -265,7 +265,7 @@ class BookContentViewModel(
         uiState
             .map { it.navigation.selectedBook?.id }
             .distinctUntilChanged()
-            .mapLatest { id -> id?.let { runSuspendCatching { bookDetailsLoader.load(it) }.getOrNull() } }
+            .mapLatest { id -> id?.let { bookDetailsLoader.load(it) } }
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 

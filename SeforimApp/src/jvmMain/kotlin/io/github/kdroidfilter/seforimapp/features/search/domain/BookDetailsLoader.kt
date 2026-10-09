@@ -1,5 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import java.util.concurrent.ConcurrentHashMap
@@ -13,8 +15,12 @@ class BookDetailsLoader(
 ) {
     private val cache = ConcurrentHashMap<Long, SearchEntity.BookEntity>()
 
-    /** A book with its categories, authors and main parts, once per book. */
-    suspend fun load(bookId: Long): SearchEntity.BookEntity? = cache[bookId] ?: describe(bookId)?.also { cache[bookId] = it }
+    /** A book with its categories, authors and main parts, once per book; null (logged) when it fails. */
+    suspend fun load(bookId: Long): SearchEntity.BookEntity? =
+        cache[bookId] ?: runSuspendCatching { describe(bookId) }
+            .onFailure { warnln(it) { "Book details of $bookId failed to load" } }
+            .getOrNull()
+            ?.also { cache[bookId] = it }
 
     private suspend fun describe(bookId: Long): SearchEntity.BookEntity? {
         val book = repository.getBook(bookId) ?: return null

@@ -25,12 +25,15 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.ExecuteSearchUse
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.ResultsIndex
 import io.github.kdroidfilter.seforimapp.features.search.domain.ResultsIndexingUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntityFinder
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchStatePersistenceUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchTocUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocLineIndex
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -92,6 +95,7 @@ class SearchResultViewModel(
     private val desktopManager: DesktopManager,
     private val historyStore: HistoryStore,
     private val appSettings: AppSettings,
+    lookup: LuceneLookupSearchService,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(SearchResultViewModel::class)
@@ -479,6 +483,27 @@ class SearchResultViewModel(
 
     private val _tocTree = MutableStateFlow<TocTree?>(null)
     val tocTreeFlow: StateFlow<TocTree?> = _tocTree.asStateFlow()
+    private val entityFinder = SearchEntityFinder(lookup, repository)
+
+    /** The book or author the executed query names, for the panel beside the results; null mostly. */
+    val entityFlow: StateFlow<SearchEntity?> =
+        uiState
+            .map { it.executedQuery.trim() }
+            .distinctUntilChanged()
+            .mapLatest { q -> if (q.isEmpty()) null else runSuspendCatching { entityFinder.find(q) }.getOrNull() }
+            .flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Opens a book from the panel, in a new tab. */
+    fun openBook(bookId: Long) {
+        desktopManager.tabsViewModelFor(tabId)?.openTab(TabsDestination.BookContent(bookId = bookId, tabId = UUID.randomUUID().toString()))
+    }
+
+    /** Opens an author's page from the panel, in a new tab. */
+    fun openAuthor(authorId: Long) {
+        desktopManager.tabsViewModelFor(tabId)?.openTab(TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = authorId))
+    }
+
     private val _searchTree = MutableStateFlow<ImmutableList<SearchTreeCategory>>(persistentListOf())
     val searchTreeFlow: StateFlow<ImmutableList<SearchTreeCategory>> = _searchTree.asStateFlow()
 

@@ -83,6 +83,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Communi
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
+import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService.AuthorHit
@@ -169,12 +170,12 @@ private fun catBookRows(
     categories: List<CategorySuggestion>,
     books: List<BookSuggestion>,
 ): ImmutableList<CatBookRow> {
-    val key = query.matchKey()
+    val key = query.searchKey()
     val (exactAuthors, otherAuthors) =
         authors.partition { author ->
-            listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.matchKey() == key }
+            listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.searchKey() == key }
         }
-    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.matchKey() == key }
+    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.searchKey() == key }
     return buildList {
         jumps.mapTo(this) { CatBookRow.Jump(it) }
         exactBooks.mapTo(this) { CatBookRow.Book(it) }
@@ -185,13 +186,6 @@ private fun catBookRows(
         otherBooks.mapTo(this) { CatBookRow.Book(it) }
     }.toImmutableList()
 }
-
-// Compares names as typed: without nikud, quotes and extra spaces
-private fun String.matchKey(): String =
-    replace(Regex("[\u0591-\u05C7]"), "")
-        .replace(Regex("[\"'״׳]"), "")
-        .replace(Regex("\\s+"), " ")
-        .trim()
 
 @Immutable
 private data class TocSuggestion(

@@ -369,6 +369,7 @@ private fun SearchTabContent(
     val bookCounts by viewModel.bookFacetCountsFlow.collectAsState()
     val searchTree by viewModel.searchTreeFlow.collectAsState()
     val selectedCategoryIds by viewModel.selectedCategoryIdsFlow.collectAsState()
+    val entity by viewModel.entityFlow.collectAsState()
 
     SearchResultInBookShellMvi(
         bookUiState = bcUiState,
@@ -381,6 +382,7 @@ private fun SearchTabContent(
         bookCounts = bookCounts,
         categories = searchTree,
         selectedCategoryIds = selectedCategoryIds,
+        entity = entity,
         actions = rememberSearchShellActions(viewModel),
         tabUi = tabUi(tabOwner),
     )
@@ -431,6 +433,8 @@ fun rememberSearchShellActions(viewModel: SearchResultViewModel): SearchShellAct
                 viewModel.onEvent(SearchResultViewModel.SearchResultEvents.FilterByTocId(entry.id))
             },
             onShowOnlyCategory = viewModel::showOnlyCategory,
+            onOpenBook = viewModel::openBook,
+            onOpenAuthor = viewModel::openAuthor,
         )
     }
 

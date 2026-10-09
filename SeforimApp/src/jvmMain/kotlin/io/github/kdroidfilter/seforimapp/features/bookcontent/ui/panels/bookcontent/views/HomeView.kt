@@ -79,6 +79,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
@@ -162,6 +163,7 @@ data class HomeSearchCallbacks(
     val onPickCategory: (Category) -> Unit,
     val onPickBook: (BookModel) -> Unit,
     val onPickToc: (TocEntry) -> Unit,
+    val onOpenJump: (ResolvedReference) -> Unit = {},
 )
 
 /**
@@ -518,6 +520,13 @@ private fun HomeBody(
                                             } else {
                                                 persistentListOf()
                                             },
+                                        jumpSuggestions =
+                                            if (isReferenceMode && !isTocInTopBar) {
+                                                searchUi.jumpSuggestions.toImmutableList()
+                                            } else {
+                                                persistentListOf()
+                                            },
+                                        onPickJump = { jump -> searchCallbacks.onOpenJump(jump) },
                                         tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
                                         tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
                                         selectedBook = searchUi.selectedScopeBook,
@@ -873,8 +882,10 @@ private fun ReferenceByCategorySection(
  * Uses native Jewel menu styling for consistent look and feel.
  */
 private fun SuggestionsPanel(
+    jumpSuggestions: ImmutableList<ResolvedReference>,
     categorySuggestions: ImmutableList<CategorySuggestion>,
     bookSuggestions: ImmutableList<BookSuggestion>,
+    onPickJump: (ResolvedReference) -> Unit,
     onPickCategory: (CategorySuggestion) -> Unit,
     onPickBook: (BookSuggestion) -> Unit,
     focusedIndex: Int = -1,
@@ -885,9 +896,9 @@ private fun SuggestionsPanel(
     val listState = rememberLazyListState()
     val menuStyle = JewelTheme.menuStyle
 
-    LaunchedEffect(focusedIndex, categorySuggestions.size, bookSuggestions.size) {
+    LaunchedEffect(focusedIndex, jumpSuggestions.size, categorySuggestions.size, bookSuggestions.size) {
         if (focusedIndex >= 0) {
-            val total = categorySuggestions.size + bookSuggestions.size
+            val total = jumpSuggestions.size + categorySuggestions.size + bookSuggestions.size
             if (total > 0) {
                 val visible = listState.layoutInfo.visibleItemsInfo
                 val firstVisible = visible.firstOrNull()?.index
@@ -904,7 +915,7 @@ private fun SuggestionsPanel(
             }
         }
     }
-    val isEmpty = categorySuggestions.isEmpty() && bookSuggestions.isEmpty()
+    val isEmpty = jumpSuggestions.isEmpty() && categorySuggestions.isEmpty() && bookSuggestions.isEmpty()
     Column(
         modifier =
             Modifier
@@ -956,18 +967,29 @@ private fun SuggestionsPanel(
                     }
                 }
             } else {
+                items(jumpSuggestions.size) { idx ->
+                    val jump = jumpSuggestions[idx]
+                    SuggestionRow(
+                        parts = listOf(jump.book.title, jump.label),
+                        onClick = { onPickJump(jump) },
+                        highlighted = idx == focusedIndex,
+                        showTabHint = idx == focusedIndex,
+                        hint = "↵",
+                    )
+                }
                 items(categorySuggestions.size) { idx ->
+                    val rowIndex = jumpSuggestions.size + idx
                     val cat = categorySuggestions[idx]
                     val dedupPath = dedupAdjacent(cat.path)
                     SuggestionRow(
                         parts = dedupPath,
                         onClick = { onPickCategory(cat) },
-                        highlighted = idx == focusedIndex,
-                        showTabHint = idx == focusedIndex,
+                        highlighted = rowIndex == focusedIndex,
+                        showTabHint = rowIndex == focusedIndex,
                     )
                 }
                 items(bookSuggestions.size) { i ->
-                    val rowIndex = categorySuggestions.size + i
+                    val rowIndex = jumpSuggestions.size + categorySuggestions.size + i
                     val book = bookSuggestions[i]
                     val dedupPath = dedupAdjacent(book.path)
                     SuggestionRow(
@@ -1170,6 +1192,8 @@ private fun SuggestionRow(
     onClick: () -> Unit,
     highlighted: Boolean = false,
     showTabHint: Boolean = false,
+    // The key hint shown on the highlighted row; Tab (pick the book) by default
+    hint: String? = null,
 ) {
     val hScroll = rememberScrollState(0)
     val hoverSource = remember { MutableInteractionSource() }
@@ -1257,7 +1281,7 @@ private fun SuggestionRow(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Text(
-                    text = stringResource(Res.string.tab_hint_select),
+                    text = hint ?: stringResource(Res.string.tab_hint_select),
                     color = JewelTheme.globalColors.text.info,
                     fontSize = 11.sp,
                     maxLines = 1,
@@ -1286,6 +1310,9 @@ private fun SearchBar(
     bookSuggestions: ImmutableList<BookSuggestion> = persistentListOf(),
     onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
+    // Places the typed reference points to, listed first and opened directly
+    jumpSuggestions: ImmutableList<ResolvedReference> = persistentListOf(),
+    onPickJump: (ResolvedReference) -> Unit = {},
     // TOC suggestions (for the second field)
     tocSuggestionsVisible: Boolean = false,
     tocSuggestions: List<TocSuggestion> = emptyList(),
@@ -1377,8 +1404,10 @@ private fun SearchBar(
     val minTocPrefixLen = 1
     var focusedIndex by remember { mutableIntStateOf(-1) }
     var popupVisible by remember { mutableStateOf(false) }
+    // Rows of the reference-mode list: jumps, then categories, then books
+    val jumpCount = jumpSuggestions.size
     val categoriesCount = categorySuggestions.size
-    val totalCatBook = categoriesCount + bookSuggestions.size
+    val totalCatBook = jumpCount + categoriesCount + bookSuggestions.size
     // Keyboard navigation must operate on the exact list that TocSuggestionsPanel
     // renders, otherwise the highlighted row and the picked entry desync and the
     // wrong reference opens (see [tocSuggestionsForDisplay]).
@@ -1414,6 +1443,7 @@ private fun SearchBar(
         tocSuggestionsVisible,
         categorySuggestions,
         bookSuggestions,
+        jumpSuggestions,
         tocSuggestions,
         isTocMode,
         showBookEmptyState,
@@ -1457,6 +1487,21 @@ private fun SearchBar(
         fun handlePickToc(toc: TocSuggestion) {
             onPickToc(toc)
             dismissPopup()
+        }
+
+        fun handlePickJump(jump: ResolvedReference) {
+            onPickJump(jump)
+            dismissPopup()
+        }
+
+        // Commits the reference-mode row at [index]; returns the book picked, if any
+        fun pickCatBookRow(index: Int): BookSuggestion? {
+            when {
+                index < jumpCount -> handlePickJump(jumpSuggestions[index])
+                index < jumpCount + categoriesCount -> handlePickCategory(categorySuggestions[index - jumpCount])
+                else -> return bookSuggestions.getOrNull(index - jumpCount - categoriesCount)?.also { handlePickBook(it) }
+            }
+            return null
         }
 
         fun handleSubmit() {
@@ -1536,17 +1581,8 @@ private fun SearchBar(
                                         }
 
                                         !isTocMode && focusedIndex in 0 until totalCatBook -> {
-                                            if (focusedIndex < categoriesCount) {
-                                                val picked = categorySuggestions[focusedIndex]
-                                                handlePickCategory(picked)
-                                            } else {
-                                                val idx = focusedIndex - categoriesCount
-                                                val picked = bookSuggestions.getOrNull(idx)
-                                                if (picked != null) {
-                                                    handlePickBook(picked)
-                                                    if (submitOnEnterInReference) handleSubmit()
-                                                }
-                                            }
+                                            val picked = pickCatBookRow(focusedIndex)
+                                            if (picked != null && submitOnEnterInReference) handleSubmit()
                                             true
                                         }
 
@@ -1602,12 +1638,7 @@ private fun SearchBar(
                                             }
 
                                             !isTocMode && focusedIndex in 0 until totalCatBook -> {
-                                                if (focusedIndex < categoriesCount) {
-                                                    handlePickCategory(categorySuggestions[focusedIndex])
-                                                } else {
-                                                    val idx = focusedIndex - categoriesCount
-                                                    bookSuggestions.getOrNull(idx)?.let { handlePickBook(it) }
-                                                }
+                                                pickCatBookRow(focusedIndex)
                                                 true
                                             }
 
@@ -1780,8 +1811,10 @@ private fun SearchBar(
                         )
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
+                            jumpSuggestions = jumpSuggestions,
                             categorySuggestions = categorySuggestions,
                             bookSuggestions = bookSuggestions,
+                            onPickJump = ::handlePickJump,
                             onPickCategory = ::handlePickCategory,
                             onPickBook = ::handlePickBook,
                             focusedIndex = focusedIndex,

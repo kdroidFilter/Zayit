@@ -8,6 +8,9 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ReferenceResolver
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.RepositoryReferenceSource
+import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
@@ -98,6 +101,8 @@ data class SearchHomeUiState(
     val isReferenceLoading: Boolean = false,
     val categorySuggestions: List<CategorySuggestionDto> = emptyList(),
     val bookSuggestions: List<BookSuggestionDto> = emptyList(),
+    /** Places the typed text points to (`חולין יב:`), listed above the book suggestions. */
+    val jumpSuggestions: List<ResolvedReference> = emptyList(),
     val tocSuggestionsVisible: Boolean = false,
     val isTocLoading: Boolean = false,
     val tocSuggestions: List<TocSuggestionDto> = emptyList(),
@@ -123,6 +128,8 @@ class SearchHomeViewModel(
     // Navigation events channel - UI collects and handles navigation
     private val _navigationEvents = Channel<SearchHomeNavigationEvent>(Channel.BUFFERED)
     val navigationEvents = _navigationEvents.receiveAsFlow()
+
+    private val referenceResolver = ReferenceResolver(RepositoryReferenceSource(repository))
 
     private val referenceQuery = MutableStateFlow("")
     private val tocQuery = MutableStateFlow("")
@@ -211,6 +218,7 @@ class SearchHomeViewModel(
                                 isReferenceLoading = false,
                                 categorySuggestions = emptyList(),
                                 bookSuggestions = emptyList(),
+                                jumpSuggestions = emptyList(),
                                 suggestionsVisible = false,
                             )
                     } else {
@@ -284,18 +292,22 @@ class SearchHomeViewModel(
                                             }
                                         }
 
-                                    val cats = catsDeferred.await()
-                                    val books = booksDeferred.await()
-                                    cats to books
+                                    val jumpsDeferred =
+                                        async(Dispatchers.IO) {
+                                            runSuspendCatching { referenceResolver.resolve(q) }.getOrDefault(emptyList())
+                                        }
+
+                                    Triple(catsDeferred.await(), booksDeferred.await(), jumpsDeferred.await())
                                 }
                             }
 
-                        val (catSuggestions, bookSuggestions) = result
+                        val (catSuggestions, bookSuggestions, jumpSuggestions) = result
                         _uiState.value =
                             _uiState.value.copy(
                                 isReferenceLoading = false,
                                 categorySuggestions = catSuggestions,
                                 bookSuggestions = bookSuggestions,
+                                jumpSuggestions = jumpSuggestions,
                                 suggestionsVisible = true,
                             )
                     }
@@ -426,6 +438,7 @@ class SearchHomeViewModel(
                             built += TocSuggestionDto(toc, path)
                         }
                     }
+                    built += altTocSuggestions(book)
                     tocCache[book.id] = built
                     built
                 }
@@ -445,6 +458,40 @@ class SearchHomeViewModel(
                 )
         }
     }
+
+    // Entries of the book's alternative TOCs (parashot, chapter names...), after the main TOC. They
+    // travel as TocEntry with the negated alt entry id, opened at their own line (see isAltTocEntry).
+    private suspend fun altTocSuggestions(book: Book): List<TocSuggestionDto> =
+        runSuspendCatching {
+            repository.getAltTocStructuresForBook(book.id).flatMap { structure ->
+                val entries = repository.getAltTocEntriesForStructure(structure.id)
+                val byId = entries.associateBy { it.id }
+                val label = altTocLabel(structure.key, structure.heTitle, book.title)
+                entries.filter { it.text.isNotBlank() }.map { entry ->
+                    val ancestors = generateSequence(entry.parentId?.let(byId::get)) { it.parentId?.let(byId::get) }
+                    val path = listOf(label) + ancestors.map { it.text }.toList().asReversed() + entry.text
+                    TocSuggestionDto(
+                        TocEntry(
+                            id = -entry.id,
+                            bookId = book.id,
+                            text = entry.text,
+                            level = entry.level,
+                            lineId = entry.lineId,
+                        ),
+                        path,
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
+
+    private fun altTocLabel(
+        key: String,
+        heTitle: String?,
+        bookTitle: String,
+    ): String =
+        heTitle?.takeIf { it.isNotBlank() && it != bookTitle }
+            ?: ALT_TOC_LABELS[key]
+            ?: key
 
     fun onPickToc(toc: TocEntry) {
         _uiState.value =
@@ -546,8 +593,9 @@ class SearchHomeViewModel(
             } ?: return
 
         val anchorLineId: Long? =
-            when (selectedToc) {
-                null -> null
+            when {
+                selectedToc == null -> null
+                selectedToc.isAltTocEntry() -> selectedToc.lineId
                 else -> runSuspendCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
             }
 
@@ -562,6 +610,24 @@ class SearchHomeViewModel(
                 bookId = book.id,
                 tabId = currentTabId,
                 lineId = anchorLineId,
+            ),
+        )
+    }
+
+    /** Opens the place a typed reference resolved to, in the current tab. */
+    suspend fun openJump(
+        jump: ResolvedReference,
+        currentTabId: String,
+    ) {
+        persistedStore.update(currentTabId) { current ->
+            current.copy(bookContent = current.bookContent.copy(selectedBookId = jump.book.id))
+        }
+        _uiState.value = _uiState.value.copy(suggestionsVisible = false)
+        _navigationEvents.send(
+            SearchHomeNavigationEvent.NavigateToBookContent(
+                bookId = jump.book.id,
+                tabId = currentTabId,
+                lineId = jump.lineId,
             ),
         )
     }
@@ -640,3 +706,23 @@ class SearchHomeViewModel(
         return out
     }
 }
+
+// Alternative-TOC entries ride in TocSuggestionDto as TocEntry with a negated id
+private fun TocEntry.isAltTocEntry(): Boolean = id < 0
+
+// Names of Sefaria's alternative structures, whose heTitle is usually the book's own title
+private val ALT_TOC_LABELS =
+    mapOf(
+        "Parasha" to "פרשיות",
+        "Chapters" to "פרקים",
+        "Chapter" to "פרקים",
+        "Topic" to "נושאים",
+        "Venice" to "דפוס ונציה",
+        "Vilna" to "דפוס וילנא",
+        "30 Day Cycle" to "מחזור חודשי",
+        "Book" to "ספרים",
+        "Gate" to "שערים",
+        "Letter" to "אותיות",
+        "Daf" to "דפים",
+        "Contents" to "תוכן",
+    )

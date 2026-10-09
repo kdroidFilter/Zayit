@@ -40,6 +40,7 @@ import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.features.author.AuthorTabContent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
@@ -81,6 +82,7 @@ private fun TabsDestination.typeKey(): String =
         is TabsDestination.Favorites -> "favorites"
         is TabsDestination.Notes -> "notes"
         is TabsDestination.Siddur -> "siddur"
+        is TabsDestination.Author -> "author"
     }
 
 private fun saveableKeyFor(destination: TabsDestination): String = "${destination.tabId}:${destination.typeKey()}"
@@ -148,6 +150,14 @@ fun TabsContent() {
                 onPickBook = searchHomeViewModel::onPickBook,
                 onPickToc = searchHomeViewModel::onPickToc,
                 onPickAuthor = searchHomeViewModel::onPickAuthor,
+                onOpenBook = { book ->
+                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
+                    scope.launch { searchHomeViewModel.openBook(book, tabId) }
+                },
+                onOpenAuthor = { author ->
+                    val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
+                    scope.launch { searchHomeViewModel.openAuthor(author, tabId) }
+                },
                 onClearAuthor = searchHomeViewModel::onClearAuthor,
                 onOpenJump = { jump ->
                     val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks
@@ -292,6 +302,10 @@ fun TabsContent() {
                                 is TabsDestination.Siddur -> {
                                     // ponytail: a siddur tab restored in a community build stays empty
                                     installedSiddur?.TabContent(tabId, destination)
+                                }
+
+                                is TabsDestination.Author -> {
+                                    AuthorTabContent(tabId = tabId, authorId = destination.authorId)
                                 }
                             }
                         }

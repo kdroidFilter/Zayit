@@ -289,6 +289,10 @@
     <!-- Home Page View -->
     <string name="search_text_row">חיפוש במאגר: %1$s</string>
     <string name="author_books_count">%1$d ספרים</string>
+    <string name="author_aliases">נודע גם בשם: %1$s</string>
+    <string name="author_books">ספרים במאגר</string>
+    <string name="author_bio_license">הביוגרפיה מתפרסמת ברישיון CC BY-SA 4.0, על פי המקורות המצוינים בה.</string>
+    <string name="author_not_found">המחבר לא נמצא</string>
     <string name="search_text_row_in_book">חיפוש בתוך %2$s: %1$s</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
     <string name="remove_selected_book">הסר ספר שנבחר</string>
@@ -309,6 +313,7 @@
     <string name="reference_toc_hint_4">דף ב עמוד א</string>
     <string name="reference_toc_hint_5">שער א</string>
     <string name="tab_hint_select">Tab ⇥</string>
+    <string name="hint_open_or_search_inside">↵ פתיחה · Tab חיפוש בתוך</string>
     <string name="autocomplete_no_results">לא נמצאו תוצאות</string>
     <string name="autocomplete_loading">טוען…</string>
 

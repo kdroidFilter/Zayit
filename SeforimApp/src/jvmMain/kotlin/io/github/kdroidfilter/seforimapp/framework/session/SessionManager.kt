@@ -238,6 +238,10 @@ class SessionManager(
                 is TabsDestination.Siddur -> {
                     // No-op: the Siddur screen localizes its own title.
                 }
+
+                is TabsDestination.Author -> {
+                    // No-op: the Author screen sets its own title once loaded.
+                }
             }
         }
         return titles

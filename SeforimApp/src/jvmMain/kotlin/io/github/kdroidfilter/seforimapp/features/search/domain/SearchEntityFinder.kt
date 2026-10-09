@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.search.domain
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.AuthorDetails
+import io.github.kdroidfilter.seforimlibrary.dao.repository.BookEdition
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
 /** A part of a book and the line it starts at. */
@@ -21,6 +22,8 @@ sealed interface SearchEntity {
         val authors: List<AuthorDetails>,
         // Its main parts (הלכות לשון הרע, הלכות רכילות; פרק א for a tractate), to open directly
         val parts: List<BookPart>,
+        // Its editions, with their source and license
+        val editions: List<BookEdition>,
     ) : SearchEntity
 
     data class AuthorEntity(

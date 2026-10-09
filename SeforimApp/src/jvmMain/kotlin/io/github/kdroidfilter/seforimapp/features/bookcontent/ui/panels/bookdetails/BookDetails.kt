@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import io.github.kdroidfilter.seforimapp.features.author.AUTHOR_ERAS
 import io.github.kdroidfilter.seforimapp.features.author.authorYears
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
@@ -28,9 +29,12 @@ import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.Divider
 import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
+import seforimapp.seforimapp.generated.resources.license_public_domain
+import seforimapp.seforimapp.generated.resources.license_unknown
 import seforimapp.seforimapp.generated.resources.search_book_details
 import seforimapp.seforimapp.generated.resources.search_panel_author
 import seforimapp.seforimapp.generated.resources.search_panel_parts
+import seforimapp.seforimapp.generated.resources.search_panel_source
 
 /**
  * The book-details pane, in every reader tab (a book's, a search's selected result's): the book's
@@ -97,7 +101,27 @@ fun ColumnScope.BookDetails(
             }
         }
     }
+    val editions = entity.editions.distinctBy { (it.heTitle ?: it.title) to it.licenseCode }
+    if (editions.isNotEmpty()) {
+        PanelSection(stringResource(Res.string.search_panel_source)) {
+            editions.forEach { edition ->
+                val title = edition.heTitle ?: edition.title
+                val url = edition.sourceUrl
+                if (url != null) ResultLink(title, accent, 13.sp) { UrlOpener.open(url) } else Text(title, fontSize = 13.sp)
+                Text(licenseLabel(edition.licenseCode), fontSize = 12.sp, color = grey)
+            }
+        }
+    }
 }
+
+/** A license code in plain Hebrew where it has a name (נחלת הכלל), else as Creative Commons writes it. */
+@Composable
+private fun licenseLabel(code: String): String =
+    when (code) {
+        "Public Domain" -> stringResource(Res.string.license_public_domain)
+        "unknown" -> stringResource(Res.string.license_unknown)
+        else -> if (code.startsWith("CC-")) "CC " + code.removePrefix("CC-") else code
+    }
 
 /** A titled part of the panel, under a thin divider. */
 @Composable

@@ -6,7 +6,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * A book's details as the book-details pane shows them (categories, authors with their years, main
- * parts), for the search's panel and the reader's pane alike.
+ * parts, editions with their license), for the search's panel and the reader's pane alike.
  */
 class BookDetailsLoader(
     private val repository: SeforimRepository,
@@ -26,7 +26,7 @@ class BookDetailsLoader(
             categoryId = category.parentId
         }
         val authors = book.authors.mapNotNull { repository.getAuthorDetails(it.id) }
-        return SearchEntity.BookEntity(book, categories, authors, mainParts(book))
+        return SearchEntity.BookEntity(book, categories, authors, mainParts(book), repository.getBookEditions(bookId))
     }
 
     /**

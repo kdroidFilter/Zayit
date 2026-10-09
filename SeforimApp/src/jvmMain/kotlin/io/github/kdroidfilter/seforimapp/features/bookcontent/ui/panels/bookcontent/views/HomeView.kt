@@ -686,11 +686,14 @@ internal fun LogoImage(modifier: Modifier = Modifier) {
 private fun logoTint(): Color =
     if (JewelTheme.isDark) JewelTheme.globalColors.outlines.focused else AccentColor.Gold.forMode(isDark = false)
 
-/** The logo's olive branch alone, in its own colors. */
+/**
+ * The logo's olive branch alone, in its own colors. Its PNG is pre-scaled (Lanczos) to twice the size
+ * it is shown at: Skia's sampling aliases on big downscales, the full logo's detail turned to pixels.
+ */
 @Composable
 internal fun LogoBranch(modifier: Modifier = Modifier) {
     Image(
-        BitmapPainter(imageResource(Res.drawable.zayit_logo_branch), filterQuality = FilterQuality.Medium),
+        BitmapPainter(imageResource(Res.drawable.zayit_logo_branch), filterQuality = FilterQuality.High),
         contentDescription = null,
         modifier = modifier,
     )

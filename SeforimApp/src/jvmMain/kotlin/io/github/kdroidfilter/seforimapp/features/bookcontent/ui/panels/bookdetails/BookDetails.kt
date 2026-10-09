@@ -15,7 +15,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.author.AUTHOR_ERAS
 import io.github.kdroidfilter.seforimapp.features.author.authorYears
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
@@ -23,7 +22,6 @@ import io.github.kdroidfilter.seforimapp.features.search.ResultLink
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.readingSecondary
-import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
@@ -33,7 +31,6 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.search_book_details
 import seforimapp.seforimapp.generated.resources.search_panel_author
 import seforimapp.seforimapp.generated.resources.search_panel_parts
-import java.util.UUID
 
 /**
  * The book-details pane, in every reader tab (a book's, a search's selected result's): the book's
@@ -43,9 +40,10 @@ import java.util.UUID
 fun BookDetailsPane(
     book: SearchEntity.BookEntity?,
     onHide: () -> Unit,
+    onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
+    onOpenAuthor: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tabs = LocalOpenWindow.current.tabsViewModel
     Column(modifier) {
         PaneHeader(label = stringResource(Res.string.search_book_details), onHide = onHide)
         if (book != null) {
@@ -53,15 +51,7 @@ fun BookDetailsPane(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
             ) {
-                BookDetails(
-                    entity = book,
-                    onOpenBookAt = { bookId, lineId ->
-                        tabs.openTab(TabsDestination.BookContent(bookId = bookId, tabId = UUID.randomUUID().toString(), lineId = lineId))
-                    },
-                    onOpenAuthor = { authorId ->
-                        tabs.openTab(TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = authorId))
-                    },
-                )
+                BookDetails(entity = book, onOpenBookAt = onOpenBookAt, onOpenAuthor = onOpenAuthor)
             }
         }
     }

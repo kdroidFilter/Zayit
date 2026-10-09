@@ -6,57 +6,69 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ReferenceParserTest {
-    private fun first(query: String) = ReferenceParser.splits(query).first()
-
-    // The reading naming [book], among those the resolver tries
-    private fun readingOf(
+    // The place read after [book], among the readings the resolver tries
+    private fun placeOf(
         query: String,
         book: String,
-    ) = ReferenceParser.splits(query).single { it.bookName == book }
+    ) = ReferenceParser.splits(query).single { it.bookName == book }.place
+
+    private fun number(
+        text: String,
+        value: Int,
+        amud: Amud? = null,
+    ) = ReferenceToken(text, value, amud)
 
     @Test
     fun dafWithoutAmud() {
-        assertEquals(ReferenceSplit("חולין", ReferenceLocator(listOf(12))), first("חולין יב"))
+        assertEquals(listOf(number("יב", 12)), placeOf("חולין יב", "חולין"))
     }
 
     @Test
     fun amudFromPunctuation() {
-        assertEquals(ReferenceLocator(listOf(12), Amud.B), first("חולין יב:").locator)
-        assertEquals(ReferenceLocator(listOf(12), Amud.A), first("חולין יב.").locator)
+        assertEquals(listOf(number("יב", 12, Amud.B)), placeOf("חולין יב:", "חולין"))
+        assertEquals(listOf(number("יב", 12, Amud.A)), placeOf("חולין יב.", "חולין"))
     }
 
     @Test
     fun amudFromWords() {
-        assertEquals(ReferenceLocator(listOf(12), Amud.B), first("חולין דף יב ע\"ב").locator)
-        assertEquals(ReferenceLocator(listOf(12), Amud.A), first("חולין דף יב ע״א").locator)
+        assertEquals(listOf(number("יב", 12, Amud.B)), placeOf("חולין דף יב ע\"ב", "חולין"))
+        assertEquals(listOf(number("יב", 12, Amud.A)), placeOf("חולין דף יב ע״א", "חולין"))
     }
 
     @Test
     fun unquotedAyinAlefIsSeventyOne() {
-        assertEquals(ReferenceLocator(listOf(71)), first("חולין עא").locator)
+        assertEquals(listOf(number("עא", 71)), placeOf("חולין עא", "חולין"))
     }
 
     @Test
     fun arabicDaf() {
-        assertEquals(ReferenceLocator(listOf(12), Amud.B), first("חולין 12b").locator)
+        assertEquals(listOf(number("12", 12, Amud.B)), placeOf("חולין 12b", "חולין"))
     }
 
     @Test
-    fun severalSectionsAndLocatorWords() {
-        assertEquals(ReferenceLocator(listOf(1, 3)), readingOf("בראשית א ג", "בראשית").locator)
-        assertEquals(ReferenceLocator(listOf(1, 3)), readingOf("בראשית פרק א פסוק ג", "בראשית").locator)
-        assertEquals(ReferenceLocator(listOf(123)), first("תהלים קכ\"ג").locator)
+    fun severalNumbersAndPlaceWords() {
+        val verse = listOf(number("א", 1), number("ג", 3))
+        assertEquals(verse, placeOf("בראשית א ג", "בראשית"))
+        assertEquals(verse, placeOf("בראשית פרק א פסוק ג", "בראשית"))
+        assertEquals(listOf(number("קכג", 123)), placeOf("תהלים קכ\"ג", "תהלים"))
     }
 
     @Test
-    fun bookNameKeepsAcronymsComparable() {
-        assertEquals(listOf(328, 3), readingOf("שו\"ע או\"ח שכח ג", "שוע אוח").locator.sections)
+    fun namesAreKeptAsWords() {
+        assertEquals(listOf(ReferenceToken("לך"), ReferenceToken("לך")), placeOf("בראשית פרשת לך לך", "בראשית"))
+        // נח is both a name and the number 58: the resolver tries both
+        assertEquals(listOf(number("נח", 58)), placeOf("בראשית נח", "בראשית"))
+    }
+
+    @Test
+    fun acronymBookNames() {
+        assertEquals(listOf(328, 3), placeOf("שו\"ע או\"ח שכח ג", "שוע אוח").map { it.number })
     }
 
     @Test
     fun longestBookNameComesFirst() {
         val names = ReferenceParser.splits("משנה ברכות א א").map { it.bookName }
-        assertEquals(listOf("משנה ברכות א", "משנה ברכות"), names)
+        assertEquals(listOf("משנה ברכות א", "משנה ברכות", "משנה"), names)
     }
 
     @Test
@@ -64,7 +76,12 @@ class ReferenceParserTest {
         assertNull(ReferenceParser.hebrewNumeralValue("שבת"))
         assertNull(ReferenceParser.hebrewNumeralValue("פרק"))
         assertEquals(15, ReferenceParser.hebrewNumeralValue("טו"))
-        assertTrue(ReferenceParser.splits("מסכת שבת").isEmpty())
         assertTrue(ReferenceParser.splits("חולין").isEmpty())
+    }
+
+    @Test
+    fun amudNeedsANumber() {
+        assertNull(ReferenceParser.parsePlace(listOf("ע\"ב")))
+        assertNull(ReferenceParser.parsePlace(listOf("דף")))
     }
 }

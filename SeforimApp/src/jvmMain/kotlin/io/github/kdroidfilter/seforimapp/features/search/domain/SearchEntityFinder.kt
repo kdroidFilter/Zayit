@@ -41,9 +41,9 @@ class SearchEntityFinder(
         val key = query.searchKey()
         if (key.isEmpty()) return null
         val books = lookup.suggestBooks(query, BOOK_CANDIDATES)
-        books.firstOrNull { it.title.searchKey() == key }?.let { return bookEntity(it.id) }
+        books.firstOrNull { it.title.searchKey() == key }?.let { return describeBook(it.id) }
         authorNamed(query, key)?.let { return SearchEntity.AuthorEntity(it) }
-        return books.firstOrNull { it.exactAcronym }?.let { bookEntity(it.id) }
+        return books.firstOrNull { it.exactAcronym }?.let { describeBook(it.id) }
     }
 
     private suspend fun authorNamed(
@@ -58,7 +58,8 @@ class SearchEntityFinder(
         return null
     }
 
-    private suspend fun bookEntity(bookId: Long): SearchEntity.BookEntity? {
+    /** A book with its categories, authors and main parts, as the panel shows it. */
+    suspend fun describeBook(bookId: Long): SearchEntity.BookEntity? {
         val book = repository.getBook(bookId) ?: return null
         val categories = ArrayList<String>()
         var categoryId: Long? = book.categoryId

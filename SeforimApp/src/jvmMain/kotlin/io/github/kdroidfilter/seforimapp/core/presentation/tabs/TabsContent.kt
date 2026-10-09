@@ -406,6 +406,7 @@ private fun SearchTabContent(
         homeSearchUi = homeSearchUi,
         homeSearchCallbacks = barCallbacks,
         loadContext = viewModel::passageContext,
+        loadBook = viewModel::bookDetails,
         actions = actions,
         tabUi = tabUi(tabOwner),
     )

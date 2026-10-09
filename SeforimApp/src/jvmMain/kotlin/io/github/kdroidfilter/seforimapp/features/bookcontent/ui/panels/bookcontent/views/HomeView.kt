@@ -444,6 +444,8 @@ internal fun UnifiedSearchBar(
     modifier: Modifier = Modifier,
     initialText: String = "",
     autoFocus: Boolean = true,
+    // The typed text, as it changes (the results page keeps it for the tab's restore)
+    onTextChange: (String) -> Unit = {},
 ) {
     // Keep state outside the sections so it persists across their recompositions
     val scope = rememberCoroutineScope()
@@ -460,6 +462,7 @@ internal fun UnifiedSearchBar(
     }
 
     val referenceSearchState = remember { TextFieldState() }
+    val currentOnTextChange by rememberUpdatedState(onTextChange)
     val tocSearchState = remember { TextFieldState() }
     var skipNextReferenceQuery by remember { mutableStateOf(false) }
     var skipNextTocQuery by remember { mutableStateOf(false) }
@@ -470,6 +473,7 @@ internal fun UnifiedSearchBar(
     // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
     LaunchedEffect(Unit) {
         snapshotFlow { referenceSearchState.text.toString() }.collect { qRaw ->
+            currentOnTextChange(qRaw)
             if (skipNextReferenceQuery) {
                 skipNextReferenceQuery = false
             } else {

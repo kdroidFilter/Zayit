@@ -388,6 +388,7 @@ private fun SearchResultContentMvi(
                                 modifier = Modifier.weight(1f),
                                 initialText = state.query,
                                 autoFocus = false,
+                                onTextChange = actions.onQueryChange,
                             )
                         }
 
@@ -515,7 +516,7 @@ private fun SearchResultContentMvi(
                                     itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
                                         ResultView(
                                             item = item,
-                                            selected = twoPanes && item.hit.lineId == selectedLineId,
+                                            selected = item.hit.lineId == selectedLineId,
                                             findQuery = activeFindQuery,
                                             bookFontCode = bookFontCode,
                                             breadcrumbs = breadcrumbs,
@@ -576,7 +577,10 @@ private fun SearchResultContentMvi(
                 }
                 if (twoPanes) {
                     Column(Modifier.weight(1f).fillMaxHeight()) {
-                        if (entity != null) {
+                        // The query's book is already in the details pane when a result of it is shown
+                        val duplicate =
+                            entity is SearchEntity.BookEntity && showBookDetails && entity.book.id == preview?.hit?.bookId
+                        if (entity != null && !duplicate) {
                             EntityPanel(
                                 entity = entity,
                                 onOpenBookAt = actions.onOpenBookAt,

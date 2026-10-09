@@ -98,7 +98,7 @@ class HistoryStore(
                 visitedAt = timestamp,
                 tocEntryId = null,
                 lineId = null,
-                searchCategoryId = (scope as? SearchScope.Category)?.categoryId,
+                searchCategoryId = null,
                 searchBookId =
                     when (scope) {
                         is SearchScope.Book -> scope.bookId
@@ -153,7 +153,7 @@ class HistoryStore(
                 when {
                     searchTocId != null && searchBookId != null -> SearchScope.Toc(bookId = searchBookId, tocId = searchTocId)
                     searchBookId != null -> SearchScope.Book(searchBookId)
-                    searchCategoryId != null -> SearchScope.Category(searchCategoryId)
+                    // A search once scoped to a category (searchCategoryId) runs everywhere now
                     else -> SearchScope.Global
                 },
             searchGlobalExtended = searchExtended,
@@ -166,8 +166,7 @@ class HistoryStore(
     ): String {
         val scopeKey =
             when (scope) {
-                SearchScope.Global -> "g"
-                is SearchScope.Category -> "c${scope.categoryId}"
+                SearchScope.Global, is SearchScope.Category -> "g"
                 is SearchScope.Book -> "b${scope.bookId}"
                 is SearchScope.Toc -> "t${scope.tocId}"
             } + if (globalExtended) "x" else ""

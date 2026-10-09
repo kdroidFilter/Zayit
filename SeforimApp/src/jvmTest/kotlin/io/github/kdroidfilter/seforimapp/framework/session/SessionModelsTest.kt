@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.framework.session
 
+import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -156,5 +157,16 @@ class SessionModelsTest {
 
         val pinned = SerializableTabTitle("Book", TabType.BOOK, pinned = true)
         assertTrue(ProtoBuf.decodeFromByteArray<SerializableTabTitle>(ProtoBuf.encodeToByteArray(pinned)).pinned)
+    }
+
+    @Test
+    fun `a search saved scoped to a category runs everywhere`() {
+        val saved = SearchPersistedState(datasetScope = "category", filterCategoryId = 7L, fetchCategoryId = 7L)
+        assertEquals(SearchScope.Global, saved.scope)
+        val again = saved.withScope(saved.scope)
+        assertEquals(0L, again.filterCategoryId)
+        assertEquals(0L, again.fetchCategoryId)
+        assertEquals("global", again.datasetScope)
+        assertEquals(SearchScope.Global, SearchPersistedState().withScope(SearchScope.Category(7L)).scope)
     }
 }

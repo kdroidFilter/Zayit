@@ -2,7 +2,6 @@ package io.github.kdroidfilter.seforimapp.features.search
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -19,7 +18,6 @@ class SearchUiStateTest {
         assertFalse(state.baseBooksHadNoResults)
         assertFalse(state.isLoading)
         assertTrue(state.results.isEmpty())
-        assertTrue(state.scopeCategoryPath.isEmpty())
         assertNull(state.scopeBook)
         assertNull(state.scopeTocId)
         assertEquals(0, state.scrollIndex)
@@ -57,17 +55,6 @@ class SearchUiStateTest {
         val book = Book(id = 1L, categoryId = 1L, sourceId = 1L, title = "Test Book")
         val state = SearchUiState(scopeBook = book)
         assertEquals(book, state.scopeBook)
-    }
-
-    @Test
-    fun `state can be created with scope category path`() {
-        val categories =
-            listOf(
-                Category(id = 1L, title = "Root", parentId = null),
-                Category(id = 2L, title = "Child", parentId = 1L),
-            )
-        val state = SearchUiState(scopeCategoryPath = categories)
-        assertEquals(2, state.scopeCategoryPath.size)
     }
 
     @Test

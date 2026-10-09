@@ -101,7 +101,6 @@ import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
-import io.github.kdroidfilter.seforimlibrary.core.models.Category
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -134,12 +133,6 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Book as BookModel
 
 // Suggestion models for the scope picker
 @Immutable
-private data class CategorySuggestion(
-    val category: Category,
-    val path: List<String>,
-)
-
-@Immutable
 private data class BookSuggestion(
     val book: BookModel,
     val path: List<String>,
@@ -158,10 +151,6 @@ private sealed interface CatBookRow {
         val hit: AuthorHit,
     ) : CatBookRow
 
-    data class Category(
-        val suggestion: CategorySuggestion,
-    ) : CatBookRow
-
     data class Book(
         val suggestion: BookSuggestion,
     ) : CatBookRow
@@ -169,14 +158,13 @@ private sealed interface CatBookRow {
 
 /**
  * The book-stage rows in order: the references, then the books and authors named exactly as typed
- * (`חולין` opens Chullin on Enter; `שוע` puts the שולחן ערוך parts first), the text search, then the other authors, categories and books.
+ * (`חולין` opens Chullin on Enter; `שוע` puts the שולחן ערוך parts first), the text search, then the other authors and books.
  */
 private fun catBookRows(
     query: String,
     jumps: List<ResolvedReference>,
     textSearch: Boolean,
     authors: List<AuthorHit>,
-    categories: List<CategorySuggestion>,
     books: List<BookSuggestion>,
 ): ImmutableList<CatBookRow> {
     val key = query.searchKey()
@@ -191,7 +179,6 @@ private fun catBookRows(
         exactAuthors.mapTo(this) { CatBookRow.Author(it) }
         if (textSearch) add(CatBookRow.TextSearch)
         otherAuthors.mapTo(this) { CatBookRow.Author(it) }
-        categories.mapTo(this) { CatBookRow.Category(it) }
         otherBooks.mapTo(this) { CatBookRow.Book(it) }
     }.toImmutableList()
 }
@@ -219,7 +206,6 @@ data class HomeSearchCallbacks(
     val onGlobalExtendedChange: (Boolean) -> Unit,
     val onSubmitTextSearch: (String) -> Unit,
     val onOpenReference: () -> Unit,
-    val onPickCategory: (Category) -> Unit,
     val onPickBook: (BookModel) -> Unit,
     val onPickToc: (TocEntry) -> Unit,
     val onOpenJump: (ResolvedReference) -> Unit = {},
@@ -339,7 +325,7 @@ fun HomeView(
  * Home screen for the Book Content feature.
  *
  * Renders the welcome header, the main search bar with a mode toggle (Text vs Reference),
- * and the Category/Book/TOC scope picker. State is sourced from the SearchHomeViewModel
+ * and the Book/TOC scope picker. State is sourced from the SearchHomeViewModel
  * through the Metro DI graph and kept outside of the page's sections to avoid losing focus or
  * field contents during recomposition.
  */
@@ -556,7 +542,6 @@ internal fun UnifiedSearchBar(
         onTextSearch = ::searchText,
         // Before a book is picked: go-to rows, the text search and books; after: its TOC
         suggestionsVisible = if (!isTocInTopBar) searchUi.suggestionsVisible else false,
-        categorySuggestions = persistentListOf(),
         bookSuggestions = if (!isTocInTopBar) mappedBookSuggestionsForBar else persistentListOf(),
         jumpSuggestions =
             if (!isTocInTopBar) searchUi.jumpSuggestions.toImmutableList() else persistentListOf(),
@@ -720,7 +705,7 @@ internal fun LogoBranch(modifier: Modifier = Modifier) {
 
 @Composable
 /**
- * Renders the suggestion list for categories and books, keeping the currently
+ * Renders the suggestion list for places, authors and books, keeping the currently
  * focused row in view as the user navigates with the keyboard.
  * Uses native Jewel menu styling for consistent look and feel.
  */
@@ -854,15 +839,6 @@ private fun SuggestionsPanel(
                                 highlighted = focused,
                                 detail = stringResource(Res.string.author_books_count, row.hit.bookCount),
                                 actions = listOf(open, searchInside),
-                            )
-
-                        is CatBookRow.Category ->
-                            SuggestionRow(
-                                parts = dedupAdjacent(row.suggestion.path),
-                                onClick = open.onClick,
-                                kind = SuggestionKind.CATEGORY,
-                                highlighted = focused,
-                                actions = listOf(searchInside),
                             )
 
                         is CatBookRow.Book ->
@@ -1100,7 +1076,7 @@ private fun String.withBold(part: String?): AnnotatedString {
 }
 
 /** What a suggestion row leads to, shown by its icon. */
-private enum class SuggestionKind { PLACE, TEXT_SEARCH, AUTHOR, CATEGORY, BOOK }
+private enum class SuggestionKind { PLACE, TEXT_SEARCH, AUTHOR, BOOK }
 
 @Composable
 private fun SuggestionIcon(kind: SuggestionKind) {
@@ -1112,7 +1088,6 @@ private fun SuggestionIcon(kind: SuggestionKind) {
         SuggestionKind.BOOK ->
             Image(rememberVectorPainter(bookOpenTabs(tint)), null, iconModifier, colorFilter = ColorFilter.tint(tint))
         SuggestionKind.TEXT_SEARCH -> Icon(AllIconsKeys.Actions.Find, null, iconModifier, tint = tint)
-        SuggestionKind.CATEGORY -> Icon(AllIconsKeys.Nodes.Folder, null, iconModifier, tint = tint)
         SuggestionKind.AUTHOR ->
             Image(rememberVectorPainter(WritingHand), null, iconModifier, colorFilter = ColorFilter.tint(tint))
     }
@@ -1235,9 +1210,7 @@ private fun SearchBar(
     onSubmit: () -> Unit = {},
     enabled: Boolean = true,
     suggestionsVisible: Boolean = false,
-    categorySuggestions: ImmutableList<CategorySuggestion> = persistentListOf(),
     bookSuggestions: ImmutableList<BookSuggestion> = persistentListOf(),
-    onPickCategory: (CategorySuggestion) -> Unit = {},
     onPickBook: (BookSuggestion) -> Unit = {},
     // Places the typed reference points to, listed first and opened directly
     jumpSuggestions: ImmutableList<ResolvedReference> = persistentListOf(),
@@ -1330,13 +1303,12 @@ private fun SearchBar(
     // Rows of the book-stage list, in display order
     val query = state.text.toString().trim()
     val catBookRows =
-        remember(query, jumpSuggestions, textSearchEnabled, authorSuggestions, categorySuggestions, bookSuggestions) {
+        remember(query, jumpSuggestions, textSearchEnabled, authorSuggestions, bookSuggestions) {
             catBookRows(
                 query,
                 jumpSuggestions,
                 textSearchEnabled && query.isNotEmpty(),
                 authorSuggestions,
-                categorySuggestions,
                 bookSuggestions,
             )
         }
@@ -1354,7 +1326,7 @@ private fun SearchBar(
     val textRowCount = if (textRow) 1 else 0
     val totalTocRows = totalToc + textRowCount
     val isTocMode = selectedBook != null
-    val showCategorySuggestions = suggestionsVisible && totalCatBook > 0 && !isTocMode
+    val showBookStageSuggestions = suggestionsVisible && totalCatBook > 0 && !isTocMode
     val showTocSuggestions = (tocSuggestionsVisible || textRow) && totalTocRows > 0 && isTocMode
     val showBookLoading = !isTocMode && isBookLoading && hasUserText && queryLength >= minBookPrefixLen
     val showTocLoading = isTocMode && isTocLoading && hasUserText && queryLength >= minTocPrefixLen
@@ -1375,7 +1347,6 @@ private fun SearchBar(
     LaunchedEffect(
         suggestionsVisible,
         tocSuggestionsVisible,
-        categorySuggestions,
         bookSuggestions,
         jumpSuggestions,
         authorSuggestions,
@@ -1391,7 +1362,7 @@ private fun SearchBar(
         val shouldOpen =
             when {
                 showTocSuggestions -> true
-                showCategorySuggestions -> true
+                showBookStageSuggestions -> true
                 showBookEmptyState -> true
                 showTocEmptyState -> true
                 showBookLoading -> true
@@ -1403,7 +1374,7 @@ private fun SearchBar(
         val keepRow = openRequests != handledOpenRequests && shouldOpen && focusedIndex >= 0
         handledOpenRequests = openRequests
         popupVisible = shouldOpen
-        if (!keepRow) focusedIndex = if (shouldOpen && (showTocSuggestions || showCategorySuggestions)) 0 else -1
+        if (!keepRow) focusedIndex = if (shouldOpen && (showTocSuggestions || showBookStageSuggestions)) 0 else -1
     }
 
     var anchor by remember { mutableStateOf<AnchorBounds?>(null) }
@@ -1413,11 +1384,6 @@ private fun SearchBar(
         fun dismissPopup() {
             popupVisible = false
             onDismissSuggestions()
-        }
-
-        fun handlePickCategory(cat: CategorySuggestion) {
-            onPickCategory(cat)
-            dismissPopup()
         }
 
         fun handlePickBook(book: BookSuggestion) {
@@ -1458,7 +1424,7 @@ private fun SearchBar(
             dismissPopup()
         }
 
-        // Commits the book-stage row at [index] (jumps, text search, authors, categories, books); returns the book picked
+        // Commits the book-stage row at [index] (jumps, text search, authors, books); returns the book picked
         // Runs a book-stage row: its main action ([open]: open, search) or its Tab one (search inside)
         fun runCatBookRow(
             row: CatBookRow,
@@ -1468,7 +1434,6 @@ private fun SearchBar(
                 is CatBookRow.Jump -> handlePickJump(row.reference)
                 CatBookRow.TextSearch -> handleTextSearch()
                 is CatBookRow.Author -> if (open) handleOpenAuthor(row.hit) else handlePickAuthor(row.hit)
-                is CatBookRow.Category -> handlePickCategory(row.suggestion)
                 is CatBookRow.Book -> if (open) handleOpenBook(row.suggestion) else handlePickBook(row.suggestion)
             }
         }
@@ -1741,7 +1706,7 @@ private fun SearchBar(
                 a != null &&
                 (
                     showTocSuggestions ||
-                        showCategorySuggestions ||
+                        showBookStageSuggestions ||
                         showBookEmptyState ||
                         showTocEmptyState ||
                         showBookLoading ||
@@ -1794,7 +1759,7 @@ private fun SearchBar(
                             isLoading = showTocLoading,
                             loadingMessage = stringResource(Res.string.autocomplete_loading),
                         )
-                    } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
+                    } else if (!isTocMode && (showBookStageSuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
                             rows = catBookRows,
                             onRow = { row, open -> runCatBookRow(row, open) },
@@ -1911,7 +1876,6 @@ private fun HomeViewPreview() {
                 onGlobalExtendedChange = {},
                 onSubmitTextSearch = {},
                 onOpenReference = {},
-                onPickCategory = {},
                 onPickBook = {},
                 onPickToc = {},
             )

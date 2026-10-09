@@ -55,7 +55,6 @@ fun BookContentPanel(
             onGlobalExtendedChange = {},
             onSubmitTextSearch = {},
             onOpenReference = {},
-            onPickCategory = {},
             onPickBook = {},
             onPickToc = {},
         ),

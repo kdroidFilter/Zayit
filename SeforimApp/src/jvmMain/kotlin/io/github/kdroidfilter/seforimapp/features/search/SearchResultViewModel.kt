@@ -495,8 +495,32 @@ class SearchResultViewModel(
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    private suspend fun passageContext(hit: SearchResult): List<Line> =
-        repository.getLines(hit.bookId, (hit.lineIndex - CONTEXT_LINES).coerceAtLeast(0), hit.lineIndex + CONTEXT_LINES)
+    /**
+     * The lines around a result, by length rather than count: short lines (a verse, a heading) come
+     * many, long paragraphs few, about [CONTEXT_CHARS] characters on each side, one line at least.
+     */
+    private suspend fun passageContext(hit: SearchResult): List<Line> {
+        val window =
+            repository.getLines(
+                hit.bookId,
+                (hit.lineIndex - CONTEXT_MAX_LINES).coerceAtLeast(0),
+                hit.lineIndex + CONTEXT_MAX_LINES,
+            )
+        val at = window.indexOfFirst { it.id == hit.lineId }
+        if (at < 0) return window
+
+        fun side(lines: List<Line>): List<Line> {
+            var chars = 0
+            return lines.takeWhile { line ->
+                val keep = chars == 0 || chars < CONTEXT_CHARS
+                chars += line.content.replace(HTML_TAG, "").length
+                keep
+            }
+        }
+        val before = side(window.subList(0, at).asReversed()).asReversed()
+        val after = side(window.subList(at + 1, window.size))
+        return before + window[at] + after
+    }
 
     /** Opens a book at a line (one of its parts, from the panel), in a new tab. */
     fun openBookAt(
@@ -2060,4 +2084,8 @@ class SearchResultViewModel(
     }
 }
 
-private const val CONTEXT_LINES = 2
+private const val CONTEXT_MAX_LINES = 30
+private const val CONTEXT_CHARS = 700
+
+// An HTML tag, to read a line or snippet as plain text
+internal val HTML_TAG = Regex("<[^>]+>")

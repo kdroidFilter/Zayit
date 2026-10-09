@@ -499,6 +499,16 @@ class SearchResultViewModel(
         desktopManager.tabsViewModelFor(tabId)?.openTab(TabsDestination.BookContent(bookId = bookId, tabId = UUID.randomUUID().toString()))
     }
 
+    /** Opens a book at a line (one of its parts, from the panel), in a new tab. */
+    fun openBookAt(
+        bookId: Long,
+        lineId: Long,
+    ) {
+        desktopManager.tabsViewModelFor(tabId)?.openTab(
+            TabsDestination.BookContent(bookId = bookId, tabId = UUID.randomUUID().toString(), lineId = lineId),
+        )
+    }
+
     /** Opens an author's page from the panel, in a new tab. */
     fun openAuthor(authorId: Long) {
         desktopManager.tabsViewModelFor(tabId)?.openTab(TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = authorId))

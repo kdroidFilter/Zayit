@@ -578,8 +578,7 @@ class SearchResultViewModel(
         val book: SearchEntity.BookEntity?,
     )
 
-    private suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? =
-        runSuspendCatching { bookDetailsLoader.load(bookId) }.getOrNull()
+    private suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? = bookDetailsLoader.load(bookId)
 
     val previewFlow: StateFlow<PassagePreview?> =
         combine(visibleResultsFlow, selectedLineId) { results, id -> results.firstOrNull { it.lineId == id } ?: results.firstOrNull() }

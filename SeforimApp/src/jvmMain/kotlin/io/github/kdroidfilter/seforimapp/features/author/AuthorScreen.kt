@@ -4,7 +4,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.ScrollableState
 import androidx.compose.foundation.hoverable
@@ -16,10 +15,10 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,11 +28,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,13 +43,8 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
@@ -58,7 +53,13 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
 import io.github.kdroidfilter.seforimapp.core.presentation.components.EmptyState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ProseMarkdown
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
+import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.ZoomButtons
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.PaneCard
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -78,23 +79,27 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.author_bio_license
 import seforimapp.seforimapp.generated.resources.author_books
+import seforimapp.seforimapp.generated.resources.author_books_pane
 import seforimapp.seforimapp.generated.resources.author_info_aliases
 import seforimapp.seforimapp.generated.resources.author_info_era
+import seforimapp.seforimapp.generated.resources.author_info_pane
 import seforimapp.seforimapp.generated.resources.author_info_years
 import seforimapp.seforimapp.generated.resources.author_not_found
 import seforimapp.seforimapp.generated.resources.author_sources
 import seforimapp.seforimapp.generated.resources.notoserifhebrew
 import java.util.UUID
 
-/** Below this width the info card goes under the header instead of beside the text. */
-private val WIDE_LAYOUT = 1040.dp
-private val TEXT_WIDTH = 680.dp
-private val CARD_WIDTH = 300.dp
+/** From this width the page opens with both side panes. */
+private val WIDE_LAYOUT = 1100.dp
+private val TEXT_WIDTH = 900.dp
+private val SIDE_PANE = 280.dp
+private const val NAME_SCALE = 1.75f
+private const val LINE_SPACING = 1.75f
 
 /**
- * An author's page, laid out like an encyclopedia entry: the name with its honorific and the era
- * and years as pills, the biography's summary as a lead then its sections, the sources folded
- * at the bottom, and an info card (aliases, books by category) that stays in view on wide windows.
+ * An author's page, laid out like a book's: the biography in the middle pane at the app's text size
+ * (the zoom buttons apply), the author's books in a pane at the start, and a pane at the end with
+ * the era, years, aliases and the biography's sources. Both side panes toggle from the side bars.
  */
 @Composable
 fun AuthorTabContent(
@@ -148,107 +153,172 @@ private fun AuthorPageLayout(
     onLink: (String) -> Unit,
     onBook: (Book) -> Unit,
 ) {
-    val scroll = rememberScrollState()
-    // The page scrolls as a whole, its scrollbar along the window's edge
-    VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
-        BoxWithConstraints(Modifier.fillMaxWidth().verticalScroll(scroll), contentAlignment = Alignment.TopCenter) {
-            if (maxWidth >= WIDE_LAYOUT) {
-                // The card follows the scroll down to the text's end
-                var rowTop by remember { mutableIntStateOf(0) }
-                var rowHeight by remember { mutableIntStateOf(0) }
-                var cardHeight by remember { mutableIntStateOf(0) }
-                Row(
-                    Modifier
-                        .padding(horizontal = 32.dp, vertical = 28.dp)
-                        .onPlaced { rowTop = it.positionInParent().y.toInt() }
-                        .onSizeChanged { rowHeight = it.height },
-                    horizontalArrangement = Arrangement.spacedBy(40.dp),
-                ) {
-                    Sheet(padding = 36.dp, modifier = Modifier.widthIn(max = TEXT_WIDTH)) {
-                        Header(page.details, large = true)
-                        Spacer(Modifier.height(20.dp))
-                        Body(page, onLink)
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Wide windows open with both side panes, narrow ones with the text alone
+        val wide = maxWidth >= WIDE_LAYOUT
+        var booksVisible by rememberSaveable { mutableStateOf(wide) }
+        var infoVisible by rememberSaveable { mutableStateOf(wide) }
+        Row(Modifier.fillMaxSize()) {
+            AuthorStartBar(booksVisible) { booksVisible = !booksVisible }
+            if (booksVisible) {
+                Box(Modifier.width(SIDE_PANE).fillMaxHeight()) {
+                    PaneCard {
+                        Column(Modifier.fillMaxSize()) {
+                            PaneHeader(label = stringResource(Res.string.author_books_pane), onHide = { booksVisible = false })
+                            BooksPane(page, onBook)
+                        }
                     }
-                    InfoCard(
-                        page,
-                        onBook,
-                        Modifier
-                            .width(CARD_WIDTH)
-                            .onSizeChanged { cardHeight = it.height }
-                            .offset {
-                                val room = (rowHeight - cardHeight).coerceAtLeast(0)
-                                IntOffset(0, (scroll.value - rowTop).coerceIn(0, room))
-                            },
+                }
+            }
+            Box(Modifier.weight(1f).fillMaxHeight()) {
+                PaneCard { TextPane(page, showFacts = !infoVisible, onLink = onLink) }
+            }
+            if (infoVisible) {
+                Box(Modifier.width(SIDE_PANE).fillMaxHeight()) {
+                    PaneCard {
+                        Column(Modifier.fillMaxSize()) {
+                            PaneHeader(label = stringResource(Res.string.author_info_pane), onHide = { infoVisible = false })
+                            InfoPane(page, onLink)
+                        }
+                    }
+                }
+            }
+            AuthorEndBar(infoVisible) { infoVisible = !infoVisible }
+        }
+    }
+}
+
+@Composable
+private fun AuthorStartBar(
+    booksVisible: Boolean,
+    onBooks: () -> Unit,
+) {
+    val label = stringResource(Res.string.author_books_pane)
+    VerticalLateralBar(
+        position = VerticalLateralBarPosition.Start,
+        topContent = {
+            SelectableIconButtonWithToolip(
+                toolTipText = label,
+                onClick = onBooks,
+                isSelected = booksVisible,
+                icon = bookOpenTabs(JewelTheme.globalColors.text.normal),
+                iconDescription = label,
+                label = label,
+            )
+        },
+        bottomContent = {},
+    )
+}
+
+@Composable
+private fun AuthorEndBar(
+    infoVisible: Boolean,
+    onInfo: () -> Unit,
+) {
+    val label = stringResource(Res.string.author_info_pane)
+    VerticalLateralBar(
+        position = VerticalLateralBarPosition.End,
+        topContent = {
+            SelectableIconButtonWithToolip(
+                toolTipText = label,
+                onClick = onInfo,
+                isSelected = infoVisible,
+                icon = WritingHand,
+                iconDescription = label,
+                label = label,
+            )
+            ZoomButtons()
+        },
+        bottomContent = {},
+    )
+}
+
+/** The name, then the biography at the app's text size; its era and years too when the info pane is closed. */
+@Composable
+private fun TextPane(
+    page: AuthorPage.Loaded,
+    showFacts: Boolean,
+    onLink: (String) -> Unit,
+) {
+    val textSize by LocalAppGraph.current.appSettings.textSizeFlow
+        .collectAsState()
+    val scroll = rememberScrollState()
+    VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxWidth().verticalScroll(scroll), contentAlignment = Alignment.TopCenter) {
+            Column(Modifier.widthIn(max = TEXT_WIDTH).fillMaxWidth().padding(horizontal = 32.dp, vertical = 28.dp)) {
+                Text(
+                    AuthorNames.display(page.details.name),
+                    fontSize = (textSize * NAME_SCALE).sp,
+                    fontWeight = FontWeight.SemiBold,
+                    fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
+                    color = JewelTheme.globalColors.text.normal,
+                )
+                val facts = listOfNotNull(page.details.era?.let { ERAS[it] }, years(page.details))
+                if (showFacts && facts.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
+                }
+                Spacer(Modifier.height(20.dp))
+                page.details.bio?.summary?.let {
+                    ProseMarkdown(
+                        plainPersonLinks(it),
+                        onLink,
+                        fontSize = (textSize + 2).sp,
+                        lineHeight = ((textSize + 2) * LINE_SPACING).sp,
                     )
                 }
-            } else {
-                Column(Modifier.widthIn(max = TEXT_WIDTH).padding(horizontal = 12.dp, vertical = 16.dp)) {
-                    Sheet(padding = 20.dp, modifier = Modifier.fillMaxWidth()) {
-                        Header(page.details, large = false)
-                        Spacer(Modifier.height(16.dp))
-                        InfoCard(page, onBook, Modifier.fillMaxWidth())
-                        Spacer(Modifier.height(20.dp))
-                        Body(page, onLink)
-                    }
+                if (page.bio.sections.isNotBlank()) {
+                    Spacer(Modifier.height(8.dp))
+                    ProseMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
                 }
             }
         }
     }
 }
 
+/** The author's books by category, opened in a tab; categories fold when there are many. */
 @Composable
-private fun Header(
-    details: AuthorDetails,
-    large: Boolean,
+private fun BooksPane(
+    page: AuthorPage.Loaded,
+    onBook: (Book) -> Unit,
 ) {
-    Text(
-        AuthorNames.display(details.name),
-        fontSize = if (large) 30.sp else 24.sp,
-        fontWeight = FontWeight.SemiBold,
-        fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
-        color = JewelTheme.globalColors.text.normal,
-    )
-}
-
-// A surface like the info card's, under the page's text
-@Composable
-private fun Sheet(
-    padding: Dp,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(padding),
-    ) {
-        content()
+    val scroll = rememberScrollState()
+    VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
+        Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 10.dp, vertical = 6.dp)) {
+            val groups = page.details.books.groupBy { it.categoryId }
+            val openByDefault = groups.size <= 2
+            groups.forEach { (categoryId, books) ->
+                CategoryBooks(page.categories[categoryId].orEmpty(), books, openByDefault, onBook)
+            }
+        }
     }
 }
 
+/** Era, years, aliases and number of books; the biography's sources and license under them. */
 @Composable
-private fun Body(
+private fun InfoPane(
     page: AuthorPage.Loaded,
     onLink: (String) -> Unit,
 ) {
-    val bio = page.bio
-    Column {
-        page.details.bio
-            ?.summary
-            ?.let { ProseMarkdown(plainPersonLinks(it), onLink, fontSize = 17.sp, lineHeight = 30.sp) }
-        if (bio.sections.isNotBlank()) {
-            Spacer(Modifier.height(8.dp))
-            ProseMarkdown(bio.sections, onLink)
-        }
-        if (bio.sources.isNotBlank()) {
-            Spacer(Modifier.height(24.dp))
-            Sources(bio.sources, onLink)
-        }
-        if (page.details.bio != null) {
-            Spacer(Modifier.height(16.dp))
-            Text(stringResource(Res.string.author_bio_license), fontSize = 11.sp, color = JewelTheme.globalColors.text.disabled)
+    val details = page.details
+    val scroll = rememberScrollState()
+    VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
+        Column(
+            Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            details.era?.let { ERAS[it] }?.let { InfoLine(stringResource(Res.string.author_info_era), it) }
+            years(details)?.let { InfoLine(stringResource(Res.string.author_info_years), it) }
+            if (details.aliases.isNotEmpty()) {
+                InfoLine(stringResource(Res.string.author_info_aliases), details.aliases.joinToString(" · ") { it.withoutNikud() })
+            }
+            InfoLine(stringResource(Res.string.author_books), details.books.size.toString())
+            if (page.bio.sources.isNotBlank()) {
+                Sources(page.bio.sources, onLink)
+            }
+            if (details.bio != null) {
+                Text(stringResource(Res.string.author_bio_license), fontSize = 11.sp, color = JewelTheme.globalColors.text.disabled)
+            }
         }
     }
 }
@@ -262,59 +332,7 @@ private fun Sources(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Disclosure(stringResource(Res.string.author_sources), expanded) { expanded = !expanded }
         if (expanded) {
-            ProseMarkdown(markdown, onLink, fontSize = 13.sp, lineHeight = 22.sp, color = JewelTheme.globalColors.text.info)
-        }
-    }
-}
-
-@Composable
-private fun InfoCard(
-    page: AuthorPage.Loaded,
-    onBook: (Book) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val details = page.details
-    Column(
-        modifier
-            .clip(RoundedCornerShape(10.dp))
-            .border(1.dp, JewelTheme.globalColors.borders.normal, RoundedCornerShape(10.dp))
-            .background(JewelTheme.globalColors.panelBackground)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                rememberVectorPainter(WritingHand),
-                null,
-                Modifier.size(22.dp),
-                colorFilter = ColorFilter.tint(JewelTheme.globalColors.outlines.focused),
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                AuthorNames.display(details.name),
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = JewelTheme.globalColors.text.normal,
-            )
-        }
-        Divider()
-        details.era?.let { ERAS[it] }?.let { InfoLine(stringResource(Res.string.author_info_era), it) }
-        years(details)?.let { InfoLine(stringResource(Res.string.author_info_years), it) }
-        if (details.aliases.isNotEmpty()) {
-            InfoLine(stringResource(Res.string.author_info_aliases), details.aliases.joinToString(" · ") { it.withoutNikud() })
-        }
-        Divider()
-        Text(
-            "${stringResource(Res.string.author_books)} · ${details.books.size}",
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = JewelTheme.globalColors.text.normal,
-        )
-        val groups = details.books.groupBy { it.categoryId }
-        // A few categories open at once; many fold, to keep the card short
-        val openByDefault = groups.size <= 2
-        groups.forEach { (categoryId, books) ->
-            CategoryBooks(page.categories[categoryId].orEmpty(), books, openByDefault, onBook)
+            ProseMarkdown(markdown, onLink, fontSize = 12.sp, lineHeight = 20.sp, color = JewelTheme.globalColors.text.info)
         }
     }
 }
@@ -324,15 +342,10 @@ private fun InfoLine(
     label: String,
     value: String,
 ) {
-    Row {
-        Text(label, fontSize = 13.sp, color = JewelTheme.globalColors.text.disabled, modifier = Modifier.width(72.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label, fontSize = 11.sp, color = JewelTheme.globalColors.text.disabled)
         Text(value, fontSize = 13.sp, color = JewelTheme.globalColors.text.normal)
     }
-}
-
-@Composable
-private fun Divider() {
-    Box(Modifier.fillMaxWidth().height(1.dp).background(JewelTheme.globalColors.borders.normal))
 }
 
 @Composable

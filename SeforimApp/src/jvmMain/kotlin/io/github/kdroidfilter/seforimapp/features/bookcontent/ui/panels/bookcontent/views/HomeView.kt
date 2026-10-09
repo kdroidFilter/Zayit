@@ -65,7 +65,6 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CustomToggleableChip
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
@@ -529,7 +528,6 @@ private fun HomeBody(
                                         placeholderHints = if (isTocInTopBar) tocHintsForBar else null,
                                         placeholderText = null,
                                         submitOnEnterInReference = isTocInTopBar,
-                                        globalExtended = searchUi.globalExtended,
                                         onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
                                         isBookLoading = searchUi.isReferenceLoading && !isTocInTopBar,
                                         isTocLoading = searchUi.isTocLoading && isTocInTopBar,
@@ -668,13 +666,11 @@ private fun LogoImage(modifier: Modifier = Modifier) {
  */
 private fun SuggestionsPanel(
     rows: ImmutableList<CatBookRow>,
-    onPickAuthor: (AuthorHit) -> Unit,
+    // Runs the row at an index: its main action (open, search) or its Tab one (search inside)
+    onRow: (index: Int, open: Boolean) -> Unit,
+    onTextSearchAll: () -> Unit,
     textSearchLabel: String?,
     textSearchQuery: String?,
-    onTextSearch: () -> Unit,
-    onPickJump: (ResolvedReference) -> Unit,
-    onPickCategory: (CategorySuggestion) -> Unit,
-    onPickBook: (BookSuggestion) -> Unit,
     focusedIndex: Int = -1,
     emptyMessage: String? = null,
     isLoading: Boolean = false,
@@ -756,26 +752,30 @@ private fun SuggestionsPanel(
             } else {
                 items(rows.size) { rowIndex ->
                     val focused = rowIndex == focusedIndex
+                    val open = RowAction(KEY_ENTER, stringResource(Res.string.row_action_open)) { onRow(rowIndex, true) }
+                    val searchInside = RowAction(KEY_TAB, stringResource(Res.string.row_action_search_inside)) { onRow(rowIndex, false) }
                     when (val row = rows[rowIndex]) {
                         is CatBookRow.Jump ->
                             SuggestionRow(
                                 parts = listOf(row.reference.book.title, row.reference.label),
-                                onClick = { onPickJump(row.reference) },
+                                onClick = open.onClick,
                                 kind = SuggestionKind.PLACE,
                                 highlighted = focused,
-                                showTabHint = focused,
-                                hint = "↵",
+                                actions = listOf(open),
                             )
 
                         CatBookRow.TextSearch ->
                             SuggestionRow(
                                 parts = listOfNotNull(textSearchLabel),
-                                onClick = onTextSearch,
+                                onClick = { onRow(rowIndex, true) },
                                 kind = SuggestionKind.TEXT_SEARCH,
                                 emphasis = textSearchQuery,
                                 highlighted = focused,
-                                showTabHint = focused,
-                                hint = "↵",
+                                actions =
+                                    listOf(
+                                        RowAction(KEY_ENTER, stringResource(Res.string.row_action_search_base)) { onRow(rowIndex, true) },
+                                        RowAction(KEY_CTRL_ENTER, stringResource(Res.string.row_action_search_all), onTextSearchAll),
+                                    ),
                             )
 
                         is CatBookRow.Author ->
@@ -787,31 +787,29 @@ private fun SuggestionsPanel(
                                                 ?.let { " ($it)" }
                                                 .orEmpty(),
                                     ),
-                                onClick = { onPickAuthor(row.hit) },
-                                hint = stringResource(Res.string.hint_open_or_search_inside),
+                                onClick = open.onClick,
                                 kind = SuggestionKind.AUTHOR,
                                 highlighted = focused,
-                                showTabHint = focused,
                                 detail = stringResource(Res.string.author_books_count, row.hit.bookCount),
+                                actions = listOf(open, searchInside),
                             )
 
                         is CatBookRow.Category ->
                             SuggestionRow(
                                 parts = dedupAdjacent(row.suggestion.path),
-                                onClick = { onPickCategory(row.suggestion) },
+                                onClick = open.onClick,
                                 kind = SuggestionKind.CATEGORY,
                                 highlighted = focused,
-                                showTabHint = focused,
+                                actions = listOf(searchInside),
                             )
 
                         is CatBookRow.Book ->
                             SuggestionRow(
                                 parts = dedupAdjacent(row.suggestion.path),
-                                onClick = { onPickBook(row.suggestion) },
-                                hint = stringResource(Res.string.hint_open_or_search_inside),
+                                onClick = open.onClick,
                                 kind = SuggestionKind.BOOK,
                                 highlighted = focused,
-                                showTabHint = focused,
+                                actions = listOf(open, searchInside),
                             )
                     }
                 }
@@ -908,12 +906,13 @@ private fun TocSuggestionsPanel(
             } else {
                 items(suggestions.size) { index ->
                     val (ts, parts) = suggestions[index]
+                    val open = RowAction(KEY_ENTER, stringResource(Res.string.row_action_open)) { onPickToc(ts) }
                     SuggestionRow(
                         parts = parts,
-                        onClick = { onPickToc(ts) },
+                        onClick = open.onClick,
                         kind = SuggestionKind.PLACE,
                         highlighted = index == focusedIndex,
-                        showTabHint = index == focusedIndex,
+                        actions = listOf(open),
                     )
                 }
                 if (textSearchLabel != null) {
@@ -924,8 +923,7 @@ private fun TocSuggestionsPanel(
                             kind = SuggestionKind.TEXT_SEARCH,
                             emphasis = textSearchQuery,
                             highlighted = suggestions.size == focusedIndex,
-                            showTabHint = suggestions.size == focusedIndex,
-                            hint = "↵",
+                            actions = listOf(RowAction(KEY_ENTER, stringResource(Res.string.row_action_search), onTextSearch)),
                         )
                     }
                 }
@@ -1064,13 +1062,12 @@ private fun SuggestionRow(
     onClick: () -> Unit,
     kind: SuggestionKind,
     highlighted: Boolean = false,
-    showTabHint: Boolean = false,
     // Shown bold where it appears in the row (the typed text of a text-search row)
     emphasis: String? = null,
     // Secondary text after the row's parts (an author's number of books)
     detail: String? = null,
-    // The key hint shown on the highlighted row; Tab (pick the book) by default
-    hint: String? = null,
+    // What the row does, with its keys; shown on the highlighted or hovered row, and clickable
+    actions: List<RowAction> = emptyList(),
 ) {
     val hScroll = rememberScrollState(0)
     val hoverSource = remember { MutableInteractionSource() }
@@ -1160,23 +1157,10 @@ private fun SuggestionRow(
                 }
             }
         }
-        if (showTabHint && hasContent) {
+        if (active && hasContent && actions.isNotEmpty()) {
             Spacer(Modifier.width(12.dp))
-            Box(
-                modifier =
-                    Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .border(1.dp, JewelTheme.globalColors.text.info, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = hint ?: stringResource(Res.string.tab_hint_select),
-                    color = JewelTheme.globalColors.text.info,
-                    fontSize = 11.sp,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Clip,
-                )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                actions.forEach { RowActionChip(it) }
             }
         }
     }
@@ -1226,7 +1210,6 @@ private fun SearchBar(
     // Once a book is picked, pressing Enter on a TOC entry also opens it
     submitOnEnterInReference: Boolean = false,
     // Advanced search toggle
-    globalExtended: Boolean = false,
     onGlobalExtendedChange: (Boolean) -> Unit = {},
     // Loading flags for predictive lists
     isBookLoading: Boolean = false,
@@ -1408,9 +1391,11 @@ private fun SearchBar(
             dismissPopup()
         }
 
-        fun handleTextSearch() {
+        // A search over the whole library covers the base books, or [extended] all of them
+        fun handleTextSearch(extended: Boolean = false) {
             val query = state.text.toString().trim()
             if (query.isEmpty()) return
+            onGlobalExtendedChange(extended)
             onTextSearch(query)
             dismissPopup()
         }
@@ -1442,6 +1427,12 @@ private fun SearchBar(
                 withFrameNanos { }
                 handleSubmit()
             }
+        }
+
+        // Opens a TOC entry as Enter does
+        fun openToc(toc: TocSuggestion) {
+            handlePickToc(toc)
+            if (submitOnEnterInReference) submitAfterFrame(scope)
         }
 
         TextField(
@@ -1506,7 +1497,7 @@ private fun SearchBar(
                                 ev.isCtrlPressed &&
                                 (ev.key == Key.Enter || ev.key == Key.NumPadEnter) &&
                                 ev.type == KeyEventType.KeyUp -> {
-                                handleTextSearch()
+                                handleTextSearch(extended = true)
                                 true
                             }
 
@@ -1618,18 +1609,6 @@ private fun SearchBar(
                     }
                 }
             },
-            trailingIcon = {
-                CustomToggleableChip(
-                    checked = globalExtended,
-                    onClick = { newChecked ->
-                        // Apply change and immediately return focus to the text field
-                        onGlobalExtendedChange(newChecked)
-                        effectiveFocusRequester.requestFocus()
-                    },
-                    tooltipText = stringResource(Res.string.search_extended_tooltip),
-                    withPadding = false,
-                )
-            },
             leadingIcon = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1716,10 +1695,10 @@ private fun SearchBar(
                     if (isTocMode && (showTocSuggestions || showTocEmptyState || showTocLoading)) {
                         TocSuggestionsPanel(
                             suggestions = visibleTocSuggestions,
-                            onPickToc = ::handlePickToc,
+                            onPickToc = ::openToc,
                             textSearchLabel = if (textRow) textSearchLabel(state.text.toString().trim(), textSearchInBook) else null,
                             textSearchQuery = state.text.toString().trim(),
-                            onTextSearch = ::handleTextSearch,
+                            onTextSearch = { handleTextSearch() },
                             focusedIndex = focusedIndex,
                             emptyMessage = if (showTocEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
                             isLoading = showTocLoading,
@@ -1728,7 +1707,8 @@ private fun SearchBar(
                     } else if (!isTocMode && (showCategorySuggestions || showBookEmptyState || showBookLoading)) {
                         SuggestionsPanel(
                             rows = catBookRows,
-                            onPickAuthor = ::handleOpenAuthor,
+                            onRow = ::pickCatBookRow,
+                            onTextSearchAll = { handleTextSearch(extended = true) },
                             textSearchLabel =
                                 if (textSearchEnabled &&
                                     state.text.isNotBlank()
@@ -1738,10 +1718,6 @@ private fun SearchBar(
                                     null
                                 },
                             textSearchQuery = state.text.toString().trim(),
-                            onTextSearch = ::handleTextSearch,
-                            onPickJump = ::handlePickJump,
-                            onPickCategory = ::handlePickCategory,
-                            onPickBook = ::handleOpenBook,
                             focusedIndex = focusedIndex,
                             emptyMessage = if (showBookEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
                             isLoading = showBookLoading,
@@ -1751,6 +1727,62 @@ private fun SearchBar(
                 }
             }
         }
+    }
+}
+
+/** One thing a suggestion row does: its keys (`↵`, `Tab`) and what they do. */
+@Immutable
+private class RowAction(
+    val keys: String,
+    val label: String,
+    val onClick: () -> Unit,
+)
+
+private const val KEY_ENTER = "↵"
+private const val KEY_TAB = "Tab"
+private const val KEY_CTRL_ENTER = "Ctrl+↵"
+
+/** A row action as a small button: its key in a key cap, then its label. */
+@Composable
+private fun RowActionChip(action: RowAction) {
+    val shape = RoundedCornerShape(10.dp)
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        modifier =
+            Modifier
+                .clip(shape)
+                .border(1.dp, if (hovered) accent else JewelTheme.globalColors.borders.normal, shape)
+                .background(if (hovered) accent.copy(alpha = 0.12f) else Color.Transparent)
+                .hoverable(hover)
+                .clickable(onClick = action.onClick)
+                .pointerHoverIcon(PointerIcon.Hand)
+                .padding(start = 4.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+    ) {
+        Text(
+            action.keys,
+            fontSize = 10.sp,
+            color = JewelTheme.globalColors.text.info,
+            maxLines = 1,
+            softWrap = false,
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(
+                        JewelTheme.globalColors.borders.normal
+                            .copy(alpha = 0.35f),
+                    ).padding(horizontal = 4.dp, vertical = 1.dp),
+        )
+        Text(
+            action.label,
+            fontSize = 11.sp,
+            color = JewelTheme.globalColors.text.normal,
+            maxLines = 1,
+            softWrap = false,
+        )
     }
 }
 

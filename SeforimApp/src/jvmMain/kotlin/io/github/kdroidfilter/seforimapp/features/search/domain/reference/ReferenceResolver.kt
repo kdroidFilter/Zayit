@@ -170,7 +170,8 @@ class ReferenceResolver(
         if (number != null && words.size == 1) return null
         if (words.isEmpty() || position + words.size > place.size) return null
         val typed = place.subList(position, position + words.size).map { it.text }
-        return if (typed == words) Match(entry, words.size, listOf(entry.text.trim())) else null
+        val same = typed.zip(words).all { (a, b) -> ReferenceParser.sameWord(a, b) }
+        return if (same) Match(entry, words.size, listOf(entry.text.trim())) else null
     }
 
     // The first line under [entry] numbered [remaining], below the [depth] levels already matched

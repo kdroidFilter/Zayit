@@ -438,6 +438,7 @@ class SearchHomeViewModel(
                             built += TocSuggestionDto(toc, path)
                         }
                     }
+                    built += altTocSuggestions(book)
                     tocCache[book.id] = built
                     built
                 }
@@ -457,6 +458,40 @@ class SearchHomeViewModel(
                 )
         }
     }
+
+    // Entries of the book's alternative TOCs (parashot, chapter names...), after the main TOC. They
+    // travel as TocEntry with the negated alt entry id, opened at their own line (see isAltTocEntry).
+    private suspend fun altTocSuggestions(book: Book): List<TocSuggestionDto> =
+        runSuspendCatching {
+            repository.getAltTocStructuresForBook(book.id).flatMap { structure ->
+                val entries = repository.getAltTocEntriesForStructure(structure.id)
+                val byId = entries.associateBy { it.id }
+                val label = altTocLabel(structure.key, structure.heTitle, book.title)
+                entries.filter { it.text.isNotBlank() }.map { entry ->
+                    val ancestors = generateSequence(entry.parentId?.let(byId::get)) { it.parentId?.let(byId::get) }
+                    val path = listOf(label) + ancestors.map { it.text }.toList().asReversed() + entry.text
+                    TocSuggestionDto(
+                        TocEntry(
+                            id = -entry.id,
+                            bookId = book.id,
+                            text = entry.text,
+                            level = entry.level,
+                            lineId = entry.lineId,
+                        ),
+                        path,
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
+
+    private fun altTocLabel(
+        key: String,
+        heTitle: String?,
+        bookTitle: String,
+    ): String =
+        heTitle?.takeIf { it.isNotBlank() && it != bookTitle }
+            ?: ALT_TOC_LABELS[key]
+            ?: key
 
     fun onPickToc(toc: TocEntry) {
         _uiState.value =
@@ -558,8 +593,9 @@ class SearchHomeViewModel(
             } ?: return
 
         val anchorLineId: Long? =
-            when (selectedToc) {
-                null -> null
+            when {
+                selectedToc == null -> null
+                selectedToc.isAltTocEntry() -> selectedToc.lineId
                 else -> runSuspendCatching { repository.getLineIdsForTocEntry(selectedToc.id).firstOrNull() }.getOrNull()
             }
 
@@ -670,3 +706,23 @@ class SearchHomeViewModel(
         return out
     }
 }
+
+// Alternative-TOC entries ride in TocSuggestionDto as TocEntry with a negated id
+private fun TocEntry.isAltTocEntry(): Boolean = id < 0
+
+// Names of Sefaria's alternative structures, whose heTitle is usually the book's own title
+private val ALT_TOC_LABELS =
+    mapOf(
+        "Parasha" to "פרשיות",
+        "Chapters" to "פרקים",
+        "Chapter" to "פרקים",
+        "Topic" to "נושאים",
+        "Venice" to "דפוס ונציה",
+        "Vilna" to "דפוס וילנא",
+        "30 Day Cycle" to "מחזור חודשי",
+        "Book" to "ספרים",
+        "Gate" to "שערים",
+        "Letter" to "אותיות",
+        "Daf" to "דפים",
+        "Contents" to "תוכן",
+    )

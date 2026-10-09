@@ -84,4 +84,12 @@ class ReferenceParserTest {
         assertNull(ReferenceParser.parsePlace(listOf("ע\"ב")))
         assertNull(ReferenceParser.parsePlace(listOf("דף")))
     }
+
+    @Test
+    fun wordsDifferingByAPrefixLetterAreTheSame() {
+        assertTrue(ReferenceParser.sameWord("וחלב", "בחלב"))
+        assertTrue(ReferenceParser.sameWord("חלב", "בחלב"))
+        assertTrue(!ReferenceParser.sameWord("בא", "א"))
+        assertTrue(!ReferenceParser.sameWord("חלב", "חלק"))
+    }
 }

@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -51,8 +50,6 @@ import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -77,7 +74,6 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsOverla
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
-import io.github.kdroidfilter.seforimapp.features.search.SearchFilter
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
@@ -98,7 +94,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.decodeToImageBitmap
 import org.jetbrains.compose.resources.getDrawableResourceBytes
 import org.jetbrains.compose.resources.painterResource
@@ -110,7 +105,6 @@ import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import seforimapp.seforimapp.generated.resources.*
-import java.awt.Cursor
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
@@ -140,13 +134,6 @@ private data class AnchorBounds(
     val size: IntSize,
 )
 
-data class SearchFilterCard(
-    val icons: ImageVector,
-    val label: StringResource,
-    val desc: StringResource,
-    val explanation: StringResource,
-)
-
 /**
  * Callbacks used by [HomeView] to delegate all search-related
  * interactions to the SearchHomeViewModel without referencing it
@@ -156,7 +143,6 @@ data class SearchFilterCard(
 data class HomeSearchCallbacks(
     val onReferenceQueryChanged: (String) -> Unit,
     val onTocQueryChanged: (String) -> Unit,
-    val onFilterChange: (SearchFilter) -> Unit,
     val onGlobalExtendedChange: (Boolean) -> Unit,
     val onSubmitTextSearch: (String) -> Unit,
     val onOpenReference: () -> Unit,
@@ -338,7 +324,6 @@ private fun HomeBody(
                     }
                 }
 
-                val searchState = remember { TextFieldState() }
                 val referenceSearchState = remember { TextFieldState() }
                 val tocSearchState = remember { TextFieldState() }
                 var skipNextReferenceQuery by remember { mutableStateOf(false) }
@@ -347,9 +332,6 @@ private fun HomeBody(
                 // Shared focus requester for the MAIN search bar so other UI (e.g., level changes)
                 // can reliably return focus to it, allowing immediate Enter to submit.
                 val mainSearchFocusRequester = remember { FocusRequester() }
-                // Focus requester for the secondary search bar in ReferenceByCategorySection
-                val referenceSectionFocusRequester = remember { FocusRequester() }
-                var scopeExpanded by remember { mutableStateOf(false) }
                 // Forward reference input changes to the ViewModel (VM handles debouncing and suggestions)
                 LaunchedEffect(Unit) {
                     snapshotFlow { referenceSearchState.text.toString() }.collect { qRaw ->
@@ -373,12 +355,6 @@ private fun HomeBody(
                     }
                 }
 
-                fun launchSearch() {
-                    val query = searchState.text.toString().trim()
-                    if (query.isBlank() || searchUi.selectedFilter != SearchFilter.TEXT) return
-                    searchCallbacks.onSubmitTextSearch(query)
-                }
-
                 fun searchText(query: String) {
                     if (query.isNotBlank()) searchCallbacks.onSubmitTextSearch(query)
                 }
@@ -386,16 +362,6 @@ private fun HomeBody(
                 fun openReference() {
                     searchCallbacks.onOpenReference()
                 }
-
-                // Book-only placeholder hints for the first field (reference mode)
-                val bookOnlyHintsGlobal =
-                    listOf(
-                        stringResource(Res.string.reference_book_hint_1),
-                        stringResource(Res.string.reference_book_hint_2),
-                        stringResource(Res.string.reference_book_hint_3),
-                        stringResource(Res.string.reference_book_hint_4),
-                        stringResource(Res.string.reference_book_hint_5),
-                    )
 
                 // Main search field focus handled inside SearchBar via autoFocus
 
@@ -428,41 +394,9 @@ private fun HomeBody(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Box(homeContentModifier) {
-                                    // In REFERENCE mode, repurpose the first TextField as the predictive
-                                    // Book picker (with Category/Book suggestions). Enter should NOT open.
-                                    val isReferenceMode = searchUi.selectedFilter == SearchFilter.REFERENCE
-                                    // When switching to REFERENCE mode, focus the first (top) text field
-                                    LaunchedEffect(searchUi.selectedFilter) {
-                                        // When switching modes, always focus the top text field
-                                        if (searchUi.selectedFilter == SearchFilter.REFERENCE ||
-                                            searchUi.selectedFilter == SearchFilter.TEXT
-                                        ) {
-                                            // small delay to ensure composition is settled
-                                            delay(100.milliseconds)
-                                            mainSearchFocusRequester.requestFocus()
-
-                                            // Preserve what the user typed when toggling modes. If the destination
-                                            // field is empty, copy the current text from the other field so users
-                                            // don't have to retype after realizing they were in the wrong mode.
-                                            when (searchUi.selectedFilter) {
-                                                SearchFilter.TEXT -> {
-                                                    val from = referenceSearchState.text.toString()
-                                                    if (from.isNotBlank() && searchState.text.isEmpty()) {
-                                                        searchState.edit { replace(0, length, from) }
-                                                    }
-                                                }
-
-                                                SearchFilter.REFERENCE -> {
-                                                    val from = searchState.text.toString()
-                                                    if (from.isNotBlank() && referenceSearchState.text.isEmpty()) {
-                                                        referenceSearchState.edit { replace(0, length, from) }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    LaunchedEffect(searchUi.selectedScopeBook?.id, isReferenceMode) {
-                                        if (isReferenceMode && searchUi.selectedScopeBook != null) {
+                                    // Back to the bar once a book is picked, to type in its TOC
+                                    LaunchedEffect(searchUi.selectedScopeBook?.id) {
+                                        if (searchUi.selectedScopeBook != null) {
                                             delay(80.milliseconds)
                                             mainSearchFocusRequester.requestFocus()
                                         }
@@ -477,7 +411,7 @@ private fun HomeBody(
                                             TocSuggestion(ts.toc, ts.path)
                                         }
                                     val breadcrumbSeparatorTop = stringResource(Res.string.breadcrumb_separator)
-                                    val isTocInTopBar = isReferenceMode && searchUi.selectedScopeBook != null
+                                    val isTocInTopBar = searchUi.selectedScopeBook != null
                                     val tocHintsForBar =
                                         searchUi.tocPreviewHints.ifEmpty {
                                             listOf(
@@ -489,64 +423,27 @@ private fun HomeBody(
                                             )
                                         }
                                     SearchBar(
-                                        state =
-                                            when {
-                                                isTocInTopBar -> tocSearchState
-                                                isReferenceMode -> referenceSearchState
-                                                else -> searchState
-                                            },
-                                        selectedFilter = searchUi.selectedFilter,
-                                        onFilterChange = { searchCallbacks.onFilterChange(it) },
-                                        onSubmit =
-                                            if (isReferenceMode) {
-                                                { openReference() }
-                                            } else {
-                                                { launchSearch() }
-                                            },
-                                        onTab = {
-                                            if (!isReferenceMode) {
-                                                // Text mode: expand the scope section and focus secondary bar
-                                                scopeExpanded = true
-                                                focusAfterDelay(scope, 100, referenceSectionFocusRequester)
-                                            }
-                                        },
+                                        state = if (isTocInTopBar) tocSearchState else referenceSearchState,
+                                        onSubmit = { openReference() },
                                         modifier = Modifier,
-                                        showIcon = !isReferenceMode,
                                         focusRequester = mainSearchFocusRequester,
-                                        showModeSwitch = false,
                                         // A picked TOC entry fills the field with its path: nothing to search then
-                                        textSearchEnabled = isReferenceMode && searchUi.selectedScopeToc == null,
+                                        textSearchEnabled = searchUi.selectedScopeToc == null,
                                         textSearchInBook = searchUi.selectedScopeBook?.title,
                                         onTextSearch = ::searchText,
-                                        // Suggestions: in REFERENCE mode show only books; in TEXT mode none here
-                                        suggestionsVisible = if (isReferenceMode && !isTocInTopBar) searchUi.suggestionsVisible else false,
+                                        // Before a book is picked: go-to rows, the text search and books; after: its TOC
+                                        suggestionsVisible = if (!isTocInTopBar) searchUi.suggestionsVisible else false,
                                         categorySuggestions = persistentListOf(),
-                                        bookSuggestions =
-                                            if (isReferenceMode &&
-                                                !isTocInTopBar
-                                            ) {
-                                                mappedBookSuggestionsForBar
-                                            } else {
-                                                persistentListOf()
-                                            },
+                                        bookSuggestions = if (!isTocInTopBar) mappedBookSuggestionsForBar else persistentListOf(),
                                         jumpSuggestions =
-                                            if (isReferenceMode && !isTocInTopBar) {
-                                                searchUi.jumpSuggestions.toImmutableList()
-                                            } else {
-                                                persistentListOf()
-                                            },
+                                            if (!isTocInTopBar) searchUi.jumpSuggestions.toImmutableList() else persistentListOf(),
                                         onPickJump = { jump -> searchCallbacks.onOpenJump(jump) },
                                         tocSuggestionsVisible = isTocInTopBar && searchUi.tocSuggestionsVisible,
                                         tocSuggestions = if (isTocInTopBar) mappedTocSuggestionsForBar else emptyList(),
                                         selectedBook = searchUi.selectedScopeBook,
-                                        placeholderHints =
-                                            when {
-                                                !isReferenceMode -> null
-                                                isTocInTopBar -> tocHintsForBar
-                                                else -> bookOnlyHintsGlobal
-                                            },
+                                        placeholderHints = if (isTocInTopBar) tocHintsForBar else null,
                                         placeholderText = null,
-                                        submitOnEnterInReference = isReferenceMode && isTocInTopBar,
+                                        submitOnEnterInReference = isTocInTopBar,
                                         globalExtended = searchUi.globalExtended,
                                         onGlobalExtendedChange = { searchCallbacks.onGlobalExtendedChange(it) },
                                         isBookLoading = searchUi.isReferenceLoading && !isTocInTopBar,
@@ -588,83 +485,7 @@ private fun HomeBody(
                         FullWidthSection(gapAfter = 4.dp) {
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 Box(homeContentModifier) {
-                                    if (searchUi.selectedFilter == SearchFilter.REFERENCE) {
-                                        Spacer(Modifier.height(32.dp))
-                                    } else {
-                                        Column(
-                                            modifier = Modifier.heightIn(min = 32.dp),
-                                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally,
-                                        ) {
-                                            val breadcrumbSeparator = stringResource(Res.string.breadcrumb_separator)
-                                            val mappedCategorySuggestions =
-                                                searchUi.categorySuggestions
-                                                    .map { cs ->
-                                                        CategorySuggestion(cs.category, cs.path)
-                                                    }.toImmutableList()
-                                            val mappedBookSuggestions =
-                                                searchUi.bookSuggestions
-                                                    .map { bs ->
-                                                        BookSuggestion(bs.book, bs.path)
-                                                    }.toImmutableList()
-                                            val mappedTocSuggestions =
-                                                searchUi.tocSuggestions.map { ts ->
-                                                    TocSuggestion(ts.toc, ts.path)
-                                                }
-
-                                            ReferenceByCategorySection(
-                                                state = referenceSearchState,
-                                                tocState = tocSearchState,
-                                                isExpanded = scopeExpanded,
-                                                onExpandedChange = { scopeExpanded = it },
-                                                suggestionsVisible = searchUi.suggestionsVisible,
-                                                categorySuggestions = mappedCategorySuggestions,
-                                                bookSuggestions = mappedBookSuggestions,
-                                                selectedBook = searchUi.selectedScopeBook,
-                                                selectedCategory = searchUi.selectedScopeCategory,
-                                                tocSuggestionsVisible = searchUi.tocSuggestionsVisible,
-                                                tocSuggestions = mappedTocSuggestions,
-                                                onSubmit = { launchSearch() },
-                                                submitAfterPick = false,
-                                                submitOnEnterIfSelection = true,
-                                                tocPreviewHints = searchUi.tocPreviewHints,
-                                                showHeader = true,
-                                                focusRequester = referenceSectionFocusRequester,
-                                                onPickCategory = { picked ->
-                                                    searchCallbacks.onPickCategory(picked.category)
-                                                    val full = dedupAdjacent(picked.path).joinToString(breadcrumbSeparator)
-                                                    skipNextReferenceQuery = true
-                                                    referenceSearchState.edit { replace(0, length, full) }
-                                                },
-                                                onPickBook = { picked ->
-                                                    searchCallbacks.onPickBook(picked.book)
-                                                    skipNextReferenceQuery = true
-                                                    referenceSearchState.edit { replace(0, length, "") }
-                                                    skipNextTocQuery = true
-                                                    tocSearchState.edit { replace(0, length, "") }
-                                                    skipNextTocQuery = false
-                                                },
-                                                onPickToc = { picked ->
-                                                    searchCallbacks.onPickToc(picked.toc)
-                                                    val dedup = dedupAdjacent(picked.path)
-                                                    val stripped = stripBookPrefixFromTocPath(searchUi.selectedScopeBook, dedup)
-                                                    val display = stripped.joinToString(breadcrumbSeparator)
-                                                    skipNextTocQuery = true
-                                                    tocSearchState.edit { replace(0, length, display) }
-                                                },
-                                                onClearBook = {
-                                                    searchCallbacks.onReferenceQueryChanged("")
-                                                    searchCallbacks.onTocQueryChanged("")
-                                                    skipNextReferenceQuery = true
-                                                    skipNextTocQuery = true
-                                                    referenceSearchState.edit { replace(0, length, "") }
-                                                    tocSearchState.edit { replace(0, length, "") }
-                                                },
-                                                isBookLoading = searchUi.isReferenceLoading,
-                                                isTocLoading = searchUi.isTocLoading,
-                                            )
-                                        }
-                                    }
+                                    Spacer(Modifier.height(32.dp))
                                 }
                             }
                         }
@@ -751,136 +572,6 @@ private fun LogoImage(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxSize(),
             colorFilter = ColorFilter.tint(logoTint, BlendMode.SrcIn),
         )
-    }
-}
-
-@Composable
-/**
- * Category/Book/TOC scope picker with predictive suggestions.
- *
- * Left field: Categories and Books. Right field: TOC of the selected book.
- * Both inputs support keyboard navigation (↑/↓/Enter) and mouse selection.
- *
- * The caller controls suggestion visibility and supplies current suggestions.
- * When [submitAfterPick] is true (reference mode), selecting a suggestion triggers [onSubmit].
- */
-private fun ReferenceByCategorySection(
-    modifier: Modifier = Modifier,
-    state: TextFieldState? = null,
-    tocState: TextFieldState? = null,
-    isExpanded: Boolean = false,
-    onExpandedChange: (Boolean) -> Unit = {},
-    suggestionsVisible: Boolean = false,
-    categorySuggestions: ImmutableList<CategorySuggestion> = persistentListOf(),
-    bookSuggestions: ImmutableList<BookSuggestion> = persistentListOf(),
-    selectedBook: BookModel? = null,
-    selectedCategory: Category? = null,
-    tocSuggestionsVisible: Boolean = false,
-    tocSuggestions: List<TocSuggestion> = emptyList(),
-    onSubmit: () -> Unit = {},
-    submitAfterPick: Boolean = false,
-    submitOnEnterIfSelection: Boolean = false,
-    tocPreviewHints: List<String> = emptyList(),
-    showHeader: Boolean = true,
-    onPickCategory: (CategorySuggestion) -> Unit = {},
-    onPickBook: (BookSuggestion) -> Unit = {},
-    onPickToc: (TocSuggestion) -> Unit = {},
-    onClearBook: () -> Unit = {},
-    isBookLoading: Boolean = false,
-    isTocLoading: Boolean = false,
-    // Focus requester for the internal search bar
-    focusRequester: FocusRequester? = null,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val refState = state ?: remember { TextFieldState() }
-    val tocTfState = tocState ?: remember { TextFieldState() }
-    val isTocMode = selectedBook != null
-    val breadcrumbSeparator = stringResource(Res.string.breadcrumb_separator)
-    val bookHints =
-        listOf(
-            stringResource(Res.string.reference_book_hint_1),
-            stringResource(Res.string.reference_book_hint_2),
-            stringResource(Res.string.reference_book_hint_3),
-            stringResource(Res.string.reference_book_hint_4),
-            stringResource(Res.string.reference_book_hint_5),
-        )
-    val tocHints =
-        tocPreviewHints.ifEmpty {
-            listOf(
-                stringResource(Res.string.reference_toc_hint_1),
-                stringResource(Res.string.reference_toc_hint_2),
-                stringResource(Res.string.reference_toc_hint_3),
-                stringResource(Res.string.reference_toc_hint_4),
-                stringResource(Res.string.reference_toc_hint_5),
-            )
-        }
-    val activeState = if (isTocMode) tocTfState else refState
-
-    Column(modifier.fillMaxWidth()) {
-        if (showHeader) {
-            GroupHeader(
-                text = stringResource(Res.string.search_by_category_or_book),
-                modifier =
-                    Modifier
-                        .clickable(indication = null, interactionSource = interactionSource) {
-                            onExpandedChange(!isExpanded)
-                        }.hoverable(interactionSource)
-                        .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR))),
-                startComponent = {
-                    if (isExpanded) {
-                        Icon(AllIconsKeys.General.ChevronDown, stringResource(Res.string.chevron_icon_description))
-                    } else {
-                        Icon(AllIconsKeys.General.ChevronLeft, stringResource(Res.string.chevron_icon_description))
-                    }
-                },
-            )
-        }
-
-        if (!showHeader || isExpanded) {
-            SearchBar(
-                state = activeState,
-                selectedFilter = SearchFilter.REFERENCE,
-                onFilterChange = {},
-                showToggle = false,
-                showIcon = false,
-                enabled = true,
-                suggestionsVisible = suggestionsVisible && !isTocMode,
-                categorySuggestions = if (isTocMode) persistentListOf() else categorySuggestions,
-                bookSuggestions = if (isTocMode) persistentListOf() else bookSuggestions,
-                selectedBook = selectedBook,
-                selectedCategory = selectedCategory,
-                placeholderHints = if (isTocMode) tocHints else bookHints,
-                tocSuggestionsVisible = tocSuggestionsVisible && isTocMode,
-                tocSuggestions = if (isTocMode) tocSuggestions else emptyList(),
-                onPickCategory = { picked ->
-                    onPickCategory(picked)
-                },
-                onPickBook = { picked ->
-                    onPickBook(picked)
-                    refState.edit { replace(0, length, "") }
-                    tocTfState.edit { replace(0, length, "") }
-                },
-                onPickToc = { picked ->
-                    onPickToc(picked)
-                    val dedup = dedupAdjacent(picked.path)
-                    val display = stripBookPrefixFromTocPath(selectedBook, dedup).joinToString(breadcrumbSeparator)
-                    tocTfState.edit { replace(0, length, display) }
-                    if (submitAfterPick) onSubmit()
-                },
-                onSubmit = onSubmit,
-                submitOnEnterIfSelection = submitOnEnterIfSelection,
-                submitOnEnterInReference = submitAfterPick,
-                autoFocus = false,
-                onClearBook = {
-                    onClearBook()
-                    refState.edit { replace(0, length, "") }
-                    tocTfState.edit { replace(0, length, "") }
-                },
-                isBookLoading = isBookLoading,
-                isTocLoading = isTocLoading,
-                focusRequester = focusRequester,
-            )
-        }
     }
 }
 
@@ -1344,15 +1035,9 @@ private fun SuggestionRow(
 @Composable
 private fun SearchBar(
     state: TextFieldState,
-    selectedFilter: SearchFilter,
-    onFilterChange: (SearchFilter) -> Unit,
     modifier: Modifier = Modifier,
-    showToggle: Boolean = true,
-    showIcon: Boolean = true,
     onSubmit: () -> Unit = {},
-    onTab: (() -> Unit)? = null,
     enabled: Boolean = true,
-    // Reference-mode suggestion parameters (ignored in TEXT mode)
     suggestionsVisible: Boolean = false,
     categorySuggestions: ImmutableList<CategorySuggestion> = persistentListOf(),
     bookSuggestions: ImmutableList<BookSuggestion> = persistentListOf(),
@@ -1365,13 +1050,10 @@ private fun SearchBar(
     textSearchEnabled: Boolean = false,
     textSearchInBook: String? = null,
     onTextSearch: (String) -> Unit = {},
-    // The ספר/טקסט switch; off for the unified home bar
-    showModeSwitch: Boolean = true,
     // TOC suggestions (for the second field)
     tocSuggestionsVisible: Boolean = false,
     tocSuggestions: List<TocSuggestion> = emptyList(),
     selectedBook: BookModel? = null,
-    selectedCategory: Category? = null,
     onPickToc: (TocSuggestion) -> Unit = {},
     onClearBook: (() -> Unit)? = null,
     canClearBookOnBackspace: () -> Boolean = { true },
@@ -1383,9 +1065,7 @@ private fun SearchBar(
     placeholderHints: List<String>? = null,
     // Synchronized placeholder override (renders plain text if provided)
     placeholderText: String? = null,
-    // In text-mode left field, allow Enter to submit when a selection exists and no suggestion is focused
-    submitOnEnterIfSelection: Boolean = false,
-    // In reference-mode first field, pressing Enter should also submit when a book is picked
+    // Once a book is picked, pressing Enter on a TOC entry also opens it
     submitOnEnterInReference: Boolean = false,
     // Advanced search toggle
     globalExtended: Boolean = false,
@@ -1394,7 +1074,6 @@ private fun SearchBar(
     isBookLoading: Boolean = false,
     isTocLoading: Boolean = false,
 ) {
-    val isReference = selectedFilter == SearchFilter.REFERENCE
     // Suggestion state is shared across all tabs via the single SearchHomeViewModel, but every
     // open tab stays composed. A Popup renders in its own window and escapes the layout(0,0) trick
     // used to hide non-selected tabs, so without this guard each composed tab would draw a
@@ -1429,16 +1108,12 @@ private fun SearchBar(
             stringResource(Res.string.text_hint_5),
         )
 
+    // The one bar takes references and texts alike: show both, in turn
     val hints =
         placeholderHints ?: when {
-            isReference && selectedBook != null -> tocHints
-            isReference -> referenceHints
-            else -> textHints
+            selectedBook != null -> tocHints
+            else -> referenceHints.zip(textHints).flatMap { (reference, text) -> listOf(reference, text) }
         }
-
-    // Restart animation cleanly when switching filter
-    var filterVersion by remember { mutableIntStateOf(0) }
-    LaunchedEffect(selectedFilter) { filterVersion++ }
 
     // Disable placeholder animation while user is typing
     val isUserTyping by remember { derivedStateOf { state.text.isNotEmpty() } }
@@ -1474,29 +1149,26 @@ private fun SearchBar(
     val textRow = textSearchEnabled && hasUserText
     val textRowCount = if (textRow) 1 else 0
     val totalTocRows = totalToc + textRowCount
-    val isTocMode = isReference && selectedBook != null
+    val isTocMode = selectedBook != null
     val showCategorySuggestions = suggestionsVisible && totalCatBook > 0 && !isTocMode
     val showTocSuggestions = (tocSuggestionsVisible || textRow) && totalTocRows > 0 && isTocMode
-    val showBookLoading = isReference && !isTocMode && isBookLoading && hasUserText && queryLength >= minBookPrefixLen
-    val showTocLoading = isReference && isTocMode && isTocLoading && hasUserText && queryLength >= minTocPrefixLen
+    val showBookLoading = !isTocMode && isBookLoading && hasUserText && queryLength >= minBookPrefixLen
+    val showTocLoading = isTocMode && isTocLoading && hasUserText && queryLength >= minTocPrefixLen
     val showBookEmptyState =
-        isReference &&
-            !isTocMode &&
+        !isTocMode &&
             suggestionsVisible &&
             totalCatBook == 0 &&
             hasUserText &&
             queryLength >= minBookPrefixLen &&
             !showBookLoading
     val showTocEmptyState =
-        isReference &&
-            isTocMode &&
+        isTocMode &&
             tocSuggestionsVisible &&
             totalToc == 0 &&
             hasUserText &&
             queryLength >= minTocPrefixLen &&
             !showTocLoading
     LaunchedEffect(
-        selectedFilter,
         suggestionsVisible,
         tocSuggestionsVisible,
         categorySuggestions,
@@ -1578,8 +1250,7 @@ private fun SearchBar(
 
         fun handleSubmit() {
             onSubmit()
-            // If we were showing an overlay, close it after submission
-            if (selectedFilter == SearchFilter.REFERENCE) dismissPopup()
+            dismissPopup()
         }
 
         fun submitAfterFrame(
@@ -1605,9 +1276,8 @@ private fun SearchBar(
                                 size = IntSize(coords.size.width, coords.size.height),
                             )
                     }.onPreviewKeyEvent { ev ->
-                        val isRef = isReference
                         when {
-                            isRef && ev.key == Key.Backspace && isTocMode -> {
+                            ev.key == Key.Backspace && isTocMode -> {
                                 when (ev.type) {
                                     KeyEventType.KeyDown -> {
                                         backspaceStartedEmpty = state.text.isEmpty()
@@ -1632,14 +1302,6 @@ private fun SearchBar(
                                     else -> false
                                 }
                             }
-                            // Alt toggles between Reference and Text modes
-                            showModeSwitch && (ev.key == Key.AltLeft || ev.key == Key.AltRight) && ev.type == KeyEventType.KeyUp -> {
-                                val next =
-                                    if (selectedFilter == SearchFilter.REFERENCE) SearchFilter.TEXT else SearchFilter.REFERENCE
-                                onFilterChange(next)
-                                true
-                            }
-
                             textSearchEnabled &&
                                 ev.isCtrlPressed &&
                                 (ev.key == Key.Enter || ev.key == Key.NumPadEnter) &&
@@ -1649,104 +1311,84 @@ private fun SearchBar(
                             }
 
                             (ev.key == Key.Enter || ev.key == Key.NumPadEnter) && ev.type == KeyEventType.KeyUp -> {
-                                if (isRef) {
-                                    // Commit current suggestion, don't open
-                                    when {
-                                        isTocMode && focusedIndex in 0 until totalToc -> {
-                                            handlePickToc(visibleTocSuggestions[focusedIndex].first)
-                                            if (submitOnEnterInReference) {
-                                                submitAfterFrame(scope)
-                                            }
-                                            true
-                                        }
-
-                                        isTocMode && textRow && focusedIndex == totalToc -> {
-                                            handleTextSearch()
-                                            true
-                                        }
-
-                                        !isTocMode && focusedIndex in 0 until totalCatBook -> {
-                                            val picked = pickCatBookRow(focusedIndex)
-                                            if (picked != null && submitOnEnterInReference) handleSubmit()
-                                            true
-                                        }
-
-                                        submitOnEnterIfSelection && (selectedBook != null || selectedCategory != null) -> {
-                                            handleSubmit()
-                                            true
-                                        }
-
-                                        submitOnEnterInReference && selectedBook != null -> {
+                                // Run the focused row
+                                when {
+                                    isTocMode && focusedIndex in 0 until totalToc -> {
+                                        handlePickToc(visibleTocSuggestions[focusedIndex].first)
+                                        if (submitOnEnterInReference) {
                                             submitAfterFrame(scope)
-                                            true
                                         }
-
-                                        textSearchEnabled -> {
-                                            handleTextSearch()
-                                            true
-                                        }
-
-                                        else -> true
+                                        true
                                     }
-                                } else {
-                                    handleSubmit()
-                                    true
+
+                                    isTocMode && textRow && focusedIndex == totalToc -> {
+                                        handleTextSearch()
+                                        true
+                                    }
+
+                                    !isTocMode && focusedIndex in 0 until totalCatBook -> {
+                                        val picked = pickCatBookRow(focusedIndex)
+                                        if (picked != null && submitOnEnterInReference) handleSubmit()
+                                        true
+                                    }
+
+                                    submitOnEnterInReference && selectedBook != null -> {
+                                        submitAfterFrame(scope)
+                                        true
+                                    }
+
+                                    textSearchEnabled -> {
+                                        handleTextSearch()
+                                        true
+                                    }
+
+                                    else -> true
                                 }
                             }
 
-                            isRef && ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
+                            ev.key == Key.DirectionDown && ev.type == KeyEventType.KeyUp -> {
                                 val total = if (isTocMode) totalTocRows else totalCatBook
                                 if (total > 0) focusedIndex = (focusedIndex + 1).coerceAtMost(total - 1)
                                 true
                             }
 
-                            isRef && ev.key == Key.DirectionUp && ev.type == KeyEventType.KeyUp -> {
+                            ev.key == Key.DirectionUp && ev.type == KeyEventType.KeyUp -> {
                                 val total = if (isTocMode) totalTocRows else totalCatBook
                                 if (total > 0) focusedIndex = (focusedIndex - 1).coerceAtLeast(0)
                                 true
                             }
 
-                            isRef && ev.key == Key.Escape && ev.type == KeyEventType.KeyUp -> {
+                            ev.key == Key.Escape && ev.type == KeyEventType.KeyUp -> {
                                 popupVisible = false
                                 onDismissSuggestions()
                                 true
                             }
 
-                            // Consume Tab KeyDown in REFERENCE mode when suggestions are visible
+                            // Consume Tab KeyDown when suggestions are visible
                             // to prevent default focus movement before our KeyUp handler runs
-                            isRef && ev.key == Key.Tab && ev.type == KeyEventType.KeyDown && popupVisible -> {
+                            ev.key == Key.Tab && ev.type == KeyEventType.KeyDown && popupVisible -> {
                                 true
                             }
 
                             ev.key == Key.Tab && ev.type == KeyEventType.KeyUp -> {
-                                if (isRef) {
-                                    val handled =
-                                        when {
-                                            isTocMode && focusedIndex in 0 until totalToc -> {
-                                                handlePickToc(visibleTocSuggestions[focusedIndex].first)
-                                                true
-                                            }
-
-                                            !isTocMode && focusedIndex in 0 until totalCatBook -> {
-                                                pickCatBookRow(focusedIndex)
-                                                true
-                                            }
-
-                                            else -> false
+                                val handled =
+                                    when {
+                                        isTocMode && focusedIndex in 0 until totalToc -> {
+                                            handlePickToc(visibleTocSuggestions[focusedIndex].first)
+                                            true
                                         }
-                                    if (handled) {
-                                        if (submitOnEnterInReference && isTocMode) {
-                                            submitAfterFrame(scope)
+
+                                        !isTocMode && focusedIndex in 0 until totalCatBook -> {
+                                            pickCatBookRow(focusedIndex)
+                                            true
                                         }
-                                        true
-                                    } else {
-                                        onTab?.invoke()
-                                        true
+
+                                        else -> false
                                     }
-                                } else {
-                                    onTab?.invoke()
-                                    false
+                                if (handled && submitOnEnterInReference && isTocMode) {
+                                    submitAfterFrame(scope)
                                 }
+                                true
                             }
 
                             else -> false
@@ -1763,7 +1405,7 @@ private fun SearchBar(
                 } else {
                     val windowInfo = LocalWindowInfo.current
                     val typewriterStyle = remember { TextStyle(fontSize = 13.sp, color = Color(0xFF9AA0A6)) }
-                    key(filterVersion) {
+                    key(selectedBook?.id) {
                         TypewriterPlaceholder(
                             hints = hints,
                             textStyle = typewriterStyle,
@@ -1778,58 +1420,31 @@ private fun SearchBar(
                     }
                 }
             },
-            trailingIcon =
-                if (showToggle) {
-                    (
-                        {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                // The "all books" chip: in TEXT mode, and always on the unified bar
-                                if (selectedFilter == SearchFilter.TEXT || !showModeSwitch) {
-                                    CustomToggleableChip(
-                                        checked = globalExtended,
-                                        onClick = { newChecked ->
-                                            // Apply change and immediately return focus to the text field
-                                            onGlobalExtendedChange(newChecked)
-                                            effectiveFocusRequester.requestFocus()
-                                        },
-                                        tooltipText = stringResource(Res.string.search_extended_tooltip),
-                                        withPadding = false,
-                                    )
-                                }
-                                if (showModeSwitch) {
-                                    IntegratedSwitch(
-                                        selectedFilter = selectedFilter,
-                                        onFilterChange = { filter ->
-                                            // Switch mode and refocus the text field so Enter works right away
-                                            onFilterChange(filter)
-                                            effectiveFocusRequester.requestFocus()
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    )
-                } else {
-                    null
-                },
+            trailingIcon = {
+                CustomToggleableChip(
+                    checked = globalExtended,
+                    onClick = { newChecked ->
+                        // Apply change and immediately return focus to the text field
+                        onGlobalExtendedChange(newChecked)
+                        effectiveFocusRequester.requestFocus()
+                    },
+                    tooltipText = stringResource(Res.string.search_extended_tooltip),
+                    withPadding = false,
+                )
+            },
             leadingIcon = {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (showIcon) {
-                        IconButton({ handleSubmit() }) {
-                            Icon(
-                                key = AllIconsKeys.Actions.Find,
-                                contentDescription = stringResource(Res.string.search_icon_description),
-                                modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
-                            )
-                        }
+                    IconButton({ if (textSearchEnabled) handleTextSearch() else handleSubmit() }) {
+                        Icon(
+                            key = AllIconsKeys.Actions.Find,
+                            contentDescription = stringResource(Res.string.search_icon_description),
+                            modifier = Modifier.size(16.dp).pointerHoverIcon(PointerIcon.Hand),
+                        )
                     }
-                    if (isReference && selectedBook != null && onClearBook != null) {
+                    if (selectedBook != null && onClearBook != null) {
                         SelectedBookChip(
                             title = selectedBook.title,
                             onClear = {
@@ -1847,8 +1462,7 @@ private fun SearchBar(
         // Overlay suggestions anchored under the TextField
         val a = anchor
         val showOverlay =
-            isReference &&
-                isTabSelected &&
+            isTabSelected &&
                 popupVisible &&
                 a != null &&
                 (
@@ -1966,89 +1580,6 @@ private fun SelectedBookChip(
 }
 
 @OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun IntegratedSwitch(
-    selectedFilter: SearchFilter,
-    onFilterChange: (SearchFilter) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier =
-            modifier
-                .clip(RoundedCornerShape(20.dp))
-                .background(JewelTheme.globalColors.panelBackground)
-                .border(
-                    width = 1.dp,
-                    color = JewelTheme.globalColors.borders.disabled,
-                    shape = RoundedCornerShape(20.dp),
-                ).padding(2.dp),
-        horizontalArrangement = Arrangement.spacedBy(1.dp),
-    ) {
-        SearchFilter.entries.forEach { filter ->
-            Tooltip(
-                tooltip = {
-                    Text(
-                        text =
-                            when (filter) {
-                                SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference_explicit)
-                                SearchFilter.TEXT -> stringResource(Res.string.search_mode_text_explicit)
-                            },
-                        fontSize = 13.sp,
-                    )
-                },
-            ) {
-                FilterButton(
-                    text =
-                        when (filter) {
-                            SearchFilter.REFERENCE -> stringResource(Res.string.search_mode_reference)
-                            SearchFilter.TEXT -> stringResource(Res.string.search_mode_text)
-                        },
-                    isSelected = selectedFilter == filter,
-                    onClick = { onFilterChange(filter) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FilterButton(
-    text: String,
-    isSelected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val accent = JewelTheme.globalColors.outlines.focused
-    val backgroundColor by animateColorAsState(
-        targetValue = if (isSelected) accent else Color.Transparent,
-        animationSpec = tween(200),
-        label = "backgroundColor",
-    )
-
-    val textColor by animateColorAsState(
-        targetValue = if (isSelected) Color.White else Color(0xFFCCCCCC),
-        animationSpec = tween(200),
-        label = "textColor",
-    )
-
-    Text(
-        text = text,
-        modifier =
-            modifier
-                .pointerHoverIcon(PointerIcon.Hand)
-                .clip(RoundedCornerShape(18.dp))
-                .background(backgroundColor)
-                .clickable(indication = null, interactionSource = MutableInteractionSource()) { onClick() }
-                .padding(horizontal = 10.dp, vertical = 4.dp)
-                .defaultMinSize(minWidth = 45.dp),
-        color = textColor,
-        fontSize = 10.sp,
-        fontWeight = FontWeight.Medium,
-        textAlign = TextAlign.Center,
-        fontFamily = FontFamily.Monospace,
-    )
-}
-
 @Preview
 @Composable
 private fun HomeViewPreview() {
@@ -2059,7 +1590,6 @@ private fun HomeViewPreview() {
             HomeSearchCallbacks(
                 onReferenceQueryChanged = {},
                 onTocQueryChanged = {},
-                onFilterChange = {},
                 onGlobalExtendedChange = {},
                 onSubmitTextSearch = {},
                 onOpenReference = {},

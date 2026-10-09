@@ -474,7 +474,7 @@ private data class BioText(
 // The biographies link every person they name to a search: shown as plain text, only books stay links
 private fun plainPersonLinks(markdown: String): String = markdown.replace(Regex("""\[([^\]]+)]\(zayit://search/[^)]*\)"""), "$1")
 
-/** The page's texts with Hebrew geresh and gershayim (רמב״ם, ר׳) instead of ASCII quotes; the name stays raw for its honorific. */
+/** The page's texts with Hebrew geresh and gershayim (רמב״ם, ר׳, ״בית יוסף״) instead of ASCII quotes and guillemets; the name stays raw for its honorific. */
 private fun AuthorDetails.withHebrewQuotes(): AuthorDetails =
     copy(
         aliases = aliases.map { it.hebrewQuotes() },
@@ -486,7 +486,12 @@ private val GERSHAYIM = Regex("""(?<=\p{InHebrew})["“”](?=\p{InHebrew})""")
 private val GERESH = Regex("""(?<=\p{InHebrew})['‘’]""")
 private val LINK_TARGET = Regex("""]\([^)]*\)""")
 
-private fun String.hebrewQuotes(): String = replace(GERSHAYIM, "״").replace(GERESH, "׳")
+private val GUILLEMETS = Regex("[«»]")
+
+private fun String.hebrewQuotes(): String =
+    replace(GUILLEMETS, "״")
+        .replace(GERSHAYIM, "״")
+        .replace(GERESH, "׳")
 
 /** Like [hebrewQuotes], leaving link targets untouched. */
 private fun String.markdownHebrewQuotes(): String {

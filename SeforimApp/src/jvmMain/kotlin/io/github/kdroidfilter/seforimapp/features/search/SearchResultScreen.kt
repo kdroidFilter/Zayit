@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.clearText
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -162,6 +163,15 @@ private fun SearchToolbar(
                     }
                 },
             placeholder = { Text(stringResource(Res.string.search_placeholder)) },
+            trailingIcon = {
+                if (searchState.text.isNotEmpty()) {
+                    Icon(
+                        AllIconsKeys.Actions.Close,
+                        stringResource(Res.string.search_clear),
+                        Modifier.clickable { searchState.clearText() }.pointerHoverIcon(PointerIcon.Hand),
+                    )
+                }
+            },
             leadingIcon = {
                 IconButton(modifier = Modifier.pointerHoverIcon(PointerIcon.Hand), onClick = {
                     val q = searchState.text.toString()

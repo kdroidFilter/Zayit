@@ -95,7 +95,6 @@ data class TocSuggestionDto(
 
 @Immutable
 data class SearchHomeUiState(
-    val selectedFilter: SearchFilter = SearchFilter.REFERENCE,
     val globalExtended: Boolean = false,
     val suggestionsVisible: Boolean = false,
     val isReferenceLoading: Boolean = false,
@@ -500,10 +499,6 @@ class SearchHomeViewModel(
                 tocSuggestionsVisible = false,
                 isTocLoading = false,
             )
-    }
-
-    fun onFilterChange(filter: SearchFilter) {
-        _uiState.value = _uiState.value.copy(selectedFilter = filter)
     }
 
     fun onGlobalExtendedChange(extended: Boolean) {

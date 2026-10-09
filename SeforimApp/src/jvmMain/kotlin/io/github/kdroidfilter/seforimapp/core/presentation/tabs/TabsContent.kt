@@ -135,7 +135,6 @@ fun TabsContent() {
             HomeSearchCallbacks(
                 onReferenceQueryChanged = searchHomeViewModel::onReferenceQueryChanged,
                 onTocQueryChanged = searchHomeViewModel::onTocQueryChanged,
-                onFilterChange = searchHomeViewModel::onFilterChange,
                 onGlobalExtendedChange = searchHomeViewModel::onGlobalExtendedChange,
                 onSubmitTextSearch = { query ->
                     val tabId = latestCurrentTabId ?: return@HomeSearchCallbacks

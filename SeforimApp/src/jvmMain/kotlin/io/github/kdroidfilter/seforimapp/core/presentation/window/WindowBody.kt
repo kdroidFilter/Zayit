@@ -146,7 +146,7 @@ private fun ReaderBar(
     val diacritics by viewModel.diacritics.collectAsState()
     Box(Modifier.fillMaxHeight()) {
         if (start) {
-            StartVerticalBar(uiState = uiState, onEvent = viewModel::onEvent)
+            StartVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, showBookTree = destination !is TabsDestination.Search)
         } else if (uiState.navigation.selectedBook != null || destination is TabsDestination.Search) {
             EndVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, diacritics = diacritics)
         }

@@ -33,19 +33,23 @@ import seforimapp.seforimapp.generated.resources.*
 fun StartVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    // A search tab has no library tree: its results filter by category tabs
+    showBookTree: Boolean = true,
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
         topContent = {
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.book_list),
-                onClick = { onEvent(BookContentEvent.ToggleBookTree) },
-                isSelected = uiState.navigation.isVisible,
-                icon = Library,
-                iconDescription = stringResource(Res.string.books),
-                label = stringResource(Res.string.books),
-                shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl",
-            )
+            if (showBookTree) {
+                SelectableIconButtonWithToolip(
+                    toolTipText = stringResource(Res.string.book_list),
+                    onClick = { onEvent(BookContentEvent.ToggleBookTree) },
+                    isSelected = uiState.navigation.isVisible,
+                    icon = Library,
+                    iconDescription = stringResource(Res.string.books),
+                    label = stringResource(Res.string.books),
+                    shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl",
+                )
+            }
             if (uiState.navigation.selectedBook != null) {
                 SelectableIconButtonWithToolip(
                     toolTipText = stringResource(Res.string.book_content),

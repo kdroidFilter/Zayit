@@ -526,7 +526,8 @@ private fun desiredPanes(
     isSearch: Boolean,
 ): Set<ReaderPane> =
     buildSet {
-        if (uiState.navigation.isVisible) add(ReaderPane.Tree)
+        // A search filters by its category tabs, not by the library tree
+        if (!isSearch && uiState.navigation.isVisible) add(ReaderPane.Tree)
         if (uiState.toc.isVisible) add(ReaderPane.Toc)
         if (!isSearch && uiState.notes.isVisible) add(ReaderPane.Notes)
         // The line panes exist only while a book is on screen.

@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -57,6 +58,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
@@ -111,6 +113,7 @@ import org.jetbrains.compose.resources.rememberResourceEnvironment
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.ExperimentalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.foundation.theme.LocalTextStyle
 import org.jetbrains.jewel.ui.component.*
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
@@ -1742,21 +1745,22 @@ private const val KEY_ENTER = "↵"
 private const val KEY_TAB = "Tab"
 private const val KEY_CTRL_ENTER = "Ctrl+↵"
 
-/** A row action as a small button: its key in a key cap, then its label. */
+/** A row action as a small button: its key in an accent key cap, then its label, on the panel's background. */
 @Composable
 private fun RowActionChip(action: RowAction) {
     val shape = RoundedCornerShape(10.dp)
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
     val accent = JewelTheme.globalColors.outlines.focused
+    val panel = JewelTheme.globalColors.panelBackground
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
         modifier =
             Modifier
                 .clip(shape)
-                .border(1.dp, if (hovered) accent else JewelTheme.globalColors.borders.normal, shape)
-                .background(if (hovered) accent.copy(alpha = 0.12f) else Color.Transparent)
+                .background(if (hovered) accent.copy(alpha = 0.18f).compositeOver(panel) else panel)
+                .border(1.dp, accent.copy(alpha = if (hovered) 1f else 0.45f), shape)
                 .hoverable(hover)
                 .clickable(onClick = action.onClick)
                 .pointerHoverIcon(PointerIcon.Hand)
@@ -1765,16 +1769,17 @@ private fun RowActionChip(action: RowAction) {
         Text(
             action.keys,
             fontSize = 10.sp,
-            color = JewelTheme.globalColors.text.info,
+            fontWeight = FontWeight.SemiBold,
+            color = accent,
             maxLines = 1,
             softWrap = false,
+            // Keys read left to right (Ctrl+↵), whatever the layout
+            style = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr),
             modifier =
                 Modifier
                     .clip(RoundedCornerShape(4.dp))
-                    .background(
-                        JewelTheme.globalColors.borders.normal
-                            .copy(alpha = 0.35f),
-                    ).padding(horizontal = 4.dp, vertical = 1.dp),
+                    .background(accent.copy(alpha = 0.15f))
+                    .padding(horizontal = 4.dp, vertical = 1.dp),
         )
         Text(
             action.label,

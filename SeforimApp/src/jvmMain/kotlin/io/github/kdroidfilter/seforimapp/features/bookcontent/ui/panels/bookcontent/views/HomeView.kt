@@ -51,7 +51,11 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -588,6 +592,7 @@ private fun LogoImage(modifier: Modifier = Modifier) {
 private fun SuggestionsPanel(
     jumpSuggestions: ImmutableList<ResolvedReference>,
     textSearchLabel: String?,
+    textSearchQuery: String?,
     onTextSearch: () -> Unit,
     categorySuggestions: ImmutableList<CategorySuggestion>,
     bookSuggestions: ImmutableList<BookSuggestion>,
@@ -692,6 +697,7 @@ private fun SuggestionsPanel(
                             parts = listOf(textSearchLabel),
                             onClick = onTextSearch,
                             kind = SuggestionKind.TEXT_SEARCH,
+                            emphasis = textSearchQuery,
                             highlighted = rowIndex == focusedIndex,
                             showTabHint = rowIndex == focusedIndex,
                             hint = "↵",
@@ -737,6 +743,7 @@ private fun TocSuggestionsPanel(
     suggestions: List<Pair<TocSuggestion, List<String>>>,
     onPickToc: (TocSuggestion) -> Unit,
     textSearchLabel: String? = null,
+    textSearchQuery: String? = null,
     onTextSearch: () -> Unit = {},
     focusedIndex: Int = -1,
     emptyMessage: String? = null,
@@ -828,6 +835,7 @@ private fun TocSuggestionsPanel(
                             parts = listOf(textSearchLabel),
                             onClick = onTextSearch,
                             kind = SuggestionKind.TEXT_SEARCH,
+                            emphasis = textSearchQuery,
                             highlighted = suggestions.size == focusedIndex,
                             showTabHint = suggestions.size == focusedIndex,
                             hint = "↵",
@@ -935,6 +943,15 @@ private fun stripBookPrefixFromTocPath(
     return parts
 }
 
+private fun String.withBold(part: String?): AnnotatedString {
+    val start = part?.takeIf { it.isNotEmpty() }?.let { indexOf(it) } ?: -1
+    if (start < 0) return AnnotatedString(this)
+    return buildAnnotatedString {
+        append(this@withBold)
+        addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, start + part!!.length)
+    }
+}
+
 /** What a suggestion row leads to, shown by its icon. */
 private enum class SuggestionKind { PLACE, TEXT_SEARCH, CATEGORY, BOOK }
 
@@ -959,6 +976,8 @@ private fun SuggestionRow(
     kind: SuggestionKind,
     highlighted: Boolean = false,
     showTabHint: Boolean = false,
+    // Shown bold where it appears in the row (the typed text of a text-search row)
+    emphasis: String? = null,
     // The key hint shown on the highlighted row; Tab (pick the book) by default
     hint: String? = null,
 ) {
@@ -1031,7 +1050,7 @@ private fun SuggestionRow(
                         )
                     }
                     Text(
-                        text,
+                        text.withBold(emphasis),
                         color = JewelTheme.globalColors.text.normal,
                         maxLines = 1,
                         softWrap = false,
@@ -1541,6 +1560,7 @@ private fun SearchBar(
                             suggestions = visibleTocSuggestions,
                             onPickToc = ::handlePickToc,
                             textSearchLabel = if (textRow) textSearchLabel(state.text.toString().trim(), textSearchInBook) else null,
+                            textSearchQuery = state.text.toString().trim(),
                             onTextSearch = ::handleTextSearch,
                             focusedIndex = focusedIndex,
                             emptyMessage = if (showTocEmptyState) stringResource(Res.string.autocomplete_no_results) else null,
@@ -1558,6 +1578,7 @@ private fun SearchBar(
                                 } else {
                                     null
                                 },
+                            textSearchQuery = state.text.toString().trim(),
                             onTextSearch = ::handleTextSearch,
                             categorySuggestions = categorySuggestions,
                             bookSuggestions = bookSuggestions,

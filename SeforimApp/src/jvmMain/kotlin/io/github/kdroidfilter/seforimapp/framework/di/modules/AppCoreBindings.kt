@@ -281,12 +281,13 @@ object AppCoreBindings {
             titleUpdateManager = titleUpdateManager,
             // TabsViewModel + SearchHomeViewModel are window-scoped: one pair per open window,
             // created and disposed by DesktopManager.
-            searchHomeViewModelFactory = {
+            searchHomeViewModelFactory = { observeProfile ->
                 SearchHomeViewModel(
                     persistedStore = tabPersistedStateStore,
                     repository = repository,
                     lookup = lookup,
                     appSettings = appSettings,
+                    observeProfile = observeProfile,
                 )
             },
             bootState = sessionManager.loadBootState(repository),

@@ -255,7 +255,7 @@ private fun TextPane(
                     fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
                     color = JewelTheme.globalColors.text.normal,
                 )
-                val facts = listOfNotNull(page.details.era?.let { ERAS[it] }, years(page.details))
+                val facts = listOfNotNull(page.details.era?.let { AUTHOR_ERAS[it] }, authorYears(page.details))
                 if (showFacts && facts.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
                     Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
@@ -314,8 +314,8 @@ private fun InfoPane(
                 Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                details.era?.let { ERAS[it] }?.let { InfoLine(stringResource(Res.string.author_info_era), it) }
-                years(details)?.let { InfoLine(stringResource(Res.string.author_info_years), it) }
+                details.era?.let { AUTHOR_ERAS[it] }?.let { InfoLine(stringResource(Res.string.author_info_era), it) }
+                authorYears(details)?.let { InfoLine(stringResource(Res.string.author_info_years), it) }
                 if (details.aliases.isNotEmpty()) {
                     InfoLine(stringResource(Res.string.author_info_aliases), details.aliases.joinToString(" · ") { it.withoutNikud() })
                 }
@@ -483,7 +483,7 @@ private data class BioText(
 }
 
 // The biographies link every person they name to a search: shown as plain text, only books stay links
-private fun plainPersonLinks(markdown: String): String = markdown.replace(Regex("""\[([^\]]+)]\(zayit://search/[^)]*\)"""), "$1")
+internal fun plainPersonLinks(markdown: String): String = markdown.replace(Regex("""\[([^\]]+)]\(zayit://search/[^)]*\)"""), "$1")
 
 /** The page's texts with Hebrew geresh and gershayim (רמב״ם, ר׳, ״בית יוסף״) instead of ASCII quotes and guillemets; the name stays raw for its honorific. */
 private fun AuthorDetails.withHebrewQuotes(): AuthorDetails =
@@ -518,7 +518,7 @@ private fun String.markdownHebrewQuotes(): String {
 private fun String.withoutNikud(): String = replace(Regex("[֑-ׇ]"), "").replace(Regex("\\s+"), " ").trim()
 
 // Sefaria era codes, as named in Hebrew
-private val ERAS =
+internal val AUTHOR_ERAS =
     mapOf(
         "T" to "תנאים",
         "A" to "אמוראים",
@@ -539,7 +539,7 @@ private val hebrewYears =
  * Sefaria gives civil years only: the Hebrew one is the year that covers most of it (+3760), so
  * it may be one off.
  */
-private fun years(details: AuthorDetails): String? {
+internal fun authorYears(details: AuthorDetails): String? {
     fun span(year: (Int) -> String): String? {
         fun one(
             value: Int?,

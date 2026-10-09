@@ -19,22 +19,27 @@ import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.CategoryNavigationUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.ExecuteSearchUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.GetBreadcrumbPiecesUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.ResultsIndex
 import io.github.kdroidfilter.seforimapp.features.search.domain.ResultsIndexingUseCase
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntityFinder
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchStatePersistenceUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchTocUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocLineIndex
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
@@ -62,6 +67,8 @@ data class SearchUiState(
     // The query the current results were actually searched with (frozen at search time). Used for
     // the embedding highlight, so typing in the field WITHOUT pressing Enter never re-highlights.
     val executedQuery: String = "",
+    // The bar's text as typed, kept apart from the searched query so a restore searches what was shown
+    val draftQuery: String = "",
     val globalExtended: Boolean = false,
     val baseBooksHadNoResults: Boolean = false,
     val isLoading: Boolean = false,
@@ -92,6 +99,7 @@ class SearchResultViewModel(
     private val desktopManager: DesktopManager,
     private val historyStore: HistoryStore,
     private val appSettings: AppSettings,
+    lookup: LuceneLookupSearchService,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(SearchResultViewModel::class)
@@ -479,8 +487,112 @@ class SearchResultViewModel(
 
     private val _tocTree = MutableStateFlow<TocTree?>(null)
     val tocTreeFlow: StateFlow<TocTree?> = _tocTree.asStateFlow()
+    private val bookDetailsLoader = BookDetailsLoader(repository)
+    private val entityFinder = SearchEntityFinder(lookup, repository, bookDetailsLoader)
+
+    /** The book or author the executed query names, for the panel beside the results; null mostly. */
+    val entityFlow: StateFlow<SearchEntity?> =
+        uiState
+            .map { it.executedQuery.trim() }
+            .distinctUntilChanged()
+            .mapLatest { q -> if (q.isEmpty()) null else runSuspendCatching { entityFinder.find(q) }.getOrNull() }
+            .flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /**
+     * The lines around a result, by length rather than count: short lines (a verse, a heading) come
+     * many, long paragraphs few, about [CONTEXT_CHARS] characters on each side, one line at least.
+     */
+    private suspend fun passageContext(hit: SearchResult): List<Line> {
+        val window =
+            repository.getLines(
+                hit.bookId,
+                (hit.lineIndex - CONTEXT_MAX_LINES).coerceAtLeast(0),
+                hit.lineIndex + CONTEXT_MAX_LINES,
+            )
+        val at = window.indexOfFirst { it.id == hit.lineId }
+        if (at < 0) return window
+
+        fun side(lines: List<Line>): List<Line> {
+            var chars = 0
+            return lines.takeWhile { line ->
+                val keep = chars == 0 || chars < CONTEXT_CHARS
+                chars += line.content.replace(HTML_TAG, "").length
+                keep
+            }
+        }
+        val before = side(window.subList(0, at).asReversed()).asReversed()
+        val after = side(window.subList(at + 1, window.size))
+        return before + window[at] + after
+    }
+
+    /** Opens a book at a line (one of its parts, from the panel), in a new tab. */
+    fun openBookAt(
+        bookId: Long,
+        lineId: Long,
+    ) {
+        desktopManager.tabsViewModelFor(tabId)?.openTab(
+            TabsDestination.BookContent(bookId = bookId, tabId = UUID.randomUUID().toString(), lineId = lineId),
+        )
+    }
+
+    /** Opens an author's page from the panel, in a new tab. */
+    fun openAuthor(authorId: Long) {
+        desktopManager.tabsViewModelFor(tabId)?.openTab(TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = authorId))
+    }
+
     private val _searchTree = MutableStateFlow<ImmutableList<SearchTreeCategory>>(persistentListOf())
     val searchTreeFlow: StateFlow<ImmutableList<SearchTreeCategory>> = _searchTree.asStateFlow()
+
+    // Bumped by each new search (not by its filters), with the tree cleared: the tabs restart from it
+    private val searchGeneration = MutableStateFlow(0)
+
+    private fun newSearchGeneration() {
+        _searchTree.value = persistentListOf()
+        searchGeneration.value++
+    }
+
+    /**
+     * The category tabs: the widest tree seen for the current search (a category or a book filter
+     * narrows the tree to what it keeps, the tabs stay).
+     */
+    val tabCategoriesFlow: StateFlow<ImmutableList<SearchTreeCategory>> =
+        combine(searchGeneration, searchTreeFlow) { generation, tree -> generation to tree }
+            .scan(null as Pair<Int, ImmutableList<SearchTreeCategory>>?) { widest, (generation, tree) ->
+                if (widest == null || widest.first != generation || tree.size >= widest.second.size) generation to tree else widest
+            }.map { it?.second ?: persistentListOf() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), persistentListOf())
+
+    // The result picked in the list; the first one until one is
+    private val selectedLineId = MutableStateFlow<Long?>(null)
+
+    /** Shows a result in the preview beside the list. */
+    fun selectResult(lineId: Long) {
+        selectedLineId.value = lineId
+    }
+
+    /** The selected result, read in place: its lines around it and its book's details, loaded together. */
+    data class PassagePreview(
+        val hit: SearchResult,
+        val lines: List<Line>,
+        val book: SearchEntity.BookEntity?,
+    )
+
+    private suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? = bookDetailsLoader.load(bookId)
+
+    val previewFlow: StateFlow<PassagePreview?> =
+        combine(visibleResultsFlow, selectedLineId) { results, id -> results.firstOrNull { it.lineId == id } ?: results.firstOrNull() }
+            .distinctUntilChangedBy { it?.lineId }
+            .mapLatest { hit ->
+                hit?.let {
+                    PassagePreview(
+                        hit = it,
+                        lines = runSuspendCatching { passageContext(it) }.getOrDefault(emptyList()),
+                        book = bookDetails(it.bookId),
+                    )
+                }
+            }.flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Exact per-book hit counts from Lucene facets, used by the grouped result cards
     // to show "(N results)" without loading every page.
@@ -649,6 +761,7 @@ class SearchResultViewModel(
         _uiState.value =
             _uiState.value.copy(
                 query = initialQuery,
+                draftQuery = persisted.draftQuery.ifBlank { initialQuery },
                 globalExtended = persisted.globalExtended,
                 scrollIndex = persisted.scrollIndex,
                 scrollOffset = persisted.scrollOffset,
@@ -701,6 +814,7 @@ class SearchResultViewModel(
                 _uiState.value.copy(
                     results = cached.results,
                     executedQuery = initialQuery,
+                    draftQuery = persisted.draftQuery.ifBlank { initialQuery },
                     isLoading = false,
                     hasMore = cached.hasMore,
                     progressCurrent = cached.results.size,
@@ -835,23 +949,29 @@ class SearchResultViewModel(
 
     // Caching continuation removed: searches are executed fresh.
 
+    /** The bar's text as the user types it: shown back on restore, never searched by itself. */
+    fun setDraft(text: String) {
+        _uiState.value = _uiState.value.copy(draftQuery = text)
+        updatePersistedSearch { it.copy(draftQuery = text) }
+    }
+
     /**
-     * Update the search query in UI state and persist it for this tab.
-     * Does not trigger a search by itself; callers should invoke [executeSearch].
+     * The query to search next, persisted for this tab. Does not trigger a search by itself (callers
+     * invoke [executeSearch]), nor touch the status or the tab title, which follow the executed search.
      */
     fun setQuery(query: String) {
         val q = query.trim()
-        _uiState.value = _uiState.value.copy(query = q, baseBooksHadNoResults = false)
+        _uiState.value = _uiState.value.copy(query = q)
         updatePersistedSearch { it.copy(query = q) }
-        if (q.isNotEmpty()) {
-            // Keep the tab title synced with the current query
-            titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
-        }
     }
 
     fun executeSearch() {
         val q = _uiState.value.query.trim()
         if (q.isBlank()) return
+        dropBeforeBook()
+        newSearchGeneration()
+        // The tab is named after the search it shows (the draft stays: a restore re-running it keeps it)
+        titleUpdateManager.updateTabTitle(tabId, q, TabType.SEARCH)
         // Record the executed search into the visit history (deduplicated by query and scope)
         val persisted = persistedSearchState()
         val scope = persisted.scope
@@ -951,7 +1071,8 @@ class SearchResultViewModel(
                     }
 
                     // Phase 1: Compute facets instantly for immediate tree display
-                    val baseBookOnly = !_uiState.value.globalExtended
+                    // A book or a TOC entry the user chose is searched whole, base book or not
+                    val baseBookOnly = !_uiState.value.globalExtended && fetchTocId == null && fetchBookId == null
                     val facetsBookIds: Collection<Long>? =
                         when {
                             fetchTocId != null -> {
@@ -1133,38 +1254,6 @@ class SearchResultViewModel(
         }
     }
 
-    /**
-     * Load ALL hits for [bookId] under the current query/scope. Used to expand a grouped
-     * result card inline. Opens a dedicated, short-lived session restricted to the book.
-     * ponytail: restricts by bookId + baseBookOnly only; active sidebar TOC/category client
-     * filters aren't re-applied here — consistent with the facet counts shown on the card.
-     */
-    suspend fun loadAllHitsForBook(bookId: Long): List<SearchResult> {
-        val q = currentSearchQuery.takeIf { it.isNotBlank() } ?: _uiState.value.query.trim()
-        if (q.isBlank()) return emptyList()
-        val baseBookOnly = !_uiState.value.globalExtended
-        return withContext(Dispatchers.Default) {
-            val session =
-                lucene.openSession(
-                    query = q,
-                    near = DEFAULT_NEAR,
-                    bookIds = listOf(bookId),
-                    baseBookOnly = baseBookOnly,
-                ) ?: return@withContext emptyList()
-            try {
-                val all = ArrayList<LineHit>()
-                while (true) {
-                    val page = session.nextPage(LAZY_PAGE_SIZE) ?: break
-                    all += page.hits
-                    if (page.isLastPage) break
-                }
-                hitsToResults(all, q)
-            } finally {
-                runCatching { session.close() }
-            }
-        }
-    }
-
     private suspend fun prepareSearchSession(
         query: String,
         fetchCategoryId: Long?,
@@ -1180,11 +1269,11 @@ class SearchResultViewModel(
                     ensureTocCountingCaches(toc.bookId)
                     val lineIds = collectLineIdsForTocSubtree(toc.id, toc.bookId)
                     tocAllowedLineIds = lineIds
-                    lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds, baseBookOnly = baseBookOnly)
+                    lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds, baseBookOnly = false)
                 }
 
                 fetchBookId != null -> {
-                    lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = baseBookOnly)
+                    lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = false)
                 }
 
                 fetchCategoryId != null -> {
@@ -1574,6 +1663,106 @@ class SearchResultViewModel(
         }
     }
 
+    // The full results, kept while one book's are shown ("more from it"), to come back to as they were
+    private data class BeforeBook(
+        val ui: SearchUiState,
+        val session: SearchSession?,
+        val agg: CategoryAgg,
+        val tree: ImmutableList<SearchTreeCategory>,
+    )
+
+    private var beforeBook: BeforeBook? = null
+
+    /** Narrows the results to one book ("more from it"), keeping the full ones to come back to. */
+    fun showMoreFromBook(bookId: Long) {
+        viewModelScope.launch {
+            lazyLoadMutex.withLock {
+                val ui = _uiState.value
+                // A search still streaming is cancelled by the book's: nothing whole to come back to then
+                // (the way back searches again); a page being loaded resumes from the kept session
+                beforeBook =
+                    if (ui.isLoading) {
+                        null
+                    } else {
+                        BeforeBook(ui.copy(isLoadingMore = false), currentSession, _categoryAgg.value, _searchTree.value)
+                            .also { currentSession = null } // kept open for the way back
+                    }
+            }
+            setBookChecked(bookId, true)
+        }
+    }
+
+    /** Back to the full results as they were (results, pages, tree): no new search. */
+    fun backFromBook() {
+        val saved = beforeBook ?: return clearBookFilter()
+        beforeBook = null
+        viewModelScope.launch {
+            currentJob?.cancel()
+            lazyLoadMutex.withLock {
+                currentSession?.close()
+                currentSession = saved.session
+            }
+            _selectedBookIds.value = emptySet()
+            updatePersistedSearch { it.copy(selectedBookIds = emptySet()) }
+            _categoryAgg.value = saved.agg
+            _searchTree.value = saved.tree
+            _uiState.value = saved.ui
+        }
+    }
+
+    // Without kept results (a restored tab, a search cut short): drop the book filter, one search
+    private fun clearBookFilter() {
+        _selectedBookIds.value = emptySet()
+        updatePersistedSearch { it.copy(selectedBookIds = emptySet()) }
+        maybeClearFiltersIfNoneChecked()
+        executeFilteredSearch()
+    }
+
+    /** Where this tab's search looks (the one truth, persisted with the tab). */
+    val searchScope: SearchScope get() = persistedSearchState().scope
+
+    /**
+     * A search from the bar: [scope] is the bar's (its picked book or category, else everywhere) and
+     * replaces this tab's, with its filters; the persisted scope stays the one truth of the search.
+     */
+    fun searchFromBar(
+        query: String,
+        scope: SearchScope,
+    ) {
+        dropBeforeBook()
+        setQuery(query)
+        // What was typed is what is searched now
+        setDraft(query)
+        _selectedCategoryIds.value = emptySet()
+        _selectedBookIds.value = emptySet()
+        _selectedTocIds.value = emptySet()
+        updatePersistedSearch {
+            it.withScope(scope).copy(selectedCategoryIds = emptySet(), selectedBookIds = emptySet(), selectedTocIds = emptySet())
+        }
+        executeSearch()
+    }
+
+    // A new search drops the kept results
+    private fun dropBeforeBook() {
+        beforeBook?.session?.let { runCatching { it.close() } }
+        beforeBook = null
+    }
+
+    /** Shows one top category's results only (a tab above the results), or all of them for null. */
+    fun showOnlyCategory(categoryId: Long?) {
+        dropBeforeBook()
+        _selectedCategoryIds.value = emptySet()
+        _selectedBookIds.value = emptySet()
+        _selectedTocIds.value = emptySet()
+        updatePersistedSearch { it.copy(selectedCategoryIds = emptySet(), selectedBookIds = emptySet(), selectedTocIds = emptySet()) }
+        if (categoryId != null) {
+            setCategoryChecked(categoryId, true)
+        } else {
+            maybeClearFiltersIfNoneChecked()
+            executeFilteredSearch()
+        }
+    }
+
     fun setBookChecked(
         bookId: Long,
         checked: Boolean,
@@ -1680,12 +1869,14 @@ class SearchResultViewModel(
                     // Open search session with filter (use baseBookOnly for base-book-only search)
                     val session =
                         when {
+                            // Chosen TOC entries and books are searched whole; a category keeps the base-books choice
                             lineIdsToFilter.isNotEmpty() -> {
-                                lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = baseBookOnly)
+                                lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = false)
                             }
 
                             bookIdsToFilter.isNotEmpty() -> {
-                                lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly)
+                                val onlyBooks = selectedCats.isEmpty()
+                                lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly && !onlyBooks)
                             }
 
                             else -> {
@@ -1955,3 +2146,9 @@ class SearchResultViewModel(
         return searchTocUseCase.ensureTocLineIndex(bookId, existingTree)
     }
 }
+
+private const val CONTEXT_MAX_LINES = 30
+private const val CONTEXT_CHARS = 700
+
+// An HTML tag, to read a line or snippet as plain text
+internal val HTML_TAG = Regex("<[^>]+>")

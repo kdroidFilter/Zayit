@@ -22,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -91,7 +90,6 @@ import java.util.UUID
 
 /** From this width the page opens with both side panes. */
 private val WIDE_LAYOUT = 1100.dp
-private val TEXT_WIDTH = 900.dp
 private val SIDE_PANE = 280.dp
 private const val NAME_SCALE = 1.75f
 private const val LINE_SPACING = 1.75f
@@ -219,6 +217,7 @@ private fun AuthorEndBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
+            ZoomButtons()
             SelectableIconButtonWithToolip(
                 toolTipText = label,
                 onClick = onInfo,
@@ -227,7 +226,6 @@ private fun AuthorEndBar(
                 iconDescription = label,
                 label = label,
             )
-            ZoomButtons()
         },
         bottomContent = {},
     )
@@ -244,33 +242,31 @@ private fun TextPane(
         .collectAsState()
     val scroll = rememberScrollState()
     VerticallyScrollableContainer(scrollState = scroll as ScrollableState, modifier = Modifier.fillMaxSize()) {
-        Box(Modifier.fillMaxWidth().verticalScroll(scroll), contentAlignment = Alignment.TopCenter) {
-            Column(Modifier.widthIn(max = TEXT_WIDTH).fillMaxWidth().padding(horizontal = 32.dp, vertical = 28.dp)) {
-                Text(
-                    AuthorNames.display(page.details.name),
-                    fontSize = (textSize * NAME_SCALE).sp,
-                    fontWeight = FontWeight.SemiBold,
-                    fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
-                    color = JewelTheme.globalColors.text.normal,
+        Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(horizontal = 32.dp, vertical = 28.dp)) {
+            Text(
+                AuthorNames.display(page.details.name),
+                fontSize = (textSize * NAME_SCALE).sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = FontFamily(Font(Res.font.notoserifhebrew)),
+                color = JewelTheme.globalColors.text.normal,
+            )
+            val facts = listOfNotNull(page.details.era?.let { ERAS[it] }, years(page.details))
+            if (showFacts && facts.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
+            }
+            Spacer(Modifier.height(20.dp))
+            page.details.bio?.summary?.let {
+                ProseMarkdown(
+                    plainPersonLinks(it),
+                    onLink,
+                    fontSize = (textSize + 2).sp,
+                    lineHeight = ((textSize + 2) * LINE_SPACING).sp,
                 )
-                val facts = listOfNotNull(page.details.era?.let { ERAS[it] }, years(page.details))
-                if (showFacts && facts.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(facts.joinToString(" · "), fontSize = 13.sp, color = JewelTheme.globalColors.text.info)
-                }
-                Spacer(Modifier.height(20.dp))
-                page.details.bio?.summary?.let {
-                    ProseMarkdown(
-                        plainPersonLinks(it),
-                        onLink,
-                        fontSize = (textSize + 2).sp,
-                        lineHeight = ((textSize + 2) * LINE_SPACING).sp,
-                    )
-                }
-                if (page.bio.sections.isNotBlank()) {
-                    Spacer(Modifier.height(8.dp))
-                    ProseMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
-                }
+            }
+            if (page.bio.sections.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                ProseMarkdown(page.bio.sections, onLink, fontSize = textSize.sp, lineHeight = (textSize * LINE_SPACING).sp)
             }
         }
     }

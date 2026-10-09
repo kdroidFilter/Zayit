@@ -381,15 +381,7 @@ class SearchHomeViewModel(
                                     isTocLoading = true,
                                     tocSuggestionsVisible = true,
                                 )
-                            val suggestions =
-                                cached
-                                    .asSequence()
-                                    .filter { it.toc.text.contains(q, ignoreCase = true) }
-                                    .sortedWith(
-                                        compareBy<TocSuggestionDto> { matchRank(it.toc.text, q) }
-                                            .thenBy { it.toc.level }
-                                            .thenBy { it.toc.text.length },
-                                    ).toList()
+                            val suggestions = tocMatching(cached, q)
                             _uiState.value =
                                 _uiState.value.copy(
                                     tocSuggestions = suggestions,
@@ -401,6 +393,20 @@ class SearchHomeViewModel(
                 }
         }
     }
+
+    // The TOC entries containing [q], best matches first
+    private fun tocMatching(
+        entries: List<TocSuggestionDto>,
+        q: String,
+    ): List<TocSuggestionDto> =
+        entries
+            .asSequence()
+            .filter { it.toc.text.contains(q, ignoreCase = true) }
+            .sortedWith(
+                compareBy<TocSuggestionDto> { matchRank(it.toc.text, q) }
+                    .thenBy { it.toc.level }
+                    .thenBy { it.toc.text.length },
+            ).toList()
 
     fun onReferenceQueryChanged(query: String) {
         referenceQuery.value = query
@@ -515,7 +521,10 @@ class SearchHomeViewModel(
                     tocCache[book.id] = built
                     built
                 }
-            val initialSuggestions = tocEntries.take(maxTocPredictive)
+            // A text typed before the TOC was loaded (a restored tab's query) filters it now
+            val typed = tocQuery.value.trim()
+            val initialSuggestions =
+                if (typed.length < minTocPrefixLen) tocEntries.take(maxTocPredictive) else tocMatching(tocEntries, typed)
             _uiState.value =
                 _uiState.value.copy(
                     tocSuggestions = initialSuggestions,

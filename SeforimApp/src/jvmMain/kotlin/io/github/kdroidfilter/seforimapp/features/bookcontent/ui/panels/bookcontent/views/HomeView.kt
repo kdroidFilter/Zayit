@@ -506,20 +506,13 @@ internal fun UnifiedSearchBar(
         searchCallbacks.onOpenReference()
     }
 
-    // The results page shows its query in the field, without opening suggestions for it: the book's
-    // field once the bar is in a book (its search's scope), else the main one
+    // The results page shows its query in the field: the book's field once the bar is in a book (its
+    // search's scope), else the main one. The suggestions follow it as typed text (they show on focus)
     val inBook = searchUi.selectedScopeBook != null && searchUi.selectedScopeToc == null
     LaunchedEffect(initialText, inBook) {
         if (initialText.isEmpty()) return@LaunchedEffect
-        if (inBook) {
-            if (tocSearchState.text.toString() != initialText) {
-                skipNextTocQuery = true
-                tocSearchState.edit { replace(0, length, initialText) }
-            }
-        } else if (referenceSearchState.text.toString() != initialText) {
-            skipNextReferenceQuery = true
-            referenceSearchState.edit { replace(0, length, initialText) }
-        }
+        val field = if (inBook) tocSearchState else referenceSearchState
+        if (field.text.toString() != initialText) field.edit { replace(0, length, initialText) }
     }
 
     // Back to the bar once a book is picked, to type in its TOC

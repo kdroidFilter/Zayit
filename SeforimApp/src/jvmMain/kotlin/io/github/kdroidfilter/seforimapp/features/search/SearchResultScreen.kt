@@ -831,7 +831,18 @@ private fun PassagePreview(
     val currentLoadContext by rememberUpdatedState(loadContext)
     val lines by produceState<List<Line>?>(null, hit.lineId) { value = currentLoadContext(hit) }
     val fontFamily = FontCatalog.familyFor(bookFontCode)
-    val words = remember(query) { query.split(Regex("\\s+")).filter { it.length > 1 } }
+    // The words the engine matched, as bold in the result's snippet (its variants: מן העין for מהעין),
+    // so the preview marks the same ones as the list
+    val words =
+        remember(hit.snippet, query) {
+            BOLD_SPAN
+                .findAll(hit.snippet)
+                .map { it.groupValues[1].replace(HTML_TAG, "").trim() }
+                .filter { it.length > 1 }
+                .distinct()
+                .toList()
+                .ifEmpty { query.split(Regex("\\s+")).filter { it.length > 1 } }
+        }
     val highlight = accent.copy(alpha = 0.22f)
     val scroll = rememberScrollState()
     // The found line in view, once laid out
@@ -902,6 +913,7 @@ private fun PassagePreview(
 }
 
 private val READING_WIDTH = 760.dp
+private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)
 private const val FOUND_LINE_MARGIN = 40
 
 /** A passage: two lines of grey text, the matched words bold in the text's color. */

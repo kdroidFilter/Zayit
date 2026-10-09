@@ -907,7 +907,7 @@ private fun RtlAwareTab(
                         closeIconComposable()
                     }
                 } else if (pinned && pinnedLabel != null) {
-                    // A pinned book tab is its acronym: its icon is every book's.
+                    // A pinned book or author tab is its label: its icon is every book's (or author's).
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         SingleLineTabContent(label = pinnedLabel, state = tabState, icon = null)
                     }
@@ -1226,9 +1226,11 @@ private fun DropGhostSlot(
 
 private const val DROP_SLOT_MS = 200
 
-/** A pinned tab's label: its short title (a book's acronym), else the title of a book or search tab. */
+/** A pinned tab's label: its short title (a book's acronym), else the title of a book, search or author tab. */
 private fun TabItem.pinnedLabel(): String? =
-    shortTitle.ifBlank { title.takeIf { tabType == TabType.BOOK || tabType == TabType.SEARCH }.orEmpty() }.ifBlank { null }
+    shortTitle.ifBlank { title.takeIf { tabType in LABELED_WHEN_PINNED }.orEmpty() }.ifBlank { null }
+
+private val LABELED_WHEN_PINNED = setOf(TabType.BOOK, TabType.SEARCH, TabType.AUTHOR)
 
 /** The width of each pinned tab, by key: its icon's, or its label's measured width. */
 @Composable

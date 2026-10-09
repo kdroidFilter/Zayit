@@ -87,6 +87,8 @@ data class CategorySuggestionDto(
 data class BookSuggestionDto(
     val book: Book,
     val path: List<String>,
+    // Typed as one of its acronyms, whole
+    val exactAcronym: Boolean = false,
 )
 
 @Immutable
@@ -304,7 +306,7 @@ class SearchHomeViewModel(
                                             lookup.suggestBooks(q, limit = maxBookPredictive).map { hit ->
                                                 val book = hit.toBook()
                                                 val catPath = buildCategoryPathTitlesCached(book.categoryId)
-                                                BookSuggestionDto(book, catPath + book.title)
+                                                BookSuggestionDto(book, catPath + book.title, hit.exactAcronym)
                                             }
                                         }
 

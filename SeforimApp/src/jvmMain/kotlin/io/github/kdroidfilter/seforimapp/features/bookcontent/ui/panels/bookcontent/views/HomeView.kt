@@ -132,6 +132,7 @@ private data class CategorySuggestion(
 private data class BookSuggestion(
     val book: BookModel,
     val path: List<String>,
+    val exactAcronym: Boolean = false,
 )
 
 /** A row of the book-stage list; see [catBookRows] for their order. */
@@ -157,7 +158,7 @@ private sealed interface CatBookRow {
 
 /**
  * The book-stage rows in order: the references, then the books and authors named exactly as typed
- * (`חולין` opens Chullin on Enter), the text search, then the other authors, categories and books.
+ * (`חולין` opens Chullin on Enter; `שוע` puts the שולחן ערוך parts first), the text search, then the other authors, categories and books.
  */
 private fun catBookRows(
     query: String,
@@ -170,7 +171,7 @@ private fun catBookRows(
     val key = query.matchKey()
     val (exactAuthors, otherAuthors) =
         authors.partition { it.name.matchKey() == key || AuthorNames.display(it.name).matchKey() == key }
-    val (exactBooks, otherBooks) = books.partition { it.book.title.matchKey() == key }
+    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.matchKey() == key }
     return buildList {
         jumps.mapTo(this) { CatBookRow.Jump(it) }
         exactBooks.mapTo(this) { CatBookRow.Book(it) }
@@ -474,7 +475,7 @@ private fun HomeBody(
                                     val mappedBookSuggestionsForBar =
                                         searchUi.bookSuggestions
                                             .map { bs ->
-                                                BookSuggestion(bs.book, bs.path)
+                                                BookSuggestion(bs.book, bs.path, bs.exactAcronym)
                                             }.toImmutableList()
                                     val mappedTocSuggestionsForBar =
                                         searchUi.tocSuggestions.map { ts ->

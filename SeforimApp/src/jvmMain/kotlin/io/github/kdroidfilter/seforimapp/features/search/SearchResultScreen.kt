@@ -80,7 +80,6 @@ import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
-import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -115,6 +114,7 @@ data class SearchShellActions(
     val onTocFilter: (io.github.kdroidfilter.seforimlibrary.core.models.TocEntry) -> Unit,
     val onShowOnlyCategory: (Long?) -> Unit = {},
     val onOpenBookAt: (bookId: Long, lineId: Long) -> Unit = { _, _ -> },
+    val onSelectResult: (lineId: Long) -> Unit = {},
     val onOpenAuthor: (Long) -> Unit = {},
 )
 
@@ -141,9 +141,8 @@ fun SearchResultInBookShellMvi(
     // The home page's bar state and callbacks, for the same bar here
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
-    // The lines around a result, and its book's details, for its preview
-    loadContext: suspend (SearchResult) -> List<Line>,
-    loadBook: suspend (Long) -> SearchEntity.BookEntity?,
+    // The selected result, read beside the list
+    preview: SearchResultViewModel.PassagePreview?,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -179,8 +178,7 @@ fun SearchResultInBookShellMvi(
                 entity = entity,
                 homeSearchUi = homeSearchUi,
                 homeSearchCallbacks = homeSearchCallbacks,
-                loadContext = loadContext,
-                loadBook = loadBook,
+                preview = preview,
                 actions = actions,
                 tabId = tabId,
             )
@@ -200,8 +198,7 @@ private fun SearchResultContentMvi(
     entity: SearchEntity?,
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
-    loadContext: suspend (SearchResult) -> List<Line>,
-    loadBook: suspend (Long) -> SearchEntity.BookEntity?,
+    preview: SearchResultViewModel.PassagePreview?,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -322,16 +319,8 @@ private fun SearchResultContentMvi(
 
     val keyHandler = remember { { _: KeyEvent -> false } }
 
-    // The tabs are the unfiltered search's categories: once one is picked, the tree only has it left
-    var tabCategories by remember(state.executedQuery, state.globalExtended) { mutableStateOf(categories) }
-    // (the widest tree seen for this query: a category or a book filter narrows it)
-    LaunchedEffect(categories) {
-        if (categories.size >= tabCategories.size) tabCategories = categories
-    }
-
-    // The selected result, shown beside the list on wide windows; the first one until one is picked
-    var selectedLineId by remember(items.firstOrNull()?.hit?.lineId) { mutableStateOf<Long?>(null) }
-    val selected = items.firstOrNull { it.hit.lineId == selectedLineId } ?: items.firstOrNull()
+    // The selection lives in the ViewModel, as the preview it drives
+    val selectedLineId = preview?.hit?.lineId
     val listFocus = remember { FocusRequester() }
     val windowInfo = LocalWindowInfo.current
 
@@ -346,18 +335,18 @@ private fun SearchResultContentMvi(
     // Up and down move the selection through the list, Enter opens it
     fun onListKey(event: KeyEvent): Boolean {
         if (event.type != KeyEventType.KeyDown || items.isEmpty()) return false
-        val index = items.indexOfFirst { it.hit.lineId == selected?.hit?.lineId }.coerceAtLeast(0)
+        val index = items.indexOfFirst { it.hit.lineId == selectedLineId }.coerceAtLeast(0)
         val next =
             when (event.key) {
                 Key.DirectionDown -> (index + 1).coerceAtMost(items.lastIndex)
                 Key.DirectionUp -> (index - 1).coerceAtLeast(0)
                 Key.Enter, Key.NumPadEnter -> {
-                    selected?.let { openResult(it.hit, false) }
+                    preview?.let { openResult(it.hit, false) }
                     return true
                 }
                 else -> return false
             }
-        selectedLineId = items[next].hit.lineId
+        actions.onSelectResult(items[next].hit.lineId)
         scope.launch { listState.animateScrollToItem(next) }
         return true
     }
@@ -395,9 +384,9 @@ private fun SearchResultContentMvi(
                         }
 
                         // Always there, as Google's, even with one category: "הכל" also undoes a kept filter
-                        if (tabCategories.isNotEmpty()) {
+                        if (categories.isNotEmpty()) {
                             Spacer(Modifier.height(10.dp))
-                            CategoryTabs(tabCategories, selectedCategoryIds, actions.onShowOnlyCategory)
+                            CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
                         }
                         Spacer(Modifier.height(8.dp))
                         val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
@@ -509,7 +498,7 @@ private fun SearchResultContentMvi(
                                     itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
                                         ResultView(
                                             item = item,
-                                            selected = twoPanes && item.hit.lineId == selected?.hit?.lineId,
+                                            selected = twoPanes && item.hit.lineId == selectedLineId,
                                             findQuery = activeFindQuery,
                                             bookFontCode = bookFontCode,
                                             breadcrumbs = breadcrumbs,
@@ -517,7 +506,7 @@ private fun SearchResultContentMvi(
                                             // Wide: a click shows the passage beside the list, a double click opens it; narrow: opens it
                                             onClick = { result ->
                                                 if (twoPanes) {
-                                                    selectedLineId = result.lineId
+                                                    actions.onSelectResult(result.lineId)
                                                     listFocus.requestFocus()
                                                 } else {
                                                     val mods = windowInfo.keyboardModifiers
@@ -578,16 +567,14 @@ private fun SearchResultContentMvi(
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
-                        selected?.let { item ->
+                        preview?.let { shown ->
                             PassagePreview(
-                                hit = item.hit,
-                                pieces = breadcrumbs[item.hit.lineId],
+                                preview = shown,
+                                pieces = breadcrumbs[shown.hit.lineId],
                                 query = state.executedQuery,
                                 bookFontCode = bookFontCode,
                                 // The passage follows the zoom, as the books
                                 textSize = mainTextSize,
-                                loadContext = loadContext,
-                                loadBook = loadBook,
                                 details = { book ->
                                     EntityDetails(
                                         entity = book,
@@ -595,7 +582,7 @@ private fun SearchResultContentMvi(
                                         onOpenAuthor = actions.onOpenAuthor,
                                     )
                                 },
-                                onOpen = { openResult(item.hit, false) },
+                                onOpen = { openResult(shown.hit, false) },
                                 modifier = Modifier.weight(1f),
                             )
                         }
@@ -812,24 +799,21 @@ private fun ResultView(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PassagePreview(
-    hit: SearchResult,
+    preview: SearchResultViewModel.PassagePreview,
     pieces: List<String>?,
     query: String,
     bookFontCode: String,
     textSize: Float,
-    loadContext: suspend (SearchResult) -> List<Line>,
-    loadBook: suspend (Long) -> SearchEntity.BookEntity?,
     details: @Composable (SearchEntity.BookEntity) -> Unit,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val currentLoadBook by rememberUpdatedState(loadBook)
-    val book by produceState<SearchEntity.BookEntity?>(null, hit.bookId) { value = currentLoadBook(hit.bookId) }
+    val hit = preview.hit
+    val book = preview.book
     val accent = JewelTheme.globalColors.outlines.focused
     val ink = JewelTheme.globalColors.text.normal
     val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
-    val currentLoadContext by rememberUpdatedState(loadContext)
-    val lines by produceState<List<Line>?>(null, hit.lineId) { value = currentLoadContext(hit) }
+    val lines = preview.lines
     val fontFamily = FontCatalog.familyFor(bookFontCode)
     // The words the engine matched, as bold in the result's snippet (its variants: מן העין for מהעין),
     // so the preview marks the same ones as the list
@@ -882,7 +866,7 @@ private fun PassagePreview(
                             verticalArrangement = Arrangement.spacedBy(14.dp),
                             modifier = Modifier.widthIn(max = READING_WIDTH).fillMaxWidth().padding(horizontal = 28.dp, vertical = 22.dp),
                         ) {
-                            lines?.forEach { line ->
+                            lines.forEach { line ->
                                 val found = line.id == hit.lineId
                                 val text =
                                     remember(line.id, textSize, words, highlight) {

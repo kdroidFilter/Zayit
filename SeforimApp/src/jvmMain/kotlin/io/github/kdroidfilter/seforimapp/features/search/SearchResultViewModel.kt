@@ -495,12 +495,8 @@ class SearchResultViewModel(
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    /** The lines around a result, for its preview beside the list. */
-    suspend fun passageContext(hit: SearchResult): List<Line> =
+    private suspend fun passageContext(hit: SearchResult): List<Line> =
         repository.getLines(hit.bookId, (hit.lineIndex - CONTEXT_LINES).coerceAtLeast(0), hit.lineIndex + CONTEXT_LINES)
-
-    /** A book's details (author, parts), for the preview of a result in it. */
-    suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? = runSuspendCatching { entityFinder.describeBook(bookId) }.getOrNull()
 
     /** Opens a book at a line (one of its parts, from the panel), in a new tab. */
     fun openBookAt(
@@ -519,6 +515,46 @@ class SearchResultViewModel(
 
     private val _searchTree = MutableStateFlow<ImmutableList<SearchTreeCategory>>(persistentListOf())
     val searchTreeFlow: StateFlow<ImmutableList<SearchTreeCategory>> = _searchTree.asStateFlow()
+
+    /**
+     * The category tabs: the widest tree seen for the executed query (a category or a book filter
+     * narrows the tree to what it keeps, the tabs stay).
+     */
+    val tabCategoriesFlow: StateFlow<ImmutableList<SearchTreeCategory>> =
+        combine(uiState.map { it.executedQuery to it.globalExtended }.distinctUntilChanged(), searchTreeFlow) { key, tree -> key to tree }
+            .scan(null as Pair<Pair<String, Boolean>, ImmutableList<SearchTreeCategory>>?) { widest, (key, tree) ->
+                if (widest == null || widest.first != key || tree.size >= widest.second.size) key to tree else widest
+            }.map { it?.second ?: persistentListOf() }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), persistentListOf())
+
+    // The result picked in the list; the first one until one is
+    private val selectedLineId = MutableStateFlow<Long?>(null)
+
+    /** Shows a result in the preview beside the list. */
+    fun selectResult(lineId: Long) {
+        selectedLineId.value = lineId
+    }
+
+    /** The selected result, read in place: its lines around it and its book's details, loaded together. */
+    data class PassagePreview(
+        val hit: SearchResult,
+        val lines: List<Line>,
+        val book: SearchEntity.BookEntity?,
+    )
+
+    val previewFlow: StateFlow<PassagePreview?> =
+        combine(visibleResultsFlow, selectedLineId) { results, id -> results.firstOrNull { it.lineId == id } ?: results.firstOrNull() }
+            .distinctUntilChangedBy { it?.lineId }
+            .mapLatest { hit ->
+                hit?.let {
+                    PassagePreview(
+                        hit = it,
+                        lines = runSuspendCatching { passageContext(it) }.getOrDefault(emptyList()),
+                        book = runSuspendCatching { entityFinder.describeBook(it.bookId) }.getOrNull(),
+                    )
+                }
+            }.flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     // Exact per-book hit counts from Lucene facets, used by the grouped result cards
     // to show "(N results)" without loading every page.

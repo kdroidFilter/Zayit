@@ -618,6 +618,9 @@
     <string name="search_tabs_less">פחות</string>
     <string name="search_panel_author">מחבר</string>
     <string name="search_panel_parts">חלקי הספר</string>
+    <string name="search_panel_source">מקור ורישיון</string>
+    <string name="license_public_domain">נחלת הכלל</string>
+    <string name="license_unknown">רישיון לא ידוע</string>
     <string name="search_clear">ניקוי</string>
     <string name="search_panel_author_page">לדף המחבר</string>
     <string name="search_stop">בטל חיפוש</string>

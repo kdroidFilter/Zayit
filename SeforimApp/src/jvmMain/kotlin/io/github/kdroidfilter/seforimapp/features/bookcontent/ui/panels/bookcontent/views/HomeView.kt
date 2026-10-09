@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -1745,48 +1744,34 @@ private const val KEY_ENTER = "↵"
 private const val KEY_TAB = "Tab"
 private const val KEY_CTRL_ENTER = "Ctrl+↵"
 
-/** A row action as a small button: its key in an accent key cap, then its label, on the panel's background. */
+/** A row action as a quiet button: its label, then its key in grey; a neutral tint, darker on hover. */
 @Composable
 private fun RowActionChip(action: RowAction) {
-    val shape = RoundedCornerShape(10.dp)
+    val shape = RoundedCornerShape(6.dp)
     val hover = remember { MutableInteractionSource() }
     val hovered by hover.collectIsHoveredAsState()
-    val accent = JewelTheme.globalColors.outlines.focused
-    val panel = JewelTheme.globalColors.panelBackground
+    val ink = JewelTheme.globalColors.text.normal
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier =
             Modifier
                 .clip(shape)
-                .background(if (hovered) accent.copy(alpha = 0.18f).compositeOver(panel) else panel)
-                .border(1.dp, accent.copy(alpha = if (hovered) 1f else 0.45f), shape)
+                .background(ink.copy(alpha = if (hovered) 0.14f else 0.07f))
                 .hoverable(hover)
                 .clickable(onClick = action.onClick)
                 .pointerHoverIcon(PointerIcon.Hand)
-                .padding(start = 4.dp, end = 8.dp, top = 2.dp, bottom = 2.dp),
+                .padding(horizontal = 8.dp, vertical = 3.dp),
     ) {
+        Text(action.label, fontSize = 11.sp, color = ink, maxLines = 1, softWrap = false)
         Text(
             action.keys,
             fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = accent,
+            color = JewelTheme.globalColors.text.info,
             maxLines = 1,
             softWrap = false,
             // Keys read left to right (Ctrl+↵), whatever the layout
             style = LocalTextStyle.current.copy(textDirection = TextDirection.Ltr),
-            modifier =
-                Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(accent.copy(alpha = 0.15f))
-                    .padding(horizontal = 4.dp, vertical = 1.dp),
-        )
-        Text(
-            action.label,
-            fontSize = 11.sp,
-            color = JewelTheme.globalColors.text.normal,
-            maxLines = 1,
-            softWrap = false,
         )
     }
 }

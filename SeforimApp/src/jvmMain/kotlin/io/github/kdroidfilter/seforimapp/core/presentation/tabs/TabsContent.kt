@@ -390,6 +390,7 @@ private fun SearchTabContent(
     val tabCategories by viewModel.tabCategoriesFlow.collectAsState()
     val preview by viewModel.previewFlow.collectAsState()
     val selectedCategoryIds by viewModel.selectedCategoryIdsFlow.collectAsState()
+    val bookFilterIds by viewModel.selectedBookIdsFlow.collectAsState()
     val entity by viewModel.entityFlow.collectAsState()
 
     SearchResultInBookShellMvi(
@@ -403,6 +404,7 @@ private fun SearchTabContent(
         bookCounts = bookCounts,
         categories = tabCategories,
         selectedCategoryIds = selectedCategoryIds,
+        bookFilterIds = bookFilterIds,
         entity = entity,
         homeSearchUi = homeSearchUi,
         homeSearchCallbacks = barCallbacks,

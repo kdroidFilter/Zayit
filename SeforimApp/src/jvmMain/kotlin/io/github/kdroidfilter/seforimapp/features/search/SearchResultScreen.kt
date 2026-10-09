@@ -136,6 +136,8 @@ fun SearchResultInBookShellMvi(
     // The results' top categories, as tabs above them
     categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
     selectedCategoryIds: Set<Long>,
+    // The books the results were narrowed to ("more from this book")
+    bookFilterIds: Set<Long>,
     // The book or author the query names, beside the results
     entity: SearchEntity?,
     // The home page's bar state and callbacks, for the same bar here
@@ -152,10 +154,8 @@ fun SearchResultInBookShellMvi(
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
 
-    val panelCardModifier =
-        Modifier
-            .fillMaxSize()
-            .padding(vertical = 6.dp, horizontal = 4.dp)
+    // The panes inside bring their own gap, as the book's
+    val panelCardModifier = Modifier.fillMaxSize()
 
     val showBookContent = bookUiState.navigation.selectedBook != null && bookUiState.providers != null
     if (showBookContent) {
@@ -175,6 +175,7 @@ fun SearchResultInBookShellMvi(
                 bookCounts = bookCounts,
                 categories = categories,
                 selectedCategoryIds = selectedCategoryIds,
+                bookFilterIds = bookFilterIds,
                 entity = entity,
                 homeSearchUi = homeSearchUi,
                 homeSearchCallbacks = homeSearchCallbacks,
@@ -195,6 +196,7 @@ private fun SearchResultContentMvi(
     bookCounts: Map<Long, Int>,
     categories: ImmutableList<SearchResultViewModel.SearchTreeCategory>,
     selectedCategoryIds: Set<Long>,
+    bookFilterIds: Set<Long>,
     entity: SearchEntity?,
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
@@ -205,7 +207,8 @@ private fun SearchResultContentMvi(
     val appSettings = LocalAppGraph.current.appSettings
     val listState = rememberLazyListState()
     // A flat list by relevance, as on Google: at most two passages of a book in a row
-    val items = remember(visibleResults, bookCounts) { flattenResults(visibleResults, bookCounts) }
+    val inBook = bookFilterIds.isNotEmpty()
+    val items = remember(visibleResults, bookCounts, inBook) { flattenResults(visibleResults, bookCounts, inBook) }
     val lineToItemIndex =
         remember(items) {
             buildMap {
@@ -359,10 +362,9 @@ private fun SearchResultContentMvi(
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
-                    .fillMaxHeight()
-                    .padding(16.dp),
+                    .fillMaxHeight(),
         ) {
-            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.fillMaxSize()) {
                 val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
                 // One card: the bar, the tabs and the status over the list, as a mail client's search
                 Column(listModifier.fillMaxHeight().card()) {
@@ -389,6 +391,15 @@ private fun SearchResultContentMvi(
                             CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
                         }
                         Spacer(Modifier.height(8.dp))
+                        // Inside one book: the way back to all the results
+                        if (inBook) {
+                            ResultLink(
+                                stringResource(Res.string.search_back_to_all, visibleResults.firstOrNull()?.bookTitle.orEmpty()),
+                                JewelTheme.globalColors.outlines.focused,
+                                13.sp,
+                            ) { bookFilterIds.forEach { actions.onBookCheckedChange(it, false) } }
+                            Spacer(Modifier.height(4.dp))
+                        }
                         val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
                         val totalResults =
                             maxOf(
@@ -558,7 +569,7 @@ private fun SearchResultContentMvi(
                     }
                 }
                 if (twoPanes) {
-                    Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f).fillMaxHeight()) {
                         if (entity != null) {
                             EntityPanel(
                                 entity = entity,
@@ -638,7 +649,10 @@ private val HTML_TAG = Regex("<[^>]+>")
 private fun flattenResults(
     results: List<SearchResult>,
     bookCounts: Map<Long, Int>,
+    // Inside one book ("more from it"), every passage shows, without "more" links
+    oneBook: Boolean,
 ): List<ResultItem> {
+    if (oneBook) return results.map { ResultItem(it, more = 0) }
     val items = ArrayList<ResultItem>()
     val booksSeen = HashSet<Long>()
     val textsSeen = HashSet<String>()
@@ -1067,14 +1081,12 @@ private fun CategoryTab(
 private val LOGO_HEIGHT = 44.dp
 private const val LOGO_RATIO = 634f / 684f
 
-/** The page's card look: rounded, bordered, on the panel's background, as the history page's cards. */
+/** The page's panes, as the book's (PaneCard): a small gap around, rounded, on the panel's background, no border. */
 @Composable
-private fun Modifier.card(): Modifier {
-    val shape = RoundedCornerShape(10.dp)
-    return clip(shape)
-        .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+private fun Modifier.card(): Modifier =
+    padding(vertical = 6.dp, horizontal = 4.dp)
+        .clip(RoundedCornerShape(12.dp))
         .background(JewelTheme.globalColors.panelBackground)
-}
 
 private val LIST_MIN_WIDTH = 380.dp
 private val LIST_MAX_WIDTH = 580.dp

@@ -287,8 +287,8 @@
     <string name="please_select_a_book">אנא בחר ספר</string>
 
     <!-- Home Page View -->
-    <string name="search_text_row">חיפוש «%1$s» במאגר</string>
-    <string name="search_text_row_in_book">חיפוש «%1$s» בתוך %2$s</string>
+    <string name="search_text_row">חיפוש במאגר: %1$s</string>
+    <string name="search_text_row_in_book">חיפוש בתוך %2$s: %1$s</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
     <string name="remove_selected_book">הסר ספר שנבחר</string>
 

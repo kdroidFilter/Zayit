@@ -1068,7 +1068,8 @@ class SearchResultViewModel(
                     }
 
                     // Phase 1: Compute facets instantly for immediate tree display
-                    val baseBookOnly = !_uiState.value.globalExtended
+                    // A book or a TOC entry the user chose is searched whole, base book or not
+                    val baseBookOnly = !_uiState.value.globalExtended && fetchTocId == null && fetchBookId == null
                     val facetsBookIds: Collection<Long>? =
                         when {
                             fetchTocId != null -> {
@@ -1265,11 +1266,11 @@ class SearchResultViewModel(
                     ensureTocCountingCaches(toc.bookId)
                     val lineIds = collectLineIdsForTocSubtree(toc.id, toc.bookId)
                     tocAllowedLineIds = lineIds
-                    lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds, baseBookOnly = baseBookOnly)
+                    lucene.openSession(query, DEFAULT_NEAR, lineIds = lineIds, baseBookOnly = false)
                 }
 
                 fetchBookId != null -> {
-                    lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = baseBookOnly)
+                    lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = false)
                 }
 
                 fetchCategoryId != null -> {
@@ -1858,12 +1859,14 @@ class SearchResultViewModel(
                     // Open search session with filter (use baseBookOnly for base-book-only search)
                     val session =
                         when {
+                            // Chosen TOC entries and books are searched whole; a category keeps the base-books choice
                             lineIdsToFilter.isNotEmpty() -> {
-                                lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = baseBookOnly)
+                                lucene.openSession(q, DEFAULT_NEAR, lineIds = lineIdsToFilter, baseBookOnly = false)
                             }
 
                             bookIdsToFilter.isNotEmpty() -> {
-                                lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly)
+                                val onlyBooks = selectedCats.isEmpty()
+                                lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly && !onlyBooks)
                             }
 
                             else -> {

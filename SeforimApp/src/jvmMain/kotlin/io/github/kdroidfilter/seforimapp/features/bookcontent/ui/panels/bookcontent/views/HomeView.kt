@@ -524,7 +524,7 @@ internal fun UnifiedSearchBar(
 
     // Back to the bar once a book is picked, to type in its TOC
     LaunchedEffect(searchUi.selectedScopeBook?.id) {
-        if (searchUi.selectedScopeBook != null) {
+        if (searchUi.selectedScopeBook != null && searchUi.bookPickedByUser) {
             delay(80.milliseconds)
             mainSearchFocusRequester.requestFocus()
         }

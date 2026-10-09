@@ -118,6 +118,8 @@ data class SearchHomeUiState(
     val selectedScopeCategory: Category? = null,
     val selectedScopeBook: Book? = null,
     val selectedScopeToc: TocEntry? = null,
+    // The book was picked by the user (back to the bar to type in its TOC), not put back by a restore
+    val bookPickedByUser: Boolean = false,
     val userDisplayName: String = "",
     val userCommunityCode: String? = null,
     val pairedReferenceHints: List<Pair<String, String>> = emptyList(),
@@ -484,6 +486,7 @@ class SearchHomeViewModel(
                 selectedScopeCategory = null,
                 selectedScopeBook = book,
                 selectedScopeToc = null,
+                bookPickedByUser = showSuggestions,
                 suggestionsVisible = false,
                 tocSuggestionsVisible = false,
                 tocSuggestions = emptyList(),

@@ -604,6 +604,12 @@
     <string name="search_result_count_complete">נמצאו %1$d תוצאות</string>
     <string name="search_more_in_book">עוד %1$d תוצאות בספר זה</string>
     <string name="search_collapse">הסתר</string>
+    <string name="search_more_from_book">עוד %1$d תוצאות מ%2$s</string>
+    <string name="search_status_base">כ־%1$s תוצאות בספרי יסוד</string>
+    <string name="search_status_all">כ־%1$s תוצאות בכל הספרים</string>
+    <string name="search_status_fallback">לא נמצא בספרי יסוד · מוצגות %1$s תוצאות מכל הספרים</string>
+    <string name="search_switch_all">חיפוש בכל הספרים</string>
+    <string name="search_switch_base">רק ספרי יסוד</string>
     <string name="search_stop">בטל חיפוש</string>
     <string name="search_near_selector_label">קרבה</string>
     <string name="search_extended_label">חיפוש מורחב (כל הספרים)</string>

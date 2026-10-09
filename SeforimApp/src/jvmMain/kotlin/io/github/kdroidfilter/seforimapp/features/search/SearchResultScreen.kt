@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,7 +57,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
-import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
@@ -70,17 +68,16 @@ import io.github.kdroidfilter.seforimapp.features.author.plainPersonLinks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LogoBranch
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.UnifiedSearchBar
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookdetails.BookDetails
 import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
 import io.github.kdroidfilter.seforimapp.features.search.domain.searchKey
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.icons.TablerInfoSquare
 import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.santimattius.structured.annotations.StructuredScope
@@ -335,7 +332,7 @@ private fun SearchResultContentMvi(
 
     // The selection lives in the ViewModel, as the preview it drives
     val selectedLineId = preview?.hit?.lineId
-    val showBookDetails by appSettings.searchBookDetailsFlow.collectAsState()
+    val showBookDetails by appSettings.bookDetailsPaneFlow.collectAsState()
     val listFocus = remember { FocusRequester() }
     val windowInfo = LocalWindowInfo.current
 
@@ -377,8 +374,7 @@ private fun SearchResultContentMvi(
                     .fillMaxHeight(),
         ) {
             Row(Modifier.fillMaxSize()) {
-                // Narrow: the list takes what the details pane leaves
-                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.weight(1f)
+                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
                 // One card: the bar, the tabs and the status over the list, as a mail client's search
                 Column(listModifier.fillMaxHeight().card()) {
                     Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp)) {
@@ -618,23 +614,6 @@ private fun SearchResultContentMvi(
                         }
                     }
                 }
-                // The book's details (author, parts): a pane at the side, whatever the width, as its toggle in the
-                // end bar: shown or hidden there only
-                val book = preview?.book
-                if (showBookDetails && book != null) {
-                    Column(Modifier.width(DETAILS_PANE_WIDTH).fillMaxHeight().card()) {
-                        PaneHeader(
-                            label = stringResource(Res.string.search_book_details),
-                            onHide = { appSettings.setSearchBookDetailsVisible(false) },
-                        )
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp),
-                        ) {
-                            EntityDetails(entity = book, onOpenBookAt = actions.onOpenBookAt, onOpenAuthor = actions.onOpenAuthor)
-                        }
-                    }
-                }
             }
         }
 
@@ -734,7 +713,7 @@ private fun rememberSnippetDisplay(
 
 // Secondary text a dark grey: the theme's info grey is too faint to read a passage in
 @Composable
-private fun readingSecondary(): Color =
+internal fun readingSecondary(): Color =
     JewelTheme.globalColors.text.normal
         .copy(alpha = 0.72f)
 
@@ -951,7 +930,6 @@ private fun PassagePreview(
     }
 }
 
-private val DETAILS_PANE_WIDTH = 300.dp
 private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)
 private const val FOUND_LINE_MARGIN = 40
 
@@ -995,7 +973,7 @@ private fun categoriesAndPlace(
 
 /** A text link in [color], underlined on hover. */
 @Composable
-private fun ResultLink(
+internal fun ResultLink(
     text: String,
     color: Color,
     fontSize: TextUnit,
@@ -1102,19 +1080,6 @@ private val LIST_MAX_WIDTH = 580.dp
 // Below this the list takes the whole width, and a result opens on click
 private val TWO_PANES_MIN_WIDTH = 1000.dp
 
-/** A titled part of the panel, under a thin divider. */
-@Composable
-private fun PanelSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
-        Divider(Orientation.Horizontal, Modifier.fillMaxWidth().padding(bottom = 6.dp))
-        Text(title, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = readingSecondary())
-        content()
-    }
-}
-
 /** The book or author a query names, as Google's knowledge panel: what it is, and buttons to go there. */
 @Composable
 private fun EntityPanel(
@@ -1137,40 +1102,7 @@ private fun ColumnScope.EntityDetails(
 ) {
     val grey = readingSecondary()
     when (entity) {
-        is SearchEntity.BookEntity -> {
-            val book = entity.book
-            val accent = JewelTheme.globalColors.outlines.focused
-            Text(book.title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
-            if (entity.categories.isNotEmpty()) {
-                Text(entity.categories.joinToString(" › "), fontSize = 12.sp, color = grey)
-            }
-            book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    it,
-                    fontSize = 13.sp,
-                    lineHeight = 21.sp,
-                    color = grey,
-                    maxLines = 6,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            entity.authors.forEach { author ->
-                PanelSection(stringResource(Res.string.search_panel_author)) {
-                    ResultLink(AuthorNames.display(author.name), accent, 14.sp) { onOpenAuthor(author.id) }
-                    val facts = listOfNotNull(author.era?.let { AUTHOR_ERAS[it] }, authorYears(author))
-                    if (facts.isNotEmpty()) Text(facts.joinToString(" · "), fontSize = 12.sp, color = grey)
-                }
-            }
-            if (entity.parts.isNotEmpty()) {
-                PanelSection(stringResource(Res.string.search_panel_parts)) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        entity.parts.forEach { part ->
-                            ResultLink(part.title, accent, 13.sp) { onOpenBookAt(book.id, part.lineId) }
-                        }
-                    }
-                }
-            }
-        }
+        is SearchEntity.BookEntity -> BookDetails(entity, onOpenBookAt, onOpenAuthor)
 
         is SearchEntity.AuthorEntity -> {
             val details = entity.details
@@ -1300,21 +1232,5 @@ private fun StableListScrollbar(
             listState.requestScrollToItem(target)
         },
         modifier = modifier,
-    )
-}
-
-/** The end bar's toggle of the search's book-details pane. */
-@Composable
-fun SearchBookDetailsToggle() {
-    val appSettings = LocalAppGraph.current.appSettings
-    val visible by appSettings.searchBookDetailsFlow.collectAsState()
-    val label = stringResource(Res.string.search_book_details)
-    SelectableIconButtonWithToolip(
-        toolTipText = label,
-        onClick = { appSettings.setSearchBookDetailsVisible(!visible) },
-        isSelected = visible,
-        icon = TablerInfoSquare,
-        iconDescription = label,
-        label = label,
     )
 }

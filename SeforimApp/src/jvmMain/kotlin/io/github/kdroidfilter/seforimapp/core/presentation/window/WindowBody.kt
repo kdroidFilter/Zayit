@@ -40,7 +40,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.LineSideO
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.NavigationLayeredSides
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.PaneCard
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.ReaderSplitter
-import io.github.kdroidfilter.seforimapp.features.search.SearchBookDetailsToggle
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSession
 import io.github.kdroidfilter.seforimapp.framework.desktop.DockSizes
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
@@ -151,14 +150,7 @@ private fun ReaderBar(
         if (start) {
             StartVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, showBookTree = destination !is TabsDestination.Search)
         } else if (uiState.navigation.selectedBook != null || destination is TabsDestination.Search) {
-            EndVerticalBar(
-                uiState = uiState,
-                onEvent = viewModel::onEvent,
-                diacritics = diacritics,
-                extraBottomContent = {
-                    if (destination is TabsDestination.Search && !isBookTextShown(uiState)) SearchBookDetailsToggle()
-                },
-            )
+            EndVerticalBar(uiState = uiState, onEvent = viewModel::onEvent, diacritics = diacritics)
         }
     }
 }

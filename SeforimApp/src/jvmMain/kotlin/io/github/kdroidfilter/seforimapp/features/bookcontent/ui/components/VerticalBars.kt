@@ -82,8 +82,6 @@ fun EndVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     diacritics: DiacriticsMode,
-    // The tab's own toggles at the bottom (a search's book-details pane)
-    extraBottomContent: @Composable () -> Unit = {},
 ) {
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
@@ -162,7 +160,18 @@ fun EndVerticalBar(
 //            )
         },
         bottomContent = {
-            extraBottomContent()
+            // The book's details (a search's selected result's), as the line panes below
+            val bookDetailsVisible by LocalAppGraph.current.appSettings.bookDetailsPaneFlow
+                .collectAsState()
+            val bookDetailsLabel = stringResource(Res.string.search_book_details)
+            SelectableIconButtonWithToolip(
+                toolTipText = bookDetailsLabel,
+                onClick = { onEvent(BookContentEvent.ToggleBookDetails) },
+                isSelected = bookDetailsVisible,
+                icon = TablerInfoSquare,
+                iconDescription = bookDetailsLabel,
+                label = bookDetailsLabel,
+            )
             val targumEnabled = selectedBook?.hasTargumConnection == true
             val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
             val sourcesEnabled = selectedBook?.hasSourceConnection == true

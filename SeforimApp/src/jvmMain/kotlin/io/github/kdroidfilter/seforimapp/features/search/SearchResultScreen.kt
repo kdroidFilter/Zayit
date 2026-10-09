@@ -375,15 +375,9 @@ private fun SearchResultContentMvi(
         ) {
             Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
-                Column(listModifier.fillMaxHeight()) {
-                    // The bar, the tabs and the status in a card above the list, as a mail client's search
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp)
-                            .card()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                    ) {
+                // One card: the bar, the tabs and the status over the list, as a mail client's search
+                Column(listModifier.fillMaxHeight().card()) {
+                    Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp)) {
                         // The home page's smart bar: references, books and authors open; a text search runs here
                         // The logo beside the bar, as Google's
                         Row(
@@ -405,7 +399,7 @@ private fun SearchResultContentMvi(
                             Spacer(Modifier.height(10.dp))
                             CategoryTabs(tabCategories, selectedCategoryIds, actions.onShowOnlyCategory)
                         }
-                        Spacer(Modifier.height(12.dp))
+                        Spacer(Modifier.height(8.dp))
                         val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
                         val totalResults =
                             maxOf(
@@ -485,7 +479,7 @@ private fun SearchResultContentMvi(
                             }
                         }
                     }
-                    // One card holding the results, as the history page's
+                    Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
                     Box(
                         modifier =
                             Modifier
@@ -493,8 +487,7 @@ private fun SearchResultContentMvi(
                                 .fillMaxWidth()
                                 .focusRequester(listFocus)
                                 .onPreviewKeyEvent(::onListKey)
-                                .focusable()
-                                .card(),
+                                .focusable(),
                     ) {
                         if (visibleResults.isEmpty()) {
                             if (state.isLoading) {
@@ -1081,7 +1074,7 @@ private fun CategoryTab(
     }
 }
 
-private val LOGO_HEIGHT = 40.dp
+private val LOGO_HEIGHT = 44.dp
 private const val LOGO_RATIO = 634f / 684f
 
 /** The page's card look: rounded, bordered, on the panel's background, as the history page's cards. */

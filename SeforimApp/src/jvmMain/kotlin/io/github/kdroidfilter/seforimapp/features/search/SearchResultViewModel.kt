@@ -499,6 +499,9 @@ class SearchResultViewModel(
     suspend fun passageContext(hit: SearchResult): List<Line> =
         repository.getLines(hit.bookId, (hit.lineIndex - CONTEXT_LINES).coerceAtLeast(0), hit.lineIndex + CONTEXT_LINES)
 
+    /** A book's details (author, parts), for the preview of a result in it. */
+    suspend fun bookDetails(bookId: Long): SearchEntity.BookEntity? = runSuspendCatching { entityFinder.describeBook(bookId) }.getOrNull()
+
     /** Opens a book from the panel, in a new tab. */
     fun openBook(bookId: Long) {
         desktopManager.tabsViewModelFor(tabId)?.openTab(TabsDestination.BookContent(bookId = bookId, tabId = UUID.randomUUID().toString()))

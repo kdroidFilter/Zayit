@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -140,8 +141,9 @@ fun SearchResultInBookShellMvi(
     // The home page's bar state and callbacks, for the same bar here
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
-    // The lines around a result, for its preview
+    // The lines around a result, and its book's details, for its preview
     loadContext: suspend (SearchResult) -> List<Line>,
+    loadBook: suspend (Long) -> SearchEntity.BookEntity?,
     actions: SearchShellActions,
     tabUi: BookTabUi,
 ) {
@@ -178,6 +180,7 @@ fun SearchResultInBookShellMvi(
                 homeSearchUi = homeSearchUi,
                 homeSearchCallbacks = homeSearchCallbacks,
                 loadContext = loadContext,
+                loadBook = loadBook,
                 actions = actions,
                 tabId = tabId,
             )
@@ -198,6 +201,7 @@ private fun SearchResultContentMvi(
     homeSearchUi: SearchHomeUiState,
     homeSearchCallbacks: HomeSearchCallbacks,
     loadContext: suspend (SearchResult) -> List<Line>,
+    loadBook: suspend (Long) -> SearchEntity.BookEntity?,
     actions: SearchShellActions,
     tabId: String,
 ) {
@@ -354,7 +358,7 @@ private fun SearchResultContentMvi(
     BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
         // Wide windows read the selected passage beside the list, as a mail client
         val twoPanes = maxWidth >= TWO_PANES_MIN_WIDTH
-        val listWidth = (maxWidth * 0.32f).coerceIn(LIST_MIN_WIDTH, LIST_MAX_WIDTH)
+        val listWidth = (maxWidth * 0.34f).coerceIn(LIST_MIN_WIDTH, LIST_MAX_WIDTH)
         Column(
             modifier =
                 Modifier
@@ -362,202 +366,204 @@ private fun SearchResultContentMvi(
                     .fillMaxHeight()
                     .padding(16.dp),
         ) {
-            // The bar, the tabs and the status in a card, as the panes under them
-            Column(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .card()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-            ) {
-                // The home page's smart bar: references, books and authors open; a text search runs here
-                // The logo beside the bar, as Google's
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.widthIn(max = HEADER_MAX_WIDTH),
-                ) {
-                    LogoWord(Modifier.height(LOGO_HEIGHT).aspectRatio(LOGO_RATIO))
-                    UnifiedSearchBar(
-                        searchUi = homeSearchUi,
-                        searchCallbacks = homeSearchCallbacks,
-                        modifier = Modifier.weight(1f),
-                        initialText = state.query,
-                        autoFocus = false,
-                    )
-                }
-
-                if (categories.size > 1) {
-                    Spacer(Modifier.height(10.dp))
-                    CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
-                }
-                Spacer(Modifier.height(12.dp))
-                val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
-                val totalResults =
-                    maxOf(
-                        loadedResults,
-                        (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
-                    )
-                // Only show top progress bar during initial search, not lazy loading
-                // (lazy loading has its own spinner at the bottom of the list)
-                val showProgress = state.isLoading
-                val hasTotal = (state.progressTotal ?: 0L) > 0L
-                val progressFraction by animateFloatAsState(
-                    targetValue =
-                        if (showProgress && hasTotal) {
-                            val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
-                            (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
-                        } else {
-                            0f
-                        },
-                    animationSpec = tween(durationMillis = 250, easing = LinearEasing),
-                    label = "searchProgress",
-                )
-
-                // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    SearchStatusLine(
-                        total = totalResults,
-                        isLoading = showProgress,
-                        globalExtended = state.globalExtended,
-                        baseBooksHadNoResults = state.baseBooksHadNoResults,
-                        onGlobalExtendedChange = actions.onGlobalExtendedChange,
-                        modifier = Modifier.padding(end = 12.dp),
-                    )
-
-                    // The progress shows while searching only
-                    if (showProgress) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .height(4.dp)
-                                    .weight(1f)
-                                    .clip(RoundedCornerShape(percent = 50))
-                                    .background(
-                                        JewelTheme.globalColors.borders.disabled
-                                            .copy(alpha = 0.6f),
-                                    ),
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
+                Column(listModifier.fillMaxHeight()) {
+                    // The bar, the tabs and the status in a card above the list, as a mail client's search
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp)
+                            .card()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    ) {
+                        // The home page's smart bar: references, books and authors open; a text search runs here
+                        // The logo beside the bar, as Google's
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
                         ) {
-                            if (showProgress && progressFraction > 0f) {
+                            LogoWord(Modifier.height(LOGO_HEIGHT).aspectRatio(LOGO_RATIO))
+                            UnifiedSearchBar(
+                                searchUi = homeSearchUi,
+                                searchCallbacks = homeSearchCallbacks,
+                                modifier = Modifier.weight(1f),
+                                initialText = state.query,
+                                autoFocus = false,
+                            )
+                        }
+
+                        if (categories.size > 1) {
+                            Spacer(Modifier.height(10.dp))
+                            CategoryTabs(categories, selectedCategoryIds, actions.onShowOnlyCategory)
+                        }
+                        Spacer(Modifier.height(12.dp))
+                        val loadedResults = maxOf(state.progressCurrent, visibleResults.size)
+                        val totalResults =
+                            maxOf(
+                                loadedResults,
+                                (state.progressTotal ?: loadedResults.toLong()).coerceAtLeast(loadedResults.toLong()).toInt(),
+                            )
+                        // Only show top progress bar during initial search, not lazy loading
+                        // (lazy loading has its own spinner at the bottom of the list)
+                        val showProgress = state.isLoading
+                        val hasTotal = (state.progressTotal ?: 0L) > 0L
+                        val progressFraction by animateFloatAsState(
+                            targetValue =
+                                if (showProgress && hasTotal) {
+                                    val total = (state.progressTotal ?: 1L).coerceAtLeast(1L)
+                                    (state.progressCurrent.toFloat() / total.toFloat()).coerceIn(0f, 1f)
+                                } else {
+                                    0f
+                                },
+                            animationSpec = tween(durationMillis = 250, easing = LinearEasing),
+                            label = "searchProgress",
+                        )
+
+                        // Header row: results count + inline loader + optional cancel (space reserved to avoid width jitter)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            SearchStatusLine(
+                                total = totalResults,
+                                isLoading = showProgress,
+                                globalExtended = state.globalExtended,
+                                baseBooksHadNoResults = state.baseBooksHadNoResults,
+                                onGlobalExtendedChange = actions.onGlobalExtendedChange,
+                                modifier = Modifier.padding(end = 12.dp),
+                            )
+
+                            // The progress shows while searching only
+                            if (showProgress) {
                                 Box(
                                     modifier =
                                         Modifier
-                                            .fillMaxHeight()
-                                            .fillMaxWidth(progressFraction)
-                                            .background(JewelTheme.globalColors.outlines.focused),
-                                )
+                                            .height(4.dp)
+                                            .weight(1f)
+                                            .clip(RoundedCornerShape(percent = 50))
+                                            .background(
+                                                JewelTheme.globalColors.borders.disabled
+                                                    .copy(alpha = 0.6f),
+                                            ),
+                                ) {
+                                    if (showProgress && progressFraction > 0f) {
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxHeight()
+                                                    .fillMaxWidth(progressFraction)
+                                                    .background(JewelTheme.globalColors.outlines.focused),
+                                        )
+                                    }
+                                }
+                            } else {
+                                Spacer(Modifier.weight(1f))
                             }
-                        }
-                    } else {
-                        Spacer(Modifier.weight(1f))
-                    }
 
-                    // Reserve space for the cancel button to prevent width jumps
-                    Box(
-                        modifier = Modifier.width(40.dp).height(28.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        // Only show cancel during initial search, not lazy loading
-                        if (state.isLoading) {
-                            IconActionButton(
-                                key = AllIconsKeys.Windows.Close,
-                                onClick = actions.onCancelSearch,
-                                contentDescription = stringResource(Res.string.search_stop),
-                            )
-                        }
-                    }
-                }
-            }
-            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
-                // One card holding the results, as the history page's
-                Box(
-                    modifier =
-                        listModifier
-                            .fillMaxHeight()
-                            .focusRequester(listFocus)
-                            .onPreviewKeyEvent(::onListKey)
-                            .focusable()
-                            .card(),
-                ) {
-                    if (visibleResults.isEmpty()) {
-                        if (state.isLoading) {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
-                            }
-                        } else {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
-                            }
-                        }
-                    } else {
-                        Box(modifier = Modifier.fillMaxSize()) {
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            // Reserve space for the cancel button to prevent width jumps
+                            Box(
+                                modifier = Modifier.width(40.dp).height(28.dp),
+                                contentAlignment = Alignment.Center,
                             ) {
-                                itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
-                                    ResultView(
-                                        item = item,
-                                        selected = twoPanes && item.hit.lineId == selected?.hit?.lineId,
-                                        findQuery = activeFindQuery,
-                                        bookFontCode = bookFontCode,
-                                        breadcrumbs = breadcrumbs,
-                                        onRequestBreadcrumb = actions.onRequestBreadcrumb,
-                                        // Wide: a click shows the passage beside the list, a double click opens it; narrow: opens it
-                                        onClick = { result ->
-                                            if (twoPanes) {
-                                                selectedLineId = result.lineId
-                                                listFocus.requestFocus()
-                                            } else {
-                                                val mods = windowInfo.keyboardModifiers
-                                                openResult(result, mods.isCtrlPressed || mods.isMetaPressed)
-                                            }
-                                        },
-                                        onOpen = { result -> openResult(result, false) },
-                                        onMoreInBook = { actions.onBookCheckedChange(item.hit.bookId, true) },
+                                // Only show cancel during initial search, not lazy loading
+                                if (state.isLoading) {
+                                    IconActionButton(
+                                        key = AllIconsKeys.Windows.Close,
+                                        onClick = actions.onCancelSearch,
+                                        contentDescription = stringResource(Res.string.search_stop),
                                     )
                                 }
-                                // Loading indicator at the end of the list (only for lazy loading)
-                                if (state.isLoadingMore) {
-                                    item {
-                                        Box(
-                                            Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            CircularProgressIndicator()
+                            }
+                        }
+                    }
+                    // One card holding the results, as the history page's
+                    Box(
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                                .focusRequester(listFocus)
+                                .onPreviewKeyEvent(::onListKey)
+                                .focusable()
+                                .card(),
+                    ) {
+                        if (visibleResults.isEmpty()) {
+                            if (state.isLoading) {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(stringResource(Res.string.search_searching), fontSize = commentSize.sp)
+                                }
+                            } else {
+                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                    Text(text = stringResource(Res.string.search_no_results), fontSize = commentSize.sp)
+                                }
+                            }
+                        } else {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize().padding(start = 8.dp, end = 16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    itemsIndexed(items = items, key = { _, item -> item.hit.lineId }) { _, item ->
+                                        ResultView(
+                                            item = item,
+                                            selected = twoPanes && item.hit.lineId == selected?.hit?.lineId,
+                                            findQuery = activeFindQuery,
+                                            bookFontCode = bookFontCode,
+                                            breadcrumbs = breadcrumbs,
+                                            onRequestBreadcrumb = actions.onRequestBreadcrumb,
+                                            // Wide: a click shows the passage beside the list, a double click opens it; narrow: opens it
+                                            onClick = { result ->
+                                                if (twoPanes) {
+                                                    selectedLineId = result.lineId
+                                                    listFocus.requestFocus()
+                                                } else {
+                                                    val mods = windowInfo.keyboardModifiers
+                                                    openResult(result, mods.isCtrlPressed || mods.isMetaPressed)
+                                                }
+                                            },
+                                            onOpen = { result -> openResult(result, false) },
+                                            onMoreInBook = { actions.onBookCheckedChange(item.hit.bookId, true) },
+                                        )
+                                    }
+                                    // Loading indicator at the end of the list (only for lazy loading)
+                                    if (state.isLoadingMore) {
+                                        item {
+                                            Box(
+                                                Modifier.fillMaxWidth().padding(vertical = 16.dp),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                CircularProgressIndicator()
+                                            }
                                         }
                                     }
                                 }
+                                StableListScrollbar(
+                                    listState = listState,
+                                    loadedCount = items.size,
+                                    totalCount = items.size,
+                                    modifier = Modifier.align(Alignment.CenterEnd),
+                                )
                             }
-                            StableListScrollbar(
-                                listState = listState,
-                                loadedCount = items.size,
-                                totalCount = items.size,
-                                modifier = Modifier.align(Alignment.CenterEnd),
-                            )
                         }
-                    }
 
-                    // Loader overlay while applying filters (category/book/TOC) with quick fade
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isFiltering,
-                        enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
-                        exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing)),
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
-                                    .zIndex(1f),
-                            contentAlignment = Alignment.Center,
+                        // Loader overlay while applying filters (category/book/TOC) with quick fade
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isFiltering,
+                            enter = fadeIn(tween(durationMillis = 120, easing = LinearEasing)),
+                            exit = fadeOut(tween(durationMillis = 120, easing = LinearEasing)),
                         ) {
-                            CircularProgressIndicator()
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(JewelTheme.globalColors.panelBackground.copy(alpha = 0.4f))
+                                        .zIndex(1f),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CircularProgressIndicator()
+                            }
                         }
                     }
                 }
@@ -580,6 +586,15 @@ private fun SearchResultContentMvi(
                                 bookFontCode = bookFontCode,
                                 textSize = PREVIEW_TEXT_SIZE,
                                 loadContext = loadContext,
+                                loadBook = loadBook,
+                                details = { book ->
+                                    EntityDetails(
+                                        entity = book,
+                                        onOpenBook = actions.onOpenBook,
+                                        onOpenBookAt = actions.onOpenBookAt,
+                                        onOpenAuthor = actions.onOpenAuthor,
+                                    )
+                                },
                                 onOpen = { openResult(item.hit, false) },
                                 modifier = Modifier.weight(1f),
                             )
@@ -802,9 +817,13 @@ private fun PassagePreview(
     bookFontCode: String,
     textSize: Float,
     loadContext: suspend (SearchResult) -> List<Line>,
+    loadBook: suspend (Long) -> SearchEntity.BookEntity?,
+    details: @Composable (SearchEntity.BookEntity) -> Unit,
     onOpen: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val currentLoadBook by rememberUpdatedState(loadBook)
+    val book by produceState<SearchEntity.BookEntity?>(null, hit.bookId) { value = currentLoadBook(hit.bookId) }
     val accent = JewelTheme.globalColors.outlines.focused
     val ink = JewelTheme.globalColors.text.normal
     val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
@@ -846,45 +865,65 @@ private fun PassagePreview(
             }
         }
         Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
-        VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f).fillMaxWidth()) {
-            // The ScrollState overload scrolls its content itself
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.widthIn(max = READING_WIDTH).fillMaxWidth().padding(horizontal = 28.dp, vertical = 22.dp),
-                ) {
-                    lines?.forEach { line ->
-                        val found = line.id == hit.lineId
-                        val text =
-                            remember(line.id, textSize, words, highlight) {
-                                words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
-                                    highlightAnnotated(acc, word, highlight)
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            // Wide: the book's details (author, parts) beside the text, where its margin would be empty
+            val showDetails = maxWidth >= PREVIEW_DETAILS_MIN_WIDTH
+            Row(Modifier.fillMaxSize()) {
+                VerticallyScrollableContainer(scrollState = scroll, modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    // The ScrollState overload scrolls its content itself
+                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.widthIn(max = READING_WIDTH).fillMaxWidth().padding(horizontal = 28.dp, vertical = 22.dp),
+                        ) {
+                            lines?.forEach { line ->
+                                val found = line.id == hit.lineId
+                                val text =
+                                    remember(line.id, textSize, words, highlight) {
+                                        words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
+                                            highlightAnnotated(acc, word, highlight)
+                                        }
+                                    }
+                                Row(
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(IntrinsicSize.Min)
+                                            .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
+                                ) {
+                                    // The found line: a bar on its side, the text at full strength
+                                    Box(
+                                        Modifier
+                                            .width(3.dp)
+                                            .fillMaxHeight()
+                                            .background(if (found) accent else Color.Transparent),
+                                    )
+                                    Text(
+                                        text = text,
+                                        fontFamily = fontFamily,
+                                        fontSize = textSize.sp,
+                                        lineHeight = (textSize * 1.8f).sp,
+                                        color = if (found) ink else ink.copy(alpha = 0.45f),
+                                        textAlign = TextAlign.Justify,
+                                        modifier = Modifier.weight(1f).padding(start = 14.dp),
+                                    )
                                 }
                             }
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(IntrinsicSize.Min)
-                                    .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
-                        ) {
-                            // The found line: a bar on its side, the text at full strength
-                            Box(
-                                Modifier
-                                    .width(3.dp)
-                                    .fillMaxHeight()
-                                    .background(if (found) accent else Color.Transparent),
-                            )
-                            Text(
-                                text = text,
-                                fontFamily = fontFamily,
-                                fontSize = textSize.sp,
-                                lineHeight = (textSize * 1.8f).sp,
-                                color = if (found) ink else ink.copy(alpha = 0.45f),
-                                textAlign = TextAlign.Justify,
-                                modifier = Modifier.weight(1f).padding(start = 14.dp),
-                            )
                         }
+                    }
+                }
+                book?.takeIf { showDetails }?.let { info ->
+                    Divider(Orientation.Vertical, Modifier.fillMaxHeight())
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier =
+                            Modifier
+                                .width(PREVIEW_DETAILS_WIDTH)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(20.dp),
+                    ) {
+                        details(info)
                     }
                 }
             }
@@ -892,7 +931,9 @@ private fun PassagePreview(
     }
 }
 
-private val READING_WIDTH = 760.dp
+private val READING_WIDTH = 900.dp
+private val PREVIEW_DETAILS_MIN_WIDTH = 1100.dp
+private val PREVIEW_DETAILS_WIDTH = 300.dp
 private const val PREVIEW_TEXT_SIZE = 17f
 private val BOLD_SPAN = Regex("<b>(.*?)</b>", RegexOption.IGNORE_CASE)
 private const val FOUND_LINE_MARGIN = 40
@@ -1040,9 +1081,8 @@ private fun Modifier.card(): Modifier {
         .background(JewelTheme.globalColors.panelBackground)
 }
 
-private val HEADER_MAX_WIDTH = 900.dp
-private val LIST_MIN_WIDTH = 340.dp
-private val LIST_MAX_WIDTH = 520.dp
+private val LIST_MIN_WIDTH = 380.dp
+private val LIST_MAX_WIDTH = 580.dp
 
 // Below this the list takes the whole width, and a result opens on click
 private val TWO_PANES_MIN_WIDTH = 1000.dp
@@ -1069,11 +1109,21 @@ private fun EntityPanel(
     onOpenAuthor: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.card().padding(16.dp)) {
+        EntityDetails(entity, onOpenBook, onOpenBookAt, onOpenAuthor)
+    }
+}
+
+/** What the panel shows of a book (categories, author, parts) or an author (era, bio, books). */
+@Composable
+private fun ColumnScope.EntityDetails(
+    entity: SearchEntity,
+    onOpenBook: (Long) -> Unit,
+    onOpenBookAt: (bookId: Long, lineId: Long) -> Unit,
+    onOpenAuthor: (Long) -> Unit,
+) {
     val grey = readingSecondary()
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = modifier.card().padding(16.dp),
-    ) {
+    run {
         when (entity) {
             is SearchEntity.BookEntity -> {
                 val book = entity.book

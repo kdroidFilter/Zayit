@@ -9,6 +9,7 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.ScrollableState
@@ -40,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -78,6 +80,8 @@ import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.features.search.domain.reference.ResolvedReference
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
+import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.kdroidfilter.seforimapp.texteffects.TypewriterPlaceholder
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
@@ -675,6 +679,7 @@ private fun SuggestionsPanel(
                     SuggestionRow(
                         parts = listOf(jump.book.title, jump.label),
                         onClick = { onPickJump(jump) },
+                        kind = SuggestionKind.PLACE,
                         highlighted = idx == focusedIndex,
                         showTabHint = idx == focusedIndex,
                         hint = "↵",
@@ -686,6 +691,7 @@ private fun SuggestionsPanel(
                         SuggestionRow(
                             parts = listOf(textSearchLabel),
                             onClick = onTextSearch,
+                            kind = SuggestionKind.TEXT_SEARCH,
                             highlighted = rowIndex == focusedIndex,
                             showTabHint = rowIndex == focusedIndex,
                             hint = "↵",
@@ -699,6 +705,7 @@ private fun SuggestionsPanel(
                     SuggestionRow(
                         parts = dedupPath,
                         onClick = { onPickCategory(cat) },
+                        kind = SuggestionKind.CATEGORY,
                         highlighted = rowIndex == focusedIndex,
                         showTabHint = rowIndex == focusedIndex,
                     )
@@ -710,6 +717,7 @@ private fun SuggestionsPanel(
                     SuggestionRow(
                         parts = dedupPath,
                         onClick = { onPickBook(book) },
+                        kind = SuggestionKind.BOOK,
                         highlighted = rowIndex == focusedIndex,
                         showTabHint = rowIndex == focusedIndex,
                     )
@@ -809,6 +817,7 @@ private fun TocSuggestionsPanel(
                     SuggestionRow(
                         parts = parts,
                         onClick = { onPickToc(ts) },
+                        kind = SuggestionKind.PLACE,
                         highlighted = index == focusedIndex,
                         showTabHint = index == focusedIndex,
                     )
@@ -818,6 +827,7 @@ private fun TocSuggestionsPanel(
                         SuggestionRow(
                             parts = listOf(textSearchLabel),
                             onClick = onTextSearch,
+                            kind = SuggestionKind.TEXT_SEARCH,
                             highlighted = suggestions.size == focusedIndex,
                             showTabHint = suggestions.size == focusedIndex,
                             hint = "↵",
@@ -925,10 +935,28 @@ private fun stripBookPrefixFromTocPath(
     return parts
 }
 
+/** What a suggestion row leads to, shown by its icon. */
+private enum class SuggestionKind { PLACE, TEXT_SEARCH, CATEGORY, BOOK }
+
+@Composable
+private fun SuggestionIcon(kind: SuggestionKind) {
+    val tint = JewelTheme.globalColors.text.info
+    val iconModifier = Modifier.size(14.dp)
+    when (kind) {
+        SuggestionKind.PLACE ->
+            Image(rememberVectorPainter(JournalBookmark), null, iconModifier, colorFilter = ColorFilter.tint(tint))
+        SuggestionKind.BOOK ->
+            Image(rememberVectorPainter(bookOpenTabs(tint)), null, iconModifier, colorFilter = ColorFilter.tint(tint))
+        SuggestionKind.TEXT_SEARCH -> Icon(AllIconsKeys.Actions.Find, null, iconModifier, tint = tint)
+        SuggestionKind.CATEGORY -> Icon(AllIconsKeys.Nodes.Folder, null, iconModifier, tint = tint)
+    }
+}
+
 @Composable
 private fun SuggestionRow(
     parts: List<String>,
     onClick: () -> Unit,
+    kind: SuggestionKind,
     highlighted: Boolean = false,
     showTabHint: Boolean = false,
     // The key hint shown on the highlighted row; Tab (pick the book) by default
@@ -986,6 +1014,8 @@ private fun SuggestionRow(
                 .hoverable(hoverSource)
                 .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
+        SuggestionIcon(kind)
+        Spacer(Modifier.width(8.dp))
         Box(
             modifier = Modifier.weight(1f).horizontalScroll(hScroll),
         ) {

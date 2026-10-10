@@ -411,7 +411,7 @@ private fun HomeBody(
                         FullWidthSection(gapAfter = 4.dp) {
                             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                                 Box(homeContentModifier) {
-                                    Spacer(Modifier.height(32.dp))
+                                    Spacer(Modifier.height(4.dp))
                                 }
                             }
                         }

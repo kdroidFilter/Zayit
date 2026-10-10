@@ -1393,8 +1393,8 @@ private fun LineItem(
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
     highlightQuery: String? = null,
-    // Smart find: the line highlighted as a search result for this query (its words, else the passage closest in
-    // meaning), on the text as displayed
+    // Smart find: the line highlighted for this query as a find by meaning (its passage closest in meaning, and the
+    // query's words), on the text as displayed
     smartQuery: String? = null,
     currentMatchOrdinal: Int? = null,
     // Given to the line showing the current match only, which publishes where the match sits
@@ -1499,7 +1499,15 @@ private fun LineItem(
     val smartRanges by produceState<List<IntRange>?>(null, annotated.text, smartQuery) {
         value =
             smartQuery?.let { query ->
-                runSuspendCatching { searchEngine.highlights(listOf(annotated.text), query).single().ranges }.getOrNull()
+                runSuspendCatching {
+                    searchEngine
+                        .highlights(
+                            listOf(annotated.text),
+                            query,
+                            alwaysByMeaning = true,
+                        ).single()
+                        .ranges
+                }.getOrNull()
             }
     }
 

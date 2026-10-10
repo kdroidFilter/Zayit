@@ -8,7 +8,6 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchFacets
 import io.github.kdroidfilter.seforimlibrary.search.SearchPage
 import io.github.kdroidfilter.seforimlibrary.search.SearchSession
 import io.github.kdroidfilter.seforimlibrary.search.SnippetSources
-import io.github.kdroidfilter.seforimlibrary.search.TextHighlights
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_PAGE_SIZE
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_QUERIES
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_ROUNDS
@@ -103,24 +102,12 @@ internal class HybridSearchEngine(
         ranges: List<IntRange>,
     ): String = lexical.rangeSnippet(text, ranges)
 
-    override suspend fun highlights(
-        texts: List<String>,
+    override suspend fun passagesByMeaning(
         query: String,
-    ): List<TextHighlights> {
-        val words = texts.map { lexical.highlightRanges(it, query) }
-        // Lines without the query's words: the passage closest in meaning, all of them in one batched model run
-        val byMeaning = texts.indices.filter { words[it].isEmpty() && texts[it].isNotBlank() }
-        val semantic = if (byMeaning.isEmpty()) null else ensureSemantic()
-        if (semantic == null) return words.map { TextHighlights(it) }
-        val passages = withContext(Dispatchers.Default) { semantic.bestPassages(query, byMeaning.map { texts[it] }) }
-        val passageOf = byMeaning.indices.associate { byMeaning[it] to passages[it] }
-        return texts.mapIndexed { i, text ->
-            if (i !in passageOf) return@mapIndexed TextHighlights(words[i])
-            // A single clause is the passage itself
-            val passage = passageOf[i] ?: text.trim()
-            val at = text.indexOf(passage)
-            TextHighlights(if (at < 0) emptyList() else listOf(at until at + passage.length), byMeaning = true)
-        }
+        texts: List<String>,
+    ): List<String?>? {
+        val semantic = ensureSemantic() ?: return null
+        return withContext(Dispatchers.Default) { semantic.bestPassages(query, texts) }
     }
 
     override fun findInBookCandidates(

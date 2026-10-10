@@ -44,6 +44,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.SearchResult
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
+import io.github.kdroidfilter.seforimlibrary.search.SearchFacets
+import io.github.kdroidfilter.seforimlibrary.search.SearchPage
 import io.github.kdroidfilter.seforimlibrary.search.SearchSession
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
@@ -794,7 +796,7 @@ class SearchResultViewModel(
                     // Skip pages we already have and set up lazy loading state
                     if (session != null) {
                         val pagesToSkip = (cached.results.size + LAZY_PAGE_SIZE - 1) / LAZY_PAGE_SIZE
-                        repeat(pagesToSkip) { session.nextPage(LAZY_PAGE_SIZE) }
+                        repeat(pagesToSkip) { session.nextPage(LAZY_PAGE_SIZE, snippets = false) }
                         lazyLoadMutex.withLock {
                             currentSession = session
                             currentTocAllowedLineIds = lineIds ?: emptySet()
@@ -990,59 +992,52 @@ class SearchResultViewModel(
                             } // Use baseBookOnly parameter instead
                         }
 
-                    var facets =
-                        lucene.computeFacets(
-                            query = q,
-                            near = DEFAULT_NEAR,
-                            bookIds = facetsBookIds,
-                            baseBookOnly = baseBookOnly,
-                        )
-
-                    // Fallback: si aucun résultat en mode "livres de base", basculer en mode approfondi
-                    if (facets != null && facets.totalHits == 0L && baseBookOnly) {
-                        _uiState.value = _uiState.value.copy(globalExtended = true, baseBooksHadNoResults = true)
-                        updatePersistedSearch { it.copy(globalExtended = true) }
-
-                        facets =
-                            lucene.computeFacets(
-                                query = q,
-                                near = DEFAULT_NEAR,
-                                bookIds = facetsBookIds,
-                                baseBookOnly = false,
-                            )
-                    }
-
-                    if (facets != null) {
-                        // Set aggregates immediately
-                        _categoryAgg.value =
-                            CategoryAgg(
-                                categoryCounts = facets.categoryCounts,
-                                bookCounts = facets.bookCounts,
-                                booksForCategory = emptyMap(), // Not needed for tree building
-                            )
-                        _uiState.value = _uiState.value.copy(progressTotal = facets.totalHits)
-
-                        // Build tree from facets immediately
-                        val tree =
-                            buildSearchTreeUseCase.invoke(
-                                facetCategoryCounts = facets.categoryCounts,
-                                facetBookCounts = facets.bookCounts,
-                            )
-                        _searchTree.value = tree.toImmutableList()
-                        facetsComputed = true
-                    }
-
                     // Close any existing session before opening a new one
                     lazyLoadMutex.withLock {
                         currentSession?.close()
                         currentSession = null
                     }
 
-                    val sessionInfo = prepareSearchSession(q, fetchBookId, fetchTocId)
-                    if (sessionInfo == null) {
+                    // Facets and the first page run at once; the results show first, the tree right after
+                    suspend fun facetsAndFirstPage(
+                        baseOnly: Boolean,
+                    ): Pair<SearchFacets?, Pair<Pair<SearchSession, Set<Long>>, SearchPage?>?> =
+                        coroutineScope {
+                            val facetsJob =
+                                async {
+                                    lucene.computeFacets(query = q, near = DEFAULT_NEAR, bookIds = facetsBookIds, baseBookOnly = baseOnly)
+                                }
+                            val pageJob =
+                                async {
+                                    prepareSearchSession(q, fetchBookId, fetchTocId)?.let { info ->
+                                        info to info.first.nextPage(LAZY_PAGE_SIZE)
+                                    }
+                                }
+                            facetsJob.await() to pageJob.await()
+                        }
+
+                    var (facets, opened) = facetsAndFirstPage(baseBookOnly)
+
+                    // Fallback: si aucun résultat en mode "livres de base", basculer en mode approfondi
+                    if (facets != null && facets.totalHits == 0L && baseBookOnly) {
+                        opened?.first?.first?.close()
+                        _uiState.value = _uiState.value.copy(globalExtended = true, baseBooksHadNoResults = true)
+                        updatePersistedSearch { it.copy(globalExtended = true) }
+                        val retry = facetsAndFirstPage(baseOnly = false)
+                        facets = retry.first
+                        opened = retry.second
+                    }
+
+                    if (facets != null) {
+                        _uiState.value = _uiState.value.copy(progressTotal = facets.totalHits)
+                    }
+
+                    if (opened == null) {
                         _uiState.value = _uiState.value.copy(results = emptyList(), progressCurrent = 0, progressTotal = 0)
+                        applyFacets(facets)
                         return@launch
                     }
+                    val (sessionInfo, firstPage) = opened
                     val (session, tocAllowedLineIds) = sessionInfo
 
                     // Store session for lazy loading
@@ -1052,8 +1047,6 @@ class SearchResultViewModel(
                         currentSearchQuery = q
                     }
 
-                    // Load only the first page
-                    val firstPage = session.nextPage(LAZY_PAGE_SIZE)
                     if (firstPage == null) {
                         _uiState.value =
                             _uiState.value.copy(
@@ -1062,17 +1055,11 @@ class SearchResultViewModel(
                                 progressCurrent = 0,
                                 progressTotal = 0,
                             )
+                        applyFacets(facets)
                         return@launch
                     }
 
                     val filteredHits = executeSearchUseCase.filterHitsByLineIds(firstPage.hits, tocAllowedLineIds)
-
-                    // Update TOC counts for first page
-                    if (filteredHits.isNotEmpty()) {
-                        _uiState.value.scopeBook
-                            ?.id
-                            ?.let { updateTocCountsForHits(filteredHits, it) }
-                    }
 
                     val results = hitsToResults(filteredHits, q)
                     _uiState.value =
@@ -1083,6 +1070,15 @@ class SearchResultViewModel(
                             progressCurrent = results.size,
                             progressTotal = firstPage.totalHits,
                         )
+                    applyFacets(facets)
+                    refineSnippets(session, filteredHits)
+
+                    // Update TOC counts for first page
+                    if (filteredHits.isNotEmpty()) {
+                        _uiState.value.scopeBook
+                            ?.id
+                            ?.let { updateTocCountsForHits(filteredHits, it) }
+                    }
                 } finally {
                     // Clear loading promptly; if a new visibleResults emission is pending, wait briefly
                     // but never block indefinitely (important when final results are empty and identical
@@ -1145,6 +1141,7 @@ class SearchResultViewModel(
                         progressCurrent = currentResults.size + newResults.size,
                         isLoadingMore = false,
                     )
+                refineSnippets(session, filteredHits)
             } catch (_: Exception) {
                 _uiState.value = _uiState.value.copy(isLoadingMore = false)
             }
@@ -1179,6 +1176,45 @@ class SearchResultViewModel(
             }
         val safeSession = session ?: return null
         return safeSession to tocAllowedLineIds
+    }
+
+    /** Shows the facet counts and builds the result tree from them. */
+    private suspend fun applyFacets(facets: SearchFacets?) {
+        if (facets == null) return
+        _categoryAgg.value =
+            CategoryAgg(
+                categoryCounts = facets.categoryCounts,
+                bookCounts = facets.bookCounts,
+                booksForCategory = emptyMap(), // Not needed for tree building
+            )
+        val tree =
+            buildSearchTreeUseCase.invoke(
+                facetCategoryCounts = facets.categoryCounts,
+                facetBookCounts = facets.bookCounts,
+            )
+        _searchTree.value = tree.toImmutableList()
+        facetsComputed = true
+    }
+
+    /**
+     * Swaps in the snippets the session builds after the page is shown (e.g. the passage closest in meaning for
+     * semantic-only hits), while the session is still the current one.
+     */
+    private fun refineSnippets(
+        session: SearchSession,
+        hits: List<LineHit>,
+    ) {
+        if (hits.isEmpty()) return
+        viewModelScope.launch(Dispatchers.Default) {
+            val refined = runSuspendCatching { session.refinedSnippets(hits) }.getOrNull()
+            if (refined.isNullOrEmpty()) return@launch
+            lazyLoadMutex.withLock {
+                if (currentSession !== session) return@launch
+                _uiState.update { state ->
+                    state.copy(results = state.results.map { r -> refined[r.lineId]?.let { r.copy(snippet = it) } ?: r })
+                }
+            }
+        }
     }
 
     private fun hitsToResults(
@@ -1440,6 +1476,7 @@ class SearchResultViewModel(
                             hasMore = !firstPage.isLastPage,
                             progressCurrent = results.size,
                         )
+                    refineSnippets(session, firstPage.hits)
                 } finally {
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }
@@ -1752,6 +1789,7 @@ class SearchResultViewModel(
                             scrollOffset = 0,
                             scrollToAnchorTimestamp = System.currentTimeMillis(),
                         )
+                    refineSnippets(session, firstPage.hits)
                 } finally {
                     _uiState.value = _uiState.value.copy(isLoading = false)
                 }

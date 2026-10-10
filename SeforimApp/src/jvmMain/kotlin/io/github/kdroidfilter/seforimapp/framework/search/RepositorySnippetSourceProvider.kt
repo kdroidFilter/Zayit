@@ -11,6 +11,7 @@ import org.jsoup.safety.Safelist
 // Must match the indexer constants
 private const val SNIPPET_NEIGHBOR_WINDOW = 4
 private const val SNIPPET_MIN_LENGTH = 280
+private val WHITESPACE = Regex("\\s+")
 
 /**
  * Implementation of [SnippetProvider] that fetches line content from the database
@@ -31,24 +32,21 @@ class RepositorySnippetSourceProvider(
             val result = mutableMapOf<Long, String>()
 
             for ((bookId, bookLines) in byBook) {
-                // Determine the range of line indices we need to load (including neighbors)
-                val minIdx = bookLines.minOf { it.lineIndex }
-                val maxIdx = bookLines.maxOf { it.lineIndex }
-                val rangeStart = (minIdx - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
-                val rangeEnd = maxIdx + SNIPPET_NEIGHBOR_WINDOW
+                // Load only the window around each hit (overlapping windows merged): a book's hits can be thousands
+                // of lines apart, and loading everything between them cost seconds on large books
+                val contentByIndex = HashMap<Int, String>()
+                for (range in neighborWindows(bookLines.map { it.lineIndex })) {
+                    repository.getLines(bookId, range.first, range.last).forEach { contentByIndex[it.lineIndex] = it.content }
+                }
+                // Cleaned lazily: neighbors are only needed for short lines
+                val plainByIndex = HashMap<Int, String>()
 
-                // Load all lines in the extended range
-                val allLines = repository.getLines(bookId, rangeStart, rangeEnd)
-
-                // Create a map of lineIndex -> cleaned plain text
-                val plainByIndex =
-                    allLines.associate { line ->
-                        line.lineIndex to cleanHtml(line.content)
-                    }
+                fun plain(index: Int): String? =
+                    plainByIndex[index] ?: contentByIndex[index]?.let { cleanHtml(it).also { clean -> plainByIndex[index] = clean } }
 
                 // Build snippet source for each requested line
                 for (info in bookLines) {
-                    val basePlain = plainByIndex[info.lineIndex].orEmpty()
+                    val basePlain = plain(info.lineIndex).orEmpty()
                     val snippetSource =
                         if (basePlain.length >= SNIPPET_MIN_LENGTH) {
                             basePlain
@@ -57,7 +55,7 @@ class RepositorySnippetSourceProvider(
                             val start = (info.lineIndex - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
                             val end = info.lineIndex + SNIPPET_NEIGHBOR_WINDOW
                             (start..end)
-                                .mapNotNull { plainByIndex[it] }
+                                .mapNotNull { plain(it) }
                                 .joinToString(" ")
                         }
                     result[info.lineId] = snippetSource
@@ -68,9 +66,24 @@ class RepositorySnippetSourceProvider(
         }
     }
 
+    private fun neighborWindows(lineIndexes: List<Int>): List<IntRange> {
+        val windows = ArrayList<IntRange>()
+        for (index in lineIndexes.sorted()) {
+            val start = (index - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
+            val end = index + SNIPPET_NEIGHBOR_WINDOW
+            val last = windows.lastOrNull()
+            if (last != null && start <= last.last + 1) {
+                windows[windows.lastIndex] = last.first..maxOf(last.last, end)
+            } else {
+                windows += start..end
+            }
+        }
+        return windows
+    }
+
     private fun cleanHtml(content: String): String =
         Jsoup
             .clean(content, Safelist.none())
-            .replace("\\s+".toRegex(), " ")
+            .replace(WHITESPACE, " ")
             .trim()
 }

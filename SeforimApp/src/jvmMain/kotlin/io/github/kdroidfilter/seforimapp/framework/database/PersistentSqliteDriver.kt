@@ -13,6 +13,24 @@ import java.sql.PreparedStatement
 import java.util.Properties
 
 /**
+ * Opt-in per-query timing (`-Dseforim.sqlTrace=true`, or set [listener] from a bench): reports the time spent
+ * waiting for the single connection and the time spent executing, to find slow queries and contention.
+ */
+object SqlTrace {
+    @Volatile
+    var listener: ((sql: String, waitNanos: Long, execNanos: Long) -> Unit)? =
+        if (System.getProperty("seforim.sqlTrace") != null) {
+            { sql, wait, exec ->
+                System.err.println(
+                    "[sql] wait=${wait / 1_000_000}ms exec=${exec / 1_000_000}ms ${sql.replace(Regex("\\s+"), " ").take(160)}",
+                )
+            }
+        } else {
+            null
+        }
+}
+
+/**
  * SQLite JDBC driver backed by a single persistent connection with a per-identifier
  * [PreparedStatement] cache.
  *
@@ -35,6 +53,7 @@ import java.util.Properties
  * ensure our cached prepared statements aren't handed out while another thread holds
  * the connection by synchronizing the execute methods on `connection`.
  */
+
 class PersistentSqliteDriver(
     url: String,
     properties: Properties = Properties(),
@@ -109,7 +128,10 @@ class PersistentSqliteDriver(
         parameters: Int,
         binders: (SqlPreparedStatement.() -> Unit)?,
     ): QueryResult<R> {
+        val trace = SqlTrace.listener
+        val requested = if (trace != null) System.nanoTime() else 0L
         synchronized(connection) {
+            val acquired = if (trace != null) System.nanoTime() else 0L
             val stmt = prepare(sql)
             stmt.clearParameters()
             if (binders != null) JdbcPreparedStatement(stmt).binders()
@@ -117,7 +139,12 @@ class PersistentSqliteDriver(
             // in its `finally` — closing would defeat the whole point of caching. We close the
             // ResultSet via `.use { }` instead so SQLite frees the cursor for the next call.
             stmt.executeQuery().use { rs ->
-                return mapper(JdbcCursor(rs))
+                val result = mapper(JdbcCursor(rs))
+                if (trace != null) {
+                    val done = System.nanoTime()
+                    trace(sql, acquired - requested, done - acquired)
+                }
+                return result
             }
         }
     }

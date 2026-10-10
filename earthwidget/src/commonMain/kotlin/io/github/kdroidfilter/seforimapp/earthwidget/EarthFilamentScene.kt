@@ -547,33 +547,37 @@ internal class OrbitMeshes(
             withOrbit: Boolean = true,
             cameraPoint: (Float) -> Direction,
         ): OrbitMeshes {
-            val points =
-                (0..ORBIT_STEPS).map { i ->
-                    val deg = i * ORBIT_STEP_DEGREES - sampleOffset
-                    val p = cameraPoint(deg)
-                    deg to MoonOrbitPosition(x = p.x, yCam = p.y, zCam = p.z)
+            // Rebuilt as the camera moves: each sample's position, depth band and highlight are worked out once.
+            val count = ORBIT_STEPS + 1
+            val positions =
+                Array(count) { i ->
+                    val p = cameraPoint(i * ORBIT_STEP_DEGREES - sampleOffset)
+                    MoonOrbitPosition(x = p.x, yCam = p.y, zCam = p.z)
                 }
-
             val bands =
-                points.map { (_, p) ->
-                    val depth = orbitDepth(p.zCam, orbitRadius)
-                    (depth * ORBIT_DEPTH_BANDS).toInt().coerceIn(0, ORBIT_DEPTH_BANDS - 1)
+                IntArray(count) { i ->
+                    (orbitDepth(positions[i].zCam, orbitRadius) * ORBIT_DEPTH_BANDS).toInt().coerceIn(0, ORBIT_DEPTH_BANDS - 1)
+                }
+            val inKl =
+                BooleanArray(count) { i ->
+                    klStart != null &&
+                        klEnd != null &&
+                        isAngleInRange(i * ORBIT_STEP_DEGREES - sampleOffset + membershipOffset, klStart, klEnd)
                 }
 
             // A point also closes the previous point's band, so neighbouring bands join without a gap.
             fun tube(
                 radius: Float,
                 band: Int,
-                keep: (Float) -> Boolean,
+                keep: BooleanArray?,
             ) = tubeMesh(
-                points.mapIndexed { i, (deg, pos) ->
-                    pos.takeIf { keep(deg) && (bands[i] == band || bands.getOrNull(i - 1) == band) }
+                List(count) { i ->
+                    positions[i].takeIf { (keep == null || keep[i]) && (bands[i] == band || (i > 0 && bands[i - 1] == band)) }
                 },
                 radius,
             )
-            val inKl = { deg: Float -> klStart != null && klEnd != null && isAngleInRange(deg + membershipOffset, klStart, klEnd) }
             return OrbitMeshes(
-                orbit = List(ORBIT_DEPTH_BANDS) { band -> if (withOrbit) tube(ORBIT_TUBE_RADIUS, band) { true } else null },
+                orbit = List(ORBIT_DEPTH_BANDS) { band -> if (withOrbit) tube(ORBIT_TUBE_RADIUS, band, null) else null },
                 kiddushLevana = List(ORBIT_DEPTH_BANDS) { tube(KIDDUSH_LEVANA_TUBE_RADIUS, it, inKl) },
             )
         }
@@ -588,9 +592,15 @@ internal fun tubeMesh(
     /** Where the cross-sections are turned from, relative to the points: the origin by default. */
     normalOrigin: Vec3f = Vec3f(0f, 0f, 0f),
 ): MeshArrays? {
-    val positions = ArrayList<Float>()
-    val uvs = ArrayList<Float>()
-    val indices = ArrayList<Int>()
+    // Rebuilt as the camera moves: primitive arrays sized up front, the cross-section's angles computed once.
+    val cosA = FloatArray(sides) { cos(it * 2f * PI.toFloat() / sides) }
+    val sinA = FloatArray(sides) { sin(it * 2f * PI.toFloat() / sides) }
+    val rings = path.count { it != null }
+    val positions = FloatArray(rings * sides * 3)
+    val uvs = FloatArray(rings * sides * 2)
+    val indices = IntArray(maxOf(rings - 1, 0) * sides * 6)
+    var vertex = 0
+    var index = 0
     var runStart = -1
     for (i in path.indices) {
         val p = path[i]
@@ -603,27 +613,33 @@ internal fun tubeMesh(
         val t = Vec3f(next.x - prev.x, next.yCam - prev.yCam, next.zCam - prev.zCam).normalized()
         val n1 = Vec3f(p.x + normalOrigin.x, p.yCam + normalOrigin.y, p.zCam + normalOrigin.z).normalized()
         val n2 = cross(t, n1)
-        val base = positions.size / 3
+        val base = vertex
         for (k in 0 until sides) {
-            val a = k * 2f * PI.toFloat() / sides
-            positions += p.x + radius * (cos(a) * n1.x + sin(a) * n2.x)
-            positions += p.yCam + radius * (cos(a) * n1.y + sin(a) * n2.y)
-            positions += p.zCam + radius * (cos(a) * n1.z + sin(a) * n2.z)
-            uvs += i.toFloat() / path.size
-            uvs += k.toFloat() / sides
+            val c = cosA[k]
+            val s = sinA[k]
+            positions[vertex * 3] = p.x + radius * (c * n1.x + s * n2.x)
+            positions[vertex * 3 + 1] = p.yCam + radius * (c * n1.y + s * n2.y)
+            positions[vertex * 3 + 2] = p.zCam + radius * (c * n1.z + s * n2.z)
+            uvs[vertex * 2] = i.toFloat() / path.size
+            uvs[vertex * 2 + 1] = k.toFloat() / sides
+            vertex++
         }
         if (runStart >= 0) {
             val prevBase = base - sides
             for (k in 0 until sides) {
                 val k1 = (k + 1) % sides
-                indices += listOf(prevBase + k, prevBase + k1, base + k, prevBase + k1, base + k1, base + k)
+                indices[index++] = prevBase + k
+                indices[index++] = prevBase + k1
+                indices[index++] = base + k
+                indices[index++] = prevBase + k1
+                indices[index++] = base + k1
+                indices[index++] = base + k
             }
         }
         runStart = i
     }
-    if (indices.isEmpty()) return null
-    val pos = positions.toFloatArray()
-    return MeshArrays(pos, normalsFromCenter(pos), uvs.toFloatArray(), indices.toIntArray())
+    if (index == 0) return null
+    return MeshArrays(positions, normalsFromCenter(positions), uvs, if (index == indices.size) indices else indices.copyOf(index))
 }
 
 // Unlit, so normals only need to be non-degenerate for the tangent-frame builder.

@@ -29,9 +29,14 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Whether the window's panes for a tab are in place (see `PaneSync`): a book's text first lays out
@@ -39,7 +44,7 @@ import org.jetbrains.jewel.ui.component.CircularProgressIndicator
  */
 val LocalBookTextReady = staticCompositionLocalOf<(String) -> Boolean> { { true } }
 
-@OptIn(ExperimentalSplitPaneApi::class)
+@OptIn(ExperimentalSplitPaneApi::class, kotlinx.coroutines.FlowPreview::class)
 @Composable
 fun BookContentPanel(
     uiState: BookContentState,
@@ -160,6 +165,21 @@ private fun BookContentPanelContent(
         providers.prefetchCommentaries(lineId, openCommentatorIds)
     }
 
+    // A hovered line is likely the next one clicked: load its commentaries (the book's commentators, which a newly
+    // selected line shows) once the pointer rests on it, so they show in the frame of the click.
+    val hoveredLine = remember(selectedBook.id) { MutableStateFlow<Long?>(null) }
+    val bookCommentatorIds =
+        uiState.content.selectedCommentatorsByBook[selectedBook.id]
+            .orEmpty()
+            .ifEmpty { openCommentatorIds }
+    LaunchedEffect(hoveredLine, bookCommentatorIds, uiState.content.showCommentaries) {
+        if (!uiState.content.showCommentaries || bookCommentatorIds.isEmpty()) return@LaunchedEffect
+        hoveredLine
+            .filterNotNull()
+            .debounce(HOVER_PREFETCH_DELAY)
+            .collectLatest { lineId -> providers.prefetchCommentaries(lineId, bookCommentatorIds) }
+    }
+
     val hasBottomPane = uiState.content.showCommentaries || uiState.content.showSources
     val panelBackground = JewelTheme.globalColors.panelBackground
     val paneCardModifier =
@@ -217,6 +237,7 @@ private fun BookContentPanelContent(
                     altHeadingsByLineId = uiState.altToc.lineHeadingsByLineId.asStableAltHeadings(),
                     lineConnections = connectionsCache,
                     onPrefetchLineConnections = prefetchConnections,
+                    onLineHover = { hoveredLine.value = it },
                     isSelected = isSelected,
                     bookCharCounts = bookCharCounts,
                     onPointerZoomInProgressChange = { isBookContentZoomInProgress = it },
@@ -349,3 +370,5 @@ private fun islandsCardModifier(
         .padding(top = top, bottom = bottom, start = 4.dp, end = 4.dp)
         .clip(RoundedCornerShape(12.dp))
         .background(panelBackground)
+
+private val HOVER_PREFETCH_DELAY = 60.milliseconds

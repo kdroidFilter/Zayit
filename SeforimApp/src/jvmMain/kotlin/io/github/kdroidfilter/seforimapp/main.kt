@@ -66,12 +66,15 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
 import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
+import java.nio.file.Files
+import java.nio.file.Path
 import java.util.*
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
@@ -190,7 +193,7 @@ fun main(args: Array<String>) {
         }
 
         // Create the application graph via Metro and expose via CompositionLocal
-        val appGraph = remember { createGraph<AppGraph>().also(::warmCatalog) }
+        val appGraph = remember { createGraph<AppGraph>().also(::warmCatalog).also(::warmSearch) }
 
         // Daily Google Drive backup while the app runs (a no-op until an account is connected).
         LaunchedEffect(appGraph) { if (!E2e.enabled) appGraph.googleDriveSync.runAutoBackup() }
@@ -513,3 +516,26 @@ private fun warmCatalog(graph: AppGraph) {
         graph.catalogAccess.warm()
     }, "catalog-warmup").apply { isDaemon = true }.start()
 }
+
+/**
+ * Loads the search engine (index readers, dictionary, embedding model) in the background, so the first search runs at
+ * full speed. Skipped while no index is installed: the engine must first be created once the database exists.
+ */
+private fun warmSearch(graph: AppGraph) {
+    val thread =
+        Thread({
+            // Let the first window settle first
+            Thread.sleep(SEARCH_WARMUP_DELAY_MS)
+            runCatching {
+                val dbPath = graph.databasePathProvider.get()
+                if (Files.isDirectory(Path.of("$dbPath.lucene"))) {
+                    runBlocking { graph.searchEngine.warmUp() }
+                }
+            }
+        }, "search-warmup")
+    thread.isDaemon = true
+    thread.priority = Thread.MIN_PRIORITY
+    thread.start()
+}
+
+private const val SEARCH_WARMUP_DELAY_MS = 2_000L

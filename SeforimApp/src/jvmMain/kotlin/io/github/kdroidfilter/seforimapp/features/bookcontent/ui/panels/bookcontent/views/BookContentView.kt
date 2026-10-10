@@ -73,6 +73,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.drawNoteUnderlin
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
 import io.github.kdroidfilter.seforimapp.core.presentation.text.normalizeQueryForHebrew
 import io.github.kdroidfilter.seforimapp.core.presentation.text.noteDisplayRanges
+import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
@@ -932,27 +933,8 @@ fun BookContentView(
                     val line = lazyPagingItems[index]
 
                     if (line != null) {
-                        // Smart find: this line's passage closest in meaning to the query, computed
-                        // on the DISPLAYED text (same HTML pipeline as rendering) so the span is
-                        // always found back — short passages included. Falls back to the whole line.
+                        // Smart find: the line is highlighted as a search result is (see LineItem)
                         val isSmartMatch = showFind && smartModeEnabled && line.id in semanticFindIds
-                        val smartPassage by androidx.compose.runtime.produceState<String?>(
-                            null,
-                            line.id,
-                            persistedFindQuery,
-                            isSmartMatch,
-                        ) {
-                            value =
-                                if (!isSmartMatch || persistedFindQuery.length < 2) {
-                                    null
-                                } else {
-                                    withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                        val plain = buildAnnotatedFromHtml(line.content, textSize).text
-                                        runCatching { appGraph.searchEngine.semanticSpan(persistedFindQuery, plain) }
-                                            .getOrNull() ?: plain.trim().ifBlank { null }
-                                    }
-                                }
-                        }
                         val altHeadings = altHeadingsByLineId[line.id]
                         val isCurrentSelected = line.id in selectedLineIds
                         val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
@@ -1048,15 +1030,9 @@ fun BookContentView(
                                         baseTextSize = textSize,
                                         lineHeight = lineHeight,
                                         boldScale = boldScaleForPlatform,
-                                        highlightQuery =
-                                            when {
-                                                !showFind -> null
-                                                // Smart mode: highlight this line's own semantic
-                                                // passage (one contiguous span) if it's a match;
-                                                // simple mode: the literal query.
-                                                smartModeEnabled -> smartPassage
-                                                else -> findState.text.toString()
-                                            },
+                                        // Simple mode: the literal query; smart mode: the search's highlighting
+                                        highlightQuery = findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                        smartQuery = persistedFindQuery.takeIf { isSmartMatch && it.length >= 2 },
                                         currentMatchOrdinal =
                                             liveMatch?.takeIf { showFind && it.lineId == line.id }?.ordinal,
                                         findMatchLocator =
@@ -1417,6 +1393,9 @@ private fun LineItem(
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
     highlightQuery: String? = null,
+    // Smart find: the line highlighted as a search result for this query (its words, else the passage closest in
+    // meaning), on the text as displayed
+    smartQuery: String? = null,
     currentMatchOrdinal: Int? = null,
     // Given to the line showing the current match only, which publishes where the match sits
     findMatchLocator: FindMatchLocator? = null,
@@ -1516,6 +1495,14 @@ private fun LineItem(
             buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text
         }
 
+    val searchEngine = LocalAppGraph.current.searchEngine
+    val smartRanges by produceState<List<IntRange>?>(null, annotated.text, smartQuery) {
+        value =
+            smartQuery?.let { query ->
+                runSuspendCatching { searchEngine.highlights(listOf(annotated.text), query).single().ranges }.getOrNull()
+            }
+    }
+
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl =
         JewelTheme.globalColors.outlines.focused
@@ -1526,6 +1513,7 @@ private fun LineItem(
             annotated,
             highlightQuery,
             currentMatchOrdinal,
+            smartRanges,
             baseHl,
             currentHl,
             userHighlights,
@@ -1541,13 +1529,19 @@ private fun LineItem(
                     originalText = originalPlainText,
                     diacritics = diacritics,
                 )
-            io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
-                annotated = withUserHighlights,
-                query = highlightQuery,
-                currentIndex = currentMatchOrdinal,
-                baseColor = baseHl,
-                currentColor = currentHl,
-            )
+            val ranges = smartRanges
+            if (ranges != null) {
+                // The line is one smart match: all its spans take the current color when it is the current one
+                withUserHighlights.withBackground(ranges, if (currentMatchOrdinal != null) currentHl else baseHl)
+            } else {
+                io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
+                    annotated = withUserHighlights,
+                    query = highlightQuery,
+                    currentIndex = currentMatchOrdinal,
+                    baseColor = baseHl,
+                    currentColor = currentHl,
+                )
+            }
         }
 
     // Dotted grey underline marking the noted ranges (drawn from the text layout so it supports
@@ -1561,10 +1555,9 @@ private fun LineItem(
 
     if (findMatchLocator != null) {
         val matchStart =
-            remember(displayText, highlightQuery, currentMatchOrdinal) {
-                highlightQuery
-                    ?.let { findAllMatchesOriginal(displayText.text, it) }
-                    ?.getOrNull(currentMatchOrdinal ?: 0)
+            remember(displayText, highlightQuery, smartRanges, currentMatchOrdinal) {
+                (smartRanges ?: highlightQuery?.let { findAllMatchesOriginal(displayText.text, it) })
+                    ?.getOrNull(if (smartRanges != null) 0 else currentMatchOrdinal ?: 0)
                     ?.first ?: 0
             }
         SideEffect { findMatchLocator.matchStart = matchStart }

@@ -56,11 +56,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
+import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.author.AUTHOR_ERAS
 import io.github.kdroidfilter.seforimapp.features.author.authorYears
@@ -841,18 +843,7 @@ private fun PassagePreview(
     val (categories, place) = remember(pieces, hit.bookTitle) { categoriesAndPlace(pieces, hit.bookTitle) }
     val lines = preview.lines
     val fontFamily = FontCatalog.familyFor(bookFontCode)
-    // The words the engine matched, as bold in the result's snippet (its variants: מן העין for מהעין),
-    // so the preview marks the same ones as the list
-    val words =
-        remember(hit.snippet, query) {
-            BOLD_SPAN
-                .findAll(hit.snippet)
-                .map { it.groupValues[1].replace(HTML_TAG, "").trim() }
-                .filter { it.length > 1 }
-                .distinct()
-                .toList()
-                .ifEmpty { query.split(Regex("\\s+")).filter { it.length > 1 } }
-        }
+    val searchEngine = LocalAppGraph.current.searchEngine
     val highlight = accent.copy(alpha = 0.22f)
     val scroll = rememberScrollState()
     // The found line in view, once laid out
@@ -885,12 +876,21 @@ private fun PassagePreview(
                 ) {
                     lines.forEach { line ->
                         val found = line.id == hit.lineId
-                        val text =
-                            remember(line.id, textSize, words, highlight) {
-                                words.fold(buildAnnotatedFromHtml(line.content, textSize)) { acc, word ->
-                                    highlightAnnotated(acc, word, highlight)
-                                }
+                        val annotated = remember(line.id, textSize) { buildAnnotatedFromHtml(line.content, textSize) }
+                        // The search's own highlighting: the query's words, and in the found line, when none is there,
+                        // the passage closest in meaning (as its snippet)
+                        val ranges by produceState(
+                            searchEngine.highlightRanges(annotated.text, query),
+                            annotated,
+                            query,
+                            found,
+                        ) {
+                            if (found) {
+                                runSuspendCatching { searchEngine.highlights(listOf(annotated.text), query).single().ranges }
+                                    .onSuccess { value = it }
                             }
+                        }
+                        val text = remember(annotated, ranges, highlight) { annotated.withBackground(ranges, highlight) }
                         val lineHover = remember { MutableInteractionSource() }
                         val lineHovered by lineHover.collectIsHoveredAsState()
                         Row(

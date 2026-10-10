@@ -7,6 +7,8 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchFacets
 import io.github.kdroidfilter.seforimlibrary.search.SearchPage
 import io.github.kdroidfilter.seforimlibrary.search.SearchSession
+import io.github.kdroidfilter.seforimlibrary.search.SnippetSources
+import io.github.kdroidfilter.seforimlibrary.search.TextHighlights
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_PAGE_SIZE
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_QUERIES
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_ROUNDS
@@ -16,8 +18,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import org.jsoup.safety.Safelist
 import java.nio.file.Path
 
 /**
@@ -93,18 +93,40 @@ internal class HybridSearchEngine(
         near: Int,
     ): String = lexical.buildSnippet(rawText, query, near)
 
+    override fun highlightRanges(
+        text: String,
+        query: String,
+    ): List<IntRange> = lexical.highlightRanges(text, query)
+
+    override fun rangeSnippet(
+        text: String,
+        ranges: List<IntRange>,
+    ): String = lexical.rangeSnippet(text, ranges)
+
+    override suspend fun highlights(
+        texts: List<String>,
+        query: String,
+    ): List<TextHighlights> {
+        val words = texts.map { lexical.highlightRanges(it, query) }
+        // Lines without the query's words: the passage closest in meaning, all of them in one batched model run
+        val byMeaning = texts.indices.filter { words[it].isEmpty() && texts[it].isNotBlank() }
+        val semantic = if (byMeaning.isEmpty()) null else ensureSemantic()
+        if (semantic == null) return words.map { TextHighlights(it) }
+        val passages = withContext(Dispatchers.Default) { semantic.bestPassages(query, byMeaning.map { texts[it] }) }
+        val passageOf = byMeaning.indices.associate { byMeaning[it] to passages[it] }
+        return texts.mapIndexed { i, text ->
+            if (i !in passageOf) return@mapIndexed TextHighlights(words[i])
+            // A single clause is the passage itself
+            val passage = passageOf[i] ?: text.trim()
+            val at = text.indexOf(passage)
+            TextHighlights(if (at < 0) emptyList() else listOf(at until at + passage.length), byMeaning = true)
+        }
+    }
+
     override fun findInBookCandidates(
         query: String,
         bookId: Long,
     ): LongArray? = lexical.findInBookCandidates(query, bookId)
-
-    override suspend fun semanticSpan(
-        query: String,
-        text: String,
-    ): String? {
-        val semantic = ensureSemantic() ?: return null
-        return withContext(Dispatchers.Default) { semantic.bestPassage(query, text) }
-    }
 
     override suspend fun denseReady(): Boolean = ensureSemantic() != null
 
@@ -133,10 +155,9 @@ internal class HybridSearchEngine(
         limit: Int,
     ): List<Long> {
         if (query.isBlank()) return emptyList()
-        val semantic = ensureSemantic() ?: return emptyList()
-        return withContext(Dispatchers.Default) {
-            semantic.search(query, limit, bookIds = listOf(bookId)).map { it.lineId }
-        }
+        // The search itself, scoped to the book: the lines holding the query's words and those closest in meaning,
+        // fused as the results page fuses them
+        return fuse(query, near = SMART_FIND_NEAR, bookIds = listOf(bookId), baseOnly = false).take(limit).map { it.lineId }
     }
 
     override fun computeFacets(
@@ -199,37 +220,6 @@ internal class HybridSearchEngine(
                 .map { (lineId, score) -> FusedEntry(lineId, score.toFloat(), lexById[lineId]) }
         }
 
-    /**
-     * Snippets for dense-only hits: the lexical builder can't anchor (the query words aren't in the text), so bold the
-     * passage closest in meaning as one span inside a context window. All passages come from one batched model run;
-     * a null keeps the lexical snippet.
-     */
-    private suspend fun semanticSnippets(
-        query: String,
-        rawTexts: List<String>,
-        near: Int,
-    ): List<String?> {
-        val semantic = ensureSemantic() ?: return rawTexts.map { null }
-        // Jsoup.clean returns HTML-escaped text; substrings stay escaped, so <b> is spliced in directly
-        // (same convention as the lexical snippet builder)
-        val cleaned = rawTexts.map { Jsoup.clean(it, Safelist.none()) }
-        val passages = withContext(Dispatchers.Default) { semantic.bestPassages(query, cleaned) }
-        return cleaned.mapIndexed { i, clean ->
-            val passage = passages[i] ?: return@mapIndexed null
-            val idx = clean.indexOf(passage)
-            if (idx < 0) return@mapIndexed lexical.buildSnippet(rawTexts[i], passage, near)
-            val from = (idx - SNIPPET_CONTEXT).coerceAtLeast(0)
-            val to = (idx + passage.length + SNIPPET_CONTEXT).coerceAtMost(clean.length)
-            buildString {
-                if (from > 0) append("…")
-                append(clean, from, idx)
-                append("<b>").append(passage).append("</b>")
-                append(clean, idx + passage.length, to)
-                if (to < clean.length) append("…")
-            }
-        }
-    }
-
     private inner class HybridSession(
         private val query: String,
         private val near: Int,
@@ -275,8 +265,14 @@ internal class HybridSearchEngine(
             val lexicalIds = fused.orEmpty().mapNotNullTo(HashSet()) { entry -> entry.lexical?.lineId }
             val denseOnly = hits.filter { it.lineId !in lexicalIds && it.rawText.isNotBlank() }
             if (denseOnly.isEmpty()) return emptyMap()
-            val snippets = semanticSnippets(query, denseOnly.map { it.rawText }, near)
-            return buildMap { denseOnly.forEachIndexed { i, hit -> snippets[i]?.let { put(hit.lineId, it) } } }
+            // Snippet text, as the lexical snippets: a line the query's words show in keeps its lexical snippet
+            val texts = denseOnly.map { SnippetSources.clean(it.rawText) }
+            val highlights = highlights(texts, query)
+            return buildMap {
+                denseOnly.forEachIndexed { i, hit ->
+                    if (highlights[i].byMeaning) put(hit.lineId, lexical.rangeSnippet(texts[i], highlights[i].ranges))
+                }
+            }
         }
 
         override fun close() {}
@@ -284,7 +280,7 @@ internal class HybridSearchEngine(
 
     private companion object {
         const val RRF_K = 60
+        const val SMART_FIND_NEAR = 5
         const val CANDIDATES = 150
-        const val SNIPPET_CONTEXT = 90 // chars of context kept on each side of the passage
     }
 }

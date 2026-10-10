@@ -325,6 +325,24 @@
             "type": "org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat"
         },
         {
+            "type": "org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
+            "type": "org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat",
+            "methods": [
+                {
+                    "name": "<init>",
+                    "parameterTypes": []
+                }
+            ]
+        },
+        {
             "type": "org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat",
             "methods": [
                 {

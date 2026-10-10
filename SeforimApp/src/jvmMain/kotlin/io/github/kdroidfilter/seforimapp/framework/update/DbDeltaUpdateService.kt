@@ -7,8 +7,12 @@ import org.apache.lucene.analysis.standard.StandardAnalyzer
 import org.apache.lucene.document.Document
 import org.apache.lucene.document.Field
 import org.apache.lucene.document.IntPoint
+import org.apache.lucene.document.NumericDocValuesField
 import org.apache.lucene.document.StoredField
 import org.apache.lucene.document.TextField
+import org.apache.lucene.index.DirectoryReader
+import org.apache.lucene.index.DocValuesType
+import org.apache.lucene.index.FieldInfos
 import org.apache.lucene.index.IndexWriter
 import org.apache.lucene.index.IndexWriterConfig
 import org.apache.lucene.store.FSDirectory
@@ -128,6 +132,12 @@ open class DbDeltaUpdateService(
                 } else {
                     val dir = FSDirectory.open(luceneIndexDir)
                     val writer = IndexWriter(dir, IndexWriterConfig(StandardAnalyzer()))
+                    // Indexes built with book_id doc values (for the facets) need them on every new line: Lucene
+                    // rejects a document whose field schema differs from the index's
+                    val bookIdDocValues =
+                        DirectoryReader.open(writer).use { reader ->
+                            FieldInfos.getMergedFieldInfos(reader).fieldInfo(FIELD_BOOK_ID)?.docValuesType == DocValuesType.NUMERIC
+                        }
                     val bookMetaCache = HashMap<Long, BookMeta>()
                     val dbConn =
                         seforimDb?.let {
@@ -173,6 +183,7 @@ open class DbDeltaUpdateService(
                                         add(Field(FIELD_TYPE, TYPE_LINE, org.apache.lucene.document.StringField.TYPE_STORED))
                                         add(IntPoint(FIELD_BOOK_ID, line.bookId.toInt()))
                                         add(StoredField(FIELD_BOOK_ID, line.bookId))
+                                        if (bookIdDocValues) add(NumericDocValuesField(FIELD_BOOK_ID, line.bookId))
                                         add(IntPoint(FIELD_CATEGORY_ID, meta.categoryId.toInt()))
                                         add(StoredField(FIELD_CATEGORY_ID, meta.categoryId))
                                         add(IntPoint(FIELD_LINE_ID, line.id.toInt()))

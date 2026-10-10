@@ -76,6 +76,7 @@ import dev.nucleusframework.window.tao.tabStripGeometry
 import dev.nucleusframework.window.tao.tabStripGrip
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SharedIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
 import io.github.kdroidfilter.seforimapp.core.presentation.window.TabDragGhostCard
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
@@ -885,7 +886,7 @@ private fun RtlAwareTab(
                             }
                         }
 
-                        Icon(
+                        SharedIcon(
                             key = tabStyle.icons.close,
                             modifier =
                                 Modifier
@@ -896,7 +897,7 @@ private fun RtlAwareTab(
                                         role = Role.Button,
                                     ).size(16.dp),
                             contentDescription = stringResource(Res.string.close_tab),
-                            hint = Stateful(closeButtonState),
+                            hints = *arrayOf(Stateful(closeButtonState)),
                         )
                     }
                 }

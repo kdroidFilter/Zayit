@@ -23,6 +23,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2eAuthorScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eFilamentScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eMemoryScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eNotesScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eReaderPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eRestoreScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScrollbarScenario
@@ -482,6 +483,7 @@ fun main(args: Array<String>) {
                                         E2eAuthorScenario.run(it)
                                         E2eRestoreScenario.run(it)
                                         E2eScrollbarScenario.run(it)
+                                        E2eReaderPerfScenario.run(it)
                                         installedSiddur?.runE2e(it)
                                     }) { exitApplication() }
                                 }

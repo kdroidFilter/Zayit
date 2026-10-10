@@ -201,10 +201,19 @@ class GoogleDriveSync(
         }
     }
 
-    /** Backs the session's changes up on the way out, once, waiting at most [QUIT_BACKUP_TIMEOUT]. */
+    /**
+     * Backs the session's changes up on the way out, once, waiting at most [QUIT_BACKUP_TIMEOUT]: in a shutdown hook,
+     * so the windows close at once and the process only lingers, out of sight, to finish the upload.
+     */
     fun backupOnQuit() {
         if (!isAvailable || _state.value.account == null || !quitBackupDone.compareAndSet(false, true)) return
-        runBlocking(Dispatchers.IO) { withTimeoutOrNull(QUIT_BACKUP_TIMEOUT) { backupIfChanged() } }
+        val backup = { runBlocking(Dispatchers.IO) { withTimeoutOrNull(QUIT_BACKUP_TIMEOUT) { backupIfChanged() } } }
+        try {
+            Runtime.getRuntime().addShutdownHook(Thread({ backup() }, "drive-quit-backup"))
+        } catch (_: IllegalStateException) {
+            // Already shutting down (a system quit): back up now
+            backup()
+        }
     }
 
     private suspend fun backupIfChanged() {

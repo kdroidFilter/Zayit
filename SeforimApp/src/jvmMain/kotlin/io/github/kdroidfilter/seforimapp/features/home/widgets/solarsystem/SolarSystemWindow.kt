@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +45,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.DpSize
@@ -53,15 +57,20 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.WindowState
 import dev.nucleusframework.application.LocalNucleusApplicationScope
+import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.window.BasicTitleBar
 import dev.nucleusframework.window.ControlButtonsDirection
+import dev.nucleusframework.window.DecoratedWindowScope
 import dev.nucleusframework.window.LocalWindowChromeInsets
 import dev.nucleusframework.window.TitleBarPlacement
 import dev.nucleusframework.window.WindowBackground
+import dev.nucleusframework.window.WindowControls
 import dev.nucleusframework.window.WindowScaffold
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
 import dev.nucleusframework.window.newFullscreenControls
 import dev.nucleusframework.window.styling.LocalTitleBarStyle
+import dev.nucleusframework.window.styling.TitleBarStyle
+import dev.nucleusframework.window.utils.linux.rememberLinuxButtonLayout
 import dev.nucleusframework.window.windowDragArea
 import io.github.kdroidfilter.seforimapp.core.e2e.E2ePerf
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
@@ -139,13 +148,20 @@ internal fun SolarSystemWindow(
                         metrics = baseBarStyle.metrics.copy(height = OVERLAY_BAR_HEIGHT),
                     )
                 }
+            // Footprint of the window controls, so the header sits beside them (fullscreen included)
+            var controlsPadding by remember { mutableStateOf(PaddingValues(0.dp)) }
             WindowScaffold(
                 titleBar = {
-                    BasicTitleBar(
-                        modifier = Modifier.newFullscreenControls(),
-                        style = transparentBarStyle,
-                        controlButtonsDirection = ControlButtonsDirection.SystemNative,
-                    )
+                    if (Platform.Current == Platform.MacOS) {
+                        // AppKit traffic lights, reserved by controlsInsets
+                        BasicTitleBar(
+                            modifier = Modifier.newFullscreenControls(),
+                            style = transparentBarStyle,
+                            controlButtonsDirection = ControlButtonsDirection.SystemNative,
+                        )
+                    } else {
+                        OverlayWindowControls(style = transparentBarStyle, onPadding = { controlsPadding = it })
+                    }
                 },
                 titleBarPlacement = TitleBarPlacement.Overlay(autoHideInFullscreen = false, passThroughToContent = true),
                 // Same side as the main window's traffic lights
@@ -182,14 +198,18 @@ internal fun SolarSystemWindow(
                             spinSecondsPerTurn = solarSystemOptions(state).spinSecondsPerTurn,
                             kiddushLevanaEarliestOpinion = state.kiddushLevanaEarliest,
                             kiddushLevanaLatestOpinion = state.kiddushLevanaLatest,
-                            // Beside the traffic lights, not below them. controlsInsets is start/end in the controls'
+                            // Beside the window controls, not below them. controlsInsets is start/end in the controls'
                             // own direction — read it as LTR to get the physical side, which the RTL page would flip
                             chromePadding =
-                                LocalWindowChromeInsets.current.controlsInsets.let {
-                                    PaddingValues.Absolute(
-                                        left = it.calculateLeftPadding(LayoutDirection.Ltr),
-                                        right = it.calculateRightPadding(LayoutDirection.Ltr),
-                                    )
+                                if (Platform.Current == Platform.MacOS) {
+                                    LocalWindowChromeInsets.current.controlsInsets.let {
+                                        PaddingValues.Absolute(
+                                            left = it.calculateLeftPadding(LayoutDirection.Ltr),
+                                            right = it.calculateRightPadding(LayoutDirection.Ltr),
+                                        )
+                                    }
+                                } else {
+                                    controlsPadding
                                 },
                             headerModifier = Modifier.windowDragArea(),
                         )
@@ -236,6 +256,38 @@ internal fun SolarSystemWindow(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The Linux / Windows window controls alone in the title bar band, on their native side, reporting their footprint as
+ * an absolute padding through [onPadding] — the Nucleus insets reserve nothing for controls drawn in Compose.
+ */
+@Composable
+private fun DecoratedWindowScope.OverlayWindowControls(
+    style: TitleBarStyle,
+    onPadding: (PaddingValues) -> Unit,
+) {
+    val onRight =
+        if (Platform.Current == Platform.Linux) {
+            rememberLinuxButtonLayout().controlsOnRight
+        } else {
+            ControlButtonsDirection.SystemNative.resolve() == LayoutDirection.Ltr
+        }
+    val density = LocalDensity.current
+    CompositionLocalProvider(LocalTitleBarStyle provides style) {
+        Box(Modifier.fillMaxWidth().height(OVERLAY_BAR_HEIGHT)) {
+            WindowControls(
+                modifier =
+                    Modifier
+                        .align(if (onRight) AbsoluteAlignment.CenterRight else AbsoluteAlignment.CenterLeft)
+                        .onSizeChanged { size ->
+                            val width = with(density) { size.width.toDp() }
+                            onPadding(if (onRight) PaddingValues.Absolute(right = width) else PaddingValues.Absolute(left = width))
+                        },
+                direction = ControlButtonsDirection.SystemNative,
+            )
         }
     }
 }

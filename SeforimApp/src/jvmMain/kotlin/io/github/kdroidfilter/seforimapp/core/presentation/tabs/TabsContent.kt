@@ -41,7 +41,6 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.features.author.AuthorTabContent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentScreen
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentViewModel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
@@ -504,14 +503,7 @@ private fun BookContentTabContent(
 
     // React to destination changes when ViewModel is reused
     LaunchedEffect(destination.bookId, destination.lineId, destination.endLineId) {
-        if (destination.bookId > 0) {
-            val lineId = destination.lineId
-            if (lineId != null && lineId > 0) {
-                viewModel.onEvent(BookContentEvent.OpenBookAtLine(destination.bookId, lineId, destination.endLineId))
-            } else {
-                viewModel.onEvent(BookContentEvent.OpenBookById(destination.bookId))
-            }
-        }
+        viewModel.openDestination(destination.bookId, destination.lineId, destination.endLineId)
     }
 
     BookContentScreen(

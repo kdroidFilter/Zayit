@@ -220,7 +220,7 @@ private fun SingleLineTargumView(
                             }
                         val annotationCache =
                             remember(selectedLine.id, availabilityType) {
-                                StableAnnotatedCache(mutableStateMapOf())
+                                StableAnnotatedCache()
                             }
 
                         val listState =
@@ -619,7 +619,7 @@ private fun MultiLineTargumView(
                     }
                 val annotationCache =
                     remember(selectedLineIds, availabilityType) {
-                        StableAnnotatedCache(mutableStateMapOf())
+                        StableAnnotatedCache()
                     }
 
                 val listState =

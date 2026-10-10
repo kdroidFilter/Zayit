@@ -16,11 +16,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.*
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -50,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -62,6 +61,8 @@ import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.annotations.UserNote
 import io.github.kdroidfilter.seforimapp.core.coroutines.EfficiencyCoreDispatcher
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eReader
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.rememberAppTextZoom
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
@@ -138,6 +139,8 @@ fun BookContentView(
     altHeadingsByLineId: StableAltHeadings = StableAltHeadings.Empty,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
+    // A line under the pointer, likely to be selected next: its commentaries can be loaded ahead
+    onLineHover: (Long) -> Unit = {},
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
     onPointerZoomInProgressChange: (Boolean) -> Unit = {},
@@ -208,6 +211,7 @@ fun BookContentView(
             !hasRestored &&
             (hasTopAnchorRequest || (topAnchorTimestamp == 0L && hasSavedInitialPosition))
     val contentAlpha = if (needsInitialPositioning) 0f else 1f
+    if (E2e.enabled) SideEffect { E2eReader.bookShown(bookId, listState, visible = contentAlpha == 1f) }
 
     // selectedLineId is now passed as a parameter for stability
 
@@ -635,7 +639,7 @@ fun BookContentView(
     // LineItem reads during composition on the main thread.
     val stableAnnotatedCache =
         remember(bookId, textSize, boldScaleForPlatform, diacritics) {
-            StableAnnotatedCache(java.util.concurrent.ConcurrentHashMap())
+            StableAnnotatedCache()
         }
 
     // Warm the annotation cache for lines just outside the viewport so they render straight from
@@ -988,15 +992,14 @@ fun BookContentView(
                                     .fillMaxWidth()
                                     .then(if (isMarked) Modifier.background(markedTint()) else Modifier)
                                     .padding(horizontal = 8.dp)
-                                    .height(IntrinsicSize.Min),
+                                    .selectionBar(
+                                        isSelected = isCurrentSelected,
+                                        isNextSelected = isNextSelected,
+                                        color = borderColor,
+                                        isPrimary = useThickBar,
+                                    ),
                         ) {
-                            SelectionBar(
-                                isSelected = isCurrentSelected,
-                                isNextSelected = isNextSelected,
-                                color = borderColor,
-                                isPrimary = useThickBar,
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(SelectionBarWidth + 8.dp))
                             Column(
                                 modifier = Modifier.weight(1f),
                             ) {
@@ -1025,6 +1028,7 @@ fun BookContentView(
                                         userNotes = lineNotes,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                        onHover = { onLineHover(line.id) },
                                         isSelected = isCurrentSelected,
                                         isPrimary = useThickBar,
                                         baseTextSize = textSize,
@@ -1062,6 +1066,7 @@ fun BookContentView(
                                             userNotes = notesByLine[line.id] ?: emptyList(),
                                             fontFamily = hebrewFontFamily,
                                             onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                            onHover = { onLineHover(line.id) },
                                             isSelected = isCurrentSelected,
                                             isPrimary = useThickBar,
                                             baseTextSize = textSize,
@@ -1387,6 +1392,7 @@ private fun LineItem(
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
+    onHover: () -> Unit = {},
     isSelected: Boolean = false,
     isPrimary: Boolean = false,
     baseTextSize: Float = 16f,
@@ -1437,13 +1443,14 @@ private fun LineItem(
                     onClick(isModifier)
                 }
             }
-        }.onPointerEvent(PointerEventType.Press) { event ->
-            // Record this line as the right-click target so the context menu can offer a
-            // "copy link to this line" action even when no text is selected.
-            if (event.buttons.isSecondaryPressed) onContextClick()
-        }
+        }.onPointerEvent(PointerEventType.Enter) { onHover() }
+            .onPointerEvent(PointerEventType.Press) { event ->
+                // Record this line as the right-click target so the context menu can offer a
+                // "copy link to this line" action even when no text is selected.
+                if (event.buttons.isSecondaryPressed) onContextClick()
+            }
 
-    val localAnnotatedCache = remember { StableAnnotatedCache(mutableStateMapOf()) }
+    val localAnnotatedCache = remember { StableAnnotatedCache() }
     val annotationCache = annotatedCache ?: localAnnotatedCache
     val annotationCacheKey =
         remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
@@ -1468,6 +1475,7 @@ private fun LineItem(
             annotatedCache = annotationCache,
         )
 
+    if (E2e.enabled) SideEffect { E2eReader.lineDrawn(lineId, ready = lineAnnotation != null) }
     if (lineAnnotation == null) {
         Text(
             text = htmlAnnotationPlaceholderText(processedContent.length),
@@ -1490,9 +1498,11 @@ private fun LineItem(
     // Plain text of the line WITH diacritics: user-highlight offsets are stored against this
     // representation, so it is needed to remap them when diacritics are hidden. The text is
     // independent of font size, so [lineContent] alone is a safe cache key.
+    // Only needed to remap highlights or notes when diacritics are hidden: skip a second parse otherwise.
+    val needsOriginalText = diacritics != DiacriticsMode.All && (userHighlights.isNotEmpty() || userNotes.isNotEmpty())
     val originalPlainText =
-        remember(lineContent) {
-            buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text
+        remember(lineContent, needsOriginalText) {
+            if (needsOriginalText) buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text else null
         }
 
     val searchEngine = LocalAppGraph.current.searchEngine
@@ -1598,39 +1608,29 @@ private fun LineItem(
     )
 }
 
+// The selection bar's slot at the start of a line: the same whether the bar is thick or thin, so content never shifts.
+private val SelectionBarWidth = 4.dp
+
 /**
- * Selection bar that extends into adjacent padding when consecutive lines are selected.
- * [isPrimary] controls the bar thickness: 4.dp for the primary line, 1.5.dp for secondary.
+ * Draws a line's selection bar in the slot at its start, the line's full height, reaching down to the next line
+ * when it is selected too. Drawn rather than laid out: a bar child sized to its line needed the line's intrinsic
+ * height, laying its text out twice.
  */
-@Composable
-private fun SelectionBar(
+private fun Modifier.selectionBar(
     isSelected: Boolean,
     isNextSelected: Boolean,
     color: Color,
-    isPrimary: Boolean = true,
-) {
-    // Layout always occupies 4.dp so switching between thick/thin doesn't shift content.
-    val drawWidth = if (isPrimary) 4.dp else 2.dp
-    val extendBottom = isSelected && isNextSelected
-    Box(
-        modifier =
-            Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .zIndex(1f)
-                .graphicsLayer { clip = false }
-                .drawBehind {
-                    val extraBottom = if (extendBottom) 8.dp.toPx() else 0f
-                    val w = drawWidth.toPx()
-                    val offsetX = (size.width - w) / 2f
-                    drawRect(
-                        color = color,
-                        topLeft = Offset(offsetX, 0f),
-                        size = Size(w, size.height + extraBottom),
-                    )
-                },
-    )
-}
+    isPrimary: Boolean,
+): Modifier =
+    drawBehind {
+        if (!isSelected) return@drawBehind
+        val slot = SelectionBarWidth.toPx()
+        val w = (if (isPrimary) 4.dp else 2.dp).toPx()
+        val inSlot = (slot - w) / 2f
+        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - slot + inSlot else inSlot
+        val extraBottom = if (isNextSelected) 8.dp.toPx() else 0f
+        drawRect(color = color, topLeft = Offset(x, 0f), size = Size(w, size.height + extraBottom))
+    }
 
 // Extract reusable components to avoid inline composition
 @Composable

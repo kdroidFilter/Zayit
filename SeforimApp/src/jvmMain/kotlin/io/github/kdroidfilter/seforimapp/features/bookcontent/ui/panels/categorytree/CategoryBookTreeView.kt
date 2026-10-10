@@ -29,6 +29,7 @@ import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SharedIcon
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.revealItem
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
@@ -70,6 +71,9 @@ fun CategoryBookTreeView(
     /* ---------------------------------------------------------------------
      * Build the flat hierarchical list to display.
      * -------------------------------------------------------------------- */
+
+    // Indexed once per catalog: each expanded category used to scan every book of the library
+    val booksByCategory = remember(navigationState.booksInCategory) { navigationState.booksInCategory.groupBy { it.categoryId } }
     val treeItems =
         remember(
             navigationState.rootCategories,
@@ -90,7 +94,7 @@ fun CategoryBookTreeView(
                 rootCategories = navigationState.rootCategories,
                 expandedCategories = navigationState.expandedCategories,
                 categoryChildren = navigationState.categoryChildren,
-                booksInCategory = navigationState.booksInCategory,
+                booksByCategory = booksByCategory,
                 selectedCategory = navigationState.selectedCategory,
                 selectedBook = navigationState.selectedBook,
                 onCategoryClick = onCategoryClick,
@@ -333,7 +337,7 @@ private fun buildTreeItems(
     rootCategories: List<Category>,
     expandedCategories: Set<Long>,
     categoryChildren: Map<Long, List<Category>>,
-    booksInCategory: Set<Book>,
+    booksByCategory: Map<Long, List<Book>>,
     selectedCategory: Category?,
     selectedBook: Book?,
     onCategoryClick: (Category) -> Unit,
@@ -385,7 +389,7 @@ private fun buildTreeItems(
                     if (showCounts) {
                         booksForCategoryOverride[category.id].orEmpty().asSequence()
                     } else {
-                        booksInCategory.asSequence().filter { it.categoryId == category.id }
+                        booksByCategory[category.id].orEmpty().asSequence()
                     }
                 booksSeq
                     .distinctBy { it.id }
@@ -466,7 +470,7 @@ private fun CategoryItem(
             tint = JewelTheme.globalColors.text.normal,
             contentDescription = "",
         )
-        Icon(
+        SharedIcon(
             key = AllIconsKeys.Nodes.Folder,
             contentDescription = null,
         )

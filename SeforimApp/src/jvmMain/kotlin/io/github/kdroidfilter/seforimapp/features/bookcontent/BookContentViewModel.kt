@@ -269,6 +269,31 @@ class BookContentViewModel(
             .flowOn(Dispatchers.IO)
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    // The tab destination this ViewModel last opened: its init opens the one it was created for, so the tab's
+    // first composition must not open it again (that rebuilt the pager and re-hid the text on every open).
+    private var openedDestination: Triple<Long, Long?, Long?>? =
+        savedStateHandle.get<Long>(StateKeys.BOOK_ID)?.takeIf { it > 0 }?.let { bookId ->
+            Triple(
+                bookId,
+                savedStateHandle.get<Long>(StateKeys.LINE_ID)?.takeIf { it > 0 },
+                savedStateHandle.get<Long>(StateKeys.MARK_END_LINE_ID),
+            )
+        }
+
+    /** Opens the tab's destination when it changes while this ViewModel is reused. */
+    fun openDestination(
+        bookId: Long,
+        lineId: Long?,
+        endLineId: Long?,
+    ) {
+        if (bookId <= 0) return
+        val destination = Triple(bookId, lineId?.takeIf { it > 0 }, endLineId)
+        if (destination == openedDestination) return
+        openedDestination = destination
+        val line = destination.second
+        onEvent(if (line != null) BookContentEvent.OpenBookAtLine(bookId, line, endLineId) else BookContentEvent.OpenBookById(bookId))
+    }
+
     init {
         initialize(savedStateHandle)
         observeDiacriticsSettings()
@@ -588,6 +613,7 @@ class BookContentViewModel(
                 BookContentEvent.NavigateToPreviousLine -> {
                     val line = contentUseCase.navigateToPreviousLine()
                     if (line != null) {
+                        prefetchCommentariesAround(line)
                         val bookId =
                             stateManager.state.value.navigation.selectedBook
                                 ?.id ?: line.bookId
@@ -598,6 +624,7 @@ class BookContentViewModel(
                 BookContentEvent.NavigateToNextLine -> {
                     val line = contentUseCase.navigateToNextLine()
                     if (line != null) {
+                        prefetchCommentariesAround(line)
                         val bookId =
                             stateManager.state.value.navigation.selectedBook
                                 ?.id ?: line.bookId
@@ -1028,11 +1055,36 @@ class BookContentViewModel(
         }
     }
 
+    /**
+     * Loads the commentaries a selection of [line] shows while its state propagates (they are then drawn in the
+     * selection's first frame), then those of its neighbors, which keyboard navigation selects next.
+     */
+    private fun prefetchCommentariesAround(line: Line) {
+        val state = stateManager.state.value
+        if (!state.content.showCommentaries) return
+        val bookId = state.navigation.selectedBook?.id ?: line.bookId
+        val byBook = state.content.selectedCommentatorsByBook[bookId].orEmpty()
+
+        fun commentatorsFor(lineId: Long) =
+            state.content.selectedCommentatorsByLine[lineId]
+                .orEmpty()
+                .ifEmpty { byBook }
+        if (commentatorsFor(line.id).isEmpty()) return
+        viewModelScope.launch {
+            commentariesUseCase.prefetchCommentaries(line.id, commentatorsFor(line.id))
+            listOfNotNull(
+                runSuspendCatching { repository.getNextLine(bookId, line.lineIndex) }.getOrNull(),
+                runSuspendCatching { repository.getPreviousLine(bookId, line.lineIndex) }.getOrNull(),
+            ).forEach { commentariesUseCase.prefetchCommentaries(it.id, commentatorsFor(it.id)) }
+        }
+    }
+
     /** Selects a line */
     private suspend fun selectLine(
         line: Line,
         isModifierPressed: Boolean = false,
     ) {
+        if (!isModifierPressed) prefetchCommentariesAround(line)
         contentUseCase.selectLine(line, isModifierPressed)
         val bookId =
             stateManager.state.value.navigation.selectedBook

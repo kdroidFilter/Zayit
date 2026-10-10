@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -46,6 +47,8 @@ import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eReader
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
@@ -653,7 +656,7 @@ private fun CommentariesPagedList(
     val currentOnRestore by rememberUpdatedState(onRestore)
     val currentOnScrollSettle by rememberUpdatedState(onScrollSettle)
     val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
-    val annotationCache = remember(selection, commentatorId) { StableAnnotatedCache(mutableStateMapOf()) }
+    val annotationCache = remember(selection, commentatorId) { StableAnnotatedCache() }
 
     // User highlights for the commentary books currently shown. Commentary lines belong to
     // their own target book, so highlights are keyed by (targetBookId, targetLineId) — the same
@@ -907,6 +910,7 @@ private fun CommentaryItem(
                 annotatedCache = annotationCache,
             )
 
+        if (E2e.enabled) SideEffect { E2eReader.commentaryDrawn(linkId, ready = annotation != null) }
         if (annotation == null) {
             Text(
                 text = htmlAnnotationPlaceholderText(processedText.length),
@@ -924,9 +928,10 @@ private fun CommentaryItem(
             val inlineImageContent = annotation.inlineContent
 
             // Plain text WITH diacritics for offset remapping (see LineItem in BookContentView).
+            val needsOriginalText = diacritics != DiacriticsMode.All && userHighlights.isNotEmpty()
             val originalPlainText =
-                remember(targetText) {
-                    buildAnnotatedFromHtml(targetText, textSizes.commentTextSize, boldScale = 1f).text
+                remember(targetText, needsOriginalText) {
+                    if (needsOriginalText) buildAnnotatedFromHtml(targetText, textSizes.commentTextSize, boldScale = 1f).text else null
                 }
 
             val display: AnnotatedString =
@@ -1095,9 +1100,10 @@ private fun rememberSelectedCommentators(
     titleToIdMap: Map<String, Long>,
     onSelectionChange: (Set<Long>) -> Unit,
 ): MutableState<Set<String>> {
+    // Starts from the selection to show rather than empty: an empty first frame showed nothing until an effect ran.
     val selectedCommentators =
         remember(availableCommentators) {
-            mutableStateOf<Set<String>>(emptySet())
+            mutableStateOf(commentatorNames(initiallySelectedIds, titleToIdMap))
         }
     // Only skip emissions when we programmatically change selection
     val skipEmit = remember { mutableStateOf(false) }
@@ -1106,12 +1112,7 @@ private fun rememberSelectedCommentators(
     // Initialize selection with optimization
     LaunchedEffect(initiallySelectedIds, titleToIdMap) {
         if (initiallySelectedIds.isNotEmpty() && titleToIdMap.isNotEmpty()) {
-            val desiredNames =
-                buildSet {
-                    titleToIdMap.forEach { (name, id) ->
-                        if (id in initiallySelectedIds) add(name)
-                    }
-                }
+            val desiredNames = commentatorNames(initiallySelectedIds, titleToIdMap)
             if (desiredNames != selectedCommentators.value) {
                 skipEmit.value = true
                 selectedCommentators.value = desiredNames
@@ -1150,6 +1151,11 @@ private fun rememberSelectedCommentators(
 
     return selectedCommentators
 }
+
+private fun commentatorNames(
+    ids: Set<Long>,
+    titleToIdMap: Map<String, Long>,
+): Set<String> = buildSet { titleToIdMap.forEach { (name, id) -> if (id in ids) add(name) } }
 
 @Immutable
 internal data class AnimatedTextSizes(

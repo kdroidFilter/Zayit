@@ -14,9 +14,14 @@ import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 
 private const val PLACEHOLDER_CHARS_PER_LINE = 72
 private const val MAX_PLACEHOLDER_LINES = 32
+
+// Up to this length the HTML is annotated in composition: parsing costs ~30-100 µs per 1000 chars, far
+// less than the frame a background build and its placeholder cost. Longer texts are built off the main thread.
+private const val SYNC_ANNOTATION_MAX_CHARS = 8_000
 
 @Stable
 internal data class LineAnnotation(
@@ -36,7 +41,9 @@ internal data class HtmlAnnotationCacheKey(
 
 @Stable
 internal class StableAnnotatedCache(
-    private val cache: MutableMap<HtmlAnnotationCacheKey, LineAnnotation>,
+    // Not snapshot state: composition writes into it (see rememberAsyncHtmlAnnotation), and a background
+    // prefetcher may too.
+    private val cache: MutableMap<HtmlAnnotationCacheKey, LineAnnotation> = ConcurrentHashMap(),
 ) {
     fun get(key: HtmlAnnotationCacheKey): LineAnnotation? = cache[key]
 
@@ -58,8 +65,15 @@ internal fun rememberAsyncHtmlAnnotation(
     imageColorFilter: @Composable () -> ColorFilter?,
     annotatedCache: StableAnnotatedCache,
 ): LineAnnotation? {
-    val cached = annotatedCache.get(cacheKey)
     val imageContentBuilder = remember(imageColorFilter) { SkiaHtmlImageBuilder.build(imageColorFilter) }
+    val cached =
+        annotatedCache.get(cacheKey)
+            ?: if (html.length <= SYNC_ANNOTATION_MAX_CHARS) {
+                buildLineAnnotation(html, baseTextSize, boldScale, footnoteMarkerColor, imageContentBuilder)
+                    .also { annotatedCache.put(cacheKey, it) }
+            } else {
+                null
+            }
     val annotation by produceState<LineAnnotation?>(
         initialValue = cached,
         cacheKey,

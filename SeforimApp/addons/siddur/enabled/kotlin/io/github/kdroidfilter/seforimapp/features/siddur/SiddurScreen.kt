@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -26,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -40,6 +40,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
@@ -52,6 +55,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
@@ -59,6 +63,9 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforimapp.core.deeplink.parseZayitDeepLink
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.E2ePerf
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eSiddurPerf
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
@@ -206,6 +213,7 @@ import seforimapp.seforimapp.generated.resources.table_of_contents
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -895,20 +903,31 @@ private fun SiddurText(
     val fontFamily = FontCatalog.familyFor(fontCode)
     val boldScale = FontCatalog.boldScaleFor(fontCode)
     val style = LineStyle(textSize, lineHeight, fontFamily, boldScale, showDiacritics, accent)
+    // Every line's text is built ahead, off the main thread: a line coming into view parsed its HTML in composition
+    val openLink = LocalSiddurLinks.current
+    val annotations = remember(style, openLink) { LineAnnotations(style, openLink) }
+    LaunchedEffect(annotations, items) {
+        withContext(Dispatchers.Default) { items.forEach { item -> (item as? BookItem.Text)?.line?.let(annotations::prepare) } }
+    }
     // The book view's column: the text across the pane, each line between its marking bar and the scrollbar
+    if (E2e.enabled) {
+        SideEffect {
+            E2eSiddurPerf.list = listState
+            E2eSiddurPerf.firstSpecial = items.indexOfFirst { (it as? BookItem.Text)?.line?.special == true }
+        }
+    }
+    E2ePerf.Record()
     LazyColumn(state = listState, modifier = Modifier.fillMaxSize().then(zoom.modifier).padding(end = 16.dp, bottom = 8.dp)) {
-        itemsIndexed(items) { _, item ->
+        itemsIndexed(items, contentType = { _, item -> item.contentType }) { _, item ->
             val line = (item as? BookItem.Text)?.line
             Row(
                 Modifier
                     .fillMaxWidth()
                     .alpha(if (line?.skipped == true) 0.35f else 1f)
                     .padding(horizontal = 8.dp)
-                    .height(IntrinsicSize.Min),
+                    .then(if (line?.special == true) Modifier.specialMark(accent) else Modifier),
             ) {
-                // The day's additions, marked as a book marks its selected line
-                Box(Modifier.width(4.dp).fillMaxHeight().background(if (line?.special == true) accent else Color.Transparent))
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(SPECIAL_MARK_WIDTH + 8.dp))
                 Box(Modifier.weight(1f).padding(vertical = LineItemVerticalPaddingPerSide)) {
                     when (item) {
                         is BookItem.Title -> PartTitle(item.section, titles[item.section].orEmpty(), inIsrael, style)
@@ -916,9 +935,9 @@ private fun SiddurText(
                         is BookItem.Text ->
                             when (item.line.kind) {
                                 SiddurLine.Kind.HEADING -> Heading(item.line, style)
-                                SiddurLine.Kind.NOTE -> Note(item.line.html, style)
+                                SiddurLine.Kind.NOTE -> Note(item.line.html, style, annotations)
                                 SiddurLine.Kind.SLOT -> slot(item.section, item.line.html)
-                                SiddurLine.Kind.TEXT -> Paragraph(item.line, style)
+                                SiddurLine.Kind.TEXT -> Paragraph(item.line, style, annotations)
                             }
                     }
                 }
@@ -1044,10 +1063,9 @@ private fun Heading(
 private fun Note(
     html: String,
     style: LineStyle,
+    annotations: LineAnnotations,
 ) {
-    val openLink = LocalSiddurLinks.current
-    val annotated =
-        remember(html, style) { htmlWithLinks(style.html(html), style.textSize * 0.8f, style.accent, openLink, style.boldScale) }
+    val annotated = annotations.note(html)
     Text(
         annotated,
         modifier =
@@ -1067,13 +1085,9 @@ private fun Note(
 private fun Paragraph(
     line: SiddurLine,
     style: LineStyle,
+    annotations: LineAnnotations,
 ) {
-    val openLink = LocalSiddurLinks.current
-    val annotated =
-        remember(line.html, style) {
-            htmlWithLinks(style.html(line.html), style.textSize, style.accent, openLink, style.boldScale)
-                .marked(SpanStyle(color = style.accent, fontWeight = FontWeight.Bold))
-        }
+    val annotated = annotations.paragraph(line.html)
     Text(
         annotated,
         modifier = Modifier.fillMaxWidth(),
@@ -1083,6 +1097,52 @@ private fun Paragraph(
         textAlign = TextAlign.Justify,
     )
 }
+
+/** The book's lines as text in [style], built once per line: ahead of display by [prepare], else on first use. */
+private class LineAnnotations(
+    private val style: LineStyle,
+    private val openLink: (String) -> Unit,
+) {
+    private val paragraphs = ConcurrentHashMap<String, AnnotatedString>()
+    private val notes = ConcurrentHashMap<String, AnnotatedString>()
+
+    fun paragraph(html: String): AnnotatedString =
+        paragraphs.getOrPut(html) {
+            htmlWithLinks(style.html(html), style.textSize, style.accent, openLink, style.boldScale)
+                .marked(SpanStyle(color = style.accent, fontWeight = FontWeight.Bold))
+        }
+
+    fun note(html: String): AnnotatedString =
+        notes.getOrPut(html) { htmlWithLinks(style.html(html), style.textSize * 0.8f, style.accent, openLink, style.boldScale) }
+
+    fun prepare(line: SiddurLine) {
+        when (line.kind) {
+            SiddurLine.Kind.TEXT -> paragraph(line.html)
+            SiddurLine.Kind.NOTE -> note(line.html)
+            else -> Unit
+        }
+    }
+}
+
+/** Which items can share a composition as the list scrolls: titles with titles, paragraphs with paragraphs... */
+private val BookItem.contentType: Int
+    get() =
+        when (this) {
+            is BookItem.Title -> 0
+            is BookItem.Options -> 1
+            is BookItem.Text -> 2 + line.kind.ordinal
+        }
+
+// The mark beside the day's additions, as a book marks its selected line
+private val SPECIAL_MARK_WIDTH = 4.dp
+
+/** Draws the mark in the slot at the line's start, its full height: drawn, as a child sized to the line laid its text out twice. */
+private fun Modifier.specialMark(color: Color): Modifier =
+    drawBehind {
+        val width = SPECIAL_MARK_WIDTH.toPx()
+        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - width else 0f
+        drawRect(color = color, topLeft = Offset(x, 0f), size = Size(width, size.height))
+    }
 
 /** Opens a zayit:// link of the siddur's text (a halacha's source): set by the screen, for its tab's window. */
 internal val LocalSiddurLinks = staticCompositionLocalOf<(String) -> Unit> { {} }

@@ -41,6 +41,8 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jetbrains.skia.Codec
+import org.jetbrains.skia.Data
 
 /** A character of the book: [offset] in the displayed text of the line at [lineIndex]. */
 data class TextPoint(
@@ -57,7 +59,7 @@ data class TextPoint(
  * book view records each primary press on a line ([press]): the start of any Compose selection (a drag, a double
  * click), which [locateSelection] places in the book from its text, and the anchor a Shift+press extends from to
  * this view's own selection ([range], Zayit #48), drawn by every line ([selectedRangeOf]) and read from the
- * database ([textOf]), composed or not. Highlights and sources take the located range, never a text search.
+ * database ([resolveRange]), composed or not; Compose's located by [resolveComposeSelection]. Highlights and sources take the located range, never a text search.
  */
 @Stable
 class BookSelection {
@@ -168,7 +170,8 @@ fun BookSelectionContainer(
 }
 
 /**
- * A line's primary presses for [selection], [layout] giving the character under the pointer. A Shift+press extending
+ * A line's primary presses for [selection], [layout] giving the character under the pointer (null while the line is a
+ * placeholder). A Shift+press extending
  * the selection is consumed before Compose's own selection gesture, which would extend its selection only.
  */
 fun Modifier.selectableLine(
@@ -181,7 +184,8 @@ fun Modifier.selectableLine(
             val down = awaitPointerEvent(PointerEventPass.Initial)
             val change = down.changes.firstOrNull() ?: return@awaitEachGesture
             if (!down.buttons.isPrimaryPressed || change.type != PointerType.Mouse) return@awaitEachGesture
-            val offset = layout()?.getOffsetForPosition(change.position) ?: return@awaitEachGesture
+            // A line still drawn as a placeholder (text parsing) anchors at its start
+            val offset = layout()?.getOffsetForPosition(change.position) ?: 0
             if (!selection.press(TextPoint(lineIndex, offset), down.keyboardModifiers.isShiftPressed)) return@awaitEachGesture
             // The whole gesture is the selection's
             down.changes.forEach { it.consume() }
@@ -327,7 +331,13 @@ internal fun displayedLineText(
 
 // The text only: an image stands as its placeholder character, as displayed, without decoding it
 private val ImagePlaceholder = InlineTextContent(Placeholder(1.sp, 1.sp, PlaceholderVerticalAlign.TextCenter)) {}
-private val ImagePlaceholders: HtmlImageContentBuilder = { element, _ -> ImagePlaceholder.takeIf { element.imageBytes != null } }
+private val ImagePlaceholders: HtmlImageContentBuilder = { element, _ ->
+    // Displayed only when its format decodes: the header says so, without decoding the pixels
+    ImagePlaceholder.takeIf {
+        element.imageBytes?.let { runCatching { Codec.makeFromData(Data.makeFromBytes(it)).close() }.isSuccess } ==
+            true
+    }
+}
 
 // Ctrl/Cmd+C alone: Shift and Alt make it the copies without nikud and with source, handled at the AWT level
 private fun KeyEvent.isPlainCopy(): Boolean =

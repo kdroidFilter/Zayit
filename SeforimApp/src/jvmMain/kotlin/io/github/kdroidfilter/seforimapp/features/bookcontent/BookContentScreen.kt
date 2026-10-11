@@ -65,10 +65,12 @@ import io.github.kdroidfilter.seforimapp.icons.Ink_pen
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.InternalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -498,15 +500,17 @@ fun BookTextMenus(
                     LaunchedEffect(rawText) { if (rawText.isNotEmpty()) bookSelection?.clear() }
                     LaunchedEffect(rawText, shiftRange, diacritics) {
                         bookSelection?.resolved = null
-                        selectionContext.setSelectedText(tabId, rawText)
+                        // A Shift+click selection is not Compose's, still drawn from an earlier drag: nothing until read
+                        selectionContext.setSelectedText(tabId, if (shiftRange != null) "" else rawText)
                         val pressedAt = bookSelection?.pressedAt
                         val resolved =
                             when {
                                 bookSelection == null || bookId <= 0 -> null
                                 shiftRange != null -> resolveRange(shiftRange, bookId, repository, diacritics)
                                 rawText.isNotEmpty() && pressedAt != null -> {
-                                    // Once the drag rests, not on each of its moves
-                                    delay(SELECTION_SETTLE_MS)
+                                    // Across lines, once the drag rests rather than on each of its moves; within a line (a
+                                    // double click, a word) at once, a single line to read, before the menu opens
+                                    if ('\n' in rawText) delay(SELECTION_SETTLE_MS)
                                     resolveComposeSelection(rawText, pressedAt, bookId, repository, diacritics)
                                 }
                                 else -> null
@@ -670,14 +674,33 @@ fun BookTextMenus(
                                         ContextMenuHighlightColorPicker(
                                             colors = HighlightColors.allWithClear,
                                             onColorSelected = { color ->
-                                                // Located in the book: exactly the selected characters
-                                                val located = resolved?.let { highlightRangesOf(it.range, it.lines, diacritics) }
-                                                if (located != null) {
-                                                    persistHighlights(bookId, located, color, highlightStore, highlightScope)
+                                                // Located in the book: exactly the selected characters, computed off the UI thread
+                                                val selection = resolved
+                                                if (selection != null) {
+                                                    highlightScope.launch {
+                                                        val located =
+                                                            withContext(Dispatchers.Default) {
+                                                                highlightRangesOf(selection.range, selection.lines, diacritics)
+                                                            }
+                                                        if (located != null) {
+                                                            persistHighlights(bookId, located, color, highlightStore, highlightScope)
+                                                        } else {
+                                                            applyHighlightFromSelection(
+                                                                selectedText = copiedText,
+                                                                lines = selection.lines,
+                                                                bookId = bookId,
+                                                                commentaryColumn = selectionContext.activeCommentaryColumn.value,
+                                                                color = color,
+                                                                diacritics = diacritics,
+                                                                store = highlightStore,
+                                                                scope = highlightScope,
+                                                            )
+                                                        }
+                                                    }
                                                 } else {
                                                     applyHighlightFromSelection(
                                                         selectedText = copiedText,
-                                                        lines = resolved?.lines ?: selectionContext.visibleLines.value.lines,
+                                                        lines = selectionContext.visibleLines.value.lines,
                                                         bookId = bookId,
                                                         commentaryColumn = selectionContext.activeCommentaryColumn.value,
                                                         color = color,

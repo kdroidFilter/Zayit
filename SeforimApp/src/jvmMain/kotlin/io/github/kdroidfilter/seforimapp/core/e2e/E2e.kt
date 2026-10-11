@@ -37,6 +37,12 @@ object E2e {
     val enabled: Boolean = outDir != null
     val scenario: String = System.getenv("ZAYIT_E2E_SCENARIO") ?: "common"
 
+    /**
+     * Where the run keeps the user database (highlights, notes, history) instead of the user's: scenarios that write
+     * to it, or any with `ZAYIT_E2E_USER_DB=isolated`; null keeps the user's (the screenshots' baselines need it).
+     */
+    val userDataDir: File? = outDir?.takeIf { scenario in setOf("shiftselect") || System.getenv("ZAYIT_E2E_USER_DB") == "isolated" }
+
     /** Suffix of a window's title-bar layer, exported as `<name>-title`. */
     const val TITLE_BAR = "#title"
 

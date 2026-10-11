@@ -119,4 +119,14 @@ class BookSelectionTest {
             )
         }
     }
+
+    @Test
+    fun `no exact highlight when stripping the plain text does not give the displayed one`() {
+        // A point written as an entity: kept when the reading mode strips the HTML, gone from the stripped plain text
+        val line =
+            io.github.kdroidfilter.seforimlibrary.core.models
+                .Line(id = 8, bookId = 1, lineIndex = 4, content = "שלום&#1463; עולם")
+        val mode = io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode.None
+        assertNull(highlightRangesOf(TextPoint(4, 0)..TextPoint(4, 4), listOf(line), mode))
+    }
 }

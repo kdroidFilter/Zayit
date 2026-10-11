@@ -1486,6 +1486,8 @@ private fun LineItem(
         )
 
     if (E2e.enabled) SideEffect { E2eReader.lineDrawn(lineId, ready = lineAnnotation != null) }
+    // The book view's selection: extended from this line's characters, drawn as Compose draws its own
+    val bookSelection = LocalBookSelection.current
     if (lineAnnotation == null) {
         Text(
             text = htmlAnnotationPlaceholderText(processedContent.length),
@@ -1493,7 +1495,7 @@ private fun LineItem(
             fontFamily = fontFamily,
             fontSize = baseTextSize.sp,
             lineHeight = (baseTextSize * lineHeight).sp,
-            modifier = textModifier,
+            modifier = if (bookSelection != null) textModifier.selectableLine(bookSelection, lineIndex) { null } else textModifier,
             onTextLayout = { result ->
                 val cw = result.layoutInput.constraints.maxWidth
                 if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
@@ -1592,8 +1594,6 @@ private fun LineItem(
         DisposableEffect(findMatchLocator, lineId) { onDispose { findMatchLocator.forget(lineId) } }
     }
 
-    // The book view's Shift+click selection: extended from this line's characters, drawn as Compose draws its own
-    val bookSelection = LocalBookSelection.current
     val selectionBackground = LocalTextSelectionColors.current.backgroundColor
     Text(
         text = displayText,

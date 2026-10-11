@@ -190,9 +190,69 @@ object E2eShiftSelectScenario {
         // The lines between, scrolled back to: drawn selected as well?
         list.scrollToItem((anchorItem.index + targetItem.index) / 2)
         sc.step("ss-03-middle", 1500)
+        // A Shift+click while a drag selection stays extends from the drag's start
+        list.scrollToItem(0)
+        delay(1500)
+        val top = list.layoutInfo.visibleItemsInfo
+        val coords = E2eReader.bookList ?: error("no book list coordinates")
+        val o = coords.positionInRoot()
+
+        fun at(i: LazyListItemInfo) = Offset(o.x + coords.size.width * 0.85f, o.y + i.offset + i.size - 24f)
+        root.sendPointerEvent(
+            PointerEventType.Press,
+            at(top[2]),
+            buttons = PointerButtons(isPrimaryPressed = true),
+            button = PointerButton.Primary,
+        )
+        for (k in 1..5) {
+            delay(30)
+            root.sendPointerEvent(
+                PointerEventType.Move,
+                at(top[2]) + (at(top[3]) - at(top[2])) * (k / 5f),
+                buttons = PointerButtons(isPrimaryPressed = true),
+            )
+        }
+        root.sendPointerEvent(PointerEventType.Release, at(top[3]), buttons = PointerButtons(), button = PointerButton.Primary)
+        delay(800)
+        click(root, top[7], shift = true)
+        val afterDrag =
+            waitFor {
+                graph.selectionContext.selectedLineRange.value
+                    ?.second
+                    ?.id == top[7].key as Long
+            }
+        sc.note("SHIFTSELECT shift+click after a drag extends=$afterDrag")
+
+        // A press nobody takes (the gap between two lines) deselects
+        val margin = Offset(o.x + coords.size.width * 0.85f, o.y + top[6].offset + 1f)
+        root.sendPointerEvent(
+            PointerEventType.Press,
+            margin,
+            buttons = PointerButtons(isPrimaryPressed = true),
+            button = PointerButton.Primary,
+        )
+        delay(60)
+        root.sendPointerEvent(PointerEventType.Release, margin, buttons = PointerButtons(), button = PointerButton.Primary)
+        val deselected = waitFor { graph.selectionContext.selectedLineRange.value == null }
+        sc.note("SHIFTSELECT press between lines deselects=$deselected")
+        sc.step("ss-04-deselected", 500)
+
         sc.note(
             "SHIFTSELECT RESULT " +
-                if (wordOk && completed && linesOk && edgesOk && clip == text && kept && highlighted) "PASS" else "FAIL",
+                if (wordOk &&
+                    completed &&
+                    linesOk &&
+                    edgesOk &&
+                    clip == text &&
+                    kept &&
+                    highlighted &&
+                    afterDrag &&
+                    deselected
+                ) {
+                    "PASS"
+                } else {
+                    "FAIL"
+                },
         )
     }
 

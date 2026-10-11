@@ -24,6 +24,8 @@ sealed interface SearchEntity {
         val parts: List<BookPart>,
         // Its editions, with their source and license
         val editions: List<BookEdition>,
+        // Whether its text comes from the Otzaria library (every source but Sefaria), to credit it
+        val fromOtzaria: Boolean,
     ) : SearchEntity
 
     data class AuthorEntity(

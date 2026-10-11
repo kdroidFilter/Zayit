@@ -32,7 +32,15 @@ class BookDetailsLoader(
             categoryId = category.parentId
         }
         val authors = book.authors.mapNotNull { repository.getAuthorDetails(it.id) }
-        return SearchEntity.BookEntity(book, categories, authors, mainParts(book), repository.getBookEditions(bookId))
+        val fromOtzaria = repository.getSourceById(book.sourceId)?.name.let { it != null && it != SEFARIA_SOURCE }
+        return SearchEntity.BookEntity(
+            book = book,
+            categories = categories,
+            authors = authors,
+            parts = mainParts(book),
+            editions = repository.getBookEditions(bookId),
+            fromOtzaria = fromOtzaria,
+        )
     }
 
     /**
@@ -56,5 +64,6 @@ class BookDetailsLoader(
         const val MAX_DEPTH = 12
         const val MAX_PARTS = 12
         const val MAX_ALT_PARTS = 20
+        const val SEFARIA_SOURCE = "Sefaria"
     }
 }

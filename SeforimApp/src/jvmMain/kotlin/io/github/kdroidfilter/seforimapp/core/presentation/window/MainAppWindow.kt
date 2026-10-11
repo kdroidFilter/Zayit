@@ -50,6 +50,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowView
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.processKeyShortcuts
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
+import io.github.kdroidfilter.seforimapp.core.selectionCopyShortcut
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
@@ -315,6 +317,7 @@ fun NucleusApplicationScope.MainAppWindow(
             // app-wide via LocalIsTouchMode.
             var isTouchMode by remember { mutableStateOf(false) }
 
+            val copyToClipboard = rememberCopyToClipboard()
             // Intercept key combos early to avoid focus traversal consuming Tab
             Box(
                 modifier =
@@ -323,6 +326,22 @@ fun NucleusApplicationScope.MainAppWindow(
                         .e2eCapture(openWindow.id)
                         .detectTouchMode { isTouchMode = it }
                         .onPreviewKeyEvent { keyEvent ->
+                            // Copy without nikud / with source: before the focused text, which would copy it as is
+                            val selectionCopy =
+                                selectionCopyShortcut(
+                                    keyEvent,
+                                    appGraph.selectionContext,
+                                    tabsVm.state.value.let {
+                                        it.tabs
+                                            .getOrNull(it.selectedTabIndex)
+                                            ?.destination
+                                            ?.tabId
+                                    } ?: "",
+                                )
+                            if (selectionCopy != null) {
+                                copyToClipboard(selectionCopy)
+                                return@onPreviewKeyEvent true
+                            }
                             if (keyEvent.type == KeyEventType.KeyDown) {
                                 val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
                                 when {

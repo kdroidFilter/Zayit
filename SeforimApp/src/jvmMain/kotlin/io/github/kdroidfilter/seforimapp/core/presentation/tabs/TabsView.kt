@@ -78,6 +78,7 @@ import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SharedIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
 import io.github.kdroidfilter.seforimapp.core.presentation.window.TabDragGhostCard
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
@@ -115,8 +116,6 @@ import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -194,6 +193,7 @@ private fun TabStripScope.DefaultTabShowcase(
     val desktopManager = LocalAppGraph.current.desktopManager
     val windowId = LocalOpenWindow.current.id
     val tabsViewModel = LocalOpenWindow.current.tabsViewModel
+    val copyToClipboard = rememberCopyToClipboard()
 
     // Track for auto-scrolling (no-op in shrink-to-fit mode)
     var previousTabCount by remember { mutableStateOf(state.tabs.size) }
@@ -1326,10 +1326,6 @@ private fun TabContextMenu(
             MenuContent(content = content)
         }
     }
-}
-
-private fun copyToClipboard(text: String) {
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
 }
 
 private fun MenuScope.tabContextMenuItem(

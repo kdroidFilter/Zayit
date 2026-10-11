@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -910,7 +910,11 @@ fun BookContentView(
         }
     }
 
-    SelectionContainer(
+    // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
+    // mikra, whose items are more than their line). Its offsets index the text as displayed: new for another diacritics mode
+    val bookSelection = remember(bookId, shnayimMikra, diacritics) { if (shnayimMikra) null else BookSelection() }
+    BookSelectionContainer(
+        selection = bookSelection,
         modifier =
             modifier
                 .fillMaxSize()
@@ -927,7 +931,10 @@ fun BookContentView(
                     Modifier
                         .fillMaxSize()
                         .padding(end = 16.dp)
-                        .onGloballyPositioned { findMatchLocator.list = it },
+                        .onGloballyPositioned {
+                            findMatchLocator.list = it
+                            if (E2e.enabled) E2eReader.bookList = it
+                        },
             ) {
                 items(
                     count = lazyPagingItems.itemCount,
@@ -1023,6 +1030,7 @@ fun BookContentView(
                                     val lineNotes = notesByLine[line.id] ?: emptyList()
                                     LineItem(
                                         lineId = line.id,
+                                        lineIndex = line.lineIndex,
                                         lineContent = line.content,
                                         userHighlights = lineHighlights,
                                         userNotes = lineNotes,
@@ -1061,6 +1069,7 @@ fun BookContentView(
                                     Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
                                         LineItem(
                                             lineId = line.id,
+                                            lineIndex = line.lineIndex,
                                             lineContent = line.content,
                                             userHighlights = highlightsByLine[line.id] ?: emptyList(),
                                             userNotes = notesByLine[line.id] ?: emptyList(),
@@ -1389,6 +1398,7 @@ private fun AltHeadingItem(
 @Composable
 private fun LineItem(
     lineId: Long,
+    lineIndex: Int,
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
@@ -1476,6 +1486,8 @@ private fun LineItem(
         )
 
     if (E2e.enabled) SideEffect { E2eReader.lineDrawn(lineId, ready = lineAnnotation != null) }
+    // The book view's selection: extended from this line's characters, drawn as Compose draws its own
+    val bookSelection = LocalBookSelection.current
     if (lineAnnotation == null) {
         Text(
             text = htmlAnnotationPlaceholderText(processedContent.length),
@@ -1483,7 +1495,7 @@ private fun LineItem(
             fontFamily = fontFamily,
             fontSize = baseTextSize.sp,
             lineHeight = (baseTextSize * lineHeight).sp,
-            modifier = textModifier,
+            modifier = if (bookSelection != null) textModifier.selectableLine(bookSelection, lineIndex) { null } else textModifier,
             onTextLayout = { result ->
                 val cw = result.layoutInput.constraints.maxWidth
                 if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
@@ -1582,6 +1594,7 @@ private fun LineItem(
         DisposableEffect(findMatchLocator, lineId) { onDispose { findMatchLocator.forget(lineId) } }
     }
 
+    val selectionBackground = LocalTextSelectionColors.current.backgroundColor
     Text(
         text = displayText,
         textAlign = TextAlign.Justify,
@@ -1589,8 +1602,18 @@ private fun LineItem(
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier =
             textModifier
-                .drawBehind {
-                    noteLayout?.let { drawNoteUnderlines(it, noteRanges, noteUnderlineColor) }
+                .then(
+                    if (bookSelection != null) {
+                        Modifier.selectableLine(bookSelection, lineIndex) { noteLayout }
+                    } else {
+                        Modifier
+                    },
+                ).drawBehind {
+                    val layout = noteLayout ?: return@drawBehind
+                    bookSelection?.selectedRangeOf(lineIndex, layout.layoutInput.text.length)?.takeIf { !it.isEmpty() }?.let {
+                        drawPath(layout.getPathForRange(it.first, it.last + 1), selectionBackground)
+                    }
+                    drawNoteUnderlines(layout, noteRanges, noteUnderlineColor)
                 }.then(
                     if (findMatchLocator != null) {
                         Modifier.onGloballyPositioned { findMatchLocator.publishText(lineId, it) }

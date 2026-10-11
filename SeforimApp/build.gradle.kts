@@ -4,6 +4,7 @@ import dev.nucleusframework.desktop.application.dsl.NativeImageOptimization
 import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
 import dev.nucleusframework.desktop.application.dsl.ReleaseType
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
+import io.github.kdroidfilter.buildsrc.SelectionPinPatch
 import io.github.kdroidfilter.buildsrc.Versioning
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
 import java.util.Properties
@@ -354,6 +355,9 @@ buildConfig {
 configurations.configureEach {
     exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
 }
+
+// Shift+click selection crash in lazy lists (Zayit #48): patches Compose's SelectionManager bytecode
+SelectionPinPatch.apply(project)
 
 tasks.withType<Jar> {
     exclude("META-INF/*.SF")

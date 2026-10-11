@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
@@ -64,7 +65,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnecti
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.LayoutSidebarRight
@@ -628,7 +628,7 @@ private fun CommentatorsGrid(
 }
 
 /**
- * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SafeSelectionContainer].
+ * Paged list of [CommentaryItem]s for one commentator, wrapped in a [SelectionContainer].
  * Shared by single-line and multi-line views.
  *
  * IMPORTANT — [pagerFlow] identity drives the one-shot scroll restore. Callers MUST build it via
@@ -763,7 +763,7 @@ private fun CommentariesPagedList(
             }
     }
 
-    SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+    SelectionContainer(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
                 state = listState,

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -43,7 +44,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
@@ -300,7 +300,7 @@ private fun SingleLineTargumView(
                             }
                         }
 
-                        SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+                        SelectionContainer(modifier = Modifier.fillMaxSize()) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize().padding(end = 12.dp),
@@ -696,7 +696,7 @@ private fun MultiLineTargumView(
                     }
                 }
 
-                SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+                SelectionContainer(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().padding(end = 12.dp),

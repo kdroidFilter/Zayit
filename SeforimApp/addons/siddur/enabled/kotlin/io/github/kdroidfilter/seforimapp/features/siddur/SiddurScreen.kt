@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
@@ -79,7 +80,6 @@ import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.DiacriticsButton
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.ZoomButtons
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LineItemVerticalPaddingPerSide
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocView
@@ -509,7 +509,7 @@ fun SiddurTabContent(
                             Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
                         }
                         VerticallyScrollableContainer(listState as ScrollableState, modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            SafeSelectionContainer(Modifier.fillMaxSize()) {
+                            SelectionContainer(Modifier.fillMaxSize()) {
                                 SiddurText(
                                     items = items,
                                     listState = listState,

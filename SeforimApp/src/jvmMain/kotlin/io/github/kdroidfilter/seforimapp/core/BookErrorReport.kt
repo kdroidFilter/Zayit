@@ -64,7 +64,7 @@ internal fun sefariaReportBody(
         appendLine("התיקון המוצע:")
         appendLine("[נא לכתוב כאן את הנוסח הנכון]")
         appendLine()
-        append("נשלח מתוך זית")
+        append("נשלח מתוך זית (https://zayitapp.com/)")
     }
 
 private fun mailto(

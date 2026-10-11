@@ -41,9 +41,10 @@ class DownloadUseCase(
                 assetsByName[BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)]?.let { asset ->
                     http.downloadText(asset.browser_download_url)
                 }
+            val manifest = manifestText?.let { BundleManifest.parseOrNull(it) }
             val downloads =
-                if (manifestText != null) {
-                    BundleManifest.parse(manifestText).parts.map { part ->
+                if (manifest != null) {
+                    manifest.parts.map { part ->
                         val asset = assetsByName[part.file] ?: error("Release is missing ${part.file}")
                         PlannedDownload(asset.browser_download_url, part.file, part.size, part.sha256)
                     }
@@ -52,7 +53,11 @@ class DownloadUseCase(
                     if (legacyParts.isNotEmpty()) BundleParts.requireComplete(legacyParts.map { it.size.toLong() })
                     legacyParts
                         .ifEmpty { listOfNotNull(latestRelease.assets.firstOrNull { it.name.endsWith(".tar.zst", true) }) }
-                        .map { PlannedDownload(it.browser_download_url, it.name, it.size.toLong(), sha256 = null) }
+                        .map { asset ->
+                            // GitHub's own checksum still lets us verify releases published without a manifest
+                            val sha256 = asset.digest?.takeIf { it.startsWith("sha256:") }?.removePrefix("sha256:")
+                            PlannedDownload(asset.browser_download_url, asset.name, asset.size.toLong(), sha256)
+                        }
                 }
             if (downloads.isEmpty()) error("No bundle assets found in latest release")
 
@@ -105,7 +110,11 @@ class DownloadUseCase(
                 }
             report(total, total)
             // Extraction checks the parts against the manifest when it sits next to them
-            manifestText?.let { File(dbDir, BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)).writeText(it) }
+            if (manifest != null &&
+                manifestText != null
+            ) {
+                File(dbDir, BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)).writeText(manifestText)
+            }
             // Return path to the first file; extraction discovers the other parts next to it
             files.first().absolutePath
         }

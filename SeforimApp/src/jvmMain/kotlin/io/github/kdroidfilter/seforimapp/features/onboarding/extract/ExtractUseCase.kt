@@ -14,7 +14,11 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.FilterInputStream
 import java.io.InputStream
+import java.io.OutputStream
 import java.io.SequenceInputStream
+import java.security.DigestInputStream
+import java.security.MessageDigest
+import java.util.HexFormat
 
 class ExtractUseCase(
     private val appSettings: AppSettings,
@@ -35,9 +39,10 @@ class ExtractUseCase(
                     val lower = source.name.lowercase()
                     when {
                         BundleParts.isPart(source.name) -> {
-                            val parts = BundleParts.resolve(source)
+                            val bundle = BundleParts.resolve(source)
+                            val parts = bundle.parts
                             val result =
-                                extractTarZstFromPartsStreaming(parts, dbDir) { mapped ->
+                                extractTarZstFromPartsStreaming(parts, dbDir, bundle.sha256) { mapped ->
                                     onProgress(mapped)
                                 }
                             // Only cleanup if parts live in our databases directory (downloaded by the app)
@@ -187,9 +192,11 @@ class ExtractUseCase(
         return extractedDb ?: error("No .db file found in archive")
     }
 
+    /** Extracts the concatenated [parts]; when [expectedSha256] is known, the compressed stream must match it. */
     private fun extractTarZstFromPartsStreaming(
         parts: List<File>,
         destDir: File,
+        expectedSha256: String?,
         onUiProgress: (Float) -> Unit,
     ): File {
         require(parts.isNotEmpty())
@@ -234,9 +241,11 @@ class ExtractUseCase(
 
         val ins = parts.map { BufferedInputStream(FileInputStream(it), 1 shl 20) }
         val seq = SequenceInputStream(ins.toEnumeration())
+        // Hashing the bytes already read for extraction costs no extra I/O
+        val digest = expectedSha256?.let { MessageDigest.getInstance("SHA-256") }
 
         var extractedDb: File? = null
-        CountingInputStream(seq).use { cis ->
+        CountingInputStream(digest?.let { DigestInputStream(seq, it) } ?: seq).use { cis ->
             ZstdInputStream(cis).use { zIn ->
                 TarArchiveInputStream(zIn).use { tar ->
                     while (true) {
@@ -265,6 +274,14 @@ class ExtractUseCase(
                             }
                         }
                         onUiProgress(mapProgress(cis.count))
+                    }
+                    if (digest != null) {
+                        // The tar ends before the compressed stream does; hash the rest too
+                        cis.transferTo(OutputStream.nullOutputStream())
+                        if (!HexFormat.of().formatHex(digest.digest()).equals(expectedSha256, ignoreCase = true)) {
+                            extractedDb?.delete()
+                            error("The database bundle is corrupted (sha256 mismatch)")
+                        }
                     }
                 }
             }

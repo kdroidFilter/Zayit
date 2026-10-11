@@ -23,11 +23,15 @@ data class BundleManifest(
     )
 
     companion object {
+        /** Version of the manifest format this app understands. */
+        const val FORMAT_VERSION = 1
+
         private val json = Json { ignoreUnknownKeys = true }
 
-        fun parse(text: String): BundleManifest =
-            json.decodeFromString<BundleManifest>(text).also { manifest ->
-                require(manifest.parts.isNotEmpty()) { "Bundle manifest lists no part" }
-            }
+        /** The manifest, or null if it is malformed or in a format this app does not know. */
+        fun parseOrNull(text: String): BundleManifest? =
+            runCatching { json.decodeFromString<BundleManifest>(text) }
+                .getOrNull()
+                ?.takeIf { it.formatVersion == FORMAT_VERSION && it.parts.isNotEmpty() }
     }
 }

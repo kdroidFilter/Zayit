@@ -23,18 +23,23 @@ class BundlePartsTest {
         base: String = BundleParts.BUNDLE_NAME,
     ) = File(dir, "$base.part%02d".format(number)).apply { writeBytes(ByteArray(size)) }
 
-    private fun manifest(vararg sizes: Long) {
+    private fun manifest(
+        vararg sizes: Long,
+        formatVersion: Int = 1,
+    ) {
         val parts =
             sizes.mapIndexed { i, size ->
                 """{ "file": "${BundleParts.BUNDLE_NAME}.part%02d", "size": $size, "sha256": "x" }""".format(i + 1)
             }
         File(dir, BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)).writeText(
-            """{ "formatVersion": 1, "file": "${BundleParts.BUNDLE_NAME}", "size": ${sizes.sum()}, "sha256": "x",
+            """{ "formatVersion": $formatVersion, "file": "${BundleParts.BUNDLE_NAME}", "size": ${sizes.sum()}, "sha256": "bundle-sha",
                "parts": [${parts.joinToString()}], "futureField": true }""",
         )
     }
 
-    private fun resolveNames() = BundleParts.resolve(File(dir, "${BundleParts.BUNDLE_NAME}.part01")).map { it.name.substringAfterLast('.') }
+    private fun resolve(base: String = BundleParts.BUNDLE_NAME) = BundleParts.resolve(File(dir, "$base.part01"))
+
+    private fun resolveNames() = resolve().parts.map { it.name.substringAfterLast('.') }
 
     @Test
     fun `parses part numbers`() {
@@ -83,17 +88,42 @@ class BundlePartsTest {
         manifest(4, 1)
 
         assertEquals(listOf("part01", "part02"), resolveNames())
+        assertEquals("bundle-sha", resolve().sha256)
     }
 
     @Test
-    fun `manifest catches a missing or truncated part`() {
+    fun `a manifest that does not match the parts is ignored`() {
         part(1, 4)
-        part(2, 4)
-        manifest(4, 4, 1)
-        assertFailsWith<IllegalArgumentException> { resolveNames() }
+        part(2, 1)
+        manifest(4, 2) // left over from another release
 
-        part(3, 0)
+        assertEquals(listOf("part01", "part02"), resolveNames())
+        assertNull(resolve().sha256)
+
+        manifest(4, 4, 1) // part03 really missing: the size rule still catches it
+        part(2, 4)
         assertFailsWith<IllegalArgumentException> { resolveNames() }
+    }
+
+    @Test
+    fun `a manifest in an unknown format is ignored`() {
+        part(1, 4)
+        part(2, 1)
+        manifest(4, 1, formatVersion = 2)
+
+        assertNull(resolve().sha256)
+    }
+
+    @Test
+    fun `browser-renamed duplicates form their own bundle`() {
+        part(1, 4)
+        part(2, 4) // old, full-size part02 of the original download
+        part(1, 4, base = "${BundleParts.BUNDLE_NAME} (1)")
+        part(2, 1, base = "${BundleParts.BUNDLE_NAME} (1)")
+
+        val parts = resolve("${BundleParts.BUNDLE_NAME} (1)").parts.map { it.name }
+
+        assertEquals(listOf("seforim_bundle.tar.zst (1).part01", "seforim_bundle.tar.zst (1).part02"), parts)
     }
 
     @Test

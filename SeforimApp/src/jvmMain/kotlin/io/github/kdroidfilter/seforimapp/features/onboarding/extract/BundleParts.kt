@@ -12,7 +12,9 @@ object BundleParts {
     const val BUNDLE_NAME = "seforim_bundle.tar.zst"
 
     private const val MANIFEST_SUFFIX = ".manifest.json"
-    private val PART_NAME = Regex("""^(.+\.tar\.zst)\.part(\d+)$""", RegexOption.IGNORE_CASE)
+
+    // A browser saving a duplicate inserts " (1)" before the last extension; such parts form their own bundle
+    private val PART_NAME = Regex("""^(.+\.tar\.zst(?: \(\d+\))?)\.part(\d+)$""", RegexOption.IGNORE_CASE)
 
     /** Part number of [name] (1 for `.part01`), or null if it is not a bundle part. */
     fun partNumber(name: String): Int? =
@@ -51,28 +53,34 @@ object BundleParts {
         return requireContiguous(byNumber.keys).map { byNumber.getValue(it) }
     }
 
+    /** Parts of a bundle in concatenation order, with the bundle's sha256 when its manifest is known. */
+    class Resolved(
+        val parts: List<File>,
+        val sha256: String?,
+    )
+
     /**
      * Ordered, complete list of the parts of the bundle [anyPart] belongs to, found in its directory.
      *
      * The manifest is optional (an offline install may only have the parts). When it sits next to
-     * the parts, every listed part must be there with its exact size and leftovers are ignored.
-     * Otherwise parts are discovered by name and checked with [requireComplete].
+     * the parts and matches them, it decides the list and leftovers are ignored. Otherwise (absent,
+     * unknown format, or left over from another release) parts are discovered by name and checked
+     * with [requireComplete].
      */
-    fun resolve(anyPart: File): List<File> {
+    fun resolve(anyPart: File): Resolved {
         val bundleName = bundleNameOf(anyPart.name) ?: error("Not a bundle part: ${anyPart.name}")
         val dir = anyPart.absoluteFile.parentFile ?: error("Invalid part path: $anyPart")
-        val manifestFile = File(dir, manifestNameFor(bundleName))
-        if (manifestFile.isFile) {
-            return BundleManifest.parse(manifestFile.readText()).parts.map { part ->
-                File(dir, part.file).also { file ->
-                    require(file.isFile) { "Missing bundle part ${part.file}" }
-                    require(file.length() == part.size) { "Incomplete bundle part ${part.file}" }
-                }
-            }
+        val manifest =
+            File(dir, manifestNameFor(bundleName))
+                .takeIf { it.isFile }
+                ?.let { BundleManifest.parseOrNull(it.readText()) }
+        val manifestParts = manifest?.parts?.map { File(dir, it.file) }
+        if (manifestParts != null && manifestParts.zip(manifest.parts).all { (file, part) -> file.length() == part.size }) {
+            return Resolved(manifestParts, manifest.sha256)
         }
         val parts = legacyPartNames(dir.list().orEmpty().toList(), bundleName).map { File(dir, it) }
         requireComplete(parts.map { it.length() })
-        return parts
+        return Resolved(parts, sha256 = null)
     }
 
     /**

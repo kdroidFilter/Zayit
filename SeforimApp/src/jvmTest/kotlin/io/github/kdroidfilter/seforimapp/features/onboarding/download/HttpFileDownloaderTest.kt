@@ -29,13 +29,19 @@ class HttpFileDownloaderTest {
     private fun serve(
         honorRange: Boolean,
         drops: Int = 1,
+        rangeFrom: (requested: Int) -> Int = { it },
     ) {
         server.createContext("/file") { exchange ->
             val attempt = requests.incrementAndGet()
             val range = exchange.requestHeaders.getFirst("Range")
-            val from = if (honorRange && range != null) range.removePrefix("bytes=").removeSuffix("-").toInt() else 0
+            val from = if (honorRange && range != null) rangeFrom(range.removePrefix("bytes=").removeSuffix("-").toInt()) else 0
             val body = content.copyOfRange(from, content.size)
-            exchange.sendResponseHeaders(if (from > 0) 206 else 200, body.size.toLong())
+            if (range != null &&
+                honorRange
+            ) {
+                exchange.responseHeaders.add("Content-Range", "bytes $from-${content.size - 1}/${content.size}")
+            }
+            exchange.sendResponseHeaders(if (range != null && honorRange) 206 else 200, body.size.toLong())
             exchange.responseBody.use { out ->
                 if (attempt <= drops) out.write(body, 0, minOf(100_000, body.size)) else out.write(body)
             }
@@ -69,6 +75,31 @@ class HttpFileDownloaderTest {
             downloader.download(url, dest, content.size.toLong(), sha)
 
             assertContentEquals(content, dest.readBytes())
+        }
+
+    @Test
+    fun `follows the offset of a proxy answering another range`() =
+        runBlocking {
+            serve(honorRange = true, rangeFrom = { it - 5_000 })
+
+            downloader.download(url, dest, content.size.toLong(), sha)
+
+            assertContentEquals(content, dest.readBytes())
+        }
+
+    @Test
+    fun `retries the manifest download`() =
+        runBlocking {
+            server.createContext("/text") { exchange ->
+                val ok = requests.incrementAndGet() > 1
+                val body = "manifest".toByteArray()
+                exchange.sendResponseHeaders(if (ok) 200 else 502, if (ok) body.size.toLong() else -1)
+                if (ok) exchange.responseBody.use { it.write(body) }
+                exchange.close()
+            }
+            server.start()
+
+            assertEquals("manifest", downloader.downloadText("http://127.0.0.1:${server.address.port}/text"))
         }
 
     @Test

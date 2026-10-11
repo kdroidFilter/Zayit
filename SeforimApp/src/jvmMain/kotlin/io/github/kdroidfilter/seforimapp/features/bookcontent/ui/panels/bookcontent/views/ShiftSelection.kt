@@ -101,12 +101,14 @@ internal fun ClosedRange<TextPoint>.offsetsIn(
     return from until to
 }
 
-/** A selection's [text] from line [first] to line [last]. */
+/** A selection's [text] over its [lines], in reading order. */
 data class CopiedSelection(
     val text: String,
-    val first: Line,
-    val last: Line,
-)
+    val lines: List<Line>,
+) {
+    val first: Line get() = lines.first()
+    val last: Line get() = lines.last()
+}
 
 /** The [ShiftSelection] of the book view around the current SelectionContainer; null elsewhere (commentaries…). */
 val LocalShiftSelection = staticCompositionLocalOf<ShiftSelection?> { null }
@@ -180,7 +182,7 @@ suspend fun textOf(
                 }.filter { it.isNotEmpty() }
                 .joinToString("\n")
         }
-    return CopiedSelection(text, lines.first(), lines.last())
+    return CopiedSelection(text, lines)
 }
 
 /** The text of a line as the book view displays it, which a selection's offsets index. */

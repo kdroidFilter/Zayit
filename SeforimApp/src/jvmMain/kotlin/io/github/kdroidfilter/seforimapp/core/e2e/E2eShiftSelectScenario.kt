@@ -12,6 +12,9 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerKeyboardModifiers
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.PlatformRootForTest
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import dev.nucleusframework.window.ExperimentalNucleusApi
 import dev.nucleusframework.window.tao.TaoRootsForTest
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
@@ -48,6 +51,34 @@ object E2eShiftSelectScenario {
         delay(2000)
         val list = E2eReader.book!!.second
         val root = TaoRootsForTest.roots.maxBy { it.visibleBounds.width * it.visibleBounds.height }
+
+        // A plain drag selects as before
+        run {
+            val items = list.layoutInfo.visibleItemsInfo
+            val coords = E2eReader.bookList ?: error("no book list coordinates")
+            val o = coords.positionInRoot()
+
+            fun at(i: LazyListItemInfo) = Offset(o.x + coords.size.width * 0.85f, o.y + i.offset + i.size - 24f)
+            root.sendPointerEvent(PointerEventType.Move, at(items[2]))
+            delay(50)
+            root.sendPointerEvent(
+                PointerEventType.Press,
+                at(items[2]),
+                buttons = PointerButtons(isPrimaryPressed = true),
+                button = PointerButton.Primary,
+            )
+            for (k in 1..10) {
+                delay(30)
+                root.sendPointerEvent(
+                    PointerEventType.Move,
+                    at(items[2]) + (at(items[5]) - at(items[2])) * (k / 10f),
+                    buttons = PointerButtons(isPrimaryPressed = true),
+                )
+            }
+            root.sendPointerEvent(PointerEventType.Release, at(items[5]), buttons = PointerButtons(), button = PointerButton.Primary)
+            sc.step("ss-00-drag", 800)
+            sc.note("SHIFTSELECT drag selected=${graph.selectionContext.selectedText.value.length} chars")
+        }
 
         // A plain click inside a line, then a Shift+click [JUMP] lines down
         val anchorItem = list.layoutInfo.visibleItemsInfo[2]
@@ -90,12 +121,54 @@ object E2eShiftSelectScenario {
         val clip = Toolkit.getDefaultToolkit().systemClipboard.getData(DataFlavor.stringFlavor) as String
         sc.note("SHIFTSELECT ctrl+c copied=${clip.length} chars equal=${clip == text}")
 
+        // A right-click in the selection keeps it, and its highlight color reaches the lines never composed
+        val rightClickAt =
+            run {
+                val coords = E2eReader.bookList ?: error("no book list coordinates")
+                val o = coords.positionInRoot()
+                Offset(o.x + coords.size.width * 0.97f, o.y + targetItem.offset + targetItem.size - 24f)
+            }
+        root.sendPointerEvent(PointerEventType.Move, rightClickAt)
+        root.sendPointerEvent(
+            PointerEventType.Press,
+            rightClickAt,
+            buttons = PointerButtons(isSecondaryPressed = true),
+            button = PointerButton.Secondary,
+        )
+        delay(60)
+        root.sendPointerEvent(PointerEventType.Release, rightClickAt, buttons = PointerButtons(), button = PointerButton.Secondary)
+        delay(1200)
+        val kept = graph.selectionContext.selectedText.value == text && graph.selectionContext.selectedLineRange.value != null
+        val popup = TaoRootsForTest.roots.last()
+        val mark =
+            popup.semanticsOwner.unmergedRootSemanticsNode.find {
+                it.config.getOrNull(SemanticsProperties.Text)?.joinToString() ==
+                    "סמן"
+            }
+        var highlighted = false
+        if (popup !== root && mark != null) {
+            val swatch = Offset(mark.boundsInRoot.left - 23f, mark.boundsInRoot.center.y)
+            popup.sendPointerEvent(PointerEventType.Move, swatch)
+            delay(50)
+            popup.sendPointerEvent(
+                PointerEventType.Press,
+                swatch,
+                buttons = PointerButtons(isPrimaryPressed = true),
+                button = PointerButton.Primary,
+            )
+            delay(60)
+            popup.sendPointerEvent(PointerEventType.Release, swatch, buttons = PointerButtons(), button = PointerButton.Primary)
+            val middleLine = interior[interior.size / 2]
+            highlighted = waitFor { graph.highlightStore.highlightsForLine(book.id, middleLine.id).isNotEmpty() }
+        }
+        sc.note("SHIFTSELECT right-click kept=$kept menu=${mark != null} highlight reaches line never composed=$highlighted")
+
         // The lines between, scrolled back to: drawn selected as well?
         list.scrollToItem((anchorItem.index + targetItem.index) / 2)
         sc.step("ss-03-middle", 1500)
         sc.note(
             "SHIFTSELECT RESULT " +
-                if (completed && linesOk && edgesOk && clip == text) "PASS" else "FAIL",
+                if (completed && linesOk && edgesOk && clip == text && kept && highlighted) "PASS" else "FAIL",
         )
     }
 
@@ -134,4 +207,7 @@ object E2eShiftSelectScenario {
             while (!condition()) delay(10)
             true
         } ?: false
+
+    private fun SemanticsNode.find(predicate: (SemanticsNode) -> Boolean): SemanticsNode? =
+        if (predicate(this)) this else children.firstNotNullOfOrNull { it.find(predicate) }
 }

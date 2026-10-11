@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
@@ -513,6 +514,9 @@ fun BookTextMenus(
                             object : TextContextMenu.TextManager by textManager {
                                 override val selectedText = AnnotatedString(selection.text)
                                 override val copy = TextContextMenu.Action(enabled = true) { copyToClipboard(selection.text) }
+
+                                // A right-click keeps the Shift+click selection rather than selecting a word
+                                override fun selectWordAtPositionIfNotAlreadySelected(offset: Offset) = Unit
                             }
                         } ?: textManager
 
@@ -653,14 +657,15 @@ fun BookTextMenus(
                                 }
                                 // Highlight color picker (last item): persists a position-based
                                 // highlight for the selected text on its resolved line.
-                                if (selectedText.isNotBlank() && bookId > 0) {
+                                if (copiedText.isNotBlank() && bookId > 0) {
                                     add(
                                         ContextMenuHighlightColorPicker(
                                             colors = HighlightColors.allWithClear,
                                             onColorSelected = { color ->
                                                 applyHighlightFromSelection(
-                                                    selectedText = selectedText,
-                                                    lines = selectionContext.visibleLines.value.lines,
+                                                    selectedText = copiedText,
+                                                    // A Shift+click selection's own lines, composed or not
+                                                    lines = copied?.lines ?: selectionContext.visibleLines.value.lines,
                                                     bookId = bookId,
                                                     commentaryColumn = selectionContext.activeCommentaryColumn.value,
                                                     color = color,

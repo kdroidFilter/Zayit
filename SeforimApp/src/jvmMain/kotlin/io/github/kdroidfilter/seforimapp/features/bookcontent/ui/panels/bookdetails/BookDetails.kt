@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookdetails
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -11,6 +12,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -30,6 +33,7 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.license_public_domain
 import seforimapp.seforimapp.generated.resources.license_unknown
+import seforimapp.seforimapp.generated.resources.otzaria_credit
 import seforimapp.seforimapp.generated.resources.search_book_details
 import seforimapp.seforimapp.generated.resources.search_panel_author
 import seforimapp.seforimapp.generated.resources.search_panel_parts
@@ -91,7 +95,7 @@ fun ColumnScope.BookDetails(
         }
     }
     val editions = entity.editions.distinctBy { (it.heTitle ?: it.title) to it.licenseCode }
-    if (editions.isNotEmpty()) {
+    if (editions.isNotEmpty() || entity.fromOtzaria) {
         PanelSection(stringResource(Res.string.search_panel_source)) {
             editions.forEach { edition ->
                 val title = edition.heTitle ?: edition.title
@@ -99,9 +103,19 @@ fun ColumnScope.BookDetails(
                 if (url != null) ResultLink(title, accent, 13.sp) { UrlOpener.open(url) } else Text(title, fontSize = 13.sp)
                 Text(licenseLabel(edition.licenseCode), fontSize = 12.sp, color = grey)
             }
+            if (entity.fromOtzaria) {
+                Text(
+                    stringResource(Res.string.otzaria_credit),
+                    fontSize = 12.sp,
+                    color = grey,
+                    modifier = Modifier.clickable { UrlOpener.open(OTZARIA_URL) }.pointerHoverIcon(PointerIcon.Hand),
+                )
+            }
         }
     }
 }
+
+private const val OTZARIA_URL = "https://otzaria.org"
 
 /** A license code in plain Hebrew where it has a name (נחלת הכלל), else as Creative Commons writes it. */
 @Composable

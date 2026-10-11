@@ -36,7 +36,7 @@ import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.LineHighlightRange
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.stripNikudTeamimWithMap
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
@@ -137,6 +137,7 @@ fun BookSelectionContainer(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val copyToClipboard = rememberCopyToClipboard()
     CompositionLocalProvider(LocalBookSelection provides selection) {
         // On the container itself: its own Ctrl/Cmd+C would copy its (empty) selection
         SelectionContainer(

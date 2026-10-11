@@ -43,6 +43,13 @@ object E2e {
      */
     val userDataDir: File? = outDir?.takeIf { scenario in setOf("shiftselect") || System.getenv("ZAYIT_E2E_USER_DB") == "isolated" }
 
+    /**
+     * The last text the app put on the clipboard. The system clipboard itself cannot be checked: on Wayland the
+     * compositor only lets an app set it on a real input event, which the harness's events are not.
+     */
+    @Volatile
+    var copiedText: String? = null
+
     /** Suffix of a window's title-bar layer, exported as `<name>-title`. */
     const val TITLE_BAR = "#title"
 

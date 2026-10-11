@@ -48,7 +48,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRanges
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
 import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
@@ -488,6 +488,7 @@ fun BookTextMenus(
                 ) {
                     val appSettings = LocalAppGraph.current.appSettings
                     val repository = LocalAppGraph.current.repository
+                    val copyToClipboard = rememberCopyToClipboard()
                     // The book view's selection located in the book (Compose's from the press it started at, or the
                     // Shift+click one read from the database): what the copies, highlights and sources take, the AWT
                     // shortcuts included through the SelectionContext

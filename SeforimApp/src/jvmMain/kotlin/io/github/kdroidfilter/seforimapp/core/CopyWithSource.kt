@@ -1,5 +1,15 @@
 package io.github.kdroidfilter.seforimapp.core
 
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
+import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
@@ -109,4 +119,32 @@ fun buildCopyWithSourcePayload(
             book.heRef?.takeIf { it.isNotBlank() } ?: book.title
         }
     return "$selectedText\n\n($reference)"
+}
+
+/**
+ * The text a selection copy shortcut puts on the clipboard for [tabId]: Ctrl/Cmd+Shift+C without nikud, Ctrl/Cmd+Alt+C
+ * with its source. Null for any other key or without a selection.
+ */
+fun selectionCopyShortcut(
+    keyEvent: KeyEvent,
+    selectionContext: SelectionContext,
+    tabId: String,
+): String? {
+    if (keyEvent.type != KeyEventType.KeyDown || keyEvent.key != Key.C) return null
+    if (!keyEvent.isCtrlPressed && !keyEvent.isMetaPressed) return null
+    val selectedText = selectionContext.selectedTextIn(tabId).takeIf { it.isNotBlank() } ?: return null
+    return when {
+        keyEvent.isShiftPressed && !keyEvent.isAltPressed -> HebrewTextUtils.removeAllDiacritics(selectedText)
+        keyEvent.isAltPressed && !keyEvent.isShiftPressed -> {
+            val active = selectionContext.activeBook.value ?: return null
+            buildCopyWithSourcePayload(
+                selectedText,
+                active.book,
+                active.rootTitle,
+                selectionContext.visibleLines.value.lines,
+                selectionContext.selectedLineRange.value,
+            )
+        }
+        else -> null
+    }
 }

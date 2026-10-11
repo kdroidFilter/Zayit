@@ -23,9 +23,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
-import java.awt.Toolkit
-import java.awt.datatransfer.DataFlavor
-import java.awt.datatransfer.StringSelection
 import java.util.UUID
 
 /**
@@ -164,14 +161,20 @@ object E2eShiftSelectScenario {
                 plain(displayedLineText(target.content, DiacriticsMode.All)).startsWith(pieces.last())
         sc.note("SHIFTSELECT interior lines expected=${expected.size} got=${middle.size} match=$linesOk edges=$edgesOk")
 
-        // Ctrl+C copies the whole selection
-        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection("e2e-sentinel"), null)
+        // Ctrl+C copies the whole selection to the window's clipboard
+        E2e.copiedText = null
         val handled = root.sendKeyEvent(KeyEvent(Key.C, KeyEventType.KeyDown, isCtrlPressed = true))
         root.sendKeyEvent(KeyEvent(Key.C, KeyEventType.KeyUp, isCtrlPressed = true))
         sc.note("SHIFTSELECT ctrl+c handled=$handled")
-        delay(500)
-        val clip = Toolkit.getDefaultToolkit().systemClipboard.getData(DataFlavor.stringFlavor) as String
+        waitFor { E2e.copiedText == text }
+        val clip = E2e.copiedText.orEmpty()
         sc.note("SHIFTSELECT ctrl+c copied=${clip.length} chars equal=${clip == text}")
+        // Ctrl+Shift+C: the same without nikud, from the window's shortcut
+        E2e.copiedText = null
+        root.sendKeyEvent(KeyEvent(Key.C, KeyEventType.KeyDown, isCtrlPressed = true, isShiftPressed = true))
+        root.sendKeyEvent(KeyEvent(Key.C, KeyEventType.KeyUp, isCtrlPressed = true, isShiftPressed = true))
+        val withoutNikud = waitFor { E2e.copiedText == HebrewTextUtils.removeAllDiacritics(text) }
+        sc.note("SHIFTSELECT ctrl+shift+c without nikud=$withoutNikud")
 
         // A right-click in the selection keeps it, and its highlight color reaches the lines never composed
         val rightClickAt =
@@ -244,6 +247,7 @@ object E2eShiftSelectScenario {
                     linesOk &&
                     edgesOk &&
                     clip == text &&
+                    withoutNikud &&
                     kept &&
                     highlighted &&
                     afterDrag &&

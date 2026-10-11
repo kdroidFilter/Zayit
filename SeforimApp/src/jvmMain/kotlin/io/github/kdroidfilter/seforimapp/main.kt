@@ -16,7 +16,6 @@ import dev.nucleusframework.window.jewel.rememberJewelWindowStyle
 import dev.zacsweers.metro.createGraph
 import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
 import dev.zacsweers.metrox.viewmodel.metroViewModel
-import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eAuthorScenario
@@ -38,7 +37,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpLis
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
@@ -59,7 +57,6 @@ import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
 import io.github.kdroidfilter.seforimlibrary.cli.runCli
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -74,7 +71,6 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
-import java.awt.event.KeyEvent
 import java.util.*
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
@@ -197,68 +193,6 @@ fun main(args: Array<String>) {
 
         // Daily Google Drive backup while the app runs (a no-op until an account is connected).
         LaunchedEffect(appGraph) { if (!E2e.enabled) appGraph.googleDriveSync.runAutoBackup() }
-
-        // Register the AWT-level keyboard shortcuts here (instead of in main()) so they can read
-        // from the DI-provided SelectionContext. The DisposableEffect re-runs only if the graph
-        // identity changes (effectively never), and removes the dispatchers on app teardown.
-        val selectionContext = appGraph.selectionContext
-        DisposableEffect(selectionContext) {
-            val km = KeyboardFocusManager.getCurrentKeyboardFocusManager()
-            val copyWithoutNikud =
-                KeyEventDispatcher { event ->
-                    if (event.id == KeyEvent.KEY_PRESSED &&
-                        event.keyCode == KeyEvent.VK_C &&
-                        event.isShiftDown &&
-                        (event.isMetaDown || event.isControlDown)
-                    ) {
-                        val selectedText = selectionContext.selectedText.value
-                        if (selectedText.isNotBlank()) {
-                            val stripped = HebrewTextUtils.removeAllDiacritics(selectedText)
-                            copyToClipboard(stripped)
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                }
-            // Skip when AltGraph is down to avoid clobbering character composition on
-            // Linux/Windows layouts where Ctrl+Alt is interpreted as AltGr.
-            val copyWithSource =
-                KeyEventDispatcher { event ->
-                    if (event.id == KeyEvent.KEY_PRESSED &&
-                        event.keyCode == KeyEvent.VK_C &&
-                        event.isAltDown &&
-                        !event.isAltGraphDown &&
-                        !event.isShiftDown &&
-                        (event.isMetaDown || event.isControlDown)
-                    ) {
-                        val selectedText = selectionContext.selectedText.value
-                        val active = selectionContext.activeBook.value
-                        if (selectedText.isNotBlank() && active != null) {
-                            val payload =
-                                buildCopyWithSourcePayload(
-                                    selectedText,
-                                    active.book,
-                                    active.rootTitle,
-                                    selectionContext.visibleLines.value.lines,
-                                    selectionContext.selectedLineRange.value,
-                                )
-                            copyToClipboard(payload)
-                            true
-                        } else {
-                            false
-                        }
-                    } else {
-                        false
-                    }
-                }
-            km.addKeyEventDispatcher(copyWithoutNikud)
-            km.addKeyEventDispatcher(copyWithSource)
-            onDispose {
-                km.removeKeyEventDispatcher(copyWithoutNikud)
-                km.removeKeyEventDispatcher(copyWithSource)
-            }
-        }
 
         // Get MainAppState from DI graph
         val mainAppState = appGraph.mainAppState

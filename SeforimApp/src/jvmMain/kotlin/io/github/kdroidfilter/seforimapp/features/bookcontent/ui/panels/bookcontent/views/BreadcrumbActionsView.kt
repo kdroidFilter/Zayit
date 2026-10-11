@@ -73,7 +73,7 @@ import dev.nucleusframework.share.ShareSheet
 import dev.nucleusframework.share.shareRequest
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
-import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -176,6 +176,7 @@ private fun CopyLinkButton(
             copied = false
         }
     }
+    val copyToClipboard = rememberCopyToClipboard()
     Tooltip(
         tooltip = { Text(stringResource(Res.string.breadcrumb_copy_link), fontSize = 13.sp) },
         tooltipPlacement = tooltipPlacement,

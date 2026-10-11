@@ -67,6 +67,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import dev.nucleusframework.application.share
 import dev.nucleusframework.application.shareAnchor
+import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.share.ShareAnchor
 import dev.nucleusframework.share.ShareException
 import dev.nucleusframework.share.ShareSheet
@@ -145,7 +146,8 @@ fun BreadcrumbActionsView(uiState: BookContentState) {
             lineId = lineId,
             tooltipPlacement = aboveAnchorPlacement,
         )
-        if (ShareSheet.isSupported) {
+        // Linux has no real share sheet (only an "Open With" picker): copy-link covers it
+        if (ShareSheet.isSupported && Platform.Current != Platform.Linux) {
             ShareButton(
                 bookId = book.id,
                 lineId = lineId,

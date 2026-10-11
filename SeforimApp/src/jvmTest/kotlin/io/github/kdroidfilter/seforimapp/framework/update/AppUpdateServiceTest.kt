@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import java.io.File
+import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,6 +29,7 @@ class AppUpdateServiceTest {
 
     private inner class FakeUpdater(
         private val result: UpdateResult,
+        private val downloaded: File = installerFile,
     ) : Updater {
         var restartCalls = 0
         var quitCalls = 0
@@ -41,7 +43,7 @@ class AppUpdateServiceTest {
         override fun downloadUpdate(info: UpdateInfo): Flow<DownloadProgress> =
             flow {
                 emit(DownloadProgress(50, 100, 50.0))
-                emit(DownloadProgress(100, 100, 100.0, installerFile))
+                emit(DownloadProgress(100, 100, 100.0, downloaded))
             }
 
         override fun installAndRestart(file: File) {
@@ -57,7 +59,22 @@ class AppUpdateServiceTest {
         result: UpdateResult,
         os: Platform,
         fake: FakeUpdater = FakeUpdater(result),
-    ): Pair<AppUpdateService, FakeUpdater> = AppUpdateService(updaterProvider = { fake }, config = AppUpdateConfig(), os = os) to fake
+        linuxPasswordless: Boolean = false,
+    ): Pair<AppUpdateService, FakeUpdater> =
+        AppUpdateService(
+            updaterProvider = { fake },
+            config = AppUpdateConfig(),
+            os = os,
+            linuxPasswordless = linuxPasswordless,
+        ) to fake
+
+    /** A downloaded package in a fresh temp dir, with its detached `<pkg>.asc` when [signed]. */
+    private fun linuxPackage(signed: Boolean): File {
+        val pkg = File(createTempDirectory("zayit-update").toFile(), "zayit_1.0.1_amd64.deb")
+        pkg.writeText("deb")
+        if (signed) File("${pkg.path}.asc").writeText("sig")
+        return pkg
+    }
 
     @Test
     fun `patch on windows pre-downloads and installs silently on close`() =
@@ -86,6 +103,36 @@ class AppUpdateServiceTest {
             assertEquals(UpdateMode.PROMPT, state.mode)
             assertTrue(state.showTitleBarIcon)
             assertFalse(svc.installPendingOnClose()) // not silent → no auto-install on close
+        }
+
+    @Test
+    fun `signed patch on linux with the helper installs silently on close`() =
+        runTest {
+            val result = UpdateResult.Available(updateInfo("1.0.1"), UpdateLevel.PATCH)
+            val fake = FakeUpdater(result, linuxPackage(signed = true))
+            val (svc, _) = service(result, Platform.Linux, fake, linuxPasswordless = true)
+            svc.checkOnStartup()
+
+            val state = svc.state.value
+            assertIs<UpdateUiState.ReadyToInstall>(state)
+            assertEquals(UpdateMode.SILENT_ON_CLOSE, state.mode)
+            assertFalse(state.showTitleBarIcon)
+            assertTrue(svc.installPendingOnClose())
+            assertEquals(1, fake.quitCalls)
+        }
+
+    @Test
+    fun `patch on linux without a detached signature falls back to the prompt`() =
+        runTest {
+            val result = UpdateResult.Available(updateInfo("1.0.1"), UpdateLevel.PATCH)
+            val fake = FakeUpdater(result, linuxPackage(signed = false))
+            val (svc, _) = service(result, Platform.Linux, fake, linuxPasswordless = true)
+            svc.checkOnStartup()
+
+            val state = svc.state.value
+            assertIs<UpdateUiState.ReadyToInstall>(state)
+            assertEquals(UpdateMode.PROMPT, state.mode)
+            assertFalse(svc.installPendingOnClose())
         }
 
     @Test

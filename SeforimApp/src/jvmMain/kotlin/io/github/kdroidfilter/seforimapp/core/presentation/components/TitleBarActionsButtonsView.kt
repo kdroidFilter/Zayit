@@ -32,8 +32,8 @@ fun TitleBarActionsButtonsView() {
     val mainAppState = appGraph.mainAppState
     val theme = mainAppState.theme.collectAsState().value
 
-    // Update badge: shown only for PROMPT updates (MINOR/MAJOR any OS, or Linux PATCH).
-    // Silent Win/Mac PATCH updates apply on close and never surface here.
+    // Update badge: shown only for PROMPT updates (MINOR/MAJOR any OS, or Linux PATCH without
+    // the passwordless helper). Silent PATCH updates apply on close and never surface here.
     val updateState =
         appGraph.appUpdateService.state
             .collectAsState()

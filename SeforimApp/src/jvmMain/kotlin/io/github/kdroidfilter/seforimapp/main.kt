@@ -266,7 +266,7 @@ fun main(args: Array<String>) {
                         val onQuit = {
                             // Persist session if enabled, apply any pending silent update, then exit.
                             // installPendingOnClose() launches the installer and exits the process
-                            // itself when a silent (Win/Mac PATCH) update is ready.
+                            // itself when a silent PATCH update is ready.
                             appGraph.sessionManager.saveIfEnabled()
                             if (!E2e.enabled) appGraph.googleDriveSync.backupOnQuit()
                             appGraph.appUpdateService.installPendingOnClose()

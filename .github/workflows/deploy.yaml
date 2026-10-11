@@ -63,7 +63,7 @@ jobs:
             rust_target: x86_64-pc-windows-msvc
             graalvm: true
 
-          # Windows ARM64 - JBR (no Liberica NIK available)
+          # Windows ARM64 - JVM (no native-image toolchain)
           - os: windows-11-arm
             arch: arm64
             rust_target: aarch64-pc-windows-msvc
@@ -114,14 +114,13 @@ jobs:
           echo "ASSET_NAME=release-assets-${plat}-${{ matrix.arch || matrix.jdk_arch }}${pkg_suffix}" >> "$GITHUB_ENV"
 
       - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@789704a9b63c5b2a0ff4d6e1cd85711ab2e4286b
-
-      - name: Setup GraalVM (Liberica NIK)
-        if: matrix.graalvm
-        uses: graalvm/setup-graalvm@v1
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@712f1e520c73fd68e1e7514b17700e577643802c
+        # The Nucleus plugin provisions the GraalVM toolchain itself (Oracle GraalVM per the
+        # graalvm { toolchain { } } DSL, Liberica NIK on Intel macs); this only sets up
+        # Xcode/MSVC and caches the toolchain.
         with:
-          java-version: '25'
-          distribution: 'liberica'
+          graalvm: ${{ matrix.graalvm }}
+          graalvm-distribution: oracle
 
       # GPG-signs the .deb/.rpm and enables Nucleus' passwordless self-update: the package ships a
       # root-owned update helper + polkit policy that installs an update only if its detached
@@ -213,8 +212,8 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:packageGraalvmNsis
 
-      # Windows JBR build (ARM64)
-      - name: Build Windows NSIS installer (JBR)
+      # Windows JVM build (ARM64)
+      - name: Build Windows NSIS installer (JVM)
         if: startsWith(matrix.os, 'windows') && !matrix.graalvm
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseNsis
@@ -320,7 +319,7 @@ jobs:
       # (latest.yml / latest-mac.yml / latest-linux.yml) — handles multi-arch and the
       # Rust-wrapped exe / manual macOS zip correctly since it hashes the final assets.
       - name: Generate auto-update feeds (latest*.yml)
-        uses: kdroidFilter/Nucleus/.github/actions/generate-update-yml@main
+        uses: kdroidFilter/Nucleus/.github/actions/generate-update-yml@712f1e520c73fd68e1e7514b17700e577643802c
         with:
           artifacts-path: artifacts
           version: ${{ env.VERSION }}
@@ -328,7 +327,7 @@ jobs:
 
       # Creates/updates the GitHub release and uploads every installer + the consolidated feeds.
       - name: Create release and upload installers + feeds
-        uses: kdroidFilter/Nucleus/.github/actions/publish-release@main
+        uses: kdroidFilter/Nucleus/.github/actions/publish-release@712f1e520c73fd68e1e7514b17700e577643802c
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}

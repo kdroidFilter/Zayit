@@ -37,7 +37,7 @@ class BundlePartsTest {
         )
     }
 
-    private fun resolve(base: String = BundleParts.BUNDLE_NAME) = BundleParts.resolve(File(dir, "$base.part01"))
+    private fun resolve() = BundleParts.resolve(File(dir, "${BundleParts.BUNDLE_NAME}.part01"))
 
     private fun resolveNames() = resolve().parts.map { it.name.substringAfterLast('.') }
 
@@ -112,18 +112,6 @@ class BundlePartsTest {
         manifest(4, 1, formatVersion = 2)
 
         assertNull(resolve().sha256)
-    }
-
-    @Test
-    fun `browser-renamed duplicates form their own bundle`() {
-        part(1, 4)
-        part(2, 4) // old, full-size part02 of the original download
-        part(1, 4, base = "${BundleParts.BUNDLE_NAME} (1)")
-        part(2, 1, base = "${BundleParts.BUNDLE_NAME} (1)")
-
-        val parts = resolve("${BundleParts.BUNDLE_NAME} (1)").parts.map { it.name }
-
-        assertEquals(listOf("seforim_bundle.tar.zst (1).part01", "seforim_bundle.tar.zst (1).part02"), parts)
     }
 
     @Test

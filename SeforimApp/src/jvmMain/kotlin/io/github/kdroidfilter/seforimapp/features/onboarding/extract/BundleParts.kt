@@ -12,9 +12,7 @@ object BundleParts {
     const val BUNDLE_NAME = "seforim_bundle.tar.zst"
 
     private const val MANIFEST_SUFFIX = ".manifest.json"
-
-    // A browser saving a duplicate inserts " (1)" before the last extension; such parts form their own bundle
-    private val PART_NAME = Regex("""^(.+\.tar\.zst(?: \(\d+\))?)\.part(\d+)$""", RegexOption.IGNORE_CASE)
+    private val PART_NAME = Regex("""^(.+\.tar\.zst)\.part(\d+)$""", RegexOption.IGNORE_CASE)
 
     /** Part number of [name] (1 for `.part01`), or null if it is not a bundle part. */
     fun partNumber(name: String): Int? =

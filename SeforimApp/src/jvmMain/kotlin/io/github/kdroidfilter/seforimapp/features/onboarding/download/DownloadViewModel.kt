@@ -2,6 +2,8 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.nucleusframework.energymanager.AwakeMode
+import dev.nucleusframework.energymanager.EnergyManager
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
@@ -125,12 +127,15 @@ class DownloadViewModel(
 
                 _inProgress.value = true
 
+                // Keep the machine from sleeping mid-download; the display may still turn off
                 val path =
-                    useCase.downloadLatestBundle { read, total, progress, speed ->
-                        _downloaded.value = read
-                        _total.value = total
-                        _progress.value = progress
-                        _speed.value = speed
+                    EnergyManager.acquireAwake(AwakeMode.SYSTEM_ONLY).use {
+                        useCase.downloadLatestBundle { read, total, progress, speed ->
+                            _downloaded.value = read
+                            _total.value = total
+                            _progress.value = progress
+                            _speed.value = speed
+                        }
                     }
 
                 // Make the result available to the extraction step before marking as completed

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -78,7 +79,6 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookFindMatches
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.findInBook
@@ -910,7 +910,7 @@ fun BookContentView(
         }
     }
 
-    SafeSelectionContainer(
+    SelectionContainer(
         modifier =
             modifier
                 .fillMaxSize()

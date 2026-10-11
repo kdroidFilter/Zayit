@@ -2,12 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
-import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
@@ -32,6 +30,7 @@ internal object SolarSystemWidget : HomeWidget {
     override val title = Res.string.home_solar_system_title
     override val defaultSpan = CellSpan(9, 3)
     override val minSpan = CellSpan(6, 3)
+    override val settings get() = SolarSystemSettings
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
     override val isSupported get() = isEarthWidgetSupported
     override val toolWindowSize = DpSize(1200.dp, 720.dp)
@@ -52,22 +51,20 @@ internal object SolarSystemWidget : HomeWidget {
         WidgetCard(modifier) {
             // Filament renders every vsync while composed; hidden tabs stay composed, so drop it there.
             if (LocalTabSelected.current) {
-                CompositionLocalProvider(LocalWidgetAntiAliasing provides solarSystemOptions(state).antiAliasing) {
-                    SolarSystemWidgetView(
-                        modifier = Modifier.fillMaxSize(),
-                        date = state.shownDateHere(),
-                        timeMillis = state.skyTimeMillisHere(),
-                        onFullscreen = { state.solarSystemFullscreen = true },
-                        onOptions = { state.optionsOpen = SolarSystemWidget },
-                        // The one clock: the full window's play shows here too
-                        playMillis = state.playMillisHere(),
-                        timeZone = state.location.timeZone,
-                        spinSecondsPerTurn = solarSystemOptions(state).spinSecondsPerTurn,
-                        inIsrael = state.userInIsrael,
-                        kiddushLevanaEarliestOpinion = state.kiddushLevanaEarliest,
-                        kiddushLevanaLatestOpinion = state.kiddushLevanaLatest,
-                    )
-                }
+                SolarSystemWidgetView(
+                    modifier = Modifier.fillMaxSize(),
+                    date = state.shownDateHere(),
+                    timeMillis = state.skyTimeMillisHere(),
+                    onFullscreen = { state.solarSystemFullscreen = true },
+                    onOptions = { state.optionsOpen = SolarSystemWidget },
+                    // The one clock: the full window's play shows here too
+                    playMillis = state.playMillisHere(),
+                    timeZone = state.location.timeZone,
+                    spinSecondsPerTurn = spinSecondsPerTurn(state),
+                    inIsrael = state.userInIsrael,
+                    kiddushLevanaEarliestOpinion = state.kiddushLevanaEarliest,
+                    kiddushLevanaLatestOpinion = state.kiddushLevanaLatest,
+                )
             }
         }
     }

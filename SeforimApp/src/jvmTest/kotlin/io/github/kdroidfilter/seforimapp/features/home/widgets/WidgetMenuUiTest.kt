@@ -18,6 +18,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.Limud
+import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.LimudWidget
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
@@ -75,7 +76,7 @@ class WidgetMenuUiTest {
             waitForIdle()
             assertEquals(
                 Limud.defaults.toSet() - Limud.CHOFETZ_CHAIM + Limud.SHMIRAS_HALASHON,
-                Limud.decode(settings.homeWidgetOptionsFlow.value[LimudWidget.id]),
+                settings[LimudSettings.shown],
             )
         }
 }

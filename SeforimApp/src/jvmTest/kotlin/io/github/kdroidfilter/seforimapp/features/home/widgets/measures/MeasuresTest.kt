@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets.measures
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellPitch
 import io.github.kdroidfilter.seforimapp.features.home.widgets.MAX_GRID_WIDTH
 import io.github.kdroidfilter.seforimapp.features.home.widgets.minRows
+import io.github.kdroidfilter.seforimapp.testAppSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -37,24 +38,25 @@ class MeasuresTest {
 
     @Test
     fun `every opinion is shown until the user picks`() {
-        assertEquals(setOf("chazon_ish", "igros_moshe", "mil_18", "mil_22_5", "mil_24"), shownOpinions(null))
-        assertEquals(setOf("igros_moshe"), shownOpinions("igros_moshe"))
-        // All unticked: none
-        assertEquals(emptySet(), shownOpinions(""))
+        assertEquals(setOf("chazon_ish", "igros_moshe", "mil_18", "mil_22_5", "mil_24"), testAppSettings()[MeasuresSettings.shown])
     }
 
     @Test
     fun `the card is as tall as the opinions shown`() {
         val pitch = CellPitch(MAX_GRID_WIDTH)
+        val settings = testAppSettings()
         try {
-            MeasuresWidget.applyOptions(null)
+            MeasuresWidget.applySettings(settings)
             assertEquals(4, MeasuresWidget.minRows(7, pitch))
-            MeasuresWidget.applyOptions("chazon_ish")
+            settings[MeasuresSettings.shown] = setOf("chazon_ish")
+            MeasuresWidget.applySettings(settings)
             assertEquals(3, MeasuresWidget.minRows(7, pitch))
-            MeasuresWidget.applyOptions("")
+            // All unticked: none
+            settings[MeasuresSettings.shown] = emptySet()
+            MeasuresWidget.applySettings(settings)
             assertEquals(2, MeasuresWidget.minRows(7, pitch))
         } finally {
-            MeasuresWidget.applyOptions(null)
+            MeasuresWidget.applySettings(testAppSettings())
         }
     }
 }

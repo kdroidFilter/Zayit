@@ -55,6 +55,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetTitle
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
@@ -258,33 +259,26 @@ private suspend fun readDictionaries(
             }.toMap()
     }
 
-/**
- * The dictionaries searched, ticked in the options page, and the one of them its chip [picked] (null: all of them),
- * saved together as `ARUKH,HAFLAAH|ARUKH`.
- */
+internal object DictionarySettings : WidgetSettings(DictionaryWidget.id) {
+    /** The dictionaries searched, ticked in the options page. */
+    val shown by enumSet(Dictionary.entries.toSet())
+
+    /** The one of them its chip picked; null: all of them. */
+    val picked by enumOrNull<Dictionary>()
+}
+
+/** The dictionaries searched, in their order, and the one of them its chip [picked] (null: all of them). */
 internal data class DictionaryOptions(
-    val shown: List<Dictionary> = Dictionary.entries,
-    val picked: Dictionary? = null,
-) {
-    fun encode() = shown.joinToString(",") { it.name } + "|" + picked?.name.orEmpty()
+    val shown: List<Dictionary>,
+    val picked: Dictionary?,
+)
 
-    companion object {
-        fun decode(options: String?): DictionaryOptions {
-            if (options == null) return DictionaryOptions()
-            // Saved before the options page: the chip alone
-            val (shownPart, pickedPart) = if ('|' in options) options.split('|', limit = 2) else listOf("", options)
-
-            fun named(name: String) = Dictionary.entries.find { it.name == name }
-            // None ticked can't be: every one, as at first
-            val shown =
-                shownPart
-                    .split(',')
-                    .mapNotNull(::named)
-                    .ifEmpty { Dictionary.entries }
-                    .sortedBy { it.ordinal }
-            return DictionaryOptions(shown, named(pickedPart)?.takeIf { it in shown })
-        }
-    }
+@Composable
+private fun dictionaryOptions(state: HomeWidgetsState): DictionaryOptions {
+    val ticked = state[DictionarySettings.shown]
+    // None ticked can't be: every one, as at first
+    val shown = Dictionary.entries.filter { it in ticked }.ifEmpty { Dictionary.entries }
+    return DictionaryOptions(shown, state[DictionarySettings.picked]?.takeIf { it in shown })
 }
 
 /** A word typed, its entries in the dictionary picked (or in all) below; one clicked reads in the card. */
@@ -297,6 +291,7 @@ internal object DictionaryWidget : HomeWidget {
     override val toolSymbol = "character.book.closed"
     override val minSpan = CellSpan(4, 4)
     override val maxSpan = CellSpan(10, 10)
+    override val settings get() = DictionarySettings
 
     // Its dictionaries ticked in a page of their own, as the limudim and the measures' opinions
     @Composable
@@ -316,7 +311,7 @@ internal object DictionaryWidget : HomeWidget {
         modifier: Modifier,
     ) {
         val graph = LocalAppGraph.current
-        val options = DictionaryOptions.decode(state.optionsOf(this))
+        val options = dictionaryOptions(state)
         // null: all those ticked; one the library no longer has, all of them too rather than none
         val picked = options.picked?.takeUnless { cache[it]?.isEmpty() == true }
         val needed = picked?.let(::listOf) ?: options.shown
@@ -366,7 +361,7 @@ internal object DictionaryWidget : HomeWidget {
                 if (available.size > 1) {
                     DictionaryChips(available, picked, allLabel, accent) {
                         wanted = true
-                        state.setOptions(this@DictionaryWidget, options.copy(picked = it).encode())
+                        state[DictionarySettings.picked] = it
                     }
                 }
                 TextField(
@@ -421,7 +416,7 @@ internal object DictionaryWidget : HomeWidget {
 /** A box for each dictionary, with its book; each tick adds it to the search or takes it out at once, the last one kept. */
 @Composable
 private fun DictionaryOptionsPage(state: HomeWidgetsState) {
-    val options = DictionaryOptions.decode(state.optionsOf(DictionaryWidget))
+    val options = dictionaryOptions(state)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             stringResource(Res.string.home_dictionary_options_title),
@@ -436,8 +431,7 @@ private fun DictionaryOptionsPage(state: HomeWidgetsState) {
                     text = dictionary.label,
                     checked = ticked,
                     onCheckedChange = { on ->
-                        val shown = if (on) options.shown + dictionary else options.shown - dictionary
-                        state.setOptions(DictionaryWidget, options.copy(shown = shown).encode())
+                        state[DictionarySettings.shown] = (if (on) options.shown + dictionary else options.shown - dictionary).toSet()
                     },
                     // The search needs one dictionary at least
                     enabled = !ticked || options.shown.size > 1,

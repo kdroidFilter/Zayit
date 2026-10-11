@@ -51,11 +51,6 @@ internal enum class Limud(
     companion object {
         /** Shown until the user picks: the card's three of old, then the most learned ones. */
         val defaults = listOf(PARSHA, BAVLI, YERUSHALMI, MISHNAH, RAMBAM3, TEHILLIM, CHOFETZ_CHAIM)
-
-        fun decode(options: String?): Set<Limud> =
-            options?.split(',')?.mapNotNull { id -> entries.firstOrNull { it.id == id } }?.toSet() ?: defaults.toSet()
-
-        fun encode(shown: Set<Limud>): String = entries.filter { it in shown }.joinToString(",") { it.id }
     }
 }
 

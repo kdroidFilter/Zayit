@@ -13,6 +13,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.luach.LuachMonth
@@ -37,6 +38,7 @@ internal object CalendarWidget : HomeWidget {
 
     // Six week rows hold their two lines of text; taller would only part them
     override val maxSpan = CellSpan(14, 6)
+    override val settings get() = CalendarSettings
 
     @Composable
     override fun Content(
@@ -45,14 +47,14 @@ internal object CalendarWidget : HomeWidget {
     ) {
         val selected = state.shownDateHere()
         val today = remember(selected, state.location) { LocalDate.now(state.location.timeZone.toZoneId()) }
-        val civil = state.optionsOf(this) == CIVIL_OPTION
+        val civil = state[CalendarSettings.civil]
         PanelCard(modifier) {
             LuachMonth(
                 selected = selected,
                 today = today,
                 inIsrael = state.inIsrael,
                 civil = civil,
-                onSwap = { state.setOptions(this@CalendarWidget, if (civil) null else CIVIL_OPTION) },
+                onSwap = { state[CalendarSettings.civil] = !civil },
                 onSelect = state::selectDate,
                 accent = rememberAccentColor(JewelTheme.isDark),
                 modifier = Modifier.fillMaxSize().padding(12.dp),
@@ -61,4 +63,7 @@ internal object CalendarWidget : HomeWidget {
     }
 }
 
-private const val CIVIL_OPTION = "civil"
+internal object CalendarSettings : WidgetSettings(CalendarWidget.id) {
+    /** The civil month shown, the Hebrew one's days beside; else the Hebrew month. */
+    val civil by boolean(false)
+}

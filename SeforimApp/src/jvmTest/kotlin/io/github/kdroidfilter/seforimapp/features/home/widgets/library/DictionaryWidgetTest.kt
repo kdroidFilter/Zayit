@@ -73,16 +73,4 @@ class DictionaryWidgetTest {
         assertEquals(listOf(1L, 0L), lookup(entries, "אגמ").map { it.lineId })
         assertEquals(emptyList(), lookup(entries, " "))
     }
-
-    @Test
-    fun optionsKeepTheTickedDictionariesAndTheChipPickedAmongThem() {
-        val options = DictionaryOptions(listOf(Dictionary.ARUKH, Dictionary.SHORASHIM), Dictionary.SHORASHIM)
-        assertEquals(options, DictionaryOptions.decode(options.encode()))
-        assertEquals(DictionaryOptions(), DictionaryOptions.decode(null))
-        // Saved before the options page: the chip alone
-        assertEquals(DictionaryOptions(picked = Dictionary.ARUKH), DictionaryOptions.decode("ARUKH"))
-        // A chip on a dictionary no longer ticked, or none ticked
-        assertEquals(DictionaryOptions(listOf(Dictionary.ARUKH)), DictionaryOptions.decode("ARUKH|HAFLAAH"))
-        assertEquals(DictionaryOptions(), DictionaryOptions.decode("|"))
-    }
 }

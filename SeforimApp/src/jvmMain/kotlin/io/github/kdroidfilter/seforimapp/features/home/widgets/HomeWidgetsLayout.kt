@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.home.widgets
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.settings.Setting
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
@@ -63,7 +64,7 @@ internal class HomeWidgetsLayout(
     private val appSettings: AppSettings,
 ) {
     init {
-        availableHomeWidgets.forEach { it.applyOptions(appSettings.homeWidgetOptionsFlow.value[it.id]) }
+        availableHomeWidgets.forEach { it.applySettings(appSettings) }
     }
 
     fun current(): List<WidgetPlacement> = decodeLayout(appSettings.homeWidgetsLayoutFlow.value)
@@ -134,16 +135,24 @@ internal class HomeWidgetsLayout(
 
     fun reset() = appSettings.setHomeWidgetsLayout(null)
 
-    /** Each widget's own options, set from its menu, by widget id: a widget left at its defaults has none. */
-    val options: StateFlow<Map<String, String>> get() = appSettings.homeWidgetOptionsFlow
+    fun <T> flow(setting: Setting<T>): StateFlow<T> = appSettings.flow(setting)
 
-    /** Saved, and [widget] grown as its new content asks, the widgets in the way making room. */
-    fun setOptions(
-        widget: HomeWidget,
-        options: String?,
+    /** Saved, and the widget it belongs to grown as its new content asks, the widgets in the way making room. */
+    fun <T> set(
+        setting: Setting<T>,
+        value: T,
     ) {
-        appSettings.setHomeWidgetOptions(widget.id, options)
-        widget.applyOptions(options)
+        appSettings[setting] = value
+        availableHomeWidgets.firstOrNull { setting in it.settings?.all.orEmpty() }?.let(::settingsChanged)
+    }
+
+    fun resetSettings(widget: HomeWidget) {
+        widget.settings?.let(appSettings::reset)
+        settingsChanged(widget)
+    }
+
+    private fun settingsChanged(widget: HomeWidget) {
+        widget.applySettings(appSettings)
         current().firstOrNull { it.widget.id == widget.id }?.let { place(widget, it.cell) }
     }
 }

@@ -5,9 +5,8 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellRect
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetPlacement
 import io.github.kdroidfilter.seforimapp.features.home.widgets.decodeLayout
 import io.github.kdroidfilter.seforimapp.features.home.widgets.encodeLayout
-import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemOptions
+import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.setSolarSystemOptions
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.coroutines.delay
 import java.io.File
@@ -35,7 +34,7 @@ object E2eSolarPerfScenario {
         window.tabsViewModel.onEvent(TabsEvents.OnAdd)
         delay(6000)
         val savedLayout = settings.homeWidgetsLayoutFlow.value
-        val savedOptions = settings.homeWidgetOptionsFlow.value[SolarSystemWidget.id]
+        val savedSpeed = settings[SolarSystemSettings.daysPerSecond]
         try {
             // The user's own Home, as it runs behind the full window; the solar system alone if it isn't on it
             if (decodeLayout(savedLayout).none { it.widget == SolarSystemWidget }) {
@@ -43,7 +42,7 @@ object E2eSolarPerfScenario {
             }
             delay(3000)
             val state = E2e.homeWidgets ?: error("no Home widgets")
-            state.setSolarSystemOptions(SolarSystemOptions(daysPerSecond = 1f))
+            state[SolarSystemSettings.daysPerSecond] = 1f
             // A fixed instant: the same picture on every run
             state.selectDate(LocalDate.of(2026, 3, 20))
             state.targetTime =
@@ -69,7 +68,7 @@ object E2eSolarPerfScenario {
             sc.note(report.toString().trim())
             E2e.outDir?.let { File(it, "perf.txt").writeText(report.toString()) }
         } finally {
-            settings.setHomeWidgetOptions(SolarSystemWidget.id, savedOptions)
+            settings[SolarSystemSettings.daysPerSecond] = savedSpeed
             settings.setHomeWidgetsLayout(savedLayout)
         }
     }

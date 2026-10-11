@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.Snapshot
 import androidx.compose.runtime.withFrameNanos
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforimapp.core.settings.Setting
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaEarliestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
@@ -178,15 +179,18 @@ class HomeWidgetsState internal constructor(
     /** The widget whose [HomeWidget.Options] page is open in a dialog, from an item of its menu. */
     var optionsOpen by mutableStateOf<HomeWidget?>(null)
 
-    /** [widget]'s own options, set in its options dialog; null while at its defaults. */
+    /** A widget's setting as saved, followed by the composition. */
     @Composable
-    fun optionsOf(widget: HomeWidget): String? = layout.options.collectAsState().value[widget.id]
+    operator fun <T> get(setting: Setting<T>): T = layout.flow(setting).collectAsState().value
 
-    /** Null goes back to [widget]'s defaults. */
-    fun setOptions(
-        widget: HomeWidget,
-        options: String?,
-    ) = layout.setOptions(widget, options)
+    /** Saved at once; the widget it belongs to resized if its content asks. */
+    operator fun <T> set(
+        setting: Setting<T>,
+        value: T,
+    ) = layout.set(setting, value)
+
+    /** Back to [widget]'s default settings. */
+    fun resetSettings(widget: HomeWidget) = layout.resetSettings(widget)
 
     fun selectDate(date: LocalDate) {
         // A day picked while playing: the play stops there, rather than going on and dropping it at the pause

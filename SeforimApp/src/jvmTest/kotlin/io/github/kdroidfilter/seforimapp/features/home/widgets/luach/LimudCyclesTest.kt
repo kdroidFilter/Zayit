@@ -160,8 +160,6 @@ class LimudCyclesTest {
         assertEquals(Limud.defaults.size, limudOfDay(date, inIsrael = true).size)
         val picked = limudOfDay(date, inIsrael = true, shown = setOf(Limud.SHMIRAS_HALASHON, Limud.TEHILLIM))
         assertEquals(listOf("תהילים", "שמה״ל"), picked.map { it.kicker })
-        assertEquals(setOf(Limud.KITZUR, Limud.BAVLI), Limud.decode(Limud.encode(setOf(Limud.KITZUR, Limud.BAVLI))))
-        assertEquals(emptySet(), Limud.decode(""))
     }
 
     private companion object {

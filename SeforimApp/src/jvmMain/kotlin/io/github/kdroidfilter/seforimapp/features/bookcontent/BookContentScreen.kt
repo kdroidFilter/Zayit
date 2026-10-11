@@ -45,9 +45,11 @@ import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightColors
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRangesForSelection
+import io.github.kdroidfilter.seforimapp.core.bookErrorReportMailto
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
 import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -96,6 +98,7 @@ import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_highlight
+import seforimapp.seforimapp.generated.resources.context_menu_report_error
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
 import java.awt.event.InputEvent
 import javax.swing.KeyStroke
@@ -451,6 +454,7 @@ fun BookTextMenus(
     val copyWithSourceLabel = stringResource(Res.string.context_menu_copy_with_source)
     val copyLinkLabel = stringResource(Res.string.context_menu_copy_link)
     val addNoteLabel = stringResource(Res.string.context_menu_add_note)
+    val reportErrorLabel = stringResource(Res.string.context_menu_report_error)
     val baseTextContextMenu = LocalTextContextMenu.current
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
@@ -462,6 +466,7 @@ fun BookTextMenus(
     val currentPrimaryLineId by rememberUpdatedState(uiState.content.primaryLine?.id)
     val highlightStore = LocalAppGraph.current.highlightStore
     val highlightScope = rememberCoroutineScope()
+    val reportScope = rememberCoroutineScope()
     val bookId = selectedBook?.id ?: 0L
 
     val textContextMenu =
@@ -664,6 +669,33 @@ fun BookTextMenus(
                                                 tabUi.noteDraft = draft
                                                 tabUi.noteDraftBaselineLine = currentPrimaryLineId
                                                 if (!currentNotesVisible) onEvent(BookContentEvent.ToggleNotes)
+                                            }
+                                        },
+                                    )
+                                }
+                                // Report an error (main pane only) in the selection, or the right-clicked line without one
+                                if (bookForCopy != null &&
+                                    selectionContext.activeCommentaryColumn.value
+                                        .isEmpty() &&
+                                    (copiedText.isNotBlank() || selectionContext.currentLineId.value > 0)
+                                ) {
+                                    add(
+                                        ContextMenuItemOption(
+                                            icon = AllIconsKeys.General.Warning,
+                                            label = reportErrorLabel,
+                                        ) {
+                                            val lines = selectionContext.visibleLines.value.lines
+                                            val range =
+                                                resolved?.let { it.first to it.last }
+                                                    ?: copiedText
+                                                        .takeIf { it.isNotBlank() }
+                                                        ?.let { resolveLineRangeFromSelection(it, lines) }
+                                                    ?: lines
+                                                        .firstOrNull { it.id == selectionContext.currentLineId.value }
+                                                        ?.let { it to it }
+                                            val rootTitle = selectionContext.activeBook.value?.rootTitle
+                                            reportScope.launch {
+                                                UrlOpener.open(bookErrorReportMailto(repository, bookForCopy, rootTitle, range, copiedText))
                                             }
                                         },
                                     )

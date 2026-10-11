@@ -647,8 +647,8 @@
     <!-- Settings > App Info (General Settings Header) -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
     <string name="settings_info_created_by">נוצר על ידי אליהו גמבש</string>
-    <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
-    <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
+    <string name="settings_info_license">יישום זה בנוי כליבה פתוחה (open core): הליבה שלו היא קוד פתוח תחת רישיון AGPL-3.0</string>
+    <string name="settings_info_license_usage">המודולים הקנייניים (הסידור החכם, החיפוש הסמנטי) אינם קוד פתוח, ואין להפיצם מחוץ ליישום.</string>
 
     <!-- App Update -->
     <string name="update_available_banner">גרסה %1$s זמינה להורדה</string>

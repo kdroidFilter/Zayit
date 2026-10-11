@@ -98,8 +98,10 @@ fun buildCopyWithSourcePayload(
     book: Book,
     rootTitle: String?,
     loadedLines: List<Line>,
+    // The selection's first and last lines when known exactly, else resolved from the text among the loaded lines
+    lineRange: Pair<Line, Line>? = null,
 ): String {
-    val range = resolveLineRangeFromSelection(selectedText, loadedLines)
+    val range = lineRange ?: resolveLineRangeFromSelection(selectedText, loadedLines)
     val reference =
         if (range != null) {
             formatHebrewSourceReference(book, rootTitle, range.first, range.second)

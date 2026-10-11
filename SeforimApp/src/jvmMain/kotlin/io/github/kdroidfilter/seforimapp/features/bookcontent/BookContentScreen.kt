@@ -38,6 +38,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightColors
@@ -51,6 +52,9 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LocalShiftSelection
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.copyToClipboard
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.textOf
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -479,22 +483,51 @@ fun BookTextMenus(
                     content: @Composable () -> Unit,
                 ) {
                     val appSettings = LocalAppGraph.current.appSettings
+                    val repository = LocalAppGraph.current.repository
+                    // The book view's Shift+click selection, read from the database (lines composed or not): what
+                    // every copy takes (the menu's, Ctrl+C and the AWT shortcuts through the SelectionContext)
+                    val shiftSelection = LocalShiftSelection.current
+                    val shiftRange = shiftSelection?.range
+                    val rawText = textManager.selectedText.text
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
-                    LaunchedEffect(textManager.selectedText.text) {
-                        selectionContext.setSelectedText(tabId, textManager.selectedText.text)
+                    LaunchedEffect(rawText, shiftRange, diacritics) {
+                        // A new Compose selection (a drag) replaces the Shift+click one
+                        if (rawText.isNotEmpty()) shiftSelection?.clear()
+                        val copied =
+                            if (shiftRange != null && rawText.isEmpty() && bookId > 0) {
+                                textOf(shiftRange, bookId, repository, diacritics)
+                            } else {
+                                null
+                            }
+                        shiftSelection?.copied = copied
+                        if (copied != null) {
+                            selectionContext.setSelectedText(tabId, copied.text, copied.first to copied.last)
+                        } else {
+                            selectionContext.setSelectedText(tabId, rawText)
+                        }
                     }
+                    val copied = shiftSelection?.copied
+                    val menuTextManager =
+                        copied?.let { selection ->
+                            object : TextContextMenu.TextManager by textManager {
+                                override val selectedText = AnnotatedString(selection.text)
+                                override val copy = TextContextMenu.Action(enabled = true) { copyToClipboard(selection.text) }
+                            }
+                        } ?: textManager
 
                     ContextMenuDataProvider(
                         items = {
                             val query = normalizeSearchQuery(textManager.selectedText.text)
                             val selectedText = textManager.selectedText.text
+                            // What the copies take: the Shift+click selection, beyond the lines composed
+                            val copiedText = copied?.text ?: selectedText
                             buildList {
                                 // Copy without nikud option - first position, only show when book has diacritics and they are shown
                                 if (bookHasDiacritics &&
                                     diacritics != DiacriticsMode.None &&
-                                    selectedText.isNotBlank() &&
-                                    (HebrewTextUtils.containsNikud(selectedText) || HebrewTextUtils.containsTeamim(selectedText))
+                                    copiedText.isNotBlank() &&
+                                    (HebrewTextUtils.containsNikud(copiedText) || HebrewTextUtils.containsTeamim(copiedText))
                                 ) {
                                     add(
                                         ContextMenuItemOptionWithKeybinding(
@@ -507,7 +540,7 @@ fun BookTextMenus(
                                                 },
                                             label = copyWithoutNikudLabel,
                                         ) {
-                                            val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
+                                            val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(copiedText)
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(textWithoutDiacritics), null)
                                         },
@@ -515,7 +548,7 @@ fun BookTextMenus(
                                 }
                                 // Copy with source: append "(book ref – line ref)" to the selection
                                 val bookForCopy = currentSelectedBook
-                                if (bookForCopy != null && selectedText.isNotBlank()) {
+                                if (bookForCopy != null && copiedText.isNotBlank()) {
                                     add(
                                         ContextMenuItemOptionWithKeybinding(
                                             icon = AllIconsKeys.Actions.Copy,
@@ -529,10 +562,11 @@ fun BookTextMenus(
                                         ) {
                                             val payload =
                                                 buildCopyWithSourcePayload(
-                                                    selectedText,
+                                                    copiedText,
                                                     bookForCopy,
                                                     selectionContext.activeBook.value?.rootTitle,
                                                     selectionContext.visibleLines.value.lines,
+                                                    copied?.let { it.first to it.last },
                                                 )
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(payload), null)
@@ -643,7 +677,7 @@ fun BookTextMenus(
                         },
                     ) {
                         baseTextContextMenu.Area(
-                            textManager = textManager,
+                            textManager = menuTextManager,
                             state = state,
                             content = content,
                         )

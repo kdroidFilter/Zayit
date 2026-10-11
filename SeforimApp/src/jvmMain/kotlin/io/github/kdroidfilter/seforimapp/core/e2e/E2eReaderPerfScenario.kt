@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.core.e2e
 
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.ui.layout.LayoutCoordinates
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
@@ -36,6 +37,10 @@ object E2eReader {
 
     @Volatile
     var book: Triple<Long, LazyListState, Boolean>? = null
+
+    /** Where the book's list sits in its window, for [E2eShiftSelectScenario] to click its lines. */
+    @Volatile
+    var bookList: LayoutCoordinates? = null
 
     fun lineDrawn(
         id: Long,

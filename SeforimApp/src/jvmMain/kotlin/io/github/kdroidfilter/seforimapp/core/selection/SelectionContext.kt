@@ -41,6 +41,9 @@ data class CommentaryLineRef(
  */
 interface SelectionContext {
     val selectedText: StateFlow<String>
+
+    /** The first and last lines of [selectedText] when known exactly (a completed Shift+click selection). */
+    val selectedLineRange: StateFlow<Pair<Line, Line>?>
     val activeBook: StateFlow<ActiveBook?>
     val visibleLines: StateFlow<VisibleLines>
 
@@ -58,10 +61,11 @@ interface SelectionContext {
      */
     val currentLineId: StateFlow<Long>
 
-    /** Publishes the text selected in the tab [tabId]. */
+    /** Publishes the text selected in the tab [tabId], from line [lineRange]'s first to its last when known. */
     fun setSelectedText(
         tabId: String,
         text: String,
+        lineRange: Pair<Line, Line>? = null,
     )
 
     /** The text selected in the tab [tabId], empty when the last selection was made in another tab. */
@@ -106,6 +110,9 @@ class DefaultSelectionContext : SelectionContext {
     private val _selectedText = MutableStateFlow("")
     override val selectedText: StateFlow<String> = _selectedText.asStateFlow()
 
+    private val _selectedLineRange = MutableStateFlow<Pair<Line, Line>?>(null)
+    override val selectedLineRange: StateFlow<Pair<Line, Line>?> = _selectedLineRange.asStateFlow()
+
     // Tab whose selection _selectedText holds
     @Volatile private var selectedTextTabId: String? = null
 
@@ -124,8 +131,10 @@ class DefaultSelectionContext : SelectionContext {
     override fun setSelectedText(
         tabId: String,
         text: String,
+        lineRange: Pair<Line, Line>?,
     ) {
         selectedTextTabId = tabId
+        _selectedLineRange.value = lineRange
         _selectedText.value = text
     }
 
@@ -136,6 +145,7 @@ class DefaultSelectionContext : SelectionContext {
     }
 
     override fun clearSelectedText() {
+        _selectedLineRange.value = null
         _selectedText.value = ""
     }
 

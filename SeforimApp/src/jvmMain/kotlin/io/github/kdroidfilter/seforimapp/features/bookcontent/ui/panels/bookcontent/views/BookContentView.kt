@@ -15,7 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
-import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -910,7 +910,11 @@ fun BookContentView(
         }
     }
 
-    SelectionContainer(
+    // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
+    // mikra, whose items are more than their line)
+    val shiftSelection = remember(bookId, shnayimMikra) { if (shnayimMikra) null else ShiftSelection() }
+    ShiftSelectionContainer(
+        selection = shiftSelection,
         modifier =
             modifier
                 .fillMaxSize()
@@ -927,7 +931,10 @@ fun BookContentView(
                     Modifier
                         .fillMaxSize()
                         .padding(end = 16.dp)
-                        .onGloballyPositioned { findMatchLocator.list = it },
+                        .onGloballyPositioned {
+                            findMatchLocator.list = it
+                            if (E2e.enabled) E2eReader.bookList = it
+                        },
             ) {
                 items(
                     count = lazyPagingItems.itemCount,
@@ -1023,6 +1030,7 @@ fun BookContentView(
                                     val lineNotes = notesByLine[line.id] ?: emptyList()
                                     LineItem(
                                         lineId = line.id,
+                                        lineIndex = line.lineIndex,
                                         lineContent = line.content,
                                         userHighlights = lineHighlights,
                                         userNotes = lineNotes,
@@ -1061,6 +1069,7 @@ fun BookContentView(
                                     Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
                                         LineItem(
                                             lineId = line.id,
+                                            lineIndex = line.lineIndex,
                                             lineContent = line.content,
                                             userHighlights = highlightsByLine[line.id] ?: emptyList(),
                                             userNotes = notesByLine[line.id] ?: emptyList(),
@@ -1389,6 +1398,7 @@ private fun AltHeadingItem(
 @Composable
 private fun LineItem(
     lineId: Long,
+    lineIndex: Int,
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
@@ -1582,6 +1592,9 @@ private fun LineItem(
         DisposableEffect(findMatchLocator, lineId) { onDispose { findMatchLocator.forget(lineId) } }
     }
 
+    // The book view's Shift+click selection: extended from this line's characters, drawn as Compose draws its own
+    val shiftSelection = LocalShiftSelection.current
+    val selectionBackground = LocalTextSelectionColors.current.backgroundColor
     Text(
         text = displayText,
         textAlign = TextAlign.Justify,
@@ -1589,8 +1602,18 @@ private fun LineItem(
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier =
             textModifier
-                .drawBehind {
-                    noteLayout?.let { drawNoteUnderlines(it, noteRanges, noteUnderlineColor) }
+                .then(
+                    if (shiftSelection != null) {
+                        Modifier.shiftSelectable(shiftSelection, lineIndex) { noteLayout }
+                    } else {
+                        Modifier
+                    },
+                ).drawBehind {
+                    val layout = noteLayout ?: return@drawBehind
+                    shiftSelection?.selectedRangeOf(lineIndex, layout.layoutInput.text.length)?.takeIf { !it.isEmpty() }?.let {
+                        drawPath(layout.getPathForRange(it.first, it.last + 1), selectionBackground)
+                    }
+                    drawNoteUnderlines(layout, noteRanges, noteUnderlineColor)
                 }.then(
                     if (findMatchLocator != null) {
                         Modifier.onGloballyPositioned { findMatchLocator.publishText(lineId, it) }

@@ -27,6 +27,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2eReaderPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eRestoreScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScrollbarScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eShiftSelectScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eSolarPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eWidgetsScenario
@@ -240,6 +241,7 @@ fun main(args: Array<String>) {
                                     active.book,
                                     active.rootTitle,
                                     selectionContext.visibleLines.value.lines,
+                                    selectionContext.selectedLineRange.value,
                                 )
                             Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(payload), null)
                             true
@@ -488,6 +490,7 @@ fun main(args: Array<String>) {
                                         E2eRestoreScenario.run(it)
                                         E2eScrollbarScenario.run(it)
                                         E2eReaderPerfScenario.run(it)
+                                        E2eShiftSelectScenario.run(it)
                                         installedSiddur?.runE2e(it)
                                     }) { exitApplication() }
                                 }

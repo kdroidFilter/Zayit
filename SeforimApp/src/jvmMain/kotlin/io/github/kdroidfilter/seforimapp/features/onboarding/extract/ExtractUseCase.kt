@@ -34,22 +34,19 @@ class ExtractUseCase(
                 withContext(Dispatchers.IO) {
                     val lower = source.name.lowercase()
                     when {
-                        lower.endsWith(".tar.zst.part01") || lower.endsWith(".tar.zst.part02") -> {
-                            val (p1, p2) = findSplitParts(source)
+                        BundleParts.isPart(source.name) -> {
+                            val parts = BundleParts.siblingsOf(source)
                             val result =
-                                extractTarZstFromPartsStreaming(listOf(p1, p2), dbDir) { mapped ->
+                                extractTarZstFromPartsStreaming(parts, dbDir) { mapped ->
                                     onProgress(mapped)
                                 }
                             // Only cleanup if parts live in our databases directory (downloaded by the app)
                             val canDelete =
                                 runCatching {
                                     val base = dbDir.canonicalFile
-                                    (p1.parentFile?.canonicalFile == base) && (p2.parentFile?.canonicalFile == base)
+                                    parts.all { it.parentFile?.canonicalFile == base }
                                 }.getOrDefault(false)
-                            if (canDelete) {
-                                runCatching { p1.delete() }
-                                runCatching { p2.delete() }
-                            }
+                            if (canDelete) parts.forEach { runCatching { it.delete() } }
                             result
                         }
                         lower.endsWith(".tar.zst") -> {
@@ -195,7 +192,7 @@ class ExtractUseCase(
         destDir: File,
         onUiProgress: (Float) -> Unit,
     ): File {
-        require(parts.size >= 2)
+        require(parts.isNotEmpty())
 
         // Counting wrapper to report compressed bytes consumed
         class CountingInputStream(
@@ -285,16 +282,6 @@ class ExtractUseCase(
             override fun nextElement(): T = this@toEnumeration[index++]
         }
 
-    private fun findSplitParts(anyPart: File): Pair<File, File> {
-        val dir = anyPart.parentFile ?: error("Invalid parts path")
-        val base = anyPart.name.substringBeforeLast(".part")
-        val p1 = File(dir, "$base.part01")
-        val p2 = File(dir, "$base.part02")
-        require(p1.exists()) { "Missing part01" }
-        require(p2.exists()) { "Missing part02" }
-        return p1 to p2
-    }
-
     private fun maybeCleanupSources(
         source: File,
         dbDir: File,
@@ -302,10 +289,8 @@ class ExtractUseCase(
         if (source.parentFile?.canonicalFile == dbDir.canonicalFile) {
             if (source.name.endsWith(".tar.zst", true)) {
                 runCatching { source.delete() }
-            } else if (source.name.contains(".tar.zst.part")) {
-                val (p1, p2) = findSplitParts(source)
-                runCatching { p1.delete() }
-                runCatching { p2.delete() }
+            } else if (BundleParts.isPart(source.name)) {
+                BundleParts.siblingsOf(source).forEach { runCatching { it.delete() } }
             }
         }
     }

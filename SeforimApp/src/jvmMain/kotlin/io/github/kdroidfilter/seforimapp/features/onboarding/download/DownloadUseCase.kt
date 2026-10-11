@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.BundleParts
 import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
 import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
 import io.github.vinceglb.filekit.FileKit
@@ -16,9 +17,8 @@ class DownloadUseCase(
     private val gitHubReleaseFetcher: GitHubReleaseFetcher,
 ) {
     /**
-     * Downloads the latest split bundle (.tar.zst split into .part01/.part02) and extracts it directly,
-     * without creating an intermediate .tar file. If only a single .tar.zst exists (no parts), it is
-     * downloaded and extracted as well.
+     * Downloads the latest split bundle (.tar.zst split into .part01 … .partNN, any number of parts).
+     * If only a single .tar.zst exists (no parts), it is downloaded instead. Extraction is a separate step.
      *
      * Progress: during network transfers, reports bytes and speed; during extraction, progress continues
      * from the last value to 100% with speed set to 0.
@@ -35,9 +35,11 @@ class DownloadUseCase(
             val allAssets = latestRelease.assets
             val partAssets =
                 allAssets
-                    .filter { it.name.endsWith(".tar.zst.part01", true) || it.name.endsWith(".tar.zst.part02", true) }
-                    .sortedBy { it.name }
-            val singleAsset = allAssets.firstOrNull { it.name.endsWith(".tar.zst", true) && !it.name.contains(".part") }
+                    .mapNotNull { asset -> BundleParts.partNumber(asset.name)?.let { it to asset } }
+                    .sortedBy { it.first }
+                    .also { parts -> if (parts.isNotEmpty()) BundleParts.requireContiguous(parts.map { it.first }) }
+                    .map { it.second }
+            val singleAsset = allAssets.firstOrNull { it.name.endsWith(".tar.zst", true) }
 
             val dbDir = File(FileKit.databasesDir.path).apply { mkdirs() }
 
@@ -77,38 +79,29 @@ class DownloadUseCase(
                 }
             }
 
-            if (partAssets.size >= 2) {
-                // Two-part flow
-                val part01 = partAssets.first { it.name.endsWith(".part01", true) }
-                val part02 = partAssets.first { it.name.endsWith(".part02", true) }
+            if (partAssets.isNotEmpty()) {
                 // Use asset sizes to initialize total from the start
-                val size1 = (runCatching { (part01.size as? Number)?.toLong() }.getOrNull() ?: 0L)
-                val size2 = (runCatching { (part02.size as? Number)?.toLong() }.getOrNull() ?: 0L)
-                val knownTotal = (size1 + size2).takeIf { it > 0L }
+                val knownTotal =
+                    partAssets
+                        .sumOf { runCatching { (it.size as? Number)?.toLong() }.getOrNull() ?: 0L }
+                        .takeIf { it > 0L }
+                val files = partAssets.map { File(dbDir, it.name) }
+                val totals = arrayOfNulls<Long>(files.size)
 
-                val file01 = File(dbDir, part01.name)
-                val file02 = File(dbDir, part02.name)
-
-                var readSoFar = 0L
-                var total1: Long? = null
-                var total2: Long? = null
-                downloadFile(part01.browser_download_url, file01) { r, t ->
-                    if (t != null) total1 = t
-                    readSoFar = r
-                    val dynamic = (total1 ?: 0L) + (total2 ?: 0L)
-                    report(readSoFar, knownTotal ?: dynamic.takeIf { it > 0L })
-                }
-                downloadFile(part02.browser_download_url, file02) { r, t ->
-                    if (t != null) total2 = t
-                    readSoFar = (file01.length()) + r
-                    val dynamic = (total1 ?: 0L) + (total2 ?: 0L)
-                    report(readSoFar, knownTotal ?: dynamic.takeIf { it > 0L })
+                var doneBytes = 0L
+                partAssets.forEachIndexed { index, asset ->
+                    downloadFile(asset.browser_download_url, files[index]) { r, t ->
+                        if (t != null) totals[index] = t
+                        val dynamic = totals.sumOf { it ?: 0L }
+                        report(doneBytes + r, knownTotal ?: dynamic.takeIf { it > 0L })
+                    }
+                    doneBytes += files[index].length()
                 }
                 // Finalize download progress
-                val finalTotal = knownTotal ?: ((total1 ?: file01.length()) + (total2 ?: file02.length()))
+                val finalTotal = knownTotal ?: doneBytes
                 report(finalTotal, finalTotal)
-                // Return path to the first part; extraction step will handle parts
-                return@withContext file01.absolutePath
+                // Return path to the first part; extraction step discovers the others next to it
+                return@withContext files.first().absolutePath
             } else if (singleAsset != null) {
                 // Backward-compatible: single .tar.zst
                 val tmp = File(dbDir, singleAsset.name)

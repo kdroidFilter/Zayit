@@ -54,7 +54,7 @@ fun OfflineFileSelectionScreen(
             // Remove the old database and verify free space before extracting ~7.5 GB.
             when (prepUseCase.prepareForInstall()) {
                 DatabasePreparationUseCase.Result.Ready -> {
-                    // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
+                    // Start extraction with part01 path; ExtractUseCase discovers the other parts next to it
                     progressBarState.setProgress(0.7f)
                     processRepository.setPendingZstPath(p1)
                     extractViewModel.onEvent(ExtractEvents.StartIfPending)

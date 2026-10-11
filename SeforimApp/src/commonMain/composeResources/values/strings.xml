@@ -505,7 +505,7 @@
     <string name="installation_online_button">התחלת התקנה מקוונת</string>
     <!-- Offline -->
     <string name="installation_offline_title">התקנה לא-מקוונת</string>
-    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את הקבצים עם הסיומות .part01 ו-.part02 מעמוד ההפצה, ולאחר מכן בחרו אותם כאן להמשך ההתקנה.</string>
+    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את כל הקבצים עם הסיומות ‎.part01, ‎.part02 וכו׳ מעמוד ההפצה לאותה תיקייה, ולאחר מכן בחרו כאן את קובץ ‎.part01 להמשך ההתקנה.</string>
     <string name="installation_offline_button">התחלת התקנה לא-מקוונת</string>
     <!-- Releases info (לשימוש היכן שתרצה; ה-URL עצמו יישום אצלך בקוד) -->
     <string name="installation_releases_hint">עמוד ההפצות האחרון</string>
@@ -514,7 +514,7 @@
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_file_selection">בחירת קבצים</string>
-    <string name="onboarding_select_files_message">אנא בחרו את קבצי ‎.part01 ו-‎.part02 של מסד הנתונים</string>
+    <string name="onboarding_select_files_message">אנא בחרו את קובץ ‎.part01 של מסד הנתונים (כל החלקים צריכים להיות באותה תיקייה)</string>
     <string name="onboarding_part01_selected">קובץ part01 נבחר ✓</string>
     <string name="onboarding_choose_files">בחירת קבצים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
@@ -687,7 +687,7 @@
     <!-- Update Options Screen -->
     <string name="db_update_options_title">אפשרויות עדכון</string>
     <string name="db_update_local_file_title">קובץ מקומי</string>
-    <string name="db_update_local_file_desc">השתמשו בקובץ מסד נתונים שהורד מראש (קבצי ‎.part01 ו-‎.part02)</string>
+    <string name="db_update_local_file_desc">השתמשו בקובץ מסד נתונים שהורד מראש (קבצי ‎.part01, ‎.part02 וכו׳)</string>
     <string name="db_update_local_file_button">בחירת קובץ</string>
     <string name="db_update_download_title">הורדה</string>
     <string name="db_update_download_desc">הורידו באופן אוטומטי את הגרסה העדכנית ביותר של מסד הנתונים מהאינטרנט</string>
@@ -709,7 +709,7 @@
     <!-- Offline Update Screen -->
     <string name="db_update_offline_title">עדכון מקובץ מקומי</string>
     <string name="db_update_file_selection">בחירת קבצים</string>
-    <string name="db_update_select_files_message">אנא בחרו את קבצי ‎.part01 ו-‎.part02 של מסד הנתונים</string>
+    <string name="db_update_select_files_message">אנא בחרו את קובץ ‎.part01 של מסד הנתונים (כל החלקים צריכים להיות באותה תיקייה)</string>
     <string name="db_update_part01_selected">קובץ part01 נבחר ✓</string>
     <string name="db_update_choose_files">בחירת קבצים</string>
     <string name="db_update_extracting">מחלץ מאגר...</string>

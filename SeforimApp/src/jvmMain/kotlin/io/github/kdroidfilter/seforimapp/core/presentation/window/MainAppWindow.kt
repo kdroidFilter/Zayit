@@ -24,6 +24,7 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.isSpecified
@@ -45,6 +46,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.e2eCapture
 import io.github.kdroidfilter.seforimapp.core.presentation.components.MainTitleBar
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.ClosePinnedTabHint
+import io.github.kdroidfilter.seforimapp.core.presentation.text.rememberRefLinkUriHandler
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalIsTouchMode
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.detectTouchMode
@@ -294,6 +296,8 @@ fun NucleusApplicationScope.MainAppWindow(
             LocalOpenWindow provides openWindow,
             LocalWindowViewModelStoreOwner provides windowViewModelOwner,
             LocalViewModelStoreOwner provides windowViewModelOwner,
+            // Citation links in the texts open their target in a new tab of this window
+            LocalUriHandler provides rememberRefLinkUriHandler(openWindow.tabsViewModel),
         ) {
             MainTitleBar(Modifier.e2eCapture(openWindow.id + E2e.TITLE_BAR))
 

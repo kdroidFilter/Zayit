@@ -151,4 +151,23 @@ class HtmlParserTest {
         val result = HtmlParser().parse(html)
         assertTrue(result.none { it.isImage }, "Remote <img> src should be dropped")
     }
+
+    @Test
+    fun refLinkKeepsItsTargetAndOnlyTheCitationIsALink() {
+        val html = """שנאמר <a class="ref" href="seforim://line/123">(בראשית א, ד)</a> וירא"""
+        val parsed = HtmlParser().parse(html)
+        assertEquals("seforim://line/123", parsed.single { it.href != null }.href)
+
+        val annotated = buildAnnotatedFromHtml(html, 16f)
+        assertEquals("שנאמר (בראשית א, ד) וירא", annotated.text)
+        val link = annotated.getLinkAnnotations(0, annotated.length).single()
+        assertEquals("seforim://line/123", (link.item as androidx.compose.ui.text.LinkAnnotation.Url).url)
+        assertEquals("(בראשית א, ד)", annotated.text.substring(link.start, link.end))
+    }
+
+    @Test
+    fun otherAnchorsStayPlainText() {
+        val annotated = buildAnnotatedFromHtml("""ראה <a href="https://example.com">כאן</a>""", 16f)
+        assertTrue(annotated.getLinkAnnotations(0, annotated.length).isEmpty())
+    }
 }

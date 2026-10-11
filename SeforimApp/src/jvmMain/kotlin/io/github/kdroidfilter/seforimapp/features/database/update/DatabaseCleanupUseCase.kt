@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.database.update
 
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.BundleParts
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -116,8 +117,8 @@ class DatabaseCleanupUseCase(
             // stale pending-cleanup marker
             // download / extraction leftovers
             name.endsWith(".tar.zst") ||
-            name.endsWith(".part01") ||
-            name.endsWith(".part02") ||
+            BundleParts.isPart(name) ||
+            BundleParts.isManifest(name) ||
             name.endsWith(".zst") ||
             name.endsWith(".tmp")
     }

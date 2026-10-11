@@ -17,4 +17,6 @@ data class Asset(
     val created_at: String,
     val updated_at: String,
     val browser_download_url: String,
+    /** Checksum computed by GitHub, e.g. `sha256:<hex>`; absent on assets uploaded before mid-2025. */
+    val digest: String? = null,
 )

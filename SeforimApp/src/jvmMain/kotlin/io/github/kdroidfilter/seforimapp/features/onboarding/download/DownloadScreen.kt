@@ -31,6 +31,7 @@ import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.theme.defaultBannerStyle
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.db_install_cleanup_failed
+import seforimapp.seforimapp.generated.resources.db_install_incomplete_bundle
 import seforimapp.seforimapp.generated.resources.db_install_insufficient_space
 import seforimapp.seforimapp.generated.resources.onboarding_downloading_message
 import seforimapp.seforimapp.generated.resources.onboarding_error_occurred
@@ -107,6 +108,7 @@ fun DownloadView(
                     when (state.errorKind) {
                         DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
                         DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                        DownloadErrorKind.INCOMPLETE_BUNDLE -> stringResource(Res.string.db_install_incomplete_bundle)
                         null -> {
                             val detail = state.errorMessage?.takeIf { it.isNotBlank() }
                             detail?.let { stringResource(Res.string.onboarding_error_with_detail, it) }

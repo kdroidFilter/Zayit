@@ -162,8 +162,9 @@ class CellLayoutTest {
         // Below COMPACT_GRID_WIDTH the widgets are stacked at the height their content asks
         for (gridWidth in listOf(670, 750, 850, 1000)) {
             val at = CellPitch(gridWidth.dp)
-            // The Limud card's height follows the limudim picked: it grows past its minSpan (see LimudSizeTest)
-            for (widget in availableHomeWidgets.filterNot { it.id == "limud" }) {
+            // The Limud and Measures cards' height follows the limudim / opinions picked: it grows past their minSpan
+            // (see LimudSizeTest, MeasuresTest)
+            for (widget in availableHomeWidgets.filterNot { it.id == "limud" || it.id == "measures" }) {
                 for (w in widget.minSpan.w..minOf(widget.maxSpan.w, HOME_GRID_COLUMNS)) {
                     assertEquals(widget.minSpan.h, widget.minRows(w, at), "${widget.id} $w columns at $gridWidth dp would be clipped")
                 }

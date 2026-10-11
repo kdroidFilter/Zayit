@@ -29,7 +29,6 @@ import androidx.compose.ui.test.performMouseInput
 import androidx.compose.ui.test.runDesktopComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.FreezableCenter
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
@@ -38,8 +37,8 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
-import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.testAppGraph
 import io.github.kdroidfilter.seforimapp.testAppSettings
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import kotlin.math.abs
@@ -59,7 +58,7 @@ import kotlin.test.fail
 class WidgetDragUiTest {
     private val appSettings = testAppSettings()
     private val layout = HomeWidgetsLayout(appSettings)
-    private val graph by lazy { createGraph<AppGraph>() }
+    private val graph by lazy { testAppGraph() }
     private val pitch = CellPitch(1000.dp)
 
     private fun saved() = layout.current()
@@ -860,17 +859,18 @@ class WidgetDragUiTest {
                         useUnmergedTree = true,
                     ).fetchSemanticsNodes().isNotEmpty()
                 }
-            // The default page has all but the calendar
-            assertEquals(listOf(CalendarWidget), offered())
+            // The default page's widgets aren't offered, every other one is
+            val notOnPage = availableHomeWidgets.filter { widget -> widget.isSupported && homeWidgets.none { it.widget.id == widget.id } }
+            assertEquals(notOnPage, offered())
             // Added with a click: on the page, gone from the gallery
             onNodeWithTag("gallery-calendar", useUnmergedTree = true).performMouseInput { click(center) }
             waitForIdle()
             assertTrue(saved().any { it.widget.id == CalendarWidget.id })
-            assertTrue(offered().isEmpty())
+            assertEquals(notOnPage - CalendarWidget, offered())
             // Removed from the page: offered again
             onNodeWithTag("widget-remove-sky", useUnmergedTree = true).performMouseInput { click(center) }
             waitForIdle()
-            assertEquals(listOf(SkyWidget), offered())
+            assertEquals((notOnPage - CalendarWidget + SkyWidget).toSet(), offered().toSet())
         }
 
     private fun ComposeUiTest.widthOf(tag: String) =

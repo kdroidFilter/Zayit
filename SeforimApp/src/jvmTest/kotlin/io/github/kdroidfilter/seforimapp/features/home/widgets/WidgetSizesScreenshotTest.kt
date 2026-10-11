@@ -13,14 +13,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.v2.runDesktopComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.testAppGraph
 import io.github.kdroidfilter.seforimapp.testAppSettings
-import io.github.vinceglb.filekit.FileKit
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -39,8 +38,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalTestApi::class)
 class WidgetSizesScreenshotTest {
     private val graph by lazy {
-        FileKit.init("seforimapp-tests")
-        createGraph<AppGraph>().also(::seed)
+        testAppGraph().also(::seed)
     }
 
     /** Enough history, favorites and notes in the tests' own user DB for their widgets to fill every size. */

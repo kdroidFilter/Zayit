@@ -53,6 +53,8 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.BookmarkFilled
 import io.github.kdroidfilter.seforimapp.icons.NotebookPen
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
@@ -212,13 +214,17 @@ internal object NotesWidget : HomeWidget {
         // Its per-book cache changes on every write: the cue to read the latest again
         val written by graph.noteStore.notesByBook.collectAsState()
         val notes by produceState(emptyList<Pair<BookNote, String>>(), written) {
-            val recent = graph.noteStore.recent(LIST_LIMIT)
-            // The book's name is a nicety: a note still shows, and opens, without the books DB
-            val titles =
-                recent.map { it.bookId }.distinct().associateWith { id ->
-                    runCatching { graph.repository.getBookCore(id)?.title }.getOrNull().orEmpty()
+            // One hop off the UI thread for the notes and all their books, not one per book
+            value =
+                withContext(Dispatchers.IO) {
+                    val recent = graph.noteStore.recent(LIST_LIMIT)
+                    // The book's name is a nicety: a note still shows, and opens, without the books DB
+                    val titles =
+                        recent.map { it.bookId }.distinct().associateWith { id ->
+                            runCatching { graph.repository.getBookCore(id)?.title }.getOrNull().orEmpty()
+                        }
+                    recent.map { it to titles[it.bookId].orEmpty() }
                 }
-            value = recent.map { it to titles[it.bookId].orEmpty() }
         }
         val accent = rememberAccentColor(JewelTheme.isDark)
         ListCard(

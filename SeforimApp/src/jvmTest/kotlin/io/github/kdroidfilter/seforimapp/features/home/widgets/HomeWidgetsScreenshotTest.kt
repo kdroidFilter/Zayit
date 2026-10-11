@@ -16,14 +16,13 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import dev.zacsweers.metro.createGraph
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.features.home.widgets.calendar.CalendarWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidget
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
-import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.testAppGraph
 import io.github.kdroidfilter.seforimapp.testAppSettings
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -37,7 +36,7 @@ class HomeWidgetsScreenshotTest {
     private val appSettings = testAppSettings()
     private val layout = HomeWidgetsLayout(appSettings)
 
-    private val graph by lazy { createGraph<AppGraph>() }
+    private val graph by lazy { testAppGraph() }
 
     @Test
     fun `render home widgets`() {

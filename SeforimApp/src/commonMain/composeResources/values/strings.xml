@@ -199,6 +199,7 @@
     <string name="context_menu_copy_link">העתק קישור לקטע זה</string>
     <string name="context_menu_highlight">סמן</string>
     <string name="context_menu_add_note">הוסף הערה</string>
+    <string name="context_menu_report_error">דווח על טעות</string>
 
     <!-- Notes pane -->
     <string name="notes_pane">הערות</string>

@@ -12,7 +12,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
@@ -61,7 +60,7 @@ fun BookDetailsPane(
     }
 }
 
-/** A book's details: title, categories, description, authors (to their page) and parts (to open). */
+/** A book's details: title, categories, authors (to their page) and parts (to open). */
 @Composable
 fun ColumnScope.BookDetails(
     entity: SearchEntity.BookEntity,
@@ -74,16 +73,6 @@ fun ColumnScope.BookDetails(
     Text(book.title, fontSize = 22.sp, fontWeight = FontWeight.SemiBold, color = JewelTheme.globalColors.text.normal)
     if (entity.categories.isNotEmpty()) {
         Text(entity.categories.joinToString(" › "), fontSize = 12.sp, color = grey)
-    }
-    book.heShortDesc?.takeIf { it.isNotBlank() }?.let {
-        Text(
-            it,
-            fontSize = 13.sp,
-            lineHeight = 21.sp,
-            color = grey,
-            maxLines = 6,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
     entity.authors.forEach { author ->
         PanelSection(stringResource(Res.string.search_panel_author)) {

@@ -267,7 +267,13 @@ internal fun upcomingEvents(
                 ?: if (isShabbat) {
                     hebrewFormatter.formatParsha(day)?.takeIf { it.isNotBlank() }?.let { "שבת $it" } ?: "שבת"
                 } else {
-                    hebrewFormatter.formatRoshChodesh(day).ifBlank { "ראש חודש" }
+                    val roshChodesh = hebrewFormatter.formatRoshChodesh(day).ifBlank { "ראש חודש" }
+                    // A two-day Rosh Chodesh: the 30th of the outgoing month, then the 1st of the new one
+                    when {
+                        day.jewishDayOfMonth == 30 -> "א׳ ד$roshChodesh"
+                        day.jewishDayOfMonth == 1 && calendarOf(date.minusDays(1)).jewishDayOfMonth == 30 -> "ב׳ ד$roshChodesh"
+                        else -> roshChodesh
+                    }
                 }
         // The year is the one being read; leaving it out keeps the line to one
         val hebrewDate = "${hebrewFormatter.formatHebrewNumber(day.jewishDayOfMonth)} ${hebrewFormatter.formatMonth(day)}"

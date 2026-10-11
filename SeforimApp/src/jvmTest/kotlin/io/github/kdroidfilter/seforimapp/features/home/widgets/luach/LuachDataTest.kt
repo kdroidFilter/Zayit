@@ -66,6 +66,18 @@ class LuachDataTest {
     }
 
     @Test
+    fun `a two-day rosh chodesh names the coming month and its first and second day`() {
+        fun namesFrom(date: LocalDate) =
+                .associate { it.date to it.name }
+        // 30 Tishrei 5787 (Sunday 11 October 2026) and 1 Cheshvan
+        val cheshvan = namesFrom(LocalDate.of(2026, 10, 11))
+        assertEquals("א׳ דראש חודש חשון", cheshvan[LocalDate.of(2026, 10, 11)])
+        assertEquals("ב׳ דראש חודש חשון", cheshvan[LocalDate.of(2026, 10, 12)])
+        // Adar II always has 29 days: 1 Nissan 5787 (Thursday 8 April 2027) is a one-day Rosh Chodesh
+        assertEquals("ראש חודש ניסן", namesFrom(LocalDate.of(2027, 4, 7))[LocalDate.of(2027, 4, 8)])
+    }
+
+    @Test
     fun `next zmanim are the coming ones, in order`() {
         val noon = Date.from(cholHamoed.atTime(12, 30).atZone(ZoneId.of("Asia/Jerusalem")).toInstant())
         assertEquals(3, next.size)

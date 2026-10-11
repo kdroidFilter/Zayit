@@ -53,9 +53,11 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentS
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LocalShiftSelection
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LocalBookSelection
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.copyToClipboard
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.textOf
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.highlightRangesOf
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.resolveComposeSelection
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.resolveRange
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -485,32 +487,37 @@ fun BookTextMenus(
                 ) {
                     val appSettings = LocalAppGraph.current.appSettings
                     val repository = LocalAppGraph.current.repository
-                    // The book view's Shift+click selection, read from the database (lines composed or not): what
-                    // every copy takes (the menu's, Ctrl+C and the AWT shortcuts through the SelectionContext)
-                    val shiftSelection = LocalShiftSelection.current
-                    val shiftRange = shiftSelection?.range
+                    // The book view's selection located in the book (Compose's from the press it started at, or the
+                    // Shift+click one read from the database): what the copies, highlights and sources take, the AWT
+                    // shortcuts included through the SelectionContext
+                    val bookSelection = LocalBookSelection.current
+                    val shiftRange = bookSelection?.range
                     val rawText = textManager.selectedText.text
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
                     LaunchedEffect(rawText, shiftRange, diacritics) {
                         // A new Compose selection (a drag) replaces the Shift+click one
-                        if (rawText.isNotEmpty()) shiftSelection?.clear()
-                        val copied =
-                            if (shiftRange != null && rawText.isEmpty() && bookId > 0) {
-                                textOf(shiftRange, bookId, repository, diacritics)
-                            } else {
-                                null
+                        if (rawText.isNotEmpty()) bookSelection?.clear()
+                        val pressedAt = bookSelection?.pressedAt
+                        val resolved =
+                            when {
+                                bookSelection == null || bookId <= 0 -> null
+                                shiftRange != null && rawText.isEmpty() -> resolveRange(shiftRange, bookId, repository, diacritics)
+                                rawText.isNotEmpty() && pressedAt != null ->
+                                    resolveComposeSelection(rawText, pressedAt, bookId, repository, diacritics)
+                                else -> null
                             }
-                        shiftSelection?.copied = copied
-                        if (copied != null) {
-                            selectionContext.setSelectedText(tabId, copied.text, copied.first to copied.last)
+                        bookSelection?.resolved = resolved
+                        if (resolved != null) {
+                            selectionContext.setSelectedText(tabId, resolved.text, resolved.first to resolved.last)
                         } else {
                             selectionContext.setSelectedText(tabId, rawText)
                         }
                     }
-                    val copied = shiftSelection?.copied
+                    val resolved = bookSelection?.resolved
+                    val owned = resolved?.takeIf { it.owned }
                     val menuTextManager =
-                        copied?.let { selection ->
+                        owned?.let { selection ->
                             object : TextContextMenu.TextManager by textManager {
                                 override val selectedText = AnnotatedString(selection.text)
                                 override val copy = TextContextMenu.Action(enabled = true) { copyToClipboard(selection.text) }
@@ -525,7 +532,7 @@ fun BookTextMenus(
                             val query = normalizeSearchQuery(textManager.selectedText.text)
                             val selectedText = textManager.selectedText.text
                             // What the copies take: the Shift+click selection, beyond the lines composed
-                            val copiedText = copied?.text ?: selectedText
+                            val copiedText = owned?.text ?: selectedText
                             buildList {
                                 // Copy without nikud option - first position, only show when book has diacritics and they are shown
                                 if (bookHasDiacritics &&
@@ -570,7 +577,7 @@ fun BookTextMenus(
                                                     bookForCopy,
                                                     selectionContext.activeBook.value?.rootTitle,
                                                     selectionContext.visibleLines.value.lines,
-                                                    copied?.let { it.first to it.last },
+                                                    resolved?.let { it.first to it.last },
                                                 )
                                             val clipboard = Toolkit.getDefaultToolkit().systemClipboard
                                             clipboard.setContents(StringSelection(payload), null)
@@ -587,7 +594,9 @@ fun BookTextMenus(
                                             label = copyLinkLabel,
                                         ) {
                                             val lineId =
-                                                if (selectedText.isNotBlank()) {
+                                                if (resolved != null) {
+                                                    resolved.first.id
+                                                } else if (selectedText.isNotBlank()) {
                                                     resolveLineRangeFromSelection(
                                                         selectedText,
                                                         selectionContext.visibleLines.value.lines,
@@ -662,17 +671,22 @@ fun BookTextMenus(
                                         ContextMenuHighlightColorPicker(
                                             colors = HighlightColors.allWithClear,
                                             onColorSelected = { color ->
-                                                applyHighlightFromSelection(
-                                                    selectedText = copiedText,
-                                                    // A Shift+click selection's own lines, composed or not
-                                                    lines = copied?.lines ?: selectionContext.visibleLines.value.lines,
-                                                    bookId = bookId,
-                                                    commentaryColumn = selectionContext.activeCommentaryColumn.value,
-                                                    color = color,
-                                                    diacritics = diacritics,
-                                                    store = highlightStore,
-                                                    scope = highlightScope,
-                                                )
+                                                // Located in the book: exactly the selected characters
+                                                val located = resolved?.let { highlightRangesOf(it.range, it.lines, diacritics) }
+                                                if (located != null) {
+                                                    persistHighlights(bookId, located, color, highlightStore, highlightScope)
+                                                } else {
+                                                    applyHighlightFromSelection(
+                                                        selectedText = selectedText,
+                                                        lines = selectionContext.visibleLines.value.lines,
+                                                        bookId = bookId,
+                                                        commentaryColumn = selectionContext.activeCommentaryColumn.value,
+                                                        color = color,
+                                                        diacritics = diacritics,
+                                                        store = highlightStore,
+                                                        scope = highlightScope,
+                                                    )
+                                                }
                                             },
                                             onDismiss = { state.status = ContextMenuState.Status.Closed },
                                         ),

@@ -912,9 +912,9 @@ fun BookContentView(
 
     // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
     // mikra, whose items are more than their line)
-    val shiftSelection = remember(bookId, shnayimMikra) { if (shnayimMikra) null else ShiftSelection() }
-    ShiftSelectionContainer(
-        selection = shiftSelection,
+    val bookSelection = remember(bookId, shnayimMikra) { if (shnayimMikra) null else BookSelection() }
+    BookSelectionContainer(
+        selection = bookSelection,
         modifier =
             modifier
                 .fillMaxSize()
@@ -1593,7 +1593,7 @@ private fun LineItem(
     }
 
     // The book view's Shift+click selection: extended from this line's characters, drawn as Compose draws its own
-    val shiftSelection = LocalShiftSelection.current
+    val bookSelection = LocalBookSelection.current
     val selectionBackground = LocalTextSelectionColors.current.backgroundColor
     Text(
         text = displayText,
@@ -1603,14 +1603,14 @@ private fun LineItem(
         modifier =
             textModifier
                 .then(
-                    if (shiftSelection != null) {
-                        Modifier.shiftSelectable(shiftSelection, lineIndex) { noteLayout }
+                    if (bookSelection != null) {
+                        Modifier.selectableLine(bookSelection, lineIndex) { noteLayout }
                     } else {
                         Modifier
                     },
                 ).drawBehind {
                     val layout = noteLayout ?: return@drawBehind
-                    shiftSelection?.selectedRangeOf(lineIndex, layout.layoutInput.text.length)?.takeIf { !it.isEmpty() }?.let {
+                    bookSelection?.selectedRangeOf(lineIndex, layout.layoutInput.text.length)?.takeIf { !it.isEmpty() }?.let {
                         drawPath(layout.getPathForRange(it.first, it.last + 1), selectionBackground)
                     }
                     drawNoteUnderlines(layout, noteRanges, noteUnderlineColor)

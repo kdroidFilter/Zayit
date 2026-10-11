@@ -53,6 +53,7 @@ object E2eShiftSelectScenario {
         val root = TaoRootsForTest.roots.maxBy { it.visibleBounds.width * it.visibleBounds.height }
 
         // A plain drag selects as before
+        var wordOk = false
         run {
             val items = list.layoutInfo.visibleItemsInfo
             val coords = E2eReader.bookList ?: error("no book list coordinates")
@@ -78,6 +79,57 @@ object E2eShiftSelectScenario {
             root.sendPointerEvent(PointerEventType.Release, at(items[5]), buttons = PointerButtons(), button = PointerButton.Primary)
             sc.step("ss-00-drag", 800)
             sc.note("SHIFTSELECT drag selected=${graph.selectionContext.selectedText.value.length} chars")
+
+            // A short word, double-clicked, then highlighted: on its own line only, though it occurs earlier
+            val wordItem = items[5]
+            val wordLine = graph.repository.getLine(wordItem.key as Long) ?: error("no word line")
+            val earlier =
+                graph.repository
+                    .getLines(book.id, 0, wordLine.lineIndex - 1)
+                    .map { displayedLineText(it.content, DiacriticsMode.All) }
+            var word = at(wordItem)
+            var selectedWord = ""
+            // Double-clicks words along the line until one that also occurs on an earlier line
+            for (dx in listOf(-60f, -140f, -220f, -300f, -380f, -460f, -540f)) {
+                word = at(wordItem) + Offset(dx, 0f)
+                repeat(2) {
+                    root.sendPointerEvent(
+                        PointerEventType.Press,
+                        word,
+                        buttons = PointerButtons(isPrimaryPressed = true),
+                        button = PointerButton.Primary,
+                    )
+                    delay(40)
+                    root.sendPointerEvent(PointerEventType.Release, word, buttons = PointerButtons(), button = PointerButton.Primary)
+                    delay(80)
+                }
+                delay(800)
+                selectedWord =
+                    graph.selectionContext.selectedText.value
+                        .trim()
+                if (selectedWord.isNotEmpty() && earlier.any { plain(it).contains(plain(selectedWord)) }) break
+                delay(600)
+            }
+            graph.highlightStore.loadBook(book.id)
+            val wordHighlighted =
+                rightClick(root, word) &&
+                    pickColor() &&
+                    waitFor { graph.highlightStore.highlightsForLine(book.id, wordItem.key as Long).isNotEmpty() }
+            delay(500)
+            val elsewhere =
+                graph.highlightStore.highlightsByBook.value[book.id]
+                    .orEmpty()
+                    .filter { it.lineId != wordItem.key as Long }
+            wordOk = wordHighlighted && elsewhere.isEmpty() && selectedWord.isNotBlank()
+            val occursEarlier = earlier.any { plain(it).contains(plain(selectedWord)) }
+            wordOk = wordOk && occursEarlier
+            sc.note(
+                "SHIFTSELECT word '$selectedWord' (also earlier=$occursEarlier) highlighted on its line=$wordHighlighted " +
+                    "elsewhere=${elsewhere.size}",
+            )
+            sc.step("ss-00-word", 300)
+            // A plain click clears the word selection before the Shift+click part
+            delay(700)
         }
 
         // A plain click inside a line, then a Shift+click [JUMP] lines down
@@ -128,47 +180,19 @@ object E2eShiftSelectScenario {
                 val o = coords.positionInRoot()
                 Offset(o.x + coords.size.width * 0.97f, o.y + targetItem.offset + targetItem.size - 24f)
             }
-        root.sendPointerEvent(PointerEventType.Move, rightClickAt)
-        root.sendPointerEvent(
-            PointerEventType.Press,
-            rightClickAt,
-            buttons = PointerButtons(isSecondaryPressed = true),
-            button = PointerButton.Secondary,
-        )
-        delay(60)
-        root.sendPointerEvent(PointerEventType.Release, rightClickAt, buttons = PointerButtons(), button = PointerButton.Secondary)
-        delay(1200)
+        val menuOpened = rightClick(root, rightClickAt)
         val kept = graph.selectionContext.selectedText.value == text && graph.selectionContext.selectedLineRange.value != null
-        val popup = TaoRootsForTest.roots.last()
-        val mark =
-            popup.semanticsOwner.unmergedRootSemanticsNode.find {
-                it.config.getOrNull(SemanticsProperties.Text)?.joinToString() ==
-                    "סמן"
-            }
-        var highlighted = false
-        if (popup !== root && mark != null) {
-            val swatch = Offset(mark.boundsInRoot.left - 23f, mark.boundsInRoot.center.y)
-            popup.sendPointerEvent(PointerEventType.Move, swatch)
-            delay(50)
-            popup.sendPointerEvent(
-                PointerEventType.Press,
-                swatch,
-                buttons = PointerButtons(isPrimaryPressed = true),
-                button = PointerButton.Primary,
-            )
-            delay(60)
-            popup.sendPointerEvent(PointerEventType.Release, swatch, buttons = PointerButtons(), button = PointerButton.Primary)
-            val middleLine = interior[interior.size / 2]
-            highlighted = waitFor { graph.highlightStore.highlightsForLine(book.id, middleLine.id).isNotEmpty() }
-        }
-        sc.note("SHIFTSELECT right-click kept=$kept menu=${mark != null} highlight reaches line never composed=$highlighted")
+        val mark = menuOpened && pickColor()
+        val middleLine = interior[interior.size / 2]
+        val highlighted = mark && waitFor { graph.highlightStore.highlightsForLine(book.id, middleLine.id).isNotEmpty() }
+        sc.note("SHIFTSELECT right-click kept=$kept menu=$mark highlight reaches line never composed=$highlighted")
 
         // The lines between, scrolled back to: drawn selected as well?
         list.scrollToItem((anchorItem.index + targetItem.index) / 2)
         sc.step("ss-03-middle", 1500)
         sc.note(
             "SHIFTSELECT RESULT " +
-                if (completed && linesOk && edgesOk && clip == text && kept && highlighted) "PASS" else "FAIL",
+                if (wordOk && completed && linesOk && edgesOk && clip == text && kept && highlighted) "PASS" else "FAIL",
         )
     }
 
@@ -210,4 +234,43 @@ object E2eShiftSelectScenario {
 
     private fun SemanticsNode.find(predicate: (SemanticsNode) -> Boolean): SemanticsNode? =
         if (predicate(this)) this else children.firstNotNullOfOrNull { it.find(predicate) }
+
+    /** Right-clicks at [at]; true once the text menu is open. */
+    private suspend fun rightClick(
+        root: PlatformRootForTest,
+        at: Offset,
+    ): Boolean {
+        root.sendPointerEvent(PointerEventType.Move, at)
+        root.sendPointerEvent(
+            PointerEventType.Press,
+            at,
+            buttons = PointerButtons(isSecondaryPressed = true),
+            button = PointerButton.Secondary,
+        )
+        delay(60)
+        root.sendPointerEvent(PointerEventType.Release, at, buttons = PointerButtons(), button = PointerButton.Secondary)
+        return waitFor { TaoRootsForTest.roots.size > 1 }
+    }
+
+    /** Clicks the first highlight color of the open text menu. */
+    private suspend fun pickColor(): Boolean {
+        delay(500)
+        val popup = TaoRootsForTest.roots.last()
+        val mark =
+            popup.semanticsOwner.unmergedRootSemanticsNode.find {
+                it.config.getOrNull(SemanticsProperties.Text)?.joinToString() == "סמן"
+            } ?: return false
+        val swatch = Offset(mark.boundsInRoot.left - 23f, mark.boundsInRoot.center.y)
+        popup.sendPointerEvent(PointerEventType.Move, swatch)
+        delay(50)
+        popup.sendPointerEvent(
+            PointerEventType.Press,
+            swatch,
+            buttons = PointerButtons(isPrimaryPressed = true),
+            button = PointerButton.Primary,
+        )
+        delay(60)
+        popup.sendPointerEvent(PointerEventType.Release, swatch, buttons = PointerButtons(), button = PointerButton.Primary)
+        return true
+    }
 }

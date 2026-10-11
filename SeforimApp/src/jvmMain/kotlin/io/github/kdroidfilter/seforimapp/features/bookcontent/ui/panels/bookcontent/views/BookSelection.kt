@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views
 
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -26,18 +27,20 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextLayoutResult
-import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
+import androidx.compose.ui.unit.sp
+import io.github.kdroidfilter.seforim.htmlparser.HtmlImageContentBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.LineHighlightRange
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.stripNikudTeamimWithMap
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 
 /** A character of the book: [offset] in the displayed text of the line at [lineIndex]. */
 data class TextPoint(
@@ -136,15 +139,29 @@ fun BookSelectionContainer(
         // On the container itself: its own Ctrl/Cmd+C would copy its (empty) selection
         SelectionContainer(
             modifier =
-                modifier.onPreviewKeyEvent { event ->
-                    val owned = selection?.resolved?.takeIf { it.owned }
-                    if (owned != null && event.isPlainCopy()) {
-                        copyToClipboard(owned.text)
-                        true
-                    } else {
-                        false
-                    }
-                },
+                modifier
+                    .then(
+                        if (selection != null) {
+                            // A plain press nobody took (blank space, a margin) deselects, as it does Compose's selection
+                            Modifier.pointerInput(selection) {
+                                awaitEachGesture {
+                                    val down = awaitPointerEvent(PointerEventPass.Final)
+                                    val shift = down.keyboardModifiers.isShiftPressed
+                                    if (down.buttons.isPrimaryPressed && !shift && down.changes.none { it.isConsumed }) selection.clear()
+                                }
+                            }
+                        } else {
+                            Modifier
+                        },
+                    ).onPreviewKeyEvent { event ->
+                        val owned = selection?.resolved?.takeIf { it.owned }
+                        if (owned != null && event.isPlainCopy()) {
+                            copyToClipboard(owned.text)
+                            true
+                        } else {
+                            false
+                        }
+                    },
             content = content,
         )
     }
@@ -272,8 +289,8 @@ internal fun locateSelection(
 /**
  * The highlight ranges of [range] over its [lines], in the coordinates highlights have always been stored in: each
  * line's plain text with diacritics (`buildAnnotatedFromHtml(content)`), the displayed offsets mapped back through
- * the diacritics the reading mode hides. Null when a line is displayed with more than that text (inline images), for
- * the caller to fall back on the text resolver.
+ * the diacritics the reading mode hides. Null when a line is displayed otherwise than that text (inline images, or
+ * diacritics stripped differently), for the caller to fall back on the text resolver.
  */
 fun highlightRangesOf(
     range: ClosedRange<TextPoint>,
@@ -287,7 +304,9 @@ fun highlightRangesOf(
         val selected = range.offsetsIn(line.lineIndex, displayed.length)
         if (selected.isEmpty()) return@mapNotNull null
         if (diacritics == DiacriticsMode.All) return@mapNotNull LineHighlightRange(line.id, selected)
-        val (_, toOriginal) = stripNikudTeamimWithMap(original, diacritics)
+        val (stripped, toOriginal) = stripNikudTeamimWithMap(original, diacritics)
+        // The map only holds when stripping the plain text gives the displayed text
+        if (stripped != displayed) return null
         val from = toOriginal.getOrElse(selected.first) { original.length }
         val to = toOriginal.getOrElse(selected.last + 1) { original.length }
         if (to > from) LineHighlightRange(line.id, from until to) else null
@@ -303,12 +322,12 @@ internal fun displayedLineText(
         baseTextSize = 16f,
         boldScale = 1f,
         footnoteMarkerColor = Color.Unspecified,
-        imageContentBuilder = SkiaHtmlImageBuilder.build(),
+        imageContentBuilder = ImagePlaceholders,
     ).annotated.text
 
-fun copyToClipboard(text: String) {
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-}
+// The text only: an image stands as its placeholder character, as displayed, without decoding it
+private val ImagePlaceholder = InlineTextContent(Placeholder(1.sp, 1.sp, PlaceholderVerticalAlign.TextCenter)) {}
+private val ImagePlaceholders: HtmlImageContentBuilder = { element, _ -> ImagePlaceholder.takeIf { element.imageBytes != null } }
 
 // Ctrl/Cmd+C alone: Shift and Alt make it the copies without nikud and with source, handled at the AWT level
 private fun KeyEvent.isPlainCopy(): Boolean =

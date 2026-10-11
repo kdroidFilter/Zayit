@@ -48,13 +48,13 @@ import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRanges
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
 import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LocalBookSelection
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.copyToClipboard
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.highlightRangesOf
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.resolveComposeSelection
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.resolveRange
@@ -66,6 +66,7 @@ import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -94,8 +95,6 @@ import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_highlight
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.awt.event.InputEvent
 import javax.swing.KeyStroke
 import androidx.compose.foundation.ContextMenuRepresentation as ComposeContextMenuRepresentation
@@ -495,23 +494,26 @@ fun BookTextMenus(
                     val rawText = textManager.selectedText.text
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
+                    // A new Compose selection (a drag) replaces the Shift+click one; a Shift+click leaves Compose's as is
+                    LaunchedEffect(rawText) { if (rawText.isNotEmpty()) bookSelection?.clear() }
                     LaunchedEffect(rawText, shiftRange, diacritics) {
-                        // A new Compose selection (a drag) replaces the Shift+click one
-                        if (rawText.isNotEmpty()) bookSelection?.clear()
+                        bookSelection?.resolved = null
+                        selectionContext.setSelectedText(tabId, rawText)
                         val pressedAt = bookSelection?.pressedAt
                         val resolved =
                             when {
                                 bookSelection == null || bookId <= 0 -> null
-                                shiftRange != null && rawText.isEmpty() -> resolveRange(shiftRange, bookId, repository, diacritics)
-                                rawText.isNotEmpty() && pressedAt != null ->
+                                shiftRange != null -> resolveRange(shiftRange, bookId, repository, diacritics)
+                                rawText.isNotEmpty() && pressedAt != null -> {
+                                    // Once the drag rests, not on each of its moves
+                                    delay(SELECTION_SETTLE_MS)
                                     resolveComposeSelection(rawText, pressedAt, bookId, repository, diacritics)
+                                }
                                 else -> null
                             }
-                        bookSelection?.resolved = resolved
                         if (resolved != null) {
+                            bookSelection?.resolved = resolved
                             selectionContext.setSelectedText(tabId, resolved.text, resolved.first to resolved.last)
-                        } else {
-                            selectionContext.setSelectedText(tabId, rawText)
                         }
                     }
                     val resolved = bookSelection?.resolved
@@ -552,8 +554,7 @@ fun BookTextMenus(
                                             label = copyWithoutNikudLabel,
                                         ) {
                                             val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(copiedText)
-                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                            clipboard.setContents(StringSelection(textWithoutDiacritics), null)
+                                            copyToClipboard(textWithoutDiacritics)
                                         },
                                     )
                                 }
@@ -579,8 +580,7 @@ fun BookTextMenus(
                                                     selectionContext.visibleLines.value.lines,
                                                     resolved?.let { it.first to it.last },
                                                 )
-                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                            clipboard.setContents(StringSelection(payload), null)
+                                            copyToClipboard(payload)
                                         },
                                     )
                                 }
@@ -605,8 +605,7 @@ fun BookTextMenus(
                                                     selectionContext.currentLineId.value.takeIf { it > 0 }
                                                 }
                                             val link = bookShareLink(bookForCopy.id, lineId)
-                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                            clipboard.setContents(StringSelection(link), null)
+                                            copyToClipboard(link)
                                         },
                                     )
                                 }
@@ -677,8 +676,8 @@ fun BookTextMenus(
                                                     persistHighlights(bookId, located, color, highlightStore, highlightScope)
                                                 } else {
                                                     applyHighlightFromSelection(
-                                                        selectedText = selectedText,
-                                                        lines = selectionContext.visibleLines.value.lines,
+                                                        selectedText = copiedText,
+                                                        lines = resolved?.lines ?: selectionContext.visibleLines.value.lines,
                                                         bookId = bookId,
                                                         commentaryColumn = selectionContext.activeCommentaryColumn.value,
                                                         color = color,
@@ -826,3 +825,6 @@ private fun normalizeSearchQuery(text: String): String {
     val normalizedLineBreaks = text.replace('\n', ' ').replace('\r', ' ')
     return normalizedLineBreaks.replace(Regex("\\s+"), " ").trim()
 }
+
+// How long a Compose selection rests before it is located in the book
+private const val SELECTION_SETTLE_MS = 150L

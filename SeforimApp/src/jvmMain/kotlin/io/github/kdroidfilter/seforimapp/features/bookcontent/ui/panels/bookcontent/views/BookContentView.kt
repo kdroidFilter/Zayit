@@ -911,8 +911,8 @@ fun BookContentView(
     }
 
     // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
-    // mikra, whose items are more than their line)
-    val bookSelection = remember(bookId, shnayimMikra) { if (shnayimMikra) null else BookSelection() }
+    // mikra, whose items are more than their line). Its offsets index the text as displayed: new for another diacritics mode
+    val bookSelection = remember(bookId, shnayimMikra, diacritics) { if (shnayimMikra) null else BookSelection() }
     BookSelectionContainer(
         selection = bookSelection,
         modifier =

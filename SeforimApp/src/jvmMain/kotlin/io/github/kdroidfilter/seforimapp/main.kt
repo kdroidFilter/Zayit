@@ -38,6 +38,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.AppJumpLis
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppLinuxQuicklist
 import io.github.kdroidfilter.seforimapp.core.presentation.components.AppNativeMenuBar
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
@@ -73,7 +74,6 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
-import java.awt.datatransfer.StringSelection
 import java.awt.event.KeyEvent
 import java.util.*
 import kotlin.system.exitProcess
@@ -214,7 +214,7 @@ fun main(args: Array<String>) {
                         val selectedText = selectionContext.selectedText.value
                         if (selectedText.isNotBlank()) {
                             val stripped = HebrewTextUtils.removeAllDiacritics(selectedText)
-                            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(stripped), null)
+                            copyToClipboard(stripped)
                         }
                         true
                     } else {
@@ -243,7 +243,7 @@ fun main(args: Array<String>) {
                                     selectionContext.visibleLines.value.lines,
                                     selectionContext.selectedLineRange.value,
                                 )
-                            Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(payload), null)
+                            copyToClipboard(payload)
                             true
                         } else {
                             false

@@ -73,6 +73,7 @@ import dev.nucleusframework.share.ShareSheet
 import dev.nucleusframework.share.shareRequest
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.copyToClipboard
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -96,8 +97,6 @@ import seforimapp.seforimapp.generated.resources.favorites_edit
 import seforimapp.seforimapp.generated.resources.favorites_folder_name_placeholder
 import seforimapp.seforimapp.generated.resources.favorites_new_folder
 import seforimapp.seforimapp.generated.resources.favorites_no_folder
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 
 /**
  * Action buttons at the end of the breadcrumb bar (Chrome omnibox-like): copy a deep link to
@@ -183,7 +182,7 @@ private fun CopyLinkButton(
     ) {
         IconButton(
             onClick = {
-                Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(bookShareLink(bookId, lineId)), null)
+                copyToClipboard(bookShareLink(bookId, lineId))
                 copied = true
             },
             modifier = Modifier.size(24.dp),

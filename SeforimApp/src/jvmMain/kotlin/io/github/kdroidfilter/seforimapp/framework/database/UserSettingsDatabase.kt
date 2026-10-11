@@ -13,7 +13,8 @@ private const val SETTINGS_DB_NAME = "user_settings.db"
 const val USER_SETTINGS_DRIVER = "userSettingsDriver"
 
 fun getUserSettingsDatabasePath(): String {
-    // An E2E run writes highlights, notes and history: in its own output, never the user's
-    val root = (E2e.outDir ?: File(FileKit.databasesDir.path, SETTINGS_DB_DIR)).apply { mkdirs() }
+    // The shiftselect E2E run writes highlights: in its own output, never the user's
+    val e2eDir = E2e.outDir?.takeIf { E2e.scenario == "shiftselect" }
+    val root = (e2eDir ?: File(FileKit.databasesDir.path, SETTINGS_DB_DIR)).apply { mkdirs() }
     return File(root, SETTINGS_DB_NAME).absolutePath
 }

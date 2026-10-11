@@ -107,6 +107,11 @@ internal object LimudWidget : HomeWidget {
     override val defaultSpan = CellSpan(4, 4)
     override val minSpan = CellSpan(4, 2)
 
+    // As a tool, its window's height follows its lines too (heightAt): the size only sets its width
+    override val toolWindowSize = DpSize(380.dp, 240.dp)
+    override val toolWindowMinSize = DpSize(280.dp, 120.dp)
+    override val toolSymbol = "books.vertical"
+
     // Its height is the one its lines need (heightAt), no more: only its width is the user's, to two columns
     override val maxSpan = CellSpan(10, 2)
 

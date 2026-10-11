@@ -123,6 +123,34 @@ jobs:
           java-version: '25'
           distribution: 'liberica'
 
+      # GPG-signs the .deb/.rpm and enables Nucleus' passwordless self-update: the package ships a
+      # root-owned update helper + polkit policy that installs an update only if its detached
+      # <pkg>.asc verifies against the public key bundled in the app.
+      - name: Setup Linux signing
+        if: startsWith(matrix.os, 'ubuntu') && (matrix.pkg == 'deb' || matrix.pkg == 'rpm')
+        shell: bash
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          LINUX_GPG_KEY_ID: ${{ secrets.LINUX_GPG_KEY_ID }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$LINUX_GPG_PRIVATE_KEY" ]; then
+            echo "::warning::No LINUX_GPG_PRIVATE_KEY secret; Linux packages stay unsigned (password-prompted updates)."
+            exit 0
+          fi
+          KEY_FILE="$RUNNER_TEMP/zayit-signing-key.asc"
+          printf '%s' "$LINUX_GPG_PRIVATE_KEY" > "$KEY_FILE"
+          {
+            echo ""
+            echo "compose.desktop.linux.sign=true"
+            echo "compose.desktop.linux.signing.keyId=$LINUX_GPG_KEY_ID"
+            echo "compose.desktop.linux.signing.keyFile=$KEY_FILE"
+            echo "compose.desktop.linux.signing.passphrase=$LINUX_GPG_PASSPHRASE"
+            echo "compose.desktop.linux.signing.silentUpdate=true"
+          } >> gradle.properties
+          echo "LINUX_SIGNED=true" >> "$GITHUB_ENV"
+
       # Linux builds
       - name: Build & stage Linux .deb
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
@@ -135,6 +163,11 @@ jobs:
           [ -n "$src" ] || { echo "::error::No .deb produced"; exit 1; }
           # Name kept in sync with website/public/download/launch.linux deb pattern.
           cp "$src" "staging/zayit_${VERSION}_${{ matrix.arch }}.deb"
+          # Detached signature, fetched by the updater next to the package for the passwordless install.
+          if [ "${LINUX_SIGNED:-}" = "true" ]; then
+            [ -f "$src.asc" ] || { echo "::error::No detached signature for $src"; exit 1; }
+            cp "$src.asc" "staging/zayit_${VERSION}_${{ matrix.arch }}.deb.asc"
+          fi
 
       - name: Build & stage Linux .rpm
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
@@ -152,6 +185,10 @@ jobs:
           esac
           # Name kept in sync with website/public/download/launch.linux rpm pattern.
           cp "$src" "staging/zayit-${VERSION}-1.${rpm_arch}.rpm"
+          if [ "${LINUX_SIGNED:-}" = "true" ]; then
+            [ -f "$src.asc" ] || { echo "::error::No detached signature for $src"; exit 1; }
+            cp "$src.asc" "staging/zayit-${VERSION}-1.${rpm_arch}.rpm.asc"
+          fi
 
       - name: Build & stage Linux .pacman
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'pacman'

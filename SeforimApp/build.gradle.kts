@@ -220,7 +220,6 @@ nucleus.application {
         isEnabled = true
         imageName = "zayit"
         optimization = NativeImageOptimization.LEVEL_3
-        advancedObfuscation = true
         nativeImageConfigBaseDir.set(layout.projectDirectory.dir("src/graalvm"))
         buildArgs.add("--initialize-at-build-time=org.slf4j")
         toolchain {

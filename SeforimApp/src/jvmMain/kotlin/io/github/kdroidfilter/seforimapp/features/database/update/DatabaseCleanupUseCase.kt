@@ -118,6 +118,7 @@ class DatabaseCleanupUseCase(
             // download / extraction leftovers
             name.endsWith(".tar.zst") ||
             BundleParts.isPart(name) ||
+            BundleParts.isManifest(name) ||
             name.endsWith(".zst") ||
             name.endsWith(".tmp")
     }

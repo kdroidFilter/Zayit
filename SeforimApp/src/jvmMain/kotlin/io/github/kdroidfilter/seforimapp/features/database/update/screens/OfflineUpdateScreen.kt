@@ -15,6 +15,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProc
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.offline.isCompleteBundle
 import io.github.kdroidfilter.seforimapp.features.onboarding.offline.pickDatabaseParts
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -61,6 +62,10 @@ fun OfflineUpdateScreen(
     ) {
         scope.launch {
             prepErrorKind = null
+            if (!isCompleteBundle(p1)) {
+                prepErrorKind = DownloadErrorKind.INCOMPLETE_BUNDLE
+                return@launch
+            }
             // Remove the old database and verify free space before extracting ~7.5 GB.
             when (prepUseCase.prepareForInstall()) {
                 DatabasePreparationUseCase.Result.Ready -> {
@@ -102,6 +107,7 @@ fun OfflineUpdateScreen(
                             when (kind) {
                                 DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
                                 DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                                DownloadErrorKind.INCOMPLETE_BUNDLE -> stringResource(Res.string.db_install_incomplete_bundle)
                                 null -> ""
                             },
                         textAlign = TextAlign.Center,

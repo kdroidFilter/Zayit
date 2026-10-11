@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.download
 
+import io.github.kdroidfilter.seforimapp.features.onboarding.extract.BundleManifest
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.BundleParts
 import io.github.kdroidfilter.seforimapp.network.HttpsConnectionFactory
 import io.github.kdroidfilter.seforimapp.releasefetcher.github.GitHubReleaseFetcher
@@ -9,6 +10,8 @@ import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.net.HttpURLConnection
+import java.security.MessageDigest
 
 /**
  * Encapsulates the download of the latest database .zst asset with reactive progress.
@@ -17,8 +20,9 @@ class DownloadUseCase(
     private val gitHubReleaseFetcher: GitHubReleaseFetcher,
 ) {
     /**
-     * Downloads the latest split bundle (.tar.zst split into .part01 … .partNN, any number of parts).
-     * If only a single .tar.zst exists (no parts), it is downloaded instead. Extraction is a separate step.
+     * Downloads the latest split bundle (.tar.zst split into .part01 … .partNN, any number of parts),
+     * verified against the release's bundle manifest when there is one. If only a single .tar.zst
+     * exists (no parts), it is downloaded instead. Extraction is a separate step.
      *
      * Progress: during network transfers, reports bytes and speed; during extraction, progress continues
      * from the last value to 100% with speed set to 0.
@@ -31,15 +35,27 @@ class DownloadUseCase(
                 withContext(Dispatchers.IO) { gitHubReleaseFetcher.getLatestRelease() }
                     ?: error("No release found")
 
-            // Prefer split parts if present, fallback to single .tar.zst
-            val allAssets = latestRelease.assets
-            val partAssets =
-                allAssets
-                    .mapNotNull { asset -> BundleParts.partNumber(asset.name)?.let { it to asset } }
-                    .sortedBy { it.first }
-                    .also { parts -> if (parts.isNotEmpty()) BundleParts.requireContiguous(parts.map { it.first }) }
-                    .map { it.second }
-            val singleAsset = allAssets.firstOrNull { it.name.endsWith(".tar.zst", true) }
+            // The manifest lists the parts with their checksums; older releases only have the parts
+            // (or a single .tar.zst), found by name.
+            val assetsByName = latestRelease.assets.associateBy { it.name }
+            val manifestText =
+                assetsByName[BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)]?.let { asset ->
+                    downloadText(asset.browser_download_url)
+                }
+            val downloads =
+                if (manifestText != null) {
+                    BundleManifest.parse(manifestText).parts.map { part ->
+                        val asset = assetsByName[part.file] ?: error("Release is missing ${part.file}")
+                        PlannedDownload(asset.browser_download_url, part.file, part.size, part.sha256)
+                    }
+                } else {
+                    val legacyParts = BundleParts.legacyPartNames(assetsByName.keys).map { assetsByName.getValue(it) }
+                    if (legacyParts.isNotEmpty()) BundleParts.requireComplete(legacyParts.map { it.size.toLong() })
+                    legacyParts
+                        .ifEmpty { listOfNotNull(latestRelease.assets.firstOrNull { it.name.endsWith(".tar.zst", true) }) }
+                        .map { PlannedDownload(it.browser_download_url, it.name, it.size.toLong(), sha256 = null) }
+                }
+            if (downloads.isEmpty()) error("No bundle assets found in latest release")
 
             val dbDir = File(FileKit.databasesDir.path).apply { mkdirs() }
 
@@ -79,86 +95,91 @@ class DownloadUseCase(
                 }
             }
 
-            if (partAssets.isNotEmpty()) {
-                // Use asset sizes to initialize total from the start
-                val knownTotal =
-                    partAssets
-                        .sumOf { runCatching { (it.size as? Number)?.toLong() }.getOrNull() ?: 0L }
-                        .takeIf { it > 0L }
-                val files = partAssets.map { File(dbDir, it.name) }
-                val totals = arrayOfNulls<Long>(files.size)
-
-                var doneBytes = 0L
-                partAssets.forEachIndexed { index, asset ->
-                    downloadFile(asset.browser_download_url, files[index]) { r, t ->
-                        if (t != null) totals[index] = t
-                        val dynamic = totals.sumOf { it ?: 0L }
-                        report(doneBytes + r, knownTotal ?: dynamic.takeIf { it > 0L })
+            val total = downloads.sumOf { it.size }
+            var doneBytes = 0L
+            val files =
+                downloads.map { download ->
+                    File(dbDir, download.name).also { file ->
+                        downloadFile(download, file) { read -> report(doneBytes + read, total) }
+                        doneBytes += download.size
                     }
-                    doneBytes += files[index].length()
                 }
-                // Finalize download progress
-                val finalTotal = knownTotal ?: doneBytes
-                report(finalTotal, finalTotal)
-                // Return path to the first part; extraction step discovers the others next to it
-                return@withContext files.first().absolutePath
-            } else if (singleAsset != null) {
-                // Backward-compatible: single .tar.zst
-                val tmp = File(dbDir, singleAsset.name)
-                val knownTotal = runCatching { (singleAsset.size as? Number)?.toLong() }.getOrNull()?.takeIf { it > 0L }
-                var totalLength: Long? = null
-                downloadFile(singleAsset.browser_download_url, tmp) { r, t ->
-                    if (t != null) totalLength = t
-                    report(r, knownTotal ?: totalLength)
-                }
-                val total = knownTotal ?: totalLength ?: tmp.length()
-                onProgress(total, total, 1f, 0L)
-                return@withContext tmp.absolutePath
-            } else {
-                error("No bundle assets found in latest release")
+            report(total, total)
+            // Extraction checks the parts against the manifest when it sits next to them
+            manifestText?.let { File(dbDir, BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)).writeText(it) }
+            // Return path to the first file; extraction discovers the other parts next to it
+            files.first().absolutePath
+        }
+
+    /** One file of the bundle, with the size (and, from the manifest, the sha256) it must have. */
+    private class PlannedDownload(
+        val url: String,
+        val name: String,
+        val size: Long,
+        val sha256: String?,
+    )
+
+    private fun openConnection(url: String): HttpURLConnection {
+        val connection =
+            HttpsConnectionFactory.openConnection(url) {
+                setRequestProperty("Accept", "application/octet-stream")
+                setRequestProperty("User-Agent", "SeforimApp/1.0 (+https://github.com/kdroidFilter/SeforimApp)")
+                connectTimeout = 30_000
+                readTimeout = 60_000
+                instanceFollowRedirects = true
+            }
+        connection.connect()
+        val code = connection.responseCode
+        if (code !in 200..299) {
+            connection.disconnect()
+            error("Download failed: $code")
+        }
+        return connection
+    }
+
+    private suspend fun downloadText(url: String): String =
+        withContext(Dispatchers.IO) {
+            val connection = openConnection(url)
+            try {
+                connection.inputStream.use { it.readBytes().decodeToString() }
+            } finally {
+                connection.disconnect()
             }
         }
 
+    /** Downloads [download] to [dest], failing if it does not have the expected size and sha256. */
     private suspend fun downloadFile(
-        url: String,
+        download: PlannedDownload,
         dest: File,
-        onBytes: (readSoFar: Long, totalBytes: Long?) -> Unit,
+        onBytes: (readSoFar: Long) -> Unit,
     ) {
         withContext(Dispatchers.IO) {
-            val connection =
-                HttpsConnectionFactory.openConnection(url) {
-                    setRequestProperty("Accept", "application/octet-stream")
-                    setRequestProperty("User-Agent", "SeforimApp/1.0 (+https://github.com/kdroidFilter/SeforimApp)")
-                    connectTimeout = 30_000
-                    readTimeout = 60_000
-                    instanceFollowRedirects = true
-                }
-            connection.connect()
-            val code = connection.responseCode
-            if (code !in 200..299) {
-                connection.disconnect()
-                error("Download failed: $code")
-            }
-            val totalLength =
-                connection.contentLengthLong.takeIf { it > 0 }
-                    ?: connection.getHeaderFieldLong("Content-Length", -1L).takeIf { it > 0 }
-            connection.inputStream.use { input ->
-                dest.outputStream().use { out ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var total = 0L
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read <= 0) break
-                        out.write(buffer, 0, read)
-                        total += read
-                        onBytes(total, totalLength)
+            val connection = openConnection(download.url)
+            val digest = download.sha256?.let { MessageDigest.getInstance("SHA-256") }
+            var total = 0L
+            try {
+                connection.inputStream.use { input ->
+                    dest.outputStream().use { out ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read <= 0) break
+                            out.write(buffer, 0, read)
+                            digest?.update(buffer, 0, read)
+                            total += read
+                            onBytes(total)
+                        }
                     }
-                    out.flush()
                 }
+            } finally {
+                connection.disconnect()
             }
-            connection.disconnect()
+            check(total == download.size) { "Incomplete download of ${download.name}: $total of ${download.size} bytes" }
+            val actualSha = digest?.digest()?.joinToString("") { "%02x".format(it) }
+            check(actualSha == null || actualSha.equals(download.sha256, ignoreCase = true)) {
+                dest.delete()
+                "Corrupted download of ${download.name} (sha256 mismatch)"
+            }
         }
-        // Final callback to ensure UI shows completed values
-        onBytes(dest.length(), dest.length().takeIf { it > 0L })
     }
 }

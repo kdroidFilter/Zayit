@@ -146,6 +146,7 @@ fun OnlineUpdateScreen(
                             when (kind) {
                                 DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
                                 DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                                DownloadErrorKind.INCOMPLETE_BUNDLE -> stringResource(Res.string.db_install_incomplete_bundle)
                                 null -> ""
                             },
                         textAlign = TextAlign.Center,

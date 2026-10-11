@@ -7,6 +7,9 @@ enum class DownloadErrorKind {
 
     /** Not enough free disk space remains for a fresh install. */
     INSUFFICIENT_SPACE,
+
+    /** The selected bundle parts are missing some part or truncated (offline install). */
+    INCOMPLETE_BUNDLE,
 }
 
 data class DownloadState(

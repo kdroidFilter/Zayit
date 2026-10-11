@@ -7,6 +7,7 @@ import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.File
 
 /**
  * Prompts for the split database bundle (`.tar.zst.part01` … `.partNN`).
@@ -30,3 +31,12 @@ suspend fun pickDatabaseParts(onPart01Picked: (String?) -> Unit = {}): String? {
     onPart01Picked(part01Path)
     return part01Path?.takeIf { it.isNotBlank() }
 }
+
+/**
+ * Whether every part of the bundle [part01Path] belongs to is there and whole. Checked before
+ * the old database is removed, so an incomplete copy never leaves the user without one.
+ */
+suspend fun isCompleteBundle(part01Path: String): Boolean =
+    withContext(Dispatchers.IO) {
+        runCatching { BundleParts.resolve(File(part01Path)) }.isSuccess
+    }

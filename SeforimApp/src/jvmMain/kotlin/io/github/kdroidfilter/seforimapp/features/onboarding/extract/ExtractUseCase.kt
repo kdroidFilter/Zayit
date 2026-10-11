@@ -35,7 +35,7 @@ class ExtractUseCase(
                     val lower = source.name.lowercase()
                     when {
                         BundleParts.isPart(source.name) -> {
-                            val parts = BundleParts.siblingsOf(source)
+                            val parts = BundleParts.resolve(source)
                             val result =
                                 extractTarZstFromPartsStreaming(parts, dbDir) { mapped ->
                                     onProgress(mapped)
@@ -46,7 +46,7 @@ class ExtractUseCase(
                                     val base = dbDir.canonicalFile
                                     parts.all { it.parentFile?.canonicalFile == base }
                                 }.getOrDefault(false)
-                            if (canDelete) parts.forEach { runCatching { it.delete() } }
+                            if (canDelete) BundleParts.bundleFiles(source).forEach { runCatching { it.delete() } }
                             result
                         }
                         lower.endsWith(".tar.zst") -> {
@@ -290,7 +290,7 @@ class ExtractUseCase(
             if (source.name.endsWith(".tar.zst", true)) {
                 runCatching { source.delete() }
             } else if (BundleParts.isPart(source.name)) {
-                BundleParts.siblingsOf(source).forEach { runCatching { it.delete() } }
+                BundleParts.bundleFiles(source).forEach { runCatching { it.delete() } }
             }
         }
     }

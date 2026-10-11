@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -50,6 +51,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCardLoading
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
@@ -108,11 +110,13 @@ internal object LimudWidget : HomeWidget {
     // Its height is the one its lines need (heightAt), no more: only its width is the user's, to two columns
     override val maxSpan = CellSpan(10, 2)
 
-    // The limudim shown, as saved: read by the grid for the card's height as well as by the card
-    private var shown by mutableStateOf(Limud.defaults.toSet())
+    override val settings get() = LimudSettings
 
-    override fun applyOptions(options: String?) {
-        shown = Limud.decode(options)
+    // The limudim shown, as saved: read by the grid for the card's height as well as by the card
+    private var shown by mutableStateOf(LimudSettings.shown.default)
+
+    override fun applySettings(appSettings: AppSettings) {
+        shown = appSettings[LimudSettings.shown]
     }
 
     /** Tall enough for every limud picked, never one hidden for want of room. */
@@ -141,10 +145,14 @@ internal object LimudWidget : HomeWidget {
     override fun Options(state: HomeWidgetsState) = LimudOptions(state)
 }
 
+internal object LimudSettings : WidgetSettings(LimudWidget.id) {
+    val shown by enumSet(Limud.defaults.toSet())
+}
+
 /** A box for each limud, by group, with the day's reading beside it; each tick shows or hides it at once. */
 @Composable
 private fun LimudOptions(state: HomeWidgetsState) {
-    val shown = Limud.decode(state.optionsOf(LimudWidget))
+    val shown = state[LimudSettings.shown]
     val readings =
         remember(state.shownDate, state.inIsrael) {
             Limud.entries.associateWith { limudOfDay(state.shownDate, state.inIsrael, setOf(it)).firstOrNull()?.value }
@@ -162,7 +170,7 @@ private fun LimudOptions(state: HomeWidgetsState) {
                     CheckboxRow(
                         text = limud.title,
                         checked = limud in shown,
-                        onCheckedChange = { on -> state.setOptions(LimudWidget, Limud.encode(if (on) shown + limud else shown - limud)) },
+                        onCheckedChange = { on -> state[LimudSettings.shown] = if (on) shown + limud else shown - limud },
                         modifier = Modifier.weight(1f).testTag("limud-option-${limud.id}"),
                     )
                     readings[limud]?.let {

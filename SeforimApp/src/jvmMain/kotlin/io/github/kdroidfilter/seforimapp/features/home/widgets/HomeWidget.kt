@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
@@ -35,11 +36,14 @@ interface HomeWidget {
     /** The height its content needs at [width], when it decides it: it can't be made shorter. */
     fun heightAt(width: Dp): Dp? = null
 
+    /** Its own settings, read and written through [HomeWidgetsState]; reset together from its options dialog. */
+    val settings: WidgetSettings? get() = null
+
     /**
-     * Its options as saved, given at the start and on each change, for a widget whose size follows them (its [heightAt]):
+     * Its settings as saved, given at the start and on each change, for a widget whose size follows them (its [heightAt]):
      * the grid reads that size where no composition is (laying out, arranging).
      */
-    fun applyOptions(options: String?) {}
+    fun applySettings(appSettings: AppSettings) {}
 
     val isSupported: Boolean get() = true
 
@@ -71,7 +75,7 @@ interface HomeWidget {
 
     /**
      * Its own items atop its right-click menu: actions, check marks, submenus; none by default. Read in composition, so
-     * they follow its options (see [HomeWidgetsState.optionsOf]).
+     * they follow its settings (see [HomeWidgetsState.get]).
      */
     @Composable
     fun menuItems(state: HomeWidgetsState): List<WidgetMenuItem> = emptyList()

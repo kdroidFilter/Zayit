@@ -32,6 +32,7 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsViewModel
@@ -49,6 +50,9 @@ import seforimapp.seforimapp.generated.resources.accent_color_green
 import seforimapp.seforimapp.generated.resources.accent_color_system
 import seforimapp.seforimapp.generated.resources.accent_color_teal
 import seforimapp.seforimapp.generated.resources.settings_accent_color_label
+import seforimapp.seforimapp.generated.resources.settings_antialiasing
+import seforimapp.seforimapp.generated.resources.settings_antialiasing_description
+import seforimapp.seforimapp.generated.resources.settings_antialiasing_off
 import seforimapp.seforimapp.generated.resources.settings_compact_mode
 import seforimapp.seforimapp.generated.resources.settings_compact_mode_description
 import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_page
@@ -110,6 +114,11 @@ private fun DisplaySettingsView(
                 value = state.maxCommentatorsPerPage,
                 onValueChange = { onEvent(DisplaySettingsEvents.SetMaxCommentatorsPerPage(it)) },
             )
+
+            AntiAliasingCard(
+                value = state.antiAliasing,
+                onValueChange = { onEvent(DisplaySettingsEvents.SetAntiAliasing(it)) },
+            )
         }
     }
 }
@@ -164,6 +173,61 @@ private fun MaxCommentatorsPerPageCard(
         )
     }
 }
+
+@Composable
+private fun AntiAliasingCard(
+    value: WidgetAntiAliasing,
+    onValueChange: (WidgetAntiAliasing) -> Unit,
+) {
+    val shape = RoundedCornerShape(8.dp)
+    val modes = AppSettings.AVAILABLE_ANTI_ALIASING
+    val offLabel = stringResource(Res.string.settings_antialiasing_off)
+    Column(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(shape)
+                .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+                .background(JewelTheme.globalColors.panelBackground)
+                .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(Res.string.settings_antialiasing),
+                modifier = Modifier.weight(1f),
+            )
+            ListComboBox(
+                items = remember(offLabel) { modes.map { antiAliasingLabel(it, offLabel) } },
+                selectedIndex = modes.indexOf(value).coerceAtLeast(0),
+                onSelectedItemChange = { onValueChange(modes[it]) },
+                modifier = Modifier.width(140.dp),
+            )
+        }
+        Text(
+            text = stringResource(Res.string.settings_antialiasing_description),
+            fontSize = 12.sp,
+            color = JewelTheme.globalColors.text.info,
+        )
+    }
+}
+
+private fun antiAliasingLabel(
+    mode: WidgetAntiAliasing,
+    offLabel: String,
+): String =
+    when (mode) {
+        WidgetAntiAliasing.OFF -> offLabel
+        WidgetAntiAliasing.FXAA -> "FXAA"
+        WidgetAntiAliasing.MSAA_2 -> "MSAA ×2"
+        WidgetAntiAliasing.MSAA_4 -> "MSAA ×4"
+        WidgetAntiAliasing.MSAA_8 -> "MSAA ×8"
+        WidgetAntiAliasing.TAA -> "TAA"
+    }
 
 @Composable
 private fun AccentColorCard(

@@ -37,13 +37,13 @@ class UserDataBackupTest {
     @Test
     fun only_portable_preferences_are_backed_up() {
         settings.putFloat("text_size", 22f)
-        settings.putString("home_widget_options_luach", "compact")
+        settings.putString("home_widget.limud.shown", "BAVLI")
         settings.putString("database_path", "/somewhere/seforim.db")
         settings.putBoolean("onboarding_finished", true)
 
         val preferences = backup.capture().preferences
 
-        assertEquals(mapOf("text_size" to "22.0", "home_widget_options_luach" to "compact"), preferences)
+        assertEquals(mapOf("text_size" to "22.0", "home_widget.limud.shown" to "BAVLI"), preferences)
     }
 
     @Test

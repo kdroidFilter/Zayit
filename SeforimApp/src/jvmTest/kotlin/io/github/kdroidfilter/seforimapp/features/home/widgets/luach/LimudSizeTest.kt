@@ -21,12 +21,12 @@ class LimudSizeTest {
         val settings = testAppSettings()
         val layout = HomeWidgetsLayout(settings)
         val few = LimudWidget.minRows(4, pitch)
-        layout.setOptions(LimudWidget, Limud.encode(Limud.entries.toSet()))
+        layout.set(LimudSettings.shown, Limud.entries.toSet())
         val all = LimudWidget.minRows(4, pitch)
         assertTrue(all > few, "16 limudim need more rows than ${Limud.defaults.size}: $all, $few")
         // On two columns, about half
         assertTrue(LimudWidget.minRows(10, pitch) <= (all + 1) / 2 + 1)
-        layout.setOptions(LimudWidget, null)
+        layout.resetSettings(LimudWidget)
     }
 
     @Test
@@ -34,9 +34,9 @@ class LimudSizeTest {
         val settings = testAppSettings()
         settings.setHomeWidgetsLayout(encodeLayout(listOf(WidgetPlacement(LimudWidget, CellRect(0, 0, 4, 2)))))
         val layout = HomeWidgetsLayout(settings)
-        layout.setOptions(LimudWidget, Limud.encode(Limud.entries.toSet()))
+        layout.set(LimudSettings.shown, Limud.entries.toSet())
         val cell = layout.current().single().cell
         assertEquals(LimudWidget.minRows(4, pitch), cell.h)
-        layout.setOptions(LimudWidget, null)
+        layout.resetSettings(LimudWidget)
     }
 }

@@ -399,9 +399,6 @@
     <string name="home_solar_options_show_earth">הצג את כדור הארץ</string>
     <string name="home_solar_options_show_sky">הצג את השמיים</string>
     <string name="home_solar_options_advanced">מתקדם</string>
-    <string name="home_solar_options_antialiasing">החלקת קצוות (אנטי־אליאסינג)</string>
-    <string name="home_solar_aa_off">כבוי</string>
-    <string name="home_solar_aa_default">ברירת מחדל</string>
     <string name="home_solar_options_show_fps">הצג קצב תמונות (FPS)</string>
     <string name="home_widget_name_calendar">לוח עברי</string>
     <string name="home_widget_name_limud">לימוד יומי</string>
@@ -470,6 +467,9 @@
     <string name="settings_compact_mode">מצב קומפקטי לסרגל הצדדי</string>
     <string name="settings_compact_mode_description">כאשר אפשרות זו מופעלת, הסרגלים הצדדיים יוצגו בצורה צפופה יותר: האייקונים יהיו קטנים יותר והטקסט שמתחת לאייקונים לא יוצג.</string>
     <string name="settings_max_commentators_per_page">מספר מרבי של מפרשים בעמוד</string>
+    <string name="settings_antialiasing">החלקת קצוות בתלת־ממד (אנטי־אליאסינג)</string>
+    <string name="settings_antialiasing_description">משפרת את מראה הקצוות בכדור הארץ ובמערכת השמש. מצבים גבוהים דורשים יותר מכרטיס המסך.</string>
+    <string name="settings_antialiasing_off">כבוי (ברירת מחדל)</string>
     <string name="settings_max_commentators_per_page_description">קובע כמה מפרשים יוצגו לכל היותר בעמוד אחד. כאשר נבחר "אוטומטי", המספר מותאם לגודל המסך. הגבלה למספר מסוים תיצור עמודים נוספים כשיש יותר מפרשים, אך כאשר יש מקום לפחות מכך יוצגו רק מה שנכנס.</string>
     <string name="settings_max_commentators_per_page_auto">אוטומטי</string>
     <!-- Theme style selector -->

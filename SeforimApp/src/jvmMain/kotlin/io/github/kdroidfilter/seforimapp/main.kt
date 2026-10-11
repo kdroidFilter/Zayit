@@ -40,6 +40,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
+import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.home.widgets.ToolWindowsHost
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
@@ -282,10 +283,13 @@ fun main(args: Array<String>) {
             }
         }
 
+        // The 3D views' anti-aliasing (a display setting), for every window
+        val antiAliasing by appGraph.appSettings.antiAliasingFlow.collectAsState()
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,
             LocalLayoutDirection provides LayoutDirection.Rtl,
+            LocalWidgetAntiAliasing provides antiAliasing,
         ) {
             val themeDefinition = ThemeUtils.buildThemeDefinition()
             val componentStyling = ThemeUtils.buildComponentStyling()

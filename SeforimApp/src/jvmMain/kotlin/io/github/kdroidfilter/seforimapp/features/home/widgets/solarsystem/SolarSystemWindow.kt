@@ -74,7 +74,6 @@ import dev.nucleusframework.window.utils.linux.rememberLinuxButtonLayout
 import dev.nucleusframework.window.windowDragArea
 import io.github.kdroidfilter.seforimapp.core.e2e.E2ePerf
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
-import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.LocalFollowsPlay
@@ -171,12 +170,11 @@ internal fun SolarSystemWindow(
                 CompositionLocalProvider(
                     LocalTabSelected provides true,
                     LocalFollowsPlay provides true,
-                    LocalWidgetAntiAliasing provides solarSystemOptions(state).antiAliasing,
                 ) {
                     // In the window itself, not a dialog: in macOS fullscreen a dialog would open on another Space
                     var optionsShown by remember { mutableStateOf(false) }
                     // The one clock, run here while the window shows the play; closed, it stops where it is
-                    val daysPerSecond by rememberUpdatedState(solarSystemOptions(state).daysPerSecond)
+                    val daysPerSecond by rememberUpdatedState(state[SolarSystemSettings.daysPerSecond])
                     // Keyed on the state too: the Home may build a new one while the window is open
                     LaunchedEffect(state, state.playing) { if (state.playing) state.runPlayClock { daysPerSecond } }
                     DisposableEffect(state) { onDispose { state.stopPlay() } }
@@ -195,7 +193,7 @@ internal fun SolarSystemWindow(
                             playMillis = state.playingMillis,
                             onPlayToggle = state::togglePlay,
                             timeZone = state.location.timeZone,
-                            spinSecondsPerTurn = solarSystemOptions(state).spinSecondsPerTurn,
+                            spinSecondsPerTurn = spinSecondsPerTurn(state),
                             kiddushLevanaEarliestOpinion = state.kiddushLevanaEarliest,
                             kiddushLevanaLatestOpinion = state.kiddushLevanaLatest,
                             // Beside the window controls, not below them. controlsInsets is start/end in the controls'
@@ -213,7 +211,7 @@ internal fun SolarSystemWindow(
                                 },
                             headerModifier = Modifier.windowDragArea(),
                         )
-                        val options = solarSystemOptions(state)
+                        val showEarth = state[SolarSystemSettings.showEarth]
                         // Below the header band, clear of the window's edges
                         BoxWithConstraints(
                             Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = OVERLAY_BAR_HEIGHT, bottom = 16.dp),
@@ -222,34 +220,34 @@ internal fun SolarSystemWindow(
                             // Default: stacked on the top end corner (the left in the app's RTL)
                             val rtl = LocalLayoutDirection.current == LayoutDirection.Rtl
                             val defaultX = if (rtl) 0f else maxWidth.value - CORNER_CARD_WIDTH
-                            if (options.showEarth) {
+                            if (showEarth) {
                                 FloatingCard(
-                                    saved = options.earth,
+                                    saved = state[SolarSystemSettings.earth],
                                     default = CardFrame(defaultX, 0f, CORNER_CARD_WIDTH, EARTH_CARD_HEIGHT),
                                     bounds = bounds,
                                     // Its offset is from the left: anchored there, not on the start (the right in RTL)
                                     modifier = Modifier.align(AbsoluteAlignment.TopLeft),
-                                    onSave = { state.setSolarSystemOptions(solarOptionsNow(state).copy(earth = it)) },
+                                    onSave = { state[SolarSystemSettings.earth] = it },
                                 ) { EarthWidget.Content(state, Modifier.fillMaxSize()) }
                             }
-                            if (options.showSky) {
+                            if (state[SolarSystemSettings.showSky]) {
                                 FloatingCard(
-                                    saved = options.sky,
+                                    saved = state[SolarSystemSettings.sky],
                                     default =
                                         CardFrame(
                                             defaultX,
-                                            if (options.showEarth) EARTH_CARD_HEIGHT + CARD_GAP else 0f,
+                                            if (showEarth) EARTH_CARD_HEIGHT + CARD_GAP else 0f,
                                             CORNER_CARD_WIDTH,
                                             SKY_CARD_HEIGHT,
                                         ),
                                     bounds = bounds,
                                     // Its offset is from the left: anchored there, not on the start (the right in RTL)
                                     modifier = Modifier.align(AbsoluteAlignment.TopLeft),
-                                    onSave = { state.setSolarSystemOptions(solarOptionsNow(state).copy(sky = it)) },
+                                    onSave = { state[SolarSystemSettings.sky] = it },
                                 ) { SkyWidget.Content(state, Modifier.fillMaxSize()) }
                             }
                         }
-                        if (options.showFps) {
+                        if (state[SolarSystemSettings.showFps]) {
                             FpsCounter(Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
                         }
                         if (optionsShown) OptionsPanel(state, onDismiss = { optionsShown = false })
@@ -291,9 +289,6 @@ private fun DecoratedWindowScope.OverlayWindowControls(
         }
     }
 }
-
-/** The options as saved right now, outside composition: a drag ends after its composition read them. */
-private fun solarOptionsNow(state: HomeWidgetsState) = SolarSystemOptions.decode(state.layout.options.value[SolarSystemWidget.id])
 
 /** Inside [bounds], no smaller than the minimum. */
 private fun CardFrame.clampedTo(bounds: DpSize): CardFrame {

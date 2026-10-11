@@ -23,11 +23,17 @@ class DisplaySettingsViewModel(
     private val maxCommentatorsPerPage = MutableStateFlow(appSettings.getMaxCommentatorsPerPage())
 
     val state =
-        combine(showHomeWallpaper, compactMode, maxCommentatorsPerPage) { wallpaper, compact, maxCommentators ->
+        combine(
+            showHomeWallpaper,
+            compactMode,
+            maxCommentatorsPerPage,
+            appSettings.antiAliasingFlow,
+        ) { wallpaper, compact, maxCommentators, antiAliasing ->
             DisplaySettingsState(
                 showHomeWallpaper = wallpaper,
                 compactMode = compact,
                 maxCommentatorsPerPage = maxCommentators,
+                antiAliasing = antiAliasing,
             )
         }.stateIn(
             viewModelScope,
@@ -36,6 +42,7 @@ class DisplaySettingsViewModel(
                 showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
                 maxCommentatorsPerPage = maxCommentatorsPerPage.value,
+                antiAliasing = appSettings.antiAliasingFlow.value,
             ),
         )
 
@@ -53,6 +60,7 @@ class DisplaySettingsViewModel(
                 appSettings.setMaxCommentatorsPerPage(event.value)
                 maxCommentatorsPerPage.value = appSettings.getMaxCommentatorsPerPage()
             }
+            is DisplaySettingsEvents.SetAntiAliasing -> appSettings.setAntiAliasing(event.value)
         }
     }
 }

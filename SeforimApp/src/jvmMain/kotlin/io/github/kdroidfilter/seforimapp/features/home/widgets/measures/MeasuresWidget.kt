@@ -30,12 +30,14 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HoverBox
 import io.github.kdroidfilter.seforimapp.features.home.widgets.PanelCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import kotlinx.coroutines.launch
@@ -74,11 +76,13 @@ internal object MeasuresWidget : HomeWidget {
     // Its height is the one its opinions need (heightAt), no more: only its width is the user's
     override val maxSpan = CellSpan(10, 2)
 
-    // The opinions shown, as saved: read by the grid for the card's height as well as by the card
-    private var shown by mutableStateOf(shownOpinions(null))
+    override val settings get() = MeasuresSettings
 
-    override fun applyOptions(options: String?) {
-        shown = shownOpinions(options)
+    // The opinions shown, as saved: read by the grid for the card's height as well as by the card
+    private var shown by mutableStateOf(MeasuresSettings.shown.default)
+
+    override fun applySettings(appSettings: AppSettings) {
+        shown = appSettings[MeasuresSettings.shown]
     }
 
     /** Tall enough for every opinion picked, never one hidden for want of room. */
@@ -221,15 +225,16 @@ private val ROW_GAP = 2.dp
 private const val TODAY_TITLE = "בימינו"
 private const val WALK_TITLE = "זמן הליכה"
 
-/** The ids of the opinions shown, after [options]: every one until the user picks. */
-internal fun shownOpinions(options: String?): Set<String> =
-    options?.split(',')?.filter { it.isNotEmpty() }?.toSet() ?: (AMMA_OPINIONS.map { it.id } + MIL_OPINIONS.map { it.id }).toSet()
+internal object MeasuresSettings : WidgetSettings(MeasuresWidget.id) {
+    /** The ids of the opinions shown: every one until the user picks. */
+    val shown by stringSet((AMMA_OPINIONS.map { it.id } + MIL_OPINIONS.map { it.id }).toSet())
+}
 
 /** A box for each opinion, by kind, with its figure and source; each tick shows or hides it at once. */
 @Composable
 private fun MeasuresOptions(state: HomeWidgetsState) {
-    val shown = shownOpinions(state.optionsOf(MeasuresWidget))
-    val toggle = { id: String, on: Boolean -> state.setOptions(MeasuresWidget, (if (on) shown + id else shown - id).joinToString(",")) }
+    val shown = state[MeasuresSettings.shown]
+    val toggle = { id: String, on: Boolean -> state[MeasuresSettings.shown] = if (on) shown + id else shown - id }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         OptionsGroup(TODAY_TITLE)
         AMMA_OPINIONS.forEach { OptionRow(it.id, it.label, "אמה ${length(it.cm)} · ${it.source.ref}", it.id in shown, toggle) }

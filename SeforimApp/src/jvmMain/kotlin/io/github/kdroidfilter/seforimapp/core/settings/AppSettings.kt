@@ -7,7 +7,9 @@ import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,6 +17,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Manages application settings and preferences that persist across app restarts.
@@ -57,14 +60,13 @@ class AppSettings(
     private val _homeWidgetsLayoutFlow = MutableStateFlow(settings.getStringOrNull(KEY_HOME_WIDGETS_LAYOUT))
     val homeWidgetsLayoutFlow: StateFlow<String?> = _homeWidgetsLayoutFlow.asStateFlow()
 
-    // Each Home widget's own options, set from its menu, by widget id; their format is the widget's own
-    private val _homeWidgetOptionsFlow =
-        MutableStateFlow(
-            settings.keys
-                .filter { it.startsWith(KEY_HOME_WIDGET_OPTIONS_PREFIX) }
-                .associate { it.removePrefix(KEY_HOME_WIDGET_OPTIONS_PREFIX) to settings.getString(it, "") },
-        )
-    val homeWidgetOptionsFlow: StateFlow<Map<String, String>> = _homeWidgetOptionsFlow.asStateFlow()
+    // The typed settings (see SettingsGroup), each observed from its first read
+    private val typedSettings = ConcurrentHashMap<String, TypedSettingState<*>>()
+
+    init {
+        // The Home widgets' options were one opaque string per widget, now typed settings: not carried over
+        settings.keys.filter { it.startsWith(LEGACY_HOME_WIDGET_OPTIONS_PREFIX) }.forEach(settings::remove)
+    }
 
     // StateFlow for homepage wallpaper visibility
     private val _showHomeWallpaperFlow = MutableStateFlow(isShowHomeWallpaperEnabled())
@@ -77,6 +79,10 @@ class AppSettings(
     val bookDetailsPaneFlow: StateFlow<Boolean> = _bookDetailsPaneFlow.asStateFlow()
     private val _compactModeFlow = MutableStateFlow(isCompactModeEnabled())
     val compactModeFlow: StateFlow<Boolean> = _compactModeFlow.asStateFlow()
+
+    // The 3D views' anti-aliasing (Earth, solar system), app-wide
+    private val _antiAliasingFlow = MutableStateFlow(getAntiAliasing())
+    val antiAliasingFlow: StateFlow<WidgetAntiAliasing> = _antiAliasingFlow.asStateFlow()
 
     // Font preference flows
     private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
@@ -305,15 +311,39 @@ class AppSettings(
         _homeWidgetsLayoutFlow.value = layout
     }
 
-    /** Null goes back to the widget's defaults. */
-    fun setHomeWidgetOptions(
-        widgetId: String,
-        options: String?,
+    operator fun <T> get(setting: Setting<T>): T = stateOf(setting).flow.value
+
+    fun <T> flow(setting: Setting<T>): StateFlow<T> = stateOf(setting).flow.asStateFlow()
+
+    operator fun <T> set(
+        setting: Setting<T>,
+        value: T,
     ) {
-        val key = KEY_HOME_WIDGET_OPTIONS_PREFIX + widgetId
-        if (options == null) settings.remove(key) else settings[key] = options
-        _homeWidgetOptionsFlow.value =
-            if (options == null) _homeWidgetOptionsFlow.value - widgetId else _homeWidgetOptionsFlow.value + (widgetId to options)
+        settings[setting.key] = setting.codec.encode(value)
+        stateOf(setting).flow.value = value
+    }
+
+    /** Back to the defaults of every setting of [group]. */
+    fun reset(group: SettingsGroup) =
+        group.all.forEach {
+            settings.remove(it.key)
+            stateOf(it).reset()
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> stateOf(setting: Setting<T>): TypedSettingState<T> =
+        typedSettings.getOrPut(setting.key) {
+            val saved = settings.getStringOrNull(setting.key)?.let(setting.codec.decode)
+            TypedSettingState(setting, MutableStateFlow(saved ?: setting.default))
+        } as TypedSettingState<T>
+
+    private class TypedSettingState<T>(
+        val setting: Setting<T>,
+        val flow: MutableStateFlow<T>,
+    ) {
+        fun reset() {
+            flow.value = setting.default
+        }
     }
 
     // Homepage wallpaper visibility
@@ -337,6 +367,15 @@ class AppSettings(
     fun setCompactModeEnabled(enabled: Boolean) {
         settings[KEY_COMPACT_MODE] = enabled
         _compactModeFlow.value = enabled
+    }
+
+    // ponytail: a mode no longer offered (hand edit, TAA carried to Linux) falls back to off
+    fun getAntiAliasing(): WidgetAntiAliasing =
+        AVAILABLE_ANTI_ALIASING.firstOrNull { it.name == settings.getStringOrNull(KEY_ANTI_ALIASING) } ?: WidgetAntiAliasing.OFF
+
+    fun setAntiAliasing(mode: WidgetAntiAliasing) {
+        settings[KEY_ANTI_ALIASING] = mode.name
+        _antiAliasingFlow.value = getAntiAliasing()
     }
 
     // Saved session blob (JSON)
@@ -523,9 +562,10 @@ class AppSettings(
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
         _homeWidgetsLayoutFlow.value = null
-        _homeWidgetOptionsFlow.value = emptyMap()
+        typedSettings.values.forEach { it.reset() }
         _showHomeWallpaperFlow.value = true
         _compactModeFlow.value = false
+        _antiAliasingFlow.value = WidgetAntiAliasing.OFF
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
         _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT
@@ -536,6 +576,13 @@ class AppSettings(
     fun exportPortablePreferences(): Map<String, String> = exportPortablePreferences(settings)
 
     companion object {
+        /**
+         * The anti-aliasing modes offered. Not TAA on Linux: Filament's GL backend runs its mobile shaders there, and
+         * NVIDIA's GLES compiler rejects TAA's (the engine then aborts).
+         */
+        val AVAILABLE_ANTI_ALIASING: List<WidgetAntiAliasing> =
+            WidgetAntiAliasing.entries.filter { it != WidgetAntiAliasing.TAA || !PlatformInfo.isLinux }
+
         // Preferences worth carrying to another machine. The database location, the session and
         // the onboarding state belong to this machine only.
         private val PORTABLE_KEYS =
@@ -565,7 +612,7 @@ class AppSettings(
                 KEY_COMPACT_MODE,
             )
 
-        private fun isPortableKey(key: String): Boolean = key in PORTABLE_KEYS || key.startsWith(KEY_HOME_WIDGET_OPTIONS_PREFIX)
+        private fun isPortableKey(key: String): Boolean = key in PORTABLE_KEYS || key.startsWith(HOME_WIDGET_SETTINGS_PREFIX)
 
         /**
          * The portable preferences of [settings] as their stored strings: Java Preferences keeps
@@ -661,13 +708,19 @@ class AppSettings(
         private const val KEY_HOME_WIDGETS_LAYOUT = "home_widgets_layout"
 
         // A Home widget's own options: this, then its id
-        private const val KEY_HOME_WIDGET_OPTIONS_PREFIX = "home_widget_options_"
+        private const val LEGACY_HOME_WIDGET_OPTIONS_PREFIX = "home_widget_options_"
+
+        /** The Home widgets' own settings, each under `home_widget.<widget id>.`; all portable. */
+        const val HOME_WIDGET_SETTINGS_PREFIX = "home_widget."
 
         // Homepage wallpaper visibility
         private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
 
         // Compact mode for vertical bars
         private const val KEY_COMPACT_MODE = "compact_mode"
+
+        // Not portable: what a machine's GPU handles
+        private const val KEY_ANTI_ALIASING = "anti_aliasing_3d"
         private const val KEY_BOOK_DETAILS_PANE = "book_details_pane"
     }
 }

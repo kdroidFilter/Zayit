@@ -91,7 +91,7 @@ internal fun WidgetOptionsDialog(
                         horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        OutlinedButton(onClick = { state.setOptions(widget, null) }) {
+                        OutlinedButton(onClick = { state.resetSettings(widget) }) {
                             Text(stringResource(Res.string.home_widgets_reset))
                         }
                         DefaultButton(onClick = onClose) { Text(stringResource(Res.string.home_widgets_done)) }

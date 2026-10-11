@@ -3,119 +3,32 @@ package io.github.kdroidfilter.seforimapp.core.settings
 import com.russhwolf.settings.Settings
 import com.russhwolf.settings.get
 import com.russhwolf.settings.set
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
+import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
+import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Manages application settings and preferences that persist across app restarts.
  * Uses Multiplatform Settings library for cross-platform storage.
- * Single, global settings instance (no interface, no delegation).
+ * App-scoped in the Metro graph; read it from there (constructor or LocalAppGraph).
  */
-object AppSettings {
-    // Text size constants
-    const val DEFAULT_TEXT_SIZE = 16f
-    const val MIN_TEXT_SIZE = 14f
-    const val MAX_TEXT_SIZE = 50f
-    const val TEXT_SIZE_INCREMENT = 2f
-
-    // Line height constants
-    const val DEFAULT_LINE_HEIGHT = 1.5f
-    const val MIN_LINE_HEIGHT = 1.0f
-    const val MAX_LINE_HEIGHT = 2.5f
-    const val LINE_HEIGHT_INCREMENT = 0.1f
-
-    // Max commentators displayed per commentaries page.
-    // 0 = automatic (fit as many as the available space allows). A positive value acts as a
-    // ceiling: the grid never shows more than this per page, but still shows fewer when the
-    // pane only has room for fewer.
-    const val MAX_COMMENTATORS_PER_PAGE_AUTO = 0
-    const val MAX_COMMENTATORS_PER_PAGE_LIMIT = 6
-    const val DEFAULT_MAX_COMMENTATORS_PER_PAGE = MAX_COMMENTATORS_PER_PAGE_AUTO
-
-    // Default font codes
-    const val DEFAULT_BOOK_FONT = "notoserifhebrew"
-    const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
-    const val DEFAULT_TARGUM_FONT = "taameyashkenaz"
-    const val DEFAULT_SOURCE_FONT = "tinos"
-
-    // Tab display constants
-    const val MAX_TAB_TITLE_LENGTH = 20
-
-    // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
-    const val TAB_FIXED_WIDTH_DP = 180
-
-    // Settings keys
-    private const val KEY_TEXT_SIZE = "text_size"
-    private const val KEY_LINE_HEIGHT = "line_height"
-    private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"
-    private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
-    private const val KEY_DATABASE_PATH = "database_path"
-    private const val KEY_PERSIST_SESSION = "persist_session"
-    private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
-    private const val KEY_FONT_BOOK = "font_book"
-    private const val KEY_FONT_COMMENTARY = "font_commentary"
-    private const val KEY_FONT_TARGUM = "font_targum"
-    private const val KEY_FONT_SOURCE = "font_source"
-    private const val KEY_SAVED_SESSION = "saved_session_json"
-    private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
-    private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
-    private const val SESSION_CHUNK_SIZE = 4000
-
-    // Onboarding state
-    private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
-
-    // Region configuration keys
-    private const val KEY_REGION_COUNTRY = "region_country"
-    private const val KEY_REGION_CITY = "region_city"
-
-    // User profile keys
-    private const val KEY_USER_FIRST_NAME = "user_first_name"
-    private const val KEY_USER_LAST_NAME = "user_last_name"
-    private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
-
-    // Theme configuration
-    private const val KEY_THEME_MODE = "theme_mode"
-    private const val KEY_THEME_STYLE = "theme_style"
-    private const val KEY_ACCENT_COLOR = "accent_color"
-
-    // Zmanim widgets visibility
-    private const val KEY_SHOW_ZMANIM_WIDGETS = "show_zmanim_widgets"
-
-    // Homepage wallpaper visibility
-    private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
-
-    // Compact mode for vertical bars
-    private const val KEY_COMPACT_MODE = "compact_mode"
-
-    // Backing Settings storage (can be replaced at startup if needed)
-    @Volatile
-    private var settings: Settings = Settings()
-
-    // Allow optional initialization with an externally provided Settings instance
-    fun initialize(settings: Settings) {
-        this.settings = settings
-        // Refresh flows with current values from provided settings
-        _textSizeFlow.value = getTextSize()
-        _lineHeightFlow.value = getLineHeight()
-        _maxCommentatorsPerPageFlow.value = getMaxCommentatorsPerPage()
-        _closeTreeOnNewBookFlow.value = getCloseBookTreeOnNewBookSelected()
-        _databasePathFlow.value = getDatabasePath()
-        _persistSessionFlow.value = isPersistSessionEnabled()
-        _keepScreenAwakeOnBookFlow.value = isKeepScreenAwakeOnBookEnabled()
-        _bookFontCodeFlow.value = getBookFontCode()
-        _commentaryFontCodeFlow.value = getCommentaryFontCode()
-        _targumFontCodeFlow.value = getTargumFontCode()
-        _sourceFontCodeFlow.value = getSourceFontCode()
-        // User profile reactive values
-        _userFirstNameFlow.value = getUserFirstName() ?: ""
-        _userLastNameFlow.value = getUserLastName() ?: ""
-        _userCommunityCodeFlow.value = getUserCommunityCode()
-    }
-
+@Inject
+@SingleIn(AppScope::class)
+class AppSettings(
+    private val settings: Settings,
+) {
     // StateFlow to observe text size changes
     private val _textSizeFlow = MutableStateFlow(getTextSize())
     val textSizeFlow: StateFlow<Float> = _textSizeFlow.asStateFlow()
@@ -144,17 +57,32 @@ object AppSettings {
     private val _keepScreenAwakeOnBookFlow = MutableStateFlow(isKeepScreenAwakeOnBookEnabled())
     val keepScreenAwakeOnBookFlow: StateFlow<Boolean> = _keepScreenAwakeOnBookFlow.asStateFlow()
 
-    // StateFlow for zmanim widgets visibility
-    private val _showZmanimWidgetsFlow = MutableStateFlow(isShowZmanimWidgetsEnabled())
-    val showZmanimWidgetsFlow: StateFlow<Boolean> = _showZmanimWidgetsFlow.asStateFlow()
+    private val _homeWidgetsLayoutFlow = MutableStateFlow(settings.getStringOrNull(KEY_HOME_WIDGETS_LAYOUT))
+    val homeWidgetsLayoutFlow: StateFlow<String?> = _homeWidgetsLayoutFlow.asStateFlow()
+
+    // The typed settings (see SettingsGroup), each observed from its first read
+    private val typedSettings = ConcurrentHashMap<String, TypedSettingState<*>>()
+
+    init {
+        // The Home widgets' options were one opaque string per widget, now typed settings: not carried over
+        settings.keys.filter { it.startsWith(LEGACY_HOME_WIDGET_OPTIONS_PREFIX) }.forEach(settings::remove)
+    }
 
     // StateFlow for homepage wallpaper visibility
     private val _showHomeWallpaperFlow = MutableStateFlow(isShowHomeWallpaperEnabled())
     val showHomeWallpaperFlow: StateFlow<Boolean> = _showHomeWallpaperFlow.asStateFlow()
 
     // StateFlow for compact mode
+    private val _bookDetailsPaneFlow = MutableStateFlow(isBookDetailsPaneVisible())
+
+    // The book-details pane (a book's, a search result's), shown or hidden in every tab
+    val bookDetailsPaneFlow: StateFlow<Boolean> = _bookDetailsPaneFlow.asStateFlow()
     private val _compactModeFlow = MutableStateFlow(isCompactModeEnabled())
     val compactModeFlow: StateFlow<Boolean> = _compactModeFlow.asStateFlow()
+
+    // The 3D views' anti-aliasing (Earth, solar system), app-wide
+    private val _antiAliasingFlow = MutableStateFlow(getAntiAliasing())
+    val antiAliasingFlow: StateFlow<WidgetAntiAliasing> = _antiAliasingFlow.asStateFlow()
 
     // Font preference flows
     private val _bookFontCodeFlow = MutableStateFlow(getBookFontCode())
@@ -173,6 +101,15 @@ object AppSettings {
     private val findQueryFlowByTab = mutableMapOf<String, MutableStateFlow<String>>()
     private val findBarOpenFlowByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
     private val findSmartModeByTab = mutableMapOf<String, MutableStateFlow<Boolean>>()
+    private val findFocusRequestByTab = mutableMapOf<String, MutableStateFlow<Int>>()
+    private val findStepRequestsByTab = mutableMapOf<String, MutableSharedFlow<Boolean>>()
+
+    private fun focusRequestFlowFor(tabId: String): MutableStateFlow<Int> = findFocusRequestByTab.getOrPut(tabId) { MutableStateFlow(0) }
+
+    private fun stepRequestsFor(tabId: String): MutableSharedFlow<Boolean> =
+        findStepRequestsByTab.getOrPut(tabId) {
+            MutableSharedFlow(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+        }
 
     private fun queryFlowFor(tabId: String): MutableStateFlow<String> = findQueryFlowByTab.getOrPut(tabId) { MutableStateFlow("") }
 
@@ -199,13 +136,35 @@ object AppSettings {
         findOpenFlowFor(tabId).value = false
     }
 
-    fun toggleFindBar(tabId: String) {
-        val flow = findOpenFlowFor(tabId)
-        flow.value = !flow.value
-        if (!flow.value) {
-            queryFlowFor(tabId).value = ""
-            smartModeFlowFor(tabId).value = false
-        }
+    /** Bumped each time the find field must take the focus with its text selected. */
+    fun findFocusRequestFlow(tabId: String): StateFlow<Int> = focusRequestFlowFor(tabId).asStateFlow()
+
+    /** Find next (true) / previous (false) requested from outside the find field. */
+    fun findStepRequests(tabId: String): SharedFlow<Boolean> = stepRequestsFor(tabId).asSharedFlow()
+
+    /**
+     * Ctrl/Cmd+F, as in Chromium: shows the find bar, or keeps it shown, and focuses its field
+     * with the text selected. A new session starts from [selection] when it's short enough.
+     */
+    fun showFindBar(
+        tabId: String,
+        selection: String = "",
+    ) {
+        val open = findOpenFlowFor(tabId)
+        // Spaces collapsed as the context menu's "find" does, so both give the same query
+        val prefill = selection.replace(WHITESPACE, " ").trim()
+        if (!open.value && prefill.length in 2..MAX_FIND_PREFILL_LENGTH) queryFlowFor(tabId).value = prefill
+        open.value = true
+        focusRequestFlowFor(tabId).value++
+    }
+
+    /** Ctrl/Cmd+G and F3, Shift going backwards, as in Chromium: shows the find bar and steps to the next match. */
+    fun findNext(
+        tabId: String,
+        forward: Boolean,
+    ) {
+        showFindBar(tabId)
+        stepRequestsFor(tabId).tryEmit(forward)
     }
 
     fun findSmartModeFlow(tabId: String): StateFlow<Boolean> = smartModeFlowFor(tabId).asStateFlow()
@@ -346,12 +305,45 @@ object AppSettings {
         _keepScreenAwakeOnBookFlow.value = enabled
     }
 
-    // Zmanim widgets visibility
-    fun isShowZmanimWidgetsEnabled(): Boolean = settings[KEY_SHOW_ZMANIM_WIDGETS, true]
+    /** Null goes back to the default layout. */
+    fun setHomeWidgetsLayout(layout: String?) {
+        if (layout == null) settings.remove(KEY_HOME_WIDGETS_LAYOUT) else settings[KEY_HOME_WIDGETS_LAYOUT] = layout
+        _homeWidgetsLayoutFlow.value = layout
+    }
 
-    fun setShowZmanimWidgetsEnabled(enabled: Boolean) {
-        settings[KEY_SHOW_ZMANIM_WIDGETS] = enabled
-        _showZmanimWidgetsFlow.value = enabled
+    operator fun <T> get(setting: Setting<T>): T = stateOf(setting).flow.value
+
+    fun <T> flow(setting: Setting<T>): StateFlow<T> = stateOf(setting).flow.asStateFlow()
+
+    operator fun <T> set(
+        setting: Setting<T>,
+        value: T,
+    ) {
+        settings[setting.key] = setting.codec.encode(value)
+        stateOf(setting).flow.value = value
+    }
+
+    /** Back to the defaults of every setting of [group]. */
+    fun reset(group: SettingsGroup) =
+        group.all.forEach {
+            settings.remove(it.key)
+            stateOf(it).reset()
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun <T> stateOf(setting: Setting<T>): TypedSettingState<T> =
+        typedSettings.getOrPut(setting.key) {
+            val saved = settings.getStringOrNull(setting.key)?.let(setting.codec.decode)
+            TypedSettingState(setting, MutableStateFlow(saved ?: setting.default))
+        } as TypedSettingState<T>
+
+    private class TypedSettingState<T>(
+        val setting: Setting<T>,
+        val flow: MutableStateFlow<T>,
+    ) {
+        fun reset() {
+            flow.value = setting.default
+        }
     }
 
     // Homepage wallpaper visibility
@@ -362,12 +354,28 @@ object AppSettings {
         _showHomeWallpaperFlow.value = enabled
     }
 
+    fun isBookDetailsPaneVisible(): Boolean = settings[KEY_BOOK_DETAILS_PANE, true]
+
+    fun setBookDetailsPaneVisible(visible: Boolean) {
+        settings[KEY_BOOK_DETAILS_PANE] = visible
+        _bookDetailsPaneFlow.value = visible
+    }
+
     // Compact mode for vertical bars
     fun isCompactModeEnabled(): Boolean = settings[KEY_COMPACT_MODE, false]
 
     fun setCompactModeEnabled(enabled: Boolean) {
         settings[KEY_COMPACT_MODE] = enabled
         _compactModeFlow.value = enabled
+    }
+
+    // ponytail: a mode no longer offered (hand edit, TAA carried to Linux) falls back to off
+    fun getAntiAliasing(): WidgetAntiAliasing =
+        AVAILABLE_ANTI_ALIASING.firstOrNull { it.name == settings.getStringOrNull(KEY_ANTI_ALIASING) } ?: WidgetAntiAliasing.OFF
+
+    fun setAntiAliasing(mode: WidgetAntiAliasing) {
+        settings[KEY_ANTI_ALIASING] = mode.name
+        _antiAliasingFlow.value = getAntiAliasing()
     }
 
     // Saved session blob (JSON)
@@ -456,6 +464,37 @@ object AppSettings {
         _userCommunityCodeFlow.value = getUserCommunityCode()
     }
 
+    // Siddur: the nusach (null follows the community), and whether the user davens with a minyan
+    private val _siddurNusachFlow = MutableStateFlow(getSiddurNusachCode())
+    val siddurNusachFlow: StateFlow<String?> = _siddurNusachFlow.asStateFlow()
+
+    fun getSiddurNusachCode(): String? = settings[KEY_SIDDUR_NUSACH, ""].ifBlank { null }
+
+    fun setSiddurNusachCode(value: String?) {
+        settings[KEY_SIDDUR_NUSACH] = value.orEmpty()
+        _siddurNusachFlow.value = getSiddurNusachCode()
+    }
+
+    private val _siddurMinyanFlow = MutableStateFlow(isSiddurMinyan())
+    val siddurMinyanFlow: StateFlow<Boolean> = _siddurMinyanFlow.asStateFlow()
+
+    fun isSiddurMinyan(): Boolean = settings[KEY_SIDDUR_MINYAN, true]
+
+    fun setSiddurMinyan(value: Boolean) {
+        settings[KEY_SIDDUR_MINYAN] = value
+        _siddurMinyanFlow.value = value
+    }
+
+    private val _siddurBeitAvelFlow = MutableStateFlow(isSiddurBeitAvel())
+    val siddurBeitAvelFlow: StateFlow<Boolean> = _siddurBeitAvelFlow.asStateFlow()
+
+    fun isSiddurBeitAvel(): Boolean = settings[KEY_SIDDUR_BEIT_AVEL, false]
+
+    fun setSiddurBeitAvel(value: Boolean) {
+        settings[KEY_SIDDUR_BEIT_AVEL] = value
+        _siddurBeitAvelFlow.value = value
+    }
+
     // Theme mode (Light/Dark/System) setting
     fun getThemeMode(): IntUiThemes {
         val storedValue: String = settings[KEY_THEME_MODE, IntUiThemes.System.name]
@@ -468,20 +507,6 @@ object AppSettings {
 
     fun setThemeMode(theme: IntUiThemes) {
         settings[KEY_THEME_MODE] = theme.name
-    }
-
-    // Theme style (Classic / Islands)
-    fun getThemeStyle(): ThemeStyle {
-        val storedValue: String = settings[KEY_THEME_STYLE, ThemeStyle.Islands.name]
-        return try {
-            ThemeStyle.valueOf(storedValue)
-        } catch (_: IllegalArgumentException) {
-            ThemeStyle.Islands
-        }
-    }
-
-    fun setThemeStyle(style: ThemeStyle) {
-        settings[KEY_THEME_STYLE] = style.name
     }
 
     // Accent color preset
@@ -536,12 +561,166 @@ object AppSettings {
         _closeTreeOnNewBookFlow.value = false
         _databasePathFlow.value = null
         _persistSessionFlow.value = true
-        _showZmanimWidgetsFlow.value = true
+        _homeWidgetsLayoutFlow.value = null
+        typedSettings.values.forEach { it.reset() }
         _showHomeWallpaperFlow.value = true
         _compactModeFlow.value = false
+        _antiAliasingFlow.value = WidgetAntiAliasing.OFF
         _bookFontCodeFlow.value = DEFAULT_BOOK_FONT
         _commentaryFontCodeFlow.value = DEFAULT_COMMENTARY_FONT
         _targumFontCodeFlow.value = DEFAULT_TARGUM_FONT
         _sourceFontCodeFlow.value = DEFAULT_SOURCE_FONT
+    }
+
+    /** The preferences that follow the user to another machine (see [PORTABLE_KEYS]). */
+    fun exportPortablePreferences(): Map<String, String> = exportPortablePreferences(settings)
+
+    companion object {
+        /**
+         * The anti-aliasing modes offered. Not TAA on Linux: Filament's GL backend runs its mobile shaders there, and
+         * NVIDIA's GLES compiler rejects TAA's (the engine then aborts).
+         */
+        val AVAILABLE_ANTI_ALIASING: List<WidgetAntiAliasing> =
+            WidgetAntiAliasing.entries.filter { it != WidgetAntiAliasing.TAA || !PlatformInfo.isLinux }
+
+        // Preferences worth carrying to another machine. The database location, the session and
+        // the onboarding state belong to this machine only.
+        private val PORTABLE_KEYS =
+            setOf(
+                KEY_TEXT_SIZE,
+                KEY_LINE_HEIGHT,
+                KEY_MAX_COMMENTATORS_PER_PAGE,
+                KEY_CLOSE_TREE_ON_NEW_BOOK,
+                KEY_PERSIST_SESSION,
+                KEY_KEEP_SCREEN_AWAKE_ON_BOOK,
+                KEY_FONT_BOOK,
+                KEY_FONT_COMMENTARY,
+                KEY_FONT_TARGUM,
+                KEY_FONT_SOURCE,
+                KEY_REGION_COUNTRY,
+                KEY_REGION_CITY,
+                KEY_USER_FIRST_NAME,
+                KEY_USER_LAST_NAME,
+                KEY_SIDDUR_NUSACH,
+                KEY_SIDDUR_MINYAN,
+                KEY_SIDDUR_BEIT_AVEL,
+                KEY_USER_COMMUNITY,
+                KEY_THEME_MODE,
+                KEY_ACCENT_COLOR,
+                KEY_HOME_WIDGETS_LAYOUT,
+                KEY_SHOW_HOME_WALLPAPER,
+                KEY_COMPACT_MODE,
+            )
+
+        private fun isPortableKey(key: String): Boolean = key in PORTABLE_KEYS || key.startsWith(HOME_WIDGET_SETTINGS_PREFIX)
+
+        /**
+         * The portable preferences of [settings] as their stored strings: Java Preferences keeps
+         * every value as a string, so they round-trip whatever their type.
+         */
+        fun exportPortablePreferences(settings: Settings): Map<String, String> =
+            settings.keys.filter(::isPortableKey).associateWith { settings.getString(it, "") }
+
+        /** Replaces the portable preferences of [settings] with [preferences], leaving the others alone. */
+        fun importPortablePreferences(
+            settings: Settings,
+            preferences: Map<String, String>,
+        ) {
+            settings.keys.filter(::isPortableKey).forEach(settings::remove)
+            preferences.filterKeys(::isPortableKey).forEach { (key, value) -> settings.putString(key, value) }
+        }
+
+        // Text size constants
+        const val DEFAULT_TEXT_SIZE = 16f
+        const val MIN_TEXT_SIZE = 14f
+        const val MAX_TEXT_SIZE = 50f
+        const val TEXT_SIZE_INCREMENT = 2f
+
+        // Line height constants
+        const val DEFAULT_LINE_HEIGHT = 1.5f
+        const val MIN_LINE_HEIGHT = 1.0f
+        const val MAX_LINE_HEIGHT = 2.5f
+        const val LINE_HEIGHT_INCREMENT = 0.1f
+
+        // Max commentators displayed per commentaries page.
+        // 0 = automatic (fit as many as the available space allows). A positive value acts as a
+        // ceiling: the grid never shows more than this per page, but still shows fewer when the
+        // pane only has room for fewer.
+        const val MAX_COMMENTATORS_PER_PAGE_AUTO = 0
+        const val MAX_COMMENTATORS_PER_PAGE_LIMIT = 6
+        const val DEFAULT_MAX_COMMENTATORS_PER_PAGE = MAX_COMMENTATORS_PER_PAGE_AUTO
+
+        // Default font codes
+        const val DEFAULT_BOOK_FONT = "notoserifhebrew"
+        const val DEFAULT_COMMENTARY_FONT = "frankruhllibre"
+        const val DEFAULT_TARGUM_FONT = "taameyashkenaz"
+        const val DEFAULT_SOURCE_FONT = "tinos"
+
+        // Tab display constants
+        const val MAX_TAB_TITLE_LENGTH = 20
+
+        // Preferred max width for tabs in dp units (UI caps to this, shrinks below as needed)
+        const val TAB_FIXED_WIDTH_DP = 180
+
+        // Settings keys
+        // Longest selection pre-filling a new find session, as Chromium's FindBarController
+        private const val MAX_FIND_PREFILL_LENGTH = 250
+        private val WHITESPACE = Regex("\\s+")
+
+        private const val KEY_TEXT_SIZE = "text_size"
+        private const val KEY_LINE_HEIGHT = "line_height"
+        private const val KEY_MAX_COMMENTATORS_PER_PAGE = "max_commentators_per_page"
+        private const val KEY_CLOSE_TREE_ON_NEW_BOOK = "close_tree_on_new_book"
+        private const val KEY_DATABASE_PATH = "database_path"
+        private const val KEY_PERSIST_SESSION = "persist_session"
+        private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
+        private const val KEY_FONT_BOOK = "font_book"
+        private const val KEY_FONT_COMMENTARY = "font_commentary"
+        private const val KEY_FONT_TARGUM = "font_targum"
+        private const val KEY_FONT_SOURCE = "font_source"
+        private const val KEY_SAVED_SESSION = "saved_session_json"
+        private const val KEY_SAVED_SESSION_PARTS_COUNT = "saved_session_parts_count"
+        private const val KEY_SAVED_SESSION_PART_PREFIX = "saved_session_part_"
+        private const val SESSION_CHUNK_SIZE = 4000
+
+        // Onboarding state
+        private const val KEY_ONBOARDING_FINISHED = "onboarding_finished"
+
+        // Region configuration keys
+        private const val KEY_REGION_COUNTRY = "region_country"
+        private const val KEY_REGION_CITY = "region_city"
+
+        // User profile keys
+        private const val KEY_USER_FIRST_NAME = "user_first_name"
+        private const val KEY_USER_LAST_NAME = "user_last_name"
+        private const val KEY_SIDDUR_NUSACH = "siddur_nusach"
+        private const val KEY_SIDDUR_MINYAN = "siddur_minyan"
+        private const val KEY_SIDDUR_BEIT_AVEL = "siddur_beit_avel"
+        private const val KEY_USER_COMMUNITY = "user_community" // stores a stable code (e.g., "SEPHARADE")
+
+        // Theme configuration
+        private const val KEY_THEME_MODE = "theme_mode"
+        private const val KEY_ACCENT_COLOR = "accent_color"
+
+        // Zmanim widgets visibility
+
+        // Home widgets the user placed, in order ("id:SIZE,…"); unset means the default layout
+        private const val KEY_HOME_WIDGETS_LAYOUT = "home_widgets_layout"
+
+        // A Home widget's own options: this, then its id
+        private const val LEGACY_HOME_WIDGET_OPTIONS_PREFIX = "home_widget_options_"
+
+        /** The Home widgets' own settings, each under `home_widget.<widget id>.`; all portable. */
+        const val HOME_WIDGET_SETTINGS_PREFIX = "home_widget."
+
+        // Homepage wallpaper visibility
+        private const val KEY_SHOW_HOME_WALLPAPER = "show_home_wallpaper"
+
+        // Compact mode for vertical bars
+        private const val KEY_COMPACT_MODE = "compact_mode"
+
+        // Not portable: what a machine's GPU handles
+        private const val KEY_ANTI_ALIASING = "anti_aliasing_3d"
+        private const val KEY_BOOK_DETAILS_PANE = "book_details_pane"
     }
 }

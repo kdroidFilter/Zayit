@@ -24,8 +24,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupPositionProvider
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ActionButton
 import org.jetbrains.jewel.ui.component.Icon
@@ -48,16 +47,12 @@ fun SelectableIconButtonWithToolip(
     iconDescription: String = "",
     enabled: Boolean = true,
     shortcutHint: String? = null,
+    indicator: (@Composable () -> Unit)? = null,
 ) {
-    val compactMode by AppSettings.compactModeFlow.collectAsState()
-    val isIslands = ThemeUtils.isIslandsStyle()
+    val appSettings = LocalAppGraph.current.appSettings
+    val compactMode by appSettings.compactModeFlow.collectAsState()
     val iconSize = if (compactMode) 22.dp else 24.dp
-    val buttonPadding =
-        when {
-            compactMode -> 2.dp
-            isIslands -> 2.dp
-            else -> 4.dp
-        }
+    val buttonPadding = 2.dp
 
     val barPosition = LocalVerticalBarPosition.current
     val density = LocalDensity.current
@@ -167,6 +162,10 @@ fun SelectableIconButtonWithToolip(
                     tint = if (enabled) JewelTheme.globalColors.text.selected else JewelTheme.globalColors.text.disabled,
                     modifier = Modifier.size(iconSize),
                 )
+                if (indicator != null) {
+                    Spacer(modifier = Modifier.height(3.dp))
+                    indicator()
+                }
                 if (!compactMode) {
                     Spacer(modifier = Modifier.height(4.dp))
                     val labelColor =

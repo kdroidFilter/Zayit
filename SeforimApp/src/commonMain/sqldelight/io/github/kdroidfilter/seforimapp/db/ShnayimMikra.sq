@@ -1,0 +1,17 @@
+-- Shnayim mikra: the aliyos (0 to 6) of a parsha read in a Hebrew year, each parsha being read once a year.
+CREATE TABLE IF NOT EXISTS shnayim_mikra_aliya (
+    year INTEGER NOT NULL,
+    parsha TEXT NOT NULL,
+    aliya INTEGER NOT NULL,
+    readAt INTEGER NOT NULL,
+    PRIMARY KEY (year, parsha, aliya)
+);
+
+markRead:
+INSERT OR REPLACE INTO shnayim_mikra_aliya(year, parsha, aliya, readAt) VALUES (:year, :parsha, :aliya, :readAt);
+
+unmarkRead:
+DELETE FROM shnayim_mikra_aliya WHERE year = :year AND parsha = :parsha AND aliya = :aliya;
+
+selectRead:
+SELECT aliya FROM shnayim_mikra_aliya WHERE year = :year AND parsha = :parsha;

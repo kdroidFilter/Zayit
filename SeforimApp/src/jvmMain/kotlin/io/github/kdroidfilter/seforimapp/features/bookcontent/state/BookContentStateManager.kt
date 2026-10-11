@@ -73,9 +73,16 @@ class BookContentStateManager(
                     showCommentaries = persisted.showCommentaries,
                     showTargum = persisted.showTargum,
                     showSources = persisted.showSources,
+                    shnayimMikra = persisted.shnayimMikra,
                     scrollIndex = persisted.contentScrollIndex,
                     scrollOffset = persisted.contentScrollOffset,
-                    anchorId = persisted.contentAnchorLineId,
+                    // A restored tab with no saved position opens on its selected line: its pager is
+                    // centred there, and the text lays out on it, the lines above loading as it scrolls up.
+                    anchorId =
+                        persisted.contentAnchorLineId.takeIf { it > 0 }
+                            ?: persisted.primarySelectedLineId.takeIf {
+                                it > 0 && persisted.contentScrollIndex == 0 && persisted.contentScrollOffset == 0
+                            } ?: persisted.contentAnchorLineId,
                     anchorIndex = persisted.contentAnchorIndex,
                     paragraphScrollPosition = persisted.paragraphScrollPosition,
                     chapterScrollPosition = persisted.chapterScrollPosition,
@@ -270,6 +277,7 @@ class BookContentStateManager(
                 showCommentaries = currentState.content.showCommentaries,
                 showTargum = currentState.content.showTargum,
                 showSources = currentState.content.showSources,
+                shnayimMikra = currentState.content.shnayimMikra,
                 paragraphScrollPosition = currentState.content.paragraphScrollPosition,
                 chapterScrollPosition = currentState.content.chapterScrollPosition,
                 selectedChapter = currentState.content.selectedChapter,

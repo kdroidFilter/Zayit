@@ -5,14 +5,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforim.tabs.TabsViewModel
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.logger.warnln
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 
 /**
- * Resolves incoming zayit:// content deep links and opens them in a new tab.
+ * Resolves incoming zayit:// content deep links and opens them in a new tab of the window that is
+ * focused when the link arrives.
  *
  * Cross-platform (unlike [AppJumpList], which is Windows-only): the transport — cold-start CLI
  * arg, single-instance relay, macOS Apple Events — is provided by Nucleus and surfaced through
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.filterNotNull
  */
 @Composable
 fun ContentDeepLinkHandler(
-    tabsViewModel: TabsViewModel,
+    desktopManager: DesktopManager,
     repository: SeforimRepository,
     pendingDeepLink: StateFlow<String?>,
     onClearDeepLink: () -> Unit,
@@ -36,7 +37,11 @@ fun ContentDeepLinkHandler(
                     else -> true
                 }
             if (resolvable) {
-                tabsViewModel.openTab(destination)
+                val window = desktopManager.focusedWindow()
+                if (window != null) {
+                    window.tabsViewModel.openTab(destination)
+                    window.requestFocus()
+                }
             } else {
                 warnln { "Ignoring deep link to unknown reference: $raw" }
             }

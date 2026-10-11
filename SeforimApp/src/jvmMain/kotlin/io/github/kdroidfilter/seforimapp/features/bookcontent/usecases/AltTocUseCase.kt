@@ -5,6 +5,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.AltTocState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.ROOT_TOC_KEY
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocStructure
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -55,6 +56,7 @@ class AltTocUseCase(
 
         stateManager.updateAltToc {
             AltTocState(
+                bookId = effectiveBook.id,
                 structures = structures,
                 selectedStructureId = targetStructureId,
                 entries = emptyList(),
@@ -83,7 +85,7 @@ class AltTocUseCase(
             copy(
                 selectedStructureId = structureId,
                 entries = root,
-                children = mapOf(-1L to root),
+                children = mapOf(ROOT_TOC_KEY to root),
                 expandedEntries =
                     expandedEntries.ifEmpty {
                         root.firstOrNull()?.takeIf { it.hasChildren }?.let { setOf(it.id) } ?: emptySet()
@@ -168,6 +170,13 @@ class AltTocUseCase(
         }
         val lineIds = withContext(Dispatchers.IO) { repository.getLineIdsForAltTocEntry(entry.id) }
         return entry.lineId ?: lineIds.firstOrNull()
+    }
+
+    /** Selects the entry [entryId] of the shown structure and expands the tree down to it. Returns the line to jump to. */
+    suspend fun revealAltEntry(entryId: Long): Long? {
+        val entry = stateManager.state.value.altToc.entriesById[entryId] ?: return null
+        expandPathToAltEntry(entryId)
+        return selectAltEntry(entry)
     }
 
     suspend fun selectAltEntryForLine(lineId: Long) {

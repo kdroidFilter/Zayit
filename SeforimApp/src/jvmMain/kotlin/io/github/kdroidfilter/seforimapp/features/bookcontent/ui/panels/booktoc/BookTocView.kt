@@ -8,15 +8,21 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight.Companion.Bold
 import androidx.compose.ui.text.font.FontWeight.Companion.Normal
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ChevronIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableRow
+import io.github.kdroidfilter.seforimapp.core.presentation.text.SearchHighlightColor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.ROOT_TOC_KEY
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.VisibleTocEntry
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.revealItem
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -63,6 +69,8 @@ fun BookTocView(
     // Multi-select integration: optional checkboxes per entry
     multiSelectIds: Set<Long> = emptySet(),
     onToggle: ((TocEntry, Boolean) -> Unit)? = null,
+    // Title search: ranges to highlight per matching entry; other entries are dimmed context
+    highlights: Map<Long, List<IntRange>>? = null,
 ) {
     val visibleEntries =
         remember(tocEntries, expandedEntries, tocChildren, showCounts, onlyWithResults, tocCounts) {
@@ -108,7 +116,8 @@ fun BookTocView(
             }
             val idx = visibleEntries.indexOfFirst { it.entry.id == selId }
             if (idx >= 0) {
-                listState.scrollToItem(idx, 0)
+                // Moving through search results: scroll only when the match is out of view
+                if (highlights != null) listState.revealItem(idx) else listState.scrollToItem(idx, 0)
                 didAutoCenter = true
             }
         }
@@ -138,6 +147,7 @@ fun BookTocView(
                         count = tocCounts[visibleEntry.entry.id] ?: 0,
                         checkboxChecked = if (onToggle != null) multiSelectIds.contains(visibleEntry.entry.id) else null,
                         onCheckboxToggle = onToggle?.let { handler -> { checked: Boolean -> handler(visibleEntry.entry, checked) } },
+                        highlights = highlights,
                     )
                 }
             }
@@ -159,7 +169,7 @@ fun BookTocView(
     multiSelectIds: Set<Long> = emptySet(),
     onToggle: ((TocEntry, Boolean) -> Unit)? = null,
 ) {
-    val rootEntries = uiState.toc.children[-1L] ?: uiState.toc.entries
+    val rootEntries = uiState.toc.children[ROOT_TOC_KEY] ?: uiState.toc.entries
     var displayEntries by remember(uiState.toc.entries, uiState.toc.children, uiState.navigation.selectedBook?.id) {
         mutableStateOf(rootEntries.ifEmpty { uiState.toc.entries })
     }
@@ -261,6 +271,7 @@ private fun TocEntryItem(
     count: Int = 0,
     checkboxChecked: Boolean? = null,
     onCheckboxToggle: ((Boolean) -> Unit)? = null,
+    highlights: Map<Long, List<IntRange>>? = null,
 ) {
     val isLastChild = visibleEntry.isLastChild
     val isSelected = selectedTocEntryId != null && visibleEntry.entry.id == selectedTocEntryId
@@ -300,11 +311,31 @@ private fun TocEntryItem(
                     onCheckedChange = onCheckboxToggle,
                 )
             }
-            Text(
-                text = visibleEntry.entry.text,
-                fontWeight = if (isSelected) Bold else Normal,
-                modifier = Modifier.weight(1f),
-            )
+            if (highlights == null) {
+                Text(
+                    text = visibleEntry.entry.text,
+                    fontWeight = if (isSelected) Bold else Normal,
+                    modifier = Modifier.weight(1f),
+                )
+            } else {
+                val ranges = highlights[visibleEntry.entry.id]
+                val text =
+                    remember(visibleEntry.entry.text, ranges) {
+                        buildAnnotatedString {
+                            append(visibleEntry.entry.text)
+                            ranges?.forEach { r ->
+                                val end = (r.last + 1).coerceAtMost(length)
+                                if (end > r.first) addStyle(SpanStyle(background = SearchHighlightColor), r.first, end)
+                            }
+                        }
+                    }
+                Text(
+                    text = text,
+                    fontWeight = if (isSelected) Bold else Normal,
+                    color = if (ranges == null) JewelTheme.globalColors.text.disabled else Color.Unspecified,
+                    modifier = Modifier.weight(1f),
+                )
+            }
             if (showCount && count > 0) {
                 CountBadge(count)
             }

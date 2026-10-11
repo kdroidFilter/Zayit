@@ -3,6 +3,7 @@
 package io.github.kdroidfilter.seforimapp.framework.session
 
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
+import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
@@ -28,6 +29,23 @@ data class SavedSessionV2(
 data class TabPersistedState(
     val bookContent: BookContentPersistedState = BookContentPersistedState(),
     val search: SearchPersistedState? = null,
+    // Appended last: the session is ProtoBuf, numbered by declaration order
+    val siddur: SiddurPersistedState? = null,
+)
+
+/** A siddur tab's day, part and choices, and where it was read: restored with the session. */
+@Serializable
+data class SiddurPersistedState(
+    val epochDay: Long? = null,
+    val part: String? = null,
+    val showAll: Boolean = false,
+    val options: String = "",
+    val scrollIndex: Int = 0,
+    val scrollOffset: Int = 0,
+    val tocVisible: Boolean = true,
+    val showDiacritics: Boolean = true,
+    /** The table of contents' open entries (a tefila's name, or name/heading/index). */
+    val tocExpanded: String = "",
 )
 
 @Serializable
@@ -57,6 +75,7 @@ data class BookContentPersistedState(
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
     val showSources: Boolean = false,
+    val shnayimMikra: Boolean = false,
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,
     val selectedChapter: Int = 0,
@@ -96,18 +115,56 @@ data class BookContentPersistedState(
 
 // -- Virtual desktops persistence models --
 
+/**
+ * Persisted geometry of one OS window. Coordinates are logical (Dp) values.
+ * [x]/[y] are [UNSPECIFIED] when the position was never absolute (e.g. centered).
+ */
+@Serializable
+data class SavedGeometry(
+    val x: Int = UNSPECIFIED,
+    val y: Int = UNSPECIFIED,
+    val width: Int = 1280,
+    val height: Int = 800,
+    val placement: String = "Maximized",
+) {
+    companion object {
+        const val UNSPECIFIED: Int = Int.MIN_VALUE
+    }
+}
+
+/** One OS window of a desktop: its tabs and its frame geometry. */
+@Serializable
+data class WindowSnapshot(
+    val destinations: List<TabsDestination> = emptyList(),
+    val selectedIndex: Int = 0,
+    val titles: Map<String, SerializableTabTitle> = emptyMap(),
+    val geometry: SavedGeometry? = null,
+)
+
 @Serializable
 data class DesktopTabsSnapshot(
+    // Legacy single-window fields (proto fields 1-3), still read for migration.
     val destinations: List<TabsDestination> = emptyList(),
     val selectedIndex: Int = 0,
     val titles: Map<String, SerializableTabTitle> = emptyMap(),
     val tabStates: Map<String, TabPersistedState> = emptyMap(),
-)
+    // New multi-window layout (appended field; absent in legacy files).
+    val windows: List<WindowSnapshot> = emptyList(),
+) {
+    /** Multi-window view of the snapshot, wrapping legacy single-window data if needed. */
+    fun effectiveWindows(): List<WindowSnapshot> =
+        windows.ifEmpty {
+            listOf(WindowSnapshot(destinations = destinations, selectedIndex = selectedIndex, titles = titles))
+        }
+}
 
 @Serializable
 data class SerializableTabTitle(
     val title: String,
     val tabType: TabType,
+    // Appended last: the session is ProtoBuf, numbered by declaration order.
+    val pinned: Boolean = false,
+    val shortTitle: String = "",
 )
 
 @Serializable
@@ -115,16 +172,28 @@ data class DesktopsState(
     val desktops: List<VirtualDesktop> = emptyList(),
     val activeDesktopId: String = "",
     val snapshots: Map<String, DesktopTabsSnapshot> = emptyMap(),
-)
+    // Desktops that were open in windows when the session was saved (appended fields;
+    // legacy files fall back to listOf(activeDesktopId)).
+    val openDesktopIds: List<String> = emptyList(),
+    val focusedDesktopId: String = "",
+) {
+    fun effectiveOpenDesktopIds(): List<String> =
+        openDesktopIds
+            .ifEmpty { listOf(activeDesktopId) }
+            .filter { id -> desktops.any { it.id == id } }
+            .distinct()
+}
 
 @Serializable
 data class SearchPersistedState(
     val query: String = "",
     val globalExtended: Boolean = false,
     val datasetScope: String = "global",
+    // Unused (a search is no longer scoped to a category), kept for the ProtoBuf field numbers
     val filterCategoryId: Long = 0L,
     val filterBookId: Long = 0L,
     val filterTocId: Long = 0L,
+    // Unused, as filterCategoryId
     val fetchCategoryId: Long = 0L,
     val fetchBookId: Long = 0L,
     val fetchTocId: Long = 0L,
@@ -140,4 +209,44 @@ data class SearchPersistedState(
     // Full search snapshot (results + aggregates) for identical restore
     val snapshot: SearchTabCache.Snapshot? = null,
     val breadcrumbs: Map<Long, List<String>> = emptyMap(),
-)
+    // Appended last: the session is ProtoBuf, numbered by declaration order.
+    // What the bar holds, typed but not searched yet (restored in the bar; [query] is what is searched)
+    val draftQuery: String = "",
+) {
+    /** The scope the search runs in: its fetch scope, else its view filter. */
+    val scope: SearchScope
+        get() {
+            val bookId = fetchBookId.takeIf { it > 0 } ?: filterBookId.takeIf { it > 0 }
+            val tocId = fetchTocId.takeIf { it > 0 } ?: filterTocId.takeIf { it > 0 }
+            return when {
+                tocId != null && bookId != null -> SearchScope.Toc(bookId = bookId, tocId = tocId)
+                bookId != null -> SearchScope.Book(bookId)
+                else -> SearchScope.Global
+            }
+        }
+
+    /** Runs the search in [scope]: both its fetch scope and its view filter (a legacy category: everywhere). */
+    fun withScope(scope: SearchScope): SearchPersistedState {
+        val bookId =
+            when (scope) {
+                is SearchScope.Book -> scope.bookId
+                is SearchScope.Toc -> scope.bookId
+                else -> 0L
+            }
+        val tocId = (scope as? SearchScope.Toc)?.tocId ?: 0L
+        return copy(
+            datasetScope =
+                when (scope) {
+                    SearchScope.Global, is SearchScope.Category -> "global"
+                    is SearchScope.Book -> "book"
+                    is SearchScope.Toc -> "toc"
+                },
+            filterCategoryId = 0L,
+            filterBookId = bookId,
+            filterTocId = tocId,
+            fetchCategoryId = 0L,
+            fetchBookId = bookId,
+            fetchTocId = tocId,
+        )
+    }
+}

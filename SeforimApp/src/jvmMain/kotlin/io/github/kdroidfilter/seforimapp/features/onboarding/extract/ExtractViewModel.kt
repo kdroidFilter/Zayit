@@ -2,6 +2,8 @@ package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dev.nucleusframework.energymanager.AwakeMode
+import dev.nucleusframework.energymanager.EnergyManager
 import dev.zacsweers.metro.ContributesIntoMap
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metrox.viewmodel.ViewModelKey
@@ -75,7 +77,10 @@ class ExtractViewModel(
                     _error.value = null
                     _inProgress.value = true
                     _progress.value = 0f
-                    useCase.extractToDatabase(path) { p -> _progress.value = p }
+                    // Keep the machine from sleeping mid-extraction; the display may still turn off
+                    EnergyManager.acquireAwake(AwakeMode.SYSTEM_ONLY).use {
+                        useCase.extractToDatabase(path) { p -> _progress.value = p }
+                    }
                     _inProgress.value = false
                     _progress.value = 1f
                     _completed.value = true

@@ -380,7 +380,7 @@ class SearchHighlightingIntegrationTest {
             highlightAnnotatedWithCurrent(
                 annotated = original,
                 query = "test",
-                currentStart = 0, // First occurrence
+                currentIndex = 0, // First occurrence
                 baseColor = baseColor,
                 currentColor = currentColor,
             )
@@ -412,7 +412,7 @@ class SearchHighlightingIntegrationTest {
             highlightAnnotatedWithCurrent(
                 annotated = original,
                 query = "test",
-                currentStart = secondTestStart,
+                currentIndex = 1,
                 baseColor = baseColor,
                 currentColor = currentColor,
             )
@@ -429,13 +429,32 @@ class SearchHighlightingIntegrationTest {
     }
 
     @Test
+    fun `highlightAnnotatedWithCurrent marks the current match by its rank, nikud hidden or not`() {
+        // The rank survives hiding the nikud, which shifts every offset
+        val original = AnnotatedString("בָּרָא אֶת בָּרָא")
+        val currentColor = Color(0xFFFF5722)
+
+        val result =
+            highlightAnnotatedWithCurrent(
+                annotated = original,
+                query = "ברא",
+                baseColor = Color(0x66FFC107),
+                currentColor = currentColor,
+                currentIndex = 1,
+            )
+
+        val current = result.spanStyles.single { it.item.background == currentColor }
+        assertEquals(original.text.lastIndexOf('ב'), current.start)
+    }
+
+    @Test
     fun `highlightAnnotatedWithCurrent returns original when query too short`() {
         val original = AnnotatedString("test text")
         val result =
             highlightAnnotatedWithCurrent(
                 annotated = original,
                 query = "t",
-                currentStart = 0,
+                currentIndex = 0,
                 baseColor = Color.Yellow,
                 currentColor = Color.Red,
             )

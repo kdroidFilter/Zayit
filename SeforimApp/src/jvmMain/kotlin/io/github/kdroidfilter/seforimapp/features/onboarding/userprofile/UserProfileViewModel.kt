@@ -17,14 +17,15 @@ import kotlinx.coroutines.flow.stateIn
 @Inject
 class UserProfileViewModel(
     private val useCase: UserProfileUseCase,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     private val communities = useCase.getCommunities()
 
-    private val firstName = MutableStateFlow(AppSettings.getUserFirstName() ?: "")
-    private val lastName = MutableStateFlow(AppSettings.getUserLastName() ?: "")
+    private val firstName = MutableStateFlow(appSettings.getUserFirstName() ?: "")
+    private val lastName = MutableStateFlow(appSettings.getUserLastName() ?: "")
     private val selectedCommunityIndex =
         MutableStateFlow(
-            AppSettings.getUserCommunityCode()?.let { code ->
+            appSettings.getUserCommunityCode()?.let { code ->
                 communities.indexOfFirst { it.name.equals(code, ignoreCase = true) }
             } ?: -1,
         )

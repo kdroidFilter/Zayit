@@ -15,24 +15,35 @@ import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactory
 import dev.zacsweers.metrox.viewmodel.ViewModelAssistedFactoryKey
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.pinnedTabLabel
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.MarkedRange
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookContentUseCaseFactory
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.altTocIdOfSearchMatch
+import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
+import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
+import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import java.util.UUID
 
 /** Simplified ViewModel for the book content screen */
 @OptIn(ExperimentalSplitPaneApi::class)
@@ -43,7 +54,10 @@ class BookContentViewModel(
     private val repository: SeforimRepository,
     private val useCaseFactory: BookContentUseCaseFactory,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val tabsViewModel: TabsViewModel,
+    private val desktopManager: DesktopManager,
+    private val historyStore: HistoryStore,
+    sessionManager: SessionManager,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     @AssistedFactory
     @ViewModelAssistedFactoryKey(BookContentViewModel::class)
@@ -57,6 +71,10 @@ class BookContentViewModel(
     }
 
     internal val tabId: String = savedStateHandle.get<String>(StateKeys.TAB_ID) ?: ""
+
+    // True when this ViewModel was created by the boot session restore: its book was already
+    // recorded when originally opened, so the first load must not re-enter the history.
+    private val createdDuringSessionRestore = sessionManager.isRestoringSession.value
 
     // Pre-set loading before uiState is initialized to avoid a single-frame Home flash.
     private val hasBookToLoad: Boolean =
@@ -78,7 +96,7 @@ class BookContentViewModel(
     // UseCases - created via factory
     private val navigationUseCase = useCaseFactory.createNavigationUseCase(stateManager)
     private val contentUseCase = useCaseFactory.createContentUseCase(stateManager)
-    private val tocUseCase = useCaseFactory.createTocUseCase(stateManager)
+    private val tocUseCase = useCaseFactory.createTocUseCase(stateManager, viewModelScope)
     private val notesUseCase = useCaseFactory.createNotesUseCase(stateManager)
     private val altTocUseCase = useCaseFactory.createAltTocUseCase(stateManager)
     private val commentariesUseCase = useCaseFactory.createCommentariesUseCase(stateManager, viewModelScope)
@@ -94,8 +112,8 @@ class BookContentViewModel(
             .flatMapLatest { it }
             .cachedIn(viewModelScope)
 
-    private val _showDiacritics = MutableStateFlow(true)
-    val showDiacritics: StateFlow<Boolean> = _showDiacritics.asStateFlow()
+    private val _diacritics = MutableStateFlow(DiacriticsMode.All)
+    val diacritics: StateFlow<DiacriticsMode> = _diacritics.asStateFlow()
     private var currentRootCategoryId: Long? = null
 
     // Per-line `charCount` vector for the current book, ordered by lineIndex. Feeds the
@@ -161,6 +179,8 @@ class BookContentViewModel(
                             getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                             getLinkCharCountsForLine = commentariesUseCase::getLinkCharCountsForLine,
                             getLinkCharCountsForLines = commentariesUseCase::getLinkCharCountsForLines,
+                            loadTocChildren = tocUseCase::tocChildren,
+                            loadRootToc = tocUseCase::rootToc,
                         ),
                     content =
                         state.content.copy(
@@ -224,6 +244,8 @@ class BookContentViewModel(
                                 getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                                 getLinkCharCountsForLine = commentariesUseCase::getLinkCharCountsForLine,
                                 getLinkCharCountsForLines = commentariesUseCase::getLinkCharCountsForLines,
+                                loadTocChildren = tocUseCase::tocChildren,
+                                loadRootToc = tocUseCase::rootToc,
                             ),
                         content =
                             s.content.copy(
@@ -234,6 +256,43 @@ class BookContentViewModel(
                     )
                 },
             )
+
+    private val bookDetailsLoader = BookDetailsLoader(repository)
+
+    /** The book's details (categories, authors, main parts), for the book-details pane. */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val bookDetailsFlow: StateFlow<SearchEntity.BookEntity?> =
+        uiState
+            .map { it.navigation.selectedBook?.id }
+            .distinctUntilChanged()
+            .mapLatest { id -> id?.let { bookDetailsLoader.load(it) } }
+            .flowOn(Dispatchers.IO)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // The tab destination this ViewModel last opened: its init opens the one it was created for, so the tab's
+    // first composition must not open it again (that rebuilt the pager and re-hid the text on every open).
+    private var openedDestination: Triple<Long, Long?, Long?>? =
+        savedStateHandle.get<Long>(StateKeys.BOOK_ID)?.takeIf { it > 0 }?.let { bookId ->
+            Triple(
+                bookId,
+                savedStateHandle.get<Long>(StateKeys.LINE_ID)?.takeIf { it > 0 },
+                savedStateHandle.get<Long>(StateKeys.MARK_END_LINE_ID),
+            )
+        }
+
+    /** Opens the tab's destination when it changes while this ViewModel is reused. */
+    fun openDestination(
+        bookId: Long,
+        lineId: Long?,
+        endLineId: Long?,
+    ) {
+        if (bookId <= 0) return
+        val destination = Triple(bookId, lineId?.takeIf { it > 0 }, endLineId)
+        if (destination == openedDestination) return
+        openedDestination = destination
+        val line = destination.second
+        onEvent(if (line != null) BookContentEvent.OpenBookAtLine(bookId, line, endLineId) else BookContentEvent.OpenBookById(bookId))
+    }
 
     init {
         initialize(savedStateHandle)
@@ -266,6 +325,15 @@ class BookContentViewModel(
                 // Explicit line navigation wins (e.g., search result / deep link)
                 if (requestedLineId != null) {
                     loadBookById(bookIdToOpen, requestedLineId, triggerScroll = true)
+                    markRange(bookIdToOpen, requestedLineId, savedStateHandle.get<Long>(StateKeys.MARK_END_LINE_ID))
+                    // An aliya opened from the Shnayim Mikra widget
+                    if (savedStateHandle.get<Boolean>(StateKeys.SHNAYIM_MIKRA) == true) {
+                        stateManager.updateContent { copy(shnayimMikra = true) }
+                    }
+                    // A note opened from the notes page or widget: its pane, on its line
+                    if (savedStateHandle.get<Boolean>(StateKeys.OPEN_NOTES) == true && !stateManager.state.value.notes.isVisible) {
+                        notesUseCase.toggleNotes()
+                    }
                 } else {
                     // Restore from persisted state: build the pager around the persisted anchor/selection.
                     // This provides a stable starting window for Paging3 so scroll restoration can be exact.
@@ -273,13 +341,51 @@ class BookContentViewModel(
                 }
             }
 
+            // Record ONE history entry per book OPENED in this tab, with the TOC position it
+            // opened at (Chrome records the navigation, not every position read afterwards).
+            // The position is read 2s after the open so the breadcrumb has settled. Tabs
+            // restored at boot and background compositions (hover preload, LRU rebuilds)
+            // don't record.
+            launch {
+                @OptIn(kotlinx.coroutines.FlowPreview::class)
+                stateManager.state
+                    .map { it.navigation.selectedBook?.id }
+                    .filterNotNull()
+                    .distinctUntilChanged()
+                    .drop(if (createdDuringSessionRestore) 1 else 0)
+                    .debounce(HISTORY_RECORD_DEBOUNCE_MS)
+                    .collect { openedBookId ->
+                        // Only the tab actually in front records a visit
+                        val hostTabs = desktopManager.tabsViewModelFor(tabId)?.state?.value ?: return@collect
+                        val selectedTabId =
+                            hostTabs.tabs
+                                .getOrNull(hostTabs.selectedTabIndex)
+                                ?.destination
+                                ?.tabId
+                        if (selectedTabId != tabId) return@collect
+
+                        val state = stateManager.state.value
+                        val book = state.navigation.selectedBook?.takeIf { it.id == openedBookId } ?: return@collect
+                        val toc = state.toc.breadcrumbPath.lastOrNull()
+                        // Some books' root TOC entry repeats the book title — avoid "X - X"
+                        val tocLabel = toc?.text?.takeIf { it.isNotBlank() && it != book.title }
+                        historyStore.recordBookVisit(
+                            bookId = book.id,
+                            title = if (tocLabel != null) "${book.title} - $tocLabel" else book.title,
+                            timestamp = System.currentTimeMillis(),
+                            tocEntryId = toc?.id,
+                            lineId = toc?.lineId,
+                        )
+                    }
+            }
+
             // Observe the selected book and current TOC to update the title
+            var labelledBookId: Long? = null
+            var pinnedLabel = ""
             stateManager.state
                 .map { state ->
-                    val bookTitle =
-                        state.navigation.selectedBook
-                            ?.title
-                            .orEmpty()
+                    val book = state.navigation.selectedBook
+                    val bookTitle = book?.title.orEmpty()
                     val tocLabel =
                         state.toc.breadcrumbPath
                             .lastOrNull()
@@ -291,11 +397,16 @@ class BookContentViewModel(
                         } else {
                             bookTitle
                         }
-                    combined
-                }.filter { it.isNotEmpty() }
+                    Triple(book?.id, bookTitle, combined)
+                }.filter { (_, _, combined) -> combined.isNotEmpty() }
                 .distinctUntilChanged()
-                .collect { combined ->
-                    titleUpdateManager.updateTabTitle(tabId, combined, TabType.BOOK)
+                .collect { (bookId, bookTitle, combined) ->
+                    // Once per book: what the tab shows when pinned.
+                    if (bookId != labelledBookId) {
+                        labelledBookId = bookId
+                        pinnedLabel = pinnedTabLabel(bookTitle, bookId?.let { repository.getAcronymsForBook(it) }.orEmpty())
+                    }
+                    titleUpdateManager.updateTabTitle(tabId, combined, TabType.BOOK, pinnedLabel)
                 }
         }
     }
@@ -321,10 +432,10 @@ class BookContentViewModel(
             categoryDisplaySettingsUseCase.categoryChanges.collectLatest { categoryId ->
                 if (categoryId == currentRootCategoryId) {
                     val nav = stateManager.state.value.navigation
-                    _showDiacritics.value =
+                    _diacritics.value =
                         categoryDisplaySettingsUseCase
-                            .getShowDiacriticsForCategory(categoryId, nav)
-                            .showDiacritics
+                            .getDiacriticsForCategory(categoryId, nav)
+                            .diacritics
                 }
             }
         }
@@ -334,13 +445,13 @@ class BookContentViewModel(
         val categoryId = nav.selectedBook?.categoryId
         if (categoryId == null || categoryId <= 0) {
             currentRootCategoryId = null
-            _showDiacritics.value = true
+            _diacritics.value = DiacriticsMode.All
             return
         }
 
-        val setting = categoryDisplaySettingsUseCase.getShowDiacriticsForCategory(categoryId, nav)
+        val setting = categoryDisplaySettingsUseCase.getDiacriticsForCategory(categoryId, nav)
         currentRootCategoryId = setting.rootCategoryId
-        _showDiacritics.value = setting.showDiacritics
+        _diacritics.value = setting.diacritics
     }
 
     /** Event handling */
@@ -350,6 +461,15 @@ class BookContentViewModel(
                 // Navigation
                 is BookContentEvent.CategorySelected ->
                     navigationUseCase.selectCategory(event.category)
+
+                is BookContentEvent.RevealCategory ->
+                    navigationUseCase.revealCategory(event.category)
+
+                BookContentEvent.FocusText ->
+                    stateManager.updateContent(save = false) { copy(focusTextRequest = focusTextRequest + 1) }
+
+                BookContentEvent.CategoryRevealed ->
+                    navigationUseCase.clearCategoryReveal()
 
                 is BookContentEvent.BookSelected ->
                     loadBook(event.book)
@@ -365,7 +485,7 @@ class BookContentViewModel(
                         java.util.UUID
                             .randomUUID()
                             .toString()
-                    tabsViewModel.openTab(
+                    desktopManager.tabsViewModelFor(tabId)?.openTab(
                         TabsDestination.Search(
                             searchQuery = event.query,
                             tabId = newTabId,
@@ -379,6 +499,18 @@ class BookContentViewModel(
                 is BookContentEvent.BookTreeScrolled ->
                     navigationUseCase.updateBookTreeScrollPosition(event.index, event.offset)
 
+                BookContentEvent.ToggleBookTreeSearch ->
+                    navigationUseCase.toggleSearch()
+
+                BookContentEvent.CloseBookTreeSearch ->
+                    navigationUseCase.closeSearch()
+
+                is BookContentEvent.BookTreeSearchQueryChanged ->
+                    navigationUseCase.search(event.query)
+
+                is BookContentEvent.BookTreeSearchBookSelected ->
+                    navigationUseCase.selectSearchBook(event.bookId)?.let { loadBook(it) }
+
                 // TOC
                 is BookContentEvent.TocEntryExpanded ->
                     tocUseCase.toggleTocEntry(event.entry)
@@ -388,6 +520,18 @@ class BookContentViewModel(
 
                 is BookContentEvent.TocScrolled ->
                     tocUseCase.updateTocScrollPosition(event.index, event.offset)
+
+                BookContentEvent.ToggleTocSearch ->
+                    tocUseCase.toggleSearch()
+
+                BookContentEvent.CloseTocSearch ->
+                    tocUseCase.closeSearch()
+
+                is BookContentEvent.TocSearchQueryChanged ->
+                    tocUseCase.search(event.query)
+
+                is BookContentEvent.TocSearchEntrySelected ->
+                    openTocSearchMatch(event.tocId)
 
                 BookContentEvent.ToggleNotes ->
                     notesUseCase.toggleNotes()
@@ -401,8 +545,10 @@ class BookContentViewModel(
                 is BookContentEvent.AltTocScrolled ->
                     altTocUseCase.updateAltTocScrollPosition(event.index, event.offset)
 
-                is BookContentEvent.AltTocStructureSelected ->
+                is BookContentEvent.AltTocStructureSelected -> {
                     altTocUseCase.selectStructure(event.structure)
+                    tocUseCase.refreshSearch()
+                }
 
                 is BookContentEvent.AltTocEntrySelected -> {
                     val lineId = altTocUseCase.selectAltEntry(event.entry)
@@ -417,6 +563,7 @@ class BookContentViewModel(
                     loadAndSelectLine(event.lineId)
 
                 is BookContentEvent.OpenBookAtLine -> {
+                    markRange(event.bookId, event.lineId, event.endLineId)
                     // If already on the target book, just jump to the line
                     val currentBookId =
                         stateManager.state.value.navigation.selectedBook
@@ -466,6 +613,7 @@ class BookContentViewModel(
                 BookContentEvent.NavigateToPreviousLine -> {
                     val line = contentUseCase.navigateToPreviousLine()
                     if (line != null) {
+                        prefetchCommentariesAround(line)
                         val bookId =
                             stateManager.state.value.navigation.selectedBook
                                 ?.id ?: line.bookId
@@ -476,6 +624,7 @@ class BookContentViewModel(
                 BookContentEvent.NavigateToNextLine -> {
                     val line = contentUseCase.navigateToNextLine()
                     if (line != null) {
+                        prefetchCommentariesAround(line)
                         val bookId =
                             stateManager.state.value.navigation.selectedBook
                                 ?.id ?: line.bookId
@@ -489,14 +638,21 @@ class BookContentViewModel(
                 BookContentEvent.ToggleTargum ->
                     contentUseCase.toggleTargum()
 
+                BookContentEvent.ToggleShnayimMikra ->
+                    stateManager.updateContent { copy(shnayimMikra = !shnayimMikra) }
+
                 BookContentEvent.ToggleSources ->
                     contentUseCase.toggleSources()
 
-                BookContentEvent.ToggleDiacritics ->
-                    toggleShowDiacriticsForCurrentCategory()
+                BookContentEvent.ToggleBookDetails ->
+                    appSettings.setBookDetailsPaneVisible(!appSettings.isBookDetailsPaneVisible())
+
+                BookContentEvent.CycleDiacritics ->
+                    cycleDiacriticsForCurrentCategory()
 
                 is BookContentEvent.ContentScrolled ->
                     contentUseCase.updateContentScrollPosition(
+                        event.bookId,
                         event.anchorId,
                         event.anchorIndex,
                         event.scrollIndex,
@@ -517,6 +673,11 @@ class BookContentViewModel(
 
                 is BookContentEvent.OpenCommentaryTarget ->
                     event.lineId?.let { openCommentaryTarget(event.bookId, it) }
+
+                is BookContentEvent.OpenAuthor ->
+                    desktopManager.tabsViewModelFor(tabId)?.openTab(
+                        TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = event.authorId),
+                    )
 
                 // Commentaries
                 is BookContentEvent.CommentariesTabSelected ->
@@ -569,12 +730,13 @@ class BookContentViewModel(
         }
     }
 
-    private suspend fun toggleShowDiacriticsForCurrentCategory() {
+    private suspend fun cycleDiacriticsForCurrentCategory() {
         val nav = stateManager.state.value.navigation
-        val selectedCategoryId = nav.selectedBook?.categoryId ?: return
-        val setting = categoryDisplaySettingsUseCase.toggleShowDiacriticsForCategory(selectedCategoryId, nav) ?: return
+        val book = nav.selectedBook ?: return
+        val setting =
+            categoryDisplaySettingsUseCase.cycleDiacriticsForCategory(book.categoryId, nav, book.hasTeamim) ?: return
         currentRootCategoryId = setting.rootCategoryId
-        _showDiacritics.value = setting.showDiacritics
+        _diacritics.value = setting.diacritics
     }
 
     /** Loads a book by ID */
@@ -699,7 +861,7 @@ class BookContentViewModel(
      * Called when opening a book from search results, toolbar, or links.
      */
     private fun closeBookTreeIfEnabled() {
-        if (AppSettings.getCloseBookTreeOnNewBookSelected()) {
+        if (appSettings.getCloseBookTreeOnNewBookSelected()) {
             val isTreeVisible = stateManager.state.value.navigation.isVisible
             if (isTreeVisible) {
                 navigationUseCase.toggleBookTree()
@@ -712,12 +874,11 @@ class BookContentViewModel(
         val resolvedBook = repository.getBookCore(book.id) ?: book
         val previousBook = stateManager.state.value.navigation.selectedBook
 
-        // On a book change, flip to loading BEFORE selecting the new book. selectBook() triggers a
-        // recomposition that tears down the previous book's LazyColumn, which emits one last scroll
-        // update; with isLoading already true, updateContentScrollPosition() drops that stale write
-        // (otherwise it would overwrite the reset anchor with a line from the previous book and stall
-        // the restore on a ~1.5s missing-anchor lookup). It also shows the loader, which remounts the
-        // content fresh once the new pager is ready.
+        // On a book change, flip to loading BEFORE selecting the new book so the loader shows
+        // and the content remounts fresh once the new pager is ready. The teardown of the
+        // previous book's LazyColumn emits one last scroll update; that stale write is rejected
+        // in updateContentScrollPosition() by its bookId tag (the isLoading flag alone is racy:
+        // the event is handled asynchronously and can land after loading completes).
         if (previousBook?.id != resolvedBook.id) {
             stateManager.setLoading(true)
         }
@@ -773,10 +934,23 @@ class BookContentViewModel(
                 runSuspendCatching { commentariesUseCase.applyDefaultCommentatorsForBook(book.id) }
 
                 val state = stateManager.state.value
-                // Always prefer an explicit anchor when present (e.g., opening from a commentary link)
-                val shouldUseAnchor = state.content.anchorId != -1L
+                // Always prefer an explicit anchor when present (e.g., opening from a commentary link) —
+                // but only if it actually belongs to this book. A stale anchor leaked from a previously
+                // displayed book (and possibly persisted with the tab) would otherwise keep the content
+                // hidden while the restore effect waits 1.5s for a line that can never appear here.
+                val persistedAnchorId = state.content.anchorId
+                val shouldUseAnchor =
+                    persistedAnchorId != -1L &&
+                        runSuspendCatching { repository.getLine(persistedAnchorId)?.bookId }.getOrNull() == book.id
+                val anchorWasStale = persistedAnchorId != -1L && !shouldUseAnchor
+                if (anchorWasStale) {
+                    debugln { "Dropping stale content anchor $persistedAnchorId (not in book ${book.id})" }
+                    stateManager.updateContent {
+                        copy(anchorId = -1L, anchorIndex = 0, scrollIndex = 0, scrollOffset = 0)
+                    }
+                }
                 val savedScrollAnchorId =
-                    if (!shouldUseAnchor && state.content.scrollIndex > 0) {
+                    if (!shouldUseAnchor && !anchorWasStale && state.content.scrollIndex > 0) {
                         runSuspendCatching { repository.getLineByIndex(book.id, state.content.scrollIndex)?.id }
                             .getOrNull()
                     } else {
@@ -836,7 +1010,11 @@ class BookContentViewModel(
                 // Load TOC, alt-TOC, and line selection in parallel
                 coroutineScope {
                     launch { tocUseCase.loadRootToc(book.id) }
-                    launch { altTocUseCase.loadStructures(book) }
+                    launch {
+                        altTocUseCase.loadStructures(book)
+                        // A search typed meanwhile missed the alt TOC
+                        tocUseCase.refreshSearch()
+                    }
                     if (resolvedInitialLineId != null && shouldSelectLine) {
                         launch {
                             loadAndSelectLine(resolvedInitialLineId, recreatePager = false, scroll = false)
@@ -877,11 +1055,36 @@ class BookContentViewModel(
         }
     }
 
+    /**
+     * Loads the commentaries a selection of [line] shows while its state propagates (they are then drawn in the
+     * selection's first frame), then those of its neighbors, which keyboard navigation selects next.
+     */
+    private fun prefetchCommentariesAround(line: Line) {
+        val state = stateManager.state.value
+        if (!state.content.showCommentaries) return
+        val bookId = state.navigation.selectedBook?.id ?: line.bookId
+        val byBook = state.content.selectedCommentatorsByBook[bookId].orEmpty()
+
+        fun commentatorsFor(lineId: Long) =
+            state.content.selectedCommentatorsByLine[lineId]
+                .orEmpty()
+                .ifEmpty { byBook }
+        if (commentatorsFor(line.id).isEmpty()) return
+        viewModelScope.launch {
+            commentariesUseCase.prefetchCommentaries(line.id, commentatorsFor(line.id))
+            listOfNotNull(
+                runSuspendCatching { repository.getNextLine(bookId, line.lineIndex) }.getOrNull(),
+                runSuspendCatching { repository.getPreviousLine(bookId, line.lineIndex) }.getOrNull(),
+            ).forEach { commentariesUseCase.prefetchCommentaries(it.id, commentatorsFor(it.id)) }
+        }
+    }
+
     /** Selects a line */
     private suspend fun selectLine(
         line: Line,
         isModifierPressed: Boolean = false,
     ) {
+        if (!isModifierPressed) prefetchCommentariesAround(line)
         contentUseCase.selectLine(line, isModifierPressed)
         val bookId =
             stateManager.state.value.navigation.selectedBook
@@ -913,6 +1116,34 @@ class BookContentViewModel(
             }
             _linesPagingData.value = contentUseCase.buildLinesPager(book.id, line.id)
         }
+    }
+
+    /** Marks the lines from [startLineId] to [endLineId] of [bookId], or nothing without an end. */
+    private suspend fun markRange(
+        bookId: Long,
+        startLineId: Long,
+        endLineId: Long?,
+    ) {
+        val range =
+            endLineId?.let {
+                val first = repository.getLine(startLineId)?.lineIndex
+                val last = repository.getLine(it)?.lineIndex
+                if (first != null && last != null && last >= first) MarkedRange(bookId, first, last) else null
+            }
+        stateManager.updateContent { copy(markedRange = range) }
+    }
+
+    /** Opens the match [matchId] of the TOC search, a TOC or an alt TOC entry. */
+    private suspend fun openTocSearchMatch(matchId: Long) {
+        val altId = altTocIdOfSearchMatch(matchId)
+        if (altId == null) {
+            tocUseCase.selectSearchEntry(matchId)?.let { loadAndSelectLine(it) }
+            return
+        }
+        // Closed already: a double click or a held Enter must not jump twice
+        if (stateManager.state.value.toc.search == null) return
+        tocUseCase.closeSearch()
+        altTocUseCase.revealAltEntry(altId)?.let { loadAndSelectLine(it, syncAltToc = false) }
     }
 
     /** Loads and selects a line */
@@ -983,7 +1214,7 @@ class BookContentViewModel(
         }
 
         // Navigate directly to book content in the new tab
-        tabsViewModel.openTab(
+        desktopManager.tabsViewModelFor(tabId)?.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,
                 tabId = newTabId,
@@ -1021,7 +1252,7 @@ class BookContentViewModel(
             )
         }
 
-        tabsViewModel.openTab(
+        desktopManager.tabsViewModelFor(tabId)?.openTab(
             TabsDestination.BookContent(
                 bookId = bookId,
                 tabId = newTabId,
@@ -1030,3 +1261,5 @@ class BookContentViewModel(
         )
     }
 }
+
+private const val HISTORY_RECORD_DEBOUNCE_MS = 2_000L

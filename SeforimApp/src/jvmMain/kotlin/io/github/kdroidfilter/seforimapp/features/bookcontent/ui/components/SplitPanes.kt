@@ -7,7 +7,6 @@ import androidx.compose.runtime.Stable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForHorizontalResize
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.cursorForVerticalResize
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
@@ -39,9 +38,8 @@ fun EnhancedHorizontalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     showSplitter: Boolean = true,
-    dividerVisibleInIslands: Boolean = false,
+    showDivider: Boolean = false,
 ) {
-    val isIslands = ThemeUtils.isIslandsStyle() && !dividerVisibleInIslands
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
     val splitterVisible = showSplitter && secondContent != null
@@ -90,7 +88,7 @@ fun EnhancedHorizontalSplitPane(
         if (splitterVisible) {
             splitter {
                 visiblePart {
-                    if (!isIslands) {
+                    if (showDivider) {
                         Divider(
                             Orientation.Vertical,
                             Modifier.fillMaxHeight().width(1.dp),
@@ -123,9 +121,8 @@ fun EnhancedVerticalSplitPane(
     firstMinSize: Float = 200f,
     secondMinSize: Float = 200f,
     showSplitter: Boolean = true,
-    dividerVisibleInIslands: Boolean = false,
+    showDivider: Boolean = false,
 ) {
-    val isIslands = ThemeUtils.isIslandsStyle() && !dividerVisibleInIslands
     val state = splitPaneState.value
     val effectiveSecondMin = if (secondContent == null) 0f else secondMinSize
     val splitterVisible = showSplitter && secondContent != null
@@ -174,7 +171,7 @@ fun EnhancedVerticalSplitPane(
         if (splitterVisible) {
             splitter {
                 visiblePart {
-                    if (!isIslands) {
+                    if (showDivider) {
                         Divider(
                             Orientation.Horizontal,
                             Modifier.fillMaxWidth().height(1.dp),

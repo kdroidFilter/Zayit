@@ -47,15 +47,22 @@ class SelectionContextTest {
     @Test
     fun `selectedText starts empty and round-trips updates`() {
         assertEquals("", context.selectedText.value)
-        context.setSelectedText("שלום")
+        context.setSelectedText("tab-A", "שלום")
         assertEquals("שלום", context.selectedText.value)
-        context.setSelectedText("")
+        context.setSelectedText("tab-A", "")
         assertEquals("", context.selectedText.value)
     }
 
     @Test
+    fun `selectedTextIn only returns the selection made in that tab`() {
+        context.setSelectedText("tab-A", "שלום")
+        assertEquals("שלום", context.selectedTextIn("tab-A"))
+        assertEquals("", context.selectedTextIn("tab-B"))
+    }
+
+    @Test
     fun `clearSelectedText resets value`() {
-        context.setSelectedText("hello")
+        context.setSelectedText("tab-A", "hello")
         context.clearSelectedText()
         assertEquals("", context.selectedText.value)
     }

@@ -1,38 +1,55 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SelectableIconButtonWithToolip
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.isChumash
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
 import seforimapp.seforimapp.generated.resources.*
 
 @Composable
 fun StartVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
+    // A search tab has no library tree: its results filter by category tabs
+    showBookTree: Boolean = true,
 ) {
     VerticalLateralBar(
         position = VerticalLateralBarPosition.Start,
         topContent = {
-            SelectableIconButtonWithToolip(
-                toolTipText = stringResource(Res.string.book_list),
-                onClick = { onEvent(BookContentEvent.ToggleBookTree) },
-                isSelected = uiState.navigation.isVisible,
-                icon = Library,
-                iconDescription = stringResource(Res.string.books),
-                label = stringResource(Res.string.books),
-                shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl",
-            )
+            if (showBookTree) {
+                SelectableIconButtonWithToolip(
+                    toolTipText = stringResource(Res.string.book_list),
+                    onClick = { onEvent(BookContentEvent.ToggleBookTree) },
+                    isSelected = uiState.navigation.isVisible,
+                    icon = Library,
+                    iconDescription = stringResource(Res.string.books),
+                    label = stringResource(Res.string.books),
+                    shortcutHint = if (PlatformInfo.isMacOS) "B+⌘" else "B+Ctrl",
+                )
+            }
             if (uiState.navigation.selectedBook != null) {
                 SelectableIconButtonWithToolip(
                     toolTipText = stringResource(Res.string.book_content),
@@ -64,16 +81,8 @@ fun StartVerticalBar(
 fun EndVerticalBar(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ) {
-    // Collect current text size from settings
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
-
-    // Determine if zoom buttons should be selected based on text size
-    // Also check if we've reached min/max limits to disable buttons appropriately
-    val canZoomIn = rawTextSize < AppSettings.MAX_TEXT_SIZE
-    val canZoomOut = rawTextSize > AppSettings.MIN_TEXT_SIZE
-
     val selectedBook = uiState.navigation.selectedBook
     val noBookSelected = selectedBook == null
     val selectedLine = uiState.content.primaryLine
@@ -113,57 +122,28 @@ fun EndVerticalBar(
     VerticalLateralBar(
         position = VerticalLateralBarPosition.End,
         topContent = {
-            // Platform-specific shortcut hint for Zoom In
-            SelectableIconButtonWithToolip(
-                toolTipText =
-                    if (canZoomIn) {
-                        stringResource(Res.string.zoom_in_tooltip)
-                    } else {
-                        stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
-                    },
-                onClick = { AppSettings.increaseTextSize() },
-                isSelected = false,
-                enabled = canZoomIn,
-                icon = ZoomIn,
-                iconDescription = stringResource(Res.string.zoom_in),
-                label = stringResource(Res.string.zoom_in),
-                shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
-            )
-            SelectableIconButtonWithToolip(
-                toolTipText =
-                    if (canZoomOut) {
-                        stringResource(Res.string.zoom_out_tooltip)
-                    } else {
-                        stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
-                    },
-                onClick = { AppSettings.decreaseTextSize() },
-                isSelected = false,
-                enabled = canZoomOut,
-                icon = ZoomOut,
-                iconDescription = stringResource(Res.string.zoom_out),
-                label = stringResource(Res.string.zoom_out),
-                shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
-            )
+            ZoomButtons()
 
             // Diacritics toggle button - only when a book is selected and has nekudot/teamim
             if (!noBookSelected) {
                 val bookHasDiacritics = selectedBook.hasNekudot || selectedBook.hasTeamim
                 if (bookHasDiacritics) {
-                    SelectableIconButtonWithToolip(
-                        toolTipText =
-                            stringResource(
-                                if (showDiacritics) {
-                                    Res.string.hide_diacritics_tooltip
-                                } else {
-                                    Res.string.show_diacritics_tooltip
-                                },
-                            ),
-                        onClick = { onEvent(BookContentEvent.ToggleDiacritics) },
-                        isSelected = showDiacritics,
-                        icon = TextDiacritics,
-                        iconDescription = stringResource(Res.string.toggle_diacritics),
-                        label = stringResource(Res.string.toggle_diacritics),
+                    DiacriticsButton(
+                        diacritics = diacritics,
+                        hasTeamim = selectedBook.hasTeamim,
+                        onClick = { onEvent(BookContentEvent.CycleDiacritics) },
                         shortcutHint = if (PlatformInfo.isMacOS) "J+⌘" else "J+Ctrl",
+                    )
+                }
+                // Shnayim mikra: in the Chumash, each verse twice and then its targum
+                if (selectedBook.isChumash) {
+                    SelectableIconButtonWithToolip(
+                        toolTipText = stringResource(Res.string.shnayim_mikra_mode_tooltip),
+                        onClick = { onEvent(BookContentEvent.ToggleShnayimMikra) },
+                        isSelected = uiState.content.shnayimMikra,
+                        icon = JournalText,
+                        iconDescription = stringResource(Res.string.shnayim_mikra_mode),
+                        label = stringResource(Res.string.shnayim_mikra_mode),
                     )
                 }
             }
@@ -180,6 +160,18 @@ fun EndVerticalBar(
 //            )
         },
         bottomContent = {
+            // The book's details (a search's selected result's), as the line panes below
+            val bookDetailsVisible by LocalAppGraph.current.appSettings.bookDetailsPaneFlow
+                .collectAsState()
+            val bookDetailsLabel = stringResource(Res.string.search_book_details)
+            SelectableIconButtonWithToolip(
+                toolTipText = bookDetailsLabel,
+                onClick = { onEvent(BookContentEvent.ToggleBookDetails) },
+                isSelected = bookDetailsVisible,
+                icon = TablerInfoSquare,
+                iconDescription = bookDetailsLabel,
+                label = bookDetailsLabel,
+            )
             val targumEnabled = selectedBook?.hasTargumConnection == true
             val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
             val sourcesEnabled = selectedBook?.hasSourceConnection == true
@@ -283,3 +275,112 @@ private data class LineResourceAvailability(
     val commentariesAvailable: Boolean? = null,
     val sourcesAvailable: Boolean? = null,
 )
+
+/** The text's zoom in and out, shared by the reading screens' end bars. */
+@Composable
+fun ZoomButtons() {
+    val appSettings = LocalAppGraph.current.appSettings
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
+    val canZoomIn = rawTextSize < AppSettings.MAX_TEXT_SIZE
+    val canZoomOut = rawTextSize > AppSettings.MIN_TEXT_SIZE
+    SelectableIconButtonWithToolip(
+        toolTipText =
+            if (canZoomIn) {
+                stringResource(Res.string.zoom_in_tooltip)
+            } else {
+                stringResource(Res.string.zoom_in_tooltip) + " (${AppSettings.MAX_TEXT_SIZE.toInt()}sp max)"
+            },
+        onClick = { appSettings.increaseTextSize() },
+        isSelected = false,
+        enabled = canZoomIn,
+        icon = ZoomIn,
+        iconDescription = stringResource(Res.string.zoom_in),
+        label = stringResource(Res.string.zoom_in),
+        shortcutHint = if (PlatformInfo.isMacOS) "+⌘" else "+Ctrl",
+    )
+    SelectableIconButtonWithToolip(
+        toolTipText =
+            if (canZoomOut) {
+                stringResource(Res.string.zoom_out_tooltip)
+            } else {
+                stringResource(Res.string.zoom_out_tooltip) + " (${AppSettings.MIN_TEXT_SIZE.toInt()}sp min)"
+            },
+        onClick = { appSettings.decreaseTextSize() },
+        isSelected = false,
+        enabled = canZoomOut,
+        icon = ZoomOut,
+        iconDescription = stringResource(Res.string.zoom_out),
+        label = stringResource(Res.string.zoom_out),
+        shortcutHint = if (PlatformInfo.isMacOS) "-⌘" else "-Ctrl",
+    )
+}
+
+/** Shows or hides the nikud and teamim. */
+@Composable
+fun DiacriticsButton(
+    showDiacritics: Boolean,
+    onClick: () -> Unit,
+    shortcutHint: String? = null,
+) {
+    DiacriticsButton(
+        diacritics = if (showDiacritics) DiacriticsMode.All else DiacriticsMode.None,
+        hasTeamim = false,
+        onClick = onClick,
+        shortcutHint = shortcutHint,
+    )
+}
+
+/** Cycles through the [DiacriticsMode]s: dots show how much is shown, the tooltip what the next click does. */
+@Composable
+fun DiacriticsButton(
+    diacritics: DiacriticsMode,
+    hasTeamim: Boolean,
+    onClick: () -> Unit,
+    shortcutHint: String? = null,
+) {
+    val tooltip =
+        when (diacritics.next(hasTeamim)) {
+            DiacriticsMode.All -> Res.string.show_diacritics_tooltip
+            DiacriticsMode.NikudOnly -> Res.string.hide_teamim_tooltip
+            DiacriticsMode.None ->
+                if (diacritics == DiacriticsMode.NikudOnly) Res.string.hide_nikud_tooltip else Res.string.hide_diacritics_tooltip
+        }
+    SelectableIconButtonWithToolip(
+        toolTipText = stringResource(tooltip),
+        onClick = onClick,
+        isSelected = diacritics != DiacriticsMode.None,
+        icon = TextDiacritics,
+        iconDescription = stringResource(Res.string.toggle_diacritics),
+        label = stringResource(Res.string.toggle_diacritics),
+        shortcutHint = shortcutHint,
+        // With two states the selected background says it all; with three, dots tell how much is shown
+        indicator = if (hasTeamim) ({ LevelIndicator(levels = 2, level = diacritics.shownLevel) }) else null,
+    )
+}
+
+/** Diacritic layers shown: nikud and teamim, nikud only, none. */
+private val DiacriticsMode.shownLevel: Int
+    get() =
+        when (this) {
+            DiacriticsMode.All -> 2
+            DiacriticsMode.NikudOnly -> 1
+            DiacriticsMode.None -> 0
+        }
+
+/**
+ * [levels] small dots, [level] of them lit. At level 0 the dots are invisible, as the unselected
+ * button already says so, but keep their space so the icon does not move.
+ */
+@Composable
+private fun LevelIndicator(
+    levels: Int,
+    level: Int,
+) {
+    val on = JewelTheme.globalColors.text.selected
+    val off = if (level == 0) Color.Transparent else JewelTheme.globalColors.text.disabled
+    Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+        repeat(levels) {
+            Box(Modifier.size(4.dp).background(if (it < level) on else off, CircleShape))
+        }
+    }
+}

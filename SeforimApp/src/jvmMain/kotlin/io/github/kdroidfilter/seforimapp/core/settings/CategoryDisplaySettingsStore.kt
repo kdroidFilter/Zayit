@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.settings
 
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -13,38 +14,45 @@ class CategoryDisplaySettingsStore(
     private val _categoryChanges = MutableSharedFlow<Long>(extraBufferCapacity = 1)
     val categoryChanges: SharedFlow<Long> = _categoryChanges.asSharedFlow()
 
-    suspend fun getShowDiacritics(categoryId: Long): Boolean =
-        withContext(Dispatchers.IO) {
-            val value =
-                database.categoryDisplaySettingsQueries
-                    .selectShowDiacritics(categoryId)
-                    .executeAsOneOrNull()
-            (value ?: 1L) != 0L
-        }
+    suspend fun getDiacritics(categoryId: Long): DiacriticsMode = withContext(Dispatchers.IO) { readDiacritics(categoryId) }
 
-    suspend fun setShowDiacritics(
+    /** Moves the category to the next [DiacriticsMode] (see [DiacriticsMode.next]) and returns it. */
+    suspend fun cycleDiacritics(
         categoryId: Long,
-        enabled: Boolean,
-    ) = withContext(Dispatchers.IO) {
-        database.categoryDisplaySettingsQueries.upsertShowDiacritics(
-            categoryId = categoryId,
-            showDiacritics = if (enabled) 1L else 0L,
-        )
-        _categoryChanges.tryEmit(categoryId)
-    }
-
-    suspend fun toggleShowDiacritics(categoryId: Long): Boolean =
+        hasTeamim: Boolean,
+    ): DiacriticsMode =
         withContext(Dispatchers.IO) {
-            val current =
-                database.categoryDisplaySettingsQueries
-                    .selectShowDiacritics(categoryId)
-                    .executeAsOneOrNull()
-            val next = (current ?: 1L) == 0L
+            val next = readDiacritics(categoryId).next(hasTeamim)
             database.categoryDisplaySettingsQueries.upsertShowDiacritics(
                 categoryId = categoryId,
-                showDiacritics = if (next) 1L else 0L,
+                showDiacritics = next.toStored(),
             )
             _categoryChanges.tryEmit(categoryId)
             next
         }
+
+    private fun readDiacritics(categoryId: Long): DiacriticsMode =
+        database.categoryDisplaySettingsQueries
+            .selectShowDiacritics(categoryId)
+            .executeAsOneOrNull()
+            .toDiacriticsMode()
 }
+
+// The column predates the nikud-only mode: 1 (all) and 0 (none) keep their meaning.
+private const val STORED_NONE = 0L
+private const val STORED_ALL = 1L
+private const val STORED_NIKUD_ONLY = 2L
+
+private fun Long?.toDiacriticsMode(): DiacriticsMode =
+    when (this) {
+        STORED_NONE -> DiacriticsMode.None
+        STORED_NIKUD_ONLY -> DiacriticsMode.NikudOnly
+        else -> DiacriticsMode.All
+    }
+
+private fun DiacriticsMode.toStored(): Long =
+    when (this) {
+        DiacriticsMode.All -> STORED_ALL
+        DiacriticsMode.NikudOnly -> STORED_NIKUD_ONLY
+        DiacriticsMode.None -> STORED_NONE
+    }

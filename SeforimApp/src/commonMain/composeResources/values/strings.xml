@@ -79,6 +79,39 @@
     <string name="desktop_new">מרחב חדש</string>
     <string name="desktop_rename">שנה שם</string>
     <string name="desktop_delete">מחק</string>
+    <string name="desktop_open_in_new_window">פתח בחלון חדש</string>
+    <string name="tab_open_in_new_window">פתח בחלון חדש</string>
+    <string name="tab_move_to_desktop">העבר ל%1$s</string>
+    <string name="tab_search_tooltip">חיפוש בלשוניות ובהיסטוריה</string>
+    <string name="tab_search_placeholder">חיפוש…</string>
+    <string name="tab_search_no_results">אין תוצאות</string>
+    <string name="tab_search_show_all_history">הצג את כל ההיסטוריה</string>
+    <string name="history_title">היסטוריה</string>
+    <string name="history_clear_all">נקה היסטוריה</string>
+    <string name="history_today">היום</string>
+    <string name="history_yesterday">אתמול</string>
+    <string name="history_empty">ההיסטוריה ריקה</string>
+    <string name="menu_recently_visited">ביקורים אחרונים</string>
+    <string name="favorites_title">מועדפים</string>
+    <string name="notes_title">ההערות שלי</string>
+    <string name="notes_empty">אין הערות</string>
+    <string name="notes_search_placeholder">חיפוש בהערות</string>
+    <string name="notes_show_all">הצג את כל ההערות</string>
+    <string name="favorites_empty">אין מועדפים</string>
+    <string name="favorites_show_all">הצג את כל המועדפים</string>
+    <string name="favorites_add">הוסף למועדפים</string>
+    <string name="favorites_edit">עריכת מועדף</string>
+    <string name="favorites_new_folder">תיקייה חדשה</string>
+    <string name="favorites_folder_name_placeholder">שם התיקייה</string>
+    <string name="favorites_no_folder">ללא תיקייה</string>
+    <string name="favorites_search_placeholder">חפש במועדפים...</string>
+    <string name="favorites_create_folder">צור</string>
+    <string name="history_clear_confirm_title">ניקוי היסטוריה</string>
+    <string name="history_clear_confirm_message">האם אתה בטוח שברצונך למחוק את כל ההיסטוריה? פעולה זו אינה ניתנת לביטול.</string>
+    <string name="history_clear_confirm_yes">כן, נקה</string>
+    <string name="breadcrumb_copy_link">העתק קישור</string>
+    <string name="breadcrumb_share">שתף</string>
+    <string name="menu_new_window">חלון חדש</string>
 
     <!-- Tabs View -->
     <string name="settings_tooltip">פתח הגדרות</string>
@@ -105,11 +138,38 @@
     <string name="data_import_success">הנתונים יובאו בהצלחה. האפליקציה מופעלת מחדש…</string>
     <string name="data_export_error">ייצוא הנתונים נכשל</string>
     <string name="data_import_error">ייבוא הנתונים נכשל</string>
+    <string name="drive_title">גיבוי לגוגל דרייב</string>
+    <string name="drive_description">גיבוי של ההערות, ההדגשות, המועדפים וההגדרות לחשבון Google שלך: בסגירת האפליקציה ופעם ביום.</string>
+    <string name="drive_connect">התחברות</string>
+    <string name="drive_connecting">ממתין לאישור בדפדפן…</string>
+    <string name="drive_cancel">ביטול</string>
+    <string name="drive_connected_as">מחובר כ-%1$s</string>
+    <string name="drive_connected">מחובר לגוגל דרייב</string>
+    <string name="drive_last_backup">גיבוי אחרון: %1$s</string>
+    <string name="drive_no_backup_yet">טרם בוצע גיבוי</string>
+    <string name="drive_backup_now">גיבוי עכשיו</string>
+    <string name="drive_backing_up">מגבה…</string>
+    <string name="drive_restore">שחזור</string>
+    <string name="drive_restoring">משחזר…</string>
+    <string name="drive_disconnect">ניתוק</string>
+    <string name="drive_restore_staged">הגיבוי שוחזר. האפליקציה מופעלת מחדש…</string>
+    <string name="drive_restore_warning">השחזור יחליף את הנתונים שבמחשב זה בגיבוי מגוגל דרייב, והאפליקציה תופעל מחדש.</string>
+    <string name="drive_pending_remote">נמצא בגוגל דרייב גיבוי מתאריך %1$s. שחזרו אותו, או גבו את הנתונים של מחשב זה במקומו. עד אז הגיבוי האוטומטי מושהה.</string>
+    <string name="drive_error_connect">ההתחברות לגוגל דרייב נכשלה</string>
+    <string name="drive_error_permission">לא ניתנה הרשאה לגוגל דרייב. יש לסמן אותה במסך ההרשאות של Google ולהתחבר שוב.</string>
+    <string name="drive_error_unavailable">גוגל דרייב אינו זמין בחשבון זה (ייתכן שמנהל הארגון חסם אותו). נסו חשבון Google אחר.</string>
+    <string name="drive_error_backup">הגיבוי לגוגל דרייב נכשל</string>
+    <string name="drive_error_restore">השחזור מגוגל דרייב נכשל</string>
+    <string name="drive_error_no_backup">לא נמצא גיבוי בגוגל דרייב</string>
+    <string name="drive_error_revoked">הגישה לגוגל דרייב בוטלה. יש להתחבר מחדש.</string>
     <string name="data_reset_description">איפוס מלא של האפליקציה למצב ההתחלתי. פעולה זו תמחק את כל הנתונים שלך.</string>
     <string name="add_tab">הוסף לשונית</string>
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
     <string name="close_all_tabs">סגור את כל הלשוניות</string>
+    <string name="pin_tab">הצמד לשונית</string>
+    <string name="unpin_tab">בטל הצמדה</string>
+    <string name="close_pinned_tab_hint">לחץ שוב על %1$s כדי לסגור את הלשונית המוצמדת</string>
     <string name="close_other_tabs">סגור לשוניות אחרות</string>
     <!-- Reworded to "close towards the right" for consistency with RTL wording -->
     <string name="close_tabs_left">סגור את הלשוניות מימין</string>
@@ -123,6 +183,10 @@
     <string name="books">ספרים</string>
     <string name="book_content">תוכן הספר</string>
     <string name="table_of_contents">תוכן עניינים</string>
+    <string name="toc_search">חיפוש כותרת</string>
+    <string name="book_search">חיפוש ספר</string>
+    <string name="book_search_no_results">לא נמצאו ספרים</string>
+    <string name="toc_search_no_results">לא נמצאו כותרות</string>
     <string name="personal">אישי</string>
     <string name="my_bookmarks">הסימניות שלי</string>
     <string name="bookmarks">סימניות</string>
@@ -135,6 +199,7 @@
     <string name="context_menu_copy_link">העתק קישור לקטע זה</string>
     <string name="context_menu_highlight">סמן</string>
     <string name="context_menu_add_note">הוסף הערה</string>
+    <string name="context_menu_report_error">דווח על טעות</string>
 
     <!-- Notes pane -->
     <string name="notes_pane">הערות</string>
@@ -152,12 +217,20 @@
     <string name="zoom_out_tooltip">הקטן גודל הטקסט</string>
     <string name="zoom_out">הקטן</string>
     <string name="toggle_diacritics">ניקוד</string>
+    <string name="shnayim_mikra_mode">שנים מקרא</string>
+    <string name="shnayim_mikra_mode_tooltip">שנים מקרא ואחד תרגום: כל פסוק פעמיים ואחריו התרגום</string>
     <string name="show_diacritics_tooltip">הצג ניקוד וטעמים</string>
     <string name="hide_diacritics_tooltip">הסתר ניקוד וטעמים</string>
+    <string name="hide_teamim_tooltip">הסתר טעמים</string>
+    <string name="hide_nikud_tooltip">הסתר ניקוד</string>
     <string name="add_bookmark_tooltip">הוסף סימנייה</string>
     <string name="add_bookmark">הוסף סימנייה</string>
     <string name="search_in_page_tooltip">חפש בתוך העמוד</string>
     <string name="search_in_page">הקלד כדי לחפש בעמוד...</string>
+    <string name="find_previous_match">התוצאה הקודמת</string>
+    <string name="find_next_match">התוצאה הבאה</string>
+    <string name="find_close">סגירת החיפוש</string>
+    <string name="find_smart_mode">חיפוש חכם לפי משמעות</string>
     <string name="print_tooltip">הדפס עמוד זה</string>
     <string name="print">הדפס</string>
     <string name="report_tooltip">דווח על בעיה בעמוד זה</string>
@@ -176,6 +249,9 @@
     <string name="toggle_commentators_sidebar">הצג/הסתר סרגל מפרשים</string>
     <string name="show_commentators_sidebar">הצג סרגל מפרשים</string>
     <string name="hide_commentators_sidebar">הסתר סרגל מפרשים</string>
+    <!-- Pane header: pull the pane out into a window of its own, or put it back in the dock -->
+    <string name="pane_float">פתח בחלון נפרד</string>
+    <string name="pane_dock">החזר לחלון הראשי</string>
     <string name="write_note_tooltip">כתוב הערה על שורה זאת</string>
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>
@@ -212,10 +288,19 @@
     <string name="please_select_a_book">אנא בחר ספר</string>
 
     <!-- Home Page View -->
-    <string name="search_mode_reference">ספר</string>
-    <string name="search_mode_text">טקסט</string>
-    <string name="search_mode_reference_explicit">חיפוש לפי מקור</string>
-    <string name="search_mode_text_explicit">חיפוש בטקסט</string>
+    <string name="search_text_row">חיפוש במאגר: %1$s</string>
+    <string name="author_books_count">%1$d ספרים</string>
+    <string name="author_books">ספרים במאגר</string>
+    <string name="author_info_era">תקופה</string>
+    <string name="author_info_years">שנים</string>
+    <string name="author_info_aliases">כינויים</string>
+    <string name="author_sources">מקורות</string>
+    <string name="author_books_pane">ספרי המחבר</string>
+    <string name="author_info_pane">פרטי המחבר</string>
+    <string name="author_bio_ai_notice">שימו לב: הביוגרפיה נכתבה באופן אוטומטי בעזרת בינה מלאכותית על פי המקורות המצוינים בה, ולא עברה בדיקה אנושית. ייתכנו טעויות בתאריכים, בשמות ובפרטים; אמתו מול מקור מהימן לפני הסתמכות.</string>
+    <string name="author_bio_license">הביוגרפיה מתפרסמת ברישיון CC BY-SA 4.0, על פי המקורות המצוינים בה.</string>
+    <string name="author_not_found">המחבר לא נמצא</string>
+    <string name="search_text_row_in_book">חיפוש בתוך %2$s: %1$s</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
     <string name="remove_selected_book">הסר ספר שנבחר</string>
 
@@ -227,19 +312,14 @@
     <string name="reference_hint_5">תהילים פרק כג פסוק ד</string>
 
     <!-- Book names only (for reference-mode first field) -->
-    <string name="reference_book_hint_1">משנת יסודות התורה</string>
-    <string name="reference_book_hint_2">שוע יוד</string>
-    <string name="reference_book_hint_3">תהילים</string>
-    <string name="reference_book_hint_4">ברכות</string>
-    <string name="reference_book_hint_5">שוע אורח חיים</string>
 
     <!-- TOC examples (for second field when no book yet) -->
-    <string name="reference_toc_hint_1">פרק א</string>
-    <string name="reference_toc_hint_2">סימן א</string>
-    <string name="reference_toc_hint_3">סעיף א</string>
-    <string name="reference_toc_hint_4">דף ב עמוד א</string>
-    <string name="reference_toc_hint_5">שער א</string>
-    <string name="tab_hint_select">Tab ⇥</string>
+    <string name="search_in_book_placeholder">מה לחפש בספר זה? פרק, סימן או כל מילה</string>
+    <string name="row_action_open">פתיחה</string>
+    <string name="row_action_search_inside">חיפוש בתוך</string>
+    <string name="row_action_search">חיפוש</string>
+    <string name="row_action_search_base">בספרי יסוד</string>
+    <string name="row_action_search_all">בכל הספרים</string>
     <string name="autocomplete_no_results">לא נמצאו תוצאות</string>
     <string name="autocomplete_loading">טוען…</string>
 
@@ -254,11 +334,6 @@
     <string name="home_cycle_card_subtitle">סיכום זמני היום והלילה</string>
     <string name="home_cycle_chip_twilight">עלות השחר: %1$s</string>
     <string name="home_cycle_chip_solar_noon">חצות היום: %1$s</string>
-    <string name="home_widget_label_astronomical_dawn">עמוד השחר</string>
-    <string name="home_widget_label_sunrise">נץ החמה</string>
-    <string name="home_widget_label_noon">חצות היום</string>
-    <string name="home_widget_label_sunset">שקיעת החמה</string>
-    <string name="home_widget_label_night">צאת הכוכבים</string>
     <string name="home_widget_card_first_light_title">עמוד השחר</string>
     <string name="home_widget_card_first_light_abbrev">ע״ה</string>
     <string name="home_widget_card_first_light_subtitle">ראשית אור היום ההלכתי</string>
@@ -267,12 +342,15 @@
     <string name="home_widget_card_sunrise_abbrev">נצ״ח</string>
     <string name="home_widget_card_sunrise_subtitle">תחילת זמן קריאת שמע</string>
     <string name="home_widget_card_sunrise_detail">סמוך לזמן תפילת שחרית</string>
-    <string name="home_widget_card_noon_title">חצות היום</string>
-    <string name="home_widget_card_noon_abbrev">חה״י</string>
     <string name="home_widget_card_noon_subtitle">אמצע היום ההלכתי</string>
     <string name="home_widget_card_noon_detail">חצי הזמן מן הנץ לשקיעה</string>
-    <string name="home_widget_card_midnight_title">חצות הלילה</string>
-    <string name="home_widget_card_midnight_abbrev">חה״ל</string>
+    <string name="home_widget_chatzot_title">חצות</string>
+    <string name="home_widget_chatzot_day_label">היום</string>
+    <string name="home_widget_chatzot_night_label">הלילה</string>
+    <string name="home_widget_mincha_title">מנחה</string>
+    <string name="home_widget_mincha_gedola_label">גדולה</string>
+    <string name="home_widget_mincha_ketana_label">קטנה</string>
+    <string name="home_widget_mincha_plag_label">פלג</string>
     <string name="home_widget_card_sunset_title">שקיעת החמה</string>
     <string name="home_widget_card_sunset_abbrev">שק״ה</string>
     <string name="home_widget_card_sunset_subtitle">סיום זמן היום</string>
@@ -282,9 +360,9 @@
     <string name="home_widget_shema_gra_label">גר״א</string>
     <string name="home_widget_shema_mga_label">מג״א</string>
     <string name="home_widget_tefila_title">סוף זמן תפילה</string>
-    <string name="home_widget_tefila_title_abbrev">ס״ז תפילה</string>
-    <string name="home_widget_shabbat_entry_label">כניסת שבת</string>
-    <string name="home_widget_shabbat_exit_label">צאת שבת</string>
+    <string name="home_widget_tefila_title_abbrev">ס״ז תפ׳</string>
+    <string name="home_widget_shabbat_entry_label">כניסה</string>
+    <string name="home_widget_shabbat_exit_label">יציאה</string>
     <string name="home_widget_visible_stars_title">צאת הכוכבים</string>
     <string name="home_widget_visible_stars_title_abbrev">צה״כ</string>
     <string name="home_widget_tzais_geonim_label">גאונים</string>
@@ -292,16 +370,59 @@
     <string name="home_widget_tzais_rabbeinu_tam_label">ר״ת</string>
     <string name="home_widget_visible_stars_subtitle">תחילת הלילה ההלכתי</string>
     <string name="home_widget_visible_stars_detail">סיום זמן בין השמשות</string>
-    <string name="home_lunar_card_title">מחזור הלבנה ההלכתי</string>
-    <string name="home_lunar_card_subtitle">זמני קידוש לבנה</string>
-    <string name="home_lunar_chip_day">יום הלבנה %1$s</string>
-    <string name="home_lunar_label_illumination">שיעור נראות הלבנה</string>
-    <string name="home_lunar_label_moonrise">תחילת זמן קידוש לבנה</string>
-    <string name="home_lunar_label_moonset">סיום זמן קידוש לבנה</string>
-    <string name="home_lunar_next_full_moon_label">הזמן הבא לקידוש לבנה</string>
-    <string name="home_lunar_next_full_moon_value">בעוד %1$s ימים</string>
 
     <!-- Temple Destruction Countdown -->
+    <string name="home_solar_system_title">מעגל השנה</string>
+    <string name="home_widgets_edit">עריכת ווידג'טים</string>
+    <string name="home_widgets_done">סיום</string>
+    <string name="home_widgets_gallery_title">ווידג'טים</string>
+    <string name="home_widgets_gallery_hint">גררו ווידג'ט אל הדף או לחצו עליו כדי להוסיף אותו · גררו ווידג'ט בדף כדי להזיז אותו · לחצו עליו ומשכו את הידיות כדי לשנות את גודלו · Esc לסיום</string>
+    <string name="home_widgets_add">הוספה</string>
+    <string name="home_widgets_all_placed">כל הווידג'טים כבר בדף</string>
+    <string name="home_widgets_remove">הסרת הווידג'ט</string>
+    <string name="home_widgets_resize">שינוי גודל</string>
+    <string name="home_widgets_options">אפשרויות…</string>
+    <string name="home_widgets_removed">%1$s הוסר</string>
+    <string name="home_widgets_undo">ביטול</string>
+    <string name="home_widgets_arrange">סידור חכם</string>
+    <string name="home_widgets_reset">שחזור ברירת המחדל</string>
+    <string name="home_widget_name_zmanim">זמני היום</string>
+    <string name="home_widget_name_earth">כדור הארץ</string>
+    <string name="home_widget_name_temple">חורבן הבית</string>
+    <string name="home_widget_name_sky">השמיים</string>
+    <string name="home_solar_options_window">בחלון המלא</string>
+    <string name="home_solar_options_speed">מהירות ההפעלה</string>
+    <string name="home_solar_speed_one_day">יום בשנייה</string>
+    <string name="home_solar_speed_fraction">%1$s יום בשנייה</string>
+    <string name="home_solar_speed_days">%1$d ימים בשנייה</string>
+    <string name="home_solar_options_proportional_spin">סיבוב כדור הארץ יחסי למהירות</string>
+    <string name="home_solar_options_proportional_spin_hint">סיבוב אחד בכל יום מדומה, כמו במציאות. בלי זה, כדור הארץ של מעגל השנה מסתובב בקצב קבוע של סיבוב בכל ⁦2⁩ שניות; כדור הארץ והשמיים בפינה תמיד מראים את הרגע המדויק.</string>
+    <string name="home_solar_options_show_earth">הצג את כדור הארץ</string>
+    <string name="home_solar_options_show_sky">הצג את השמיים</string>
+    <string name="home_solar_options_advanced">מתקדם</string>
+    <string name="home_solar_options_show_fps">הצג קצב תמונות (FPS)</string>
+    <string name="home_widget_name_calendar">לוח עברי</string>
+    <string name="home_widget_name_limud">לימוד יומי</string>
+    <string name="home_widget_name_shnayim_mikra">שנים מקרא ואחד תרגום</string>
+    <string name="home_widget_name_next_zman">הזמן הבא</string>
+    <string name="home_widget_name_events">מועדים קרובים</string>
+    <string name="home_widget_name_tefila">תפילת היום</string>
+    <string name="home_widget_name_molad">מולד וקידוש לבנה</string>
+    <string name="home_widget_name_history">היסטוריה</string>
+    <string name="home_widget_name_favorites">מועדפים</string>
+    <string name="home_widget_name_notes">ההערות שלי</string>
+    <string name="home_widget_name_measures">ממיר מידות</string>
+    <string name="home_widget_name_dictionary">מילון</string>
+    <string name="home_dictionary_hint">חיפוש ב%1$s</string>
+    <string name="home_dictionary_not_found">המילה לא נמצאה</string>
+    <string name="home_dictionary_all">כל המילונים</string>
+    <string name="home_dictionary_loading">טוען את המילונים…</string>
+    <string name="home_dictionary_random">מילה אקראית</string>
+    <string name="home_dictionary_back">חזרה לחיפוש</string>
+    <string name="home_dictionary_open_book">פתיחה ב%1$s</string>
+    <string name="home_dictionary_failed">חלק מהמילונים לא נטענו</string>
+    <string name="home_dictionary_retry">לנסות שוב</string>
+    <string name="home_dictionary_options_title">המילונים לחיפוש</string>
     <string name="home_temple_title">זמן שחלף מאז חורבן בית המקדש השני</string>
     <string name="home_temple_subtitle">והראנו בבנינו ושמחנו בתיקונו, והשב שכינתך לתוכו.</string>
     <string name="home_temple_years">שנים</string>
@@ -342,19 +463,17 @@
     <string name="settings_persist_session_description">כאשר אפשרות זו מופעלת, האפליקציה תשמור את הלשוניות הפתוחות ומיקום הקריאה שלך, ותשחזר אותם בהפעלה הבאה.</string>
     <string name="settings_keep_screen_awake">מנע כיבוי מסך בזמן קריאה</string>
     <string name="settings_keep_screen_awake_description">כאשר אפשרות זו מופעלת, המסך לא ייכבה ולא ייכנס למצב שינה כל עוד ספר פתוח בלשונית הנוכחית והחלון פעיל.</string>
-    <string name="settings_show_zmanim_widgets">הצג זמנים הלכתיים בדף הבית</string>
-    <string name="settings_show_zmanim_widgets_description">כאשר אפשרות זו מופעלת, יוצגו בדף הבית וידג'טים עם זמני היום ההלכתיים (נץ החמה, שקיעה, זמני תפילה וכו').</string>
     <string name="settings_show_home_wallpaper">הצג תמונת רקע בדף הבית</string>
     <string name="settings_show_home_wallpaper_description">כאשר אפשרות זו מופעלת, יוצג נוף של כרם זיתים כרקע דקורטיבי בדף הבית.</string>
     <string name="settings_compact_mode">מצב קומפקטי לסרגל הצדדי</string>
     <string name="settings_compact_mode_description">כאשר אפשרות זו מופעלת, הסרגלים הצדדיים יוצגו בצורה צפופה יותר: האייקונים יהיו קטנים יותר והטקסט שמתחת לאייקונים לא יוצג.</string>
     <string name="settings_max_commentators_per_page">מספר מרבי של מפרשים בעמוד</string>
+    <string name="settings_antialiasing">החלקת קצוות בתלת־ממד (אנטי־אליאסינג)</string>
+    <string name="settings_antialiasing_description">משפרת את מראה הקצוות בכדור הארץ ובמערכת השמש. מצבים גבוהים דורשים יותר מכרטיס המסך.</string>
+    <string name="settings_antialiasing_off">כבוי (ברירת מחדל)</string>
     <string name="settings_max_commentators_per_page_description">קובע כמה מפרשים יוצגו לכל היותר בעמוד אחד. כאשר נבחר "אוטומטי", המספר מותאם לגודל המסך. הגבלה למספר מסוים תיצור עמודים נוספים כשיש יותר מפרשים, אך כאשר יש מקום לפחות מכך יוצגו רק מה שנכנס.</string>
     <string name="settings_max_commentators_per_page_auto">אוטומטי</string>
     <!-- Theme style selector -->
-    <string name="settings_theme_style_label">סגנון ערכת נושא</string>
-    <string name="settings_theme_style_classic">קלאסי</string>
-    <string name="settings_theme_style_islands">איילנדס</string>
     <!-- Accent color selector -->
     <string name="settings_accent_color_label">צבע מבטא</string>
     <string name="accent_color_system">מערכת</string>
@@ -386,7 +505,7 @@
     <string name="installation_online_button">התחלת התקנה מקוונת</string>
     <!-- Offline -->
     <string name="installation_offline_title">התקנה לא-מקוונת</string>
-    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את הקבצים עם הסיומות .part01 ו-.part02 מעמוד ההפצה, ולאחר מכן בחרו אותם כאן להמשך ההתקנה.</string>
+    <string name="installation_offline_desc">עליכם לבחור קובץ מסד נתונים מוכן שהורד מראש מעמוד ההפצות האחרון. הורידו את כל הקבצים עם הסיומות ‎.part01, ‎.part02 וכו׳ מעמוד ההפצה לאותה תיקייה (וכן את קובץ ‎.manifest.json אם קיים), ולאחר מכן בחרו כאן את קובץ ‎.part01 להמשך ההתקנה.</string>
     <string name="installation_offline_button">התחלת התקנה לא-מקוונת</string>
     <!-- Releases info (לשימוש היכן שתרצה; ה-URL עצמו יישום אצלך בקוד) -->
     <string name="installation_releases_hint">עמוד ההפצות האחרון</string>
@@ -395,7 +514,7 @@
     <!--Downloading-->
     <string name="onboarding_downloading_message">אנא המתן בזמן שאנו מורידים את מסד הנתונים</string>
     <string name="onboarding_file_selection">בחירת קבצים</string>
-    <string name="onboarding_select_files_message">אנא בחרו את קבצי ‎.part01 ו-‎.part02 של מסד הנתונים</string>
+    <string name="onboarding_select_files_message">אנא בחרו את קובץ ‎.part01 של מסד הנתונים (כל החלקים צריכים להיות באותה תיקייה)</string>
     <string name="onboarding_part01_selected">קובץ part01 נבחר ✓</string>
     <string name="onboarding_choose_files">בחירת קבצים</string>
     <string name="onboarding_extracting_message">אנא המתן בזמן שאנו מחלצים את מסד הנתונים</string>
@@ -484,6 +603,28 @@
     <string name="search_load_more">טען תוצאות נוספות</string>
     <string name="search_result_count">נמצאו %1$d/%2$d תוצאות</string>
     <string name="search_result_count_complete">נמצאו %1$d תוצאות</string>
+    <string name="search_more_in_book">עוד %1$d תוצאות בספר זה</string>
+    <string name="search_collapse">הסתר</string>
+    <string name="search_more_from_book">עוד %1$d תוצאות מ%2$s</string>
+    <string name="search_status_base">כ־%1$s תוצאות בספרי יסוד</string>
+    <string name="search_status_all">כ־%1$s תוצאות בכל הספרים</string>
+    <string name="search_status_in">כ־%1$s תוצאות ב%2$s</string>
+    <string name="search_status_fallback">לא נמצא בספרי יסוד · מוצגות %1$s תוצאות מכל הספרים</string>
+    <string name="search_switch_all">חיפוש בכל הספרים</string>
+    <string name="search_switch_base">רק ספרי יסוד</string>
+    <string name="search_tab_all">הכל</string>
+    <string name="search_book_details">פרטי הספר</string>
+    <string name="search_back_to_all">→ חזרה לכל התוצאות (מוצגות התוצאות מ%1$s)</string>
+    <string name="search_tabs_more">עוד</string>
+    <string name="search_tabs_less">פחות</string>
+    <string name="search_panel_author">מחבר</string>
+    <string name="search_panel_parts">חלקי הספר</string>
+    <string name="search_panel_source">מקור ורישיון</string>
+    <string name="license_public_domain">נחלת הכלל</string>
+    <string name="license_unknown">רישיון לא ידוע</string>
+    <string name="otzaria_credit">התכנים שלפניכם נאספו, מוינו, סוננו ונערכו בעמל רב ובמסירות על ידי צוות פרויקט 'אוצריא' (otzaria.org).</string>
+    <string name="search_clear">ניקוי</string>
+    <string name="search_panel_author_page">לדף המחבר</string>
     <string name="search_stop">בטל חיפוש</string>
     <string name="search_near_selector_label">קרבה</string>
     <string name="search_extended_label">חיפוש מורחב (כל הספרים)</string>
@@ -506,8 +647,8 @@
     <!-- Settings > App Info (General Settings Header) -->
     <string name="settings_info_app_version">גרסה: %1$s</string>
     <string name="settings_info_created_by">נוצר על ידי אליהו גמבש</string>
-    <string name="settings_info_license">יישום זה הוא קוד פתוח תחת רישיון AGPL-3.0</string>
-    <string name="settings_info_license_usage">ניתן להשתמש ולהפיץ בהתאם לתנאי הרישיון.</string>
+    <string name="settings_info_license">יישום זה בנוי כליבה פתוחה (open core): הליבה שלו היא קוד פתוח תחת רישיון AGPL-3.0</string>
+    <string name="settings_info_license_usage">המודולים הקנייניים (הסידור החכם, החיפוש הסמנטי) אינם קוד פתוח, ואין להפיצם מחוץ ליישום.</string>
 
     <!-- App Update -->
     <string name="update_available_banner">גרסה %1$s זמינה להורדה</string>
@@ -546,7 +687,7 @@
     <!-- Update Options Screen -->
     <string name="db_update_options_title">אפשרויות עדכון</string>
     <string name="db_update_local_file_title">קובץ מקומי</string>
-    <string name="db_update_local_file_desc">השתמשו בקובץ מסד נתונים שהורד מראש (קבצי ‎.part01 ו-‎.part02)</string>
+    <string name="db_update_local_file_desc">השתמשו בקובץ מסד נתונים שהורד מראש (קבצי ‎.part01, ‎.part02 וכו׳)</string>
     <string name="db_update_local_file_button">בחירת קובץ</string>
     <string name="db_update_download_title">הורדה</string>
     <string name="db_update_download_desc">הורידו באופן אוטומטי את הגרסה העדכנית ביותר של מסד הנתונים מהאינטרנט</string>
@@ -564,11 +705,12 @@
     <string name="db_update_retry">נסה שוב</string>
     <string name="db_install_cleanup_failed">לא ניתן למחוק את מסד הנתונים הקודם — ייתכן שהוא נעול על ידי תוכנה אחרת (אנטי-וירוס או חיפוש Windows) או על ידי מופע קודם של היישום. סגרו תוכנות אלו, הפעילו מחדש את היישום ונסו שוב.</string>
     <string name="db_install_insufficient_space">אין מספיק שטח פנוי בכונן להתקנת מסד הנתונים. פנו מקום בכונן ונסו שוב.</string>
+    <string name="db_install_incomplete_bundle">קבצי מסד הנתונים שנבחרו אינם שלמים: חסר חלק או שאחד החלקים לא הורד עד הסוף. ודאו שכל קבצי ‎.part נמצאים באותה תיקייה ונסו שוב.</string>
 
     <!-- Offline Update Screen -->
     <string name="db_update_offline_title">עדכון מקובץ מקומי</string>
     <string name="db_update_file_selection">בחירת קבצים</string>
-    <string name="db_update_select_files_message">אנא בחרו את קבצי ‎.part01 ו-‎.part02 של מסד הנתונים</string>
+    <string name="db_update_select_files_message">אנא בחרו את קובץ ‎.part01 של מסד הנתונים (כל החלקים צריכים להיות באותה תיקייה)</string>
     <string name="db_update_part01_selected">קובץ part01 נבחר ✓</string>
     <string name="db_update_choose_files">בחירת קבצים</string>
     <string name="db_update_extracting">מחלץ מאגר...</string>
@@ -596,13 +738,103 @@
     <string name="menu_find_in_page">חפש בעמוד</string>
     <string name="menu_view">תצוגה</string>
     <string name="menu_theme">ערכת נושא</string>
-    <string name="menu_theme_style">סגנון</string>
     <string name="menu_appearance">מראה</string>
     <string name="menu_zoom_in">הגדל טקסט</string>
     <string name="menu_zoom_out">הקטן טקסט</string>
     <string name="menu_go_home">עבור לדף הבית</string>
     <string name="menu_preferences">העדפות…</string>
     <string name="menu_window">חלון</string>
+    <string name="menu_tools">כלים</string>
     <string name="menu_help">עזרה</string>
+
+    <!-- Smart siddur -->
+    <string name="siddur_title">סידור חכם</string>
+    <string name="siddur_part_shacharit">שחרית</string>
+    <string name="siddur_part_mincha">מנחה</string>
+    <string name="siddur_part_maariv">ערבית</string>
+    <string name="siddur_part_sfirat_haomer">ספירת העומר</string>
+    <string name="siddur_part_birkat_hamazon">ברכת המזון</string>
+    <string name="siddur_part_meein_shalosh">ברכה מעין שלוש</string>
+    <string name="siddur_part_tefilat_haderech">תפילת הדרך</string>
+    <string name="siddur_part_kriat_shema_al_hamita">קריאת שמע על המיטה</string>
+    <string name="siddur_part_kiddush_levana">קידוש לבנה</string>
+    <string name="siddur_part_nerot_chanuka">נרות חנוכה</string>
+    <string name="siddur_option_zimun">זימון</string>
+    <string name="siddur_option_zimun_10">בעשרה</string>
+    <string name="siddur_option_mezonot">מזונות</string>
+    <string name="siddur_option_wine">יין</string>
+    <string name="siddur_option_fruit">פירות משבעת המינים</string>
+    <string name="siddur_option_beit_avel">בבית האבל</string>
+    <string name="siddur_option_first_lulav">נטילת לולב ראשונה</string>
+    <string name="siddur_option_seudat_mila">סעודת ברית מילה</string>
+    <string name="siddur_nusach_ashkenaz">נוסח אשכנז</string>
+    <string name="siddur_nusach_sefard">נוסח ספרד</string>
+    <string name="siddur_nusach_edot">עדות המזרח</string>
+    <string name="siddur_nusach_missing">נוסח זה עדיין אינו זמין, ומוצג נוסח אשכנז</string>
+    <string name="siddur_minyan">במניין</string>
+    <string name="siddur_show_all">הצג גם את מה שאין אומרים היום</string>
+    <string name="siddur_today">היום</string>
+    <string name="siddur_previous_day">היום הקודם</string>
+    <string name="siddur_next_day">היום הבא</string>
+    <string name="siddur_night_of">ליל %1$s</string>
+    <string name="siddur_at_night">בלילה</string>
+    <string name="siddur_jump_to">מעבר אל</string>
+    <string name="siddur_omer_sefira">יום %1$d לעומר · %2$s</string>
+    <string name="siddur_levana_window">זמן קידוש לבנה: מ%1$s עד %2$s</string>
+    <string name="siddur_levana_open">אפשר לקדש את הלבנה עכשיו</string>
+    <string name="siddur_chanuka_candles">הלילה מדליקים %1$d נרות</string>
+    <string name="siddur_chanuka_candle">הלילה מדליקים נר אחד</string>
+    <string name="siddur_hl_mashiv">משיב הרוח</string>
+    <string name="siddur_hl_morid">מוריד הטל</string>
+    <string name="siddur_hl_tal_umatar">ותן טל ומטר</string>
+    <string name="siddur_hl_vten_bracha">ותן ברכה</string>
+    <string name="siddur_hl_ayt">עשרת ימי תשובה</string>
+    <string name="siddur_hl_yaale">יעלה ויבוא</string>
+    <string name="siddur_hl_al_hanisim">על הניסים</string>
+    <string name="siddur_hl_hallel_shalem">הלל שלם</string>
+    <string name="siddur_hl_chatzi_hallel">חצי הלל</string>
+    <string name="siddur_hl_musaf">מוסף</string>
+    <string name="siddur_hl_tachanun">תחנון</string>
+    <string name="siddur_hl_no_tachanun">אין תחנון</string>
+    <string name="siddur_hl_torah">קריאת התורה</string>
+    <string name="siddur_hl_avinu">אבינו מלכנו</string>
+    <string name="siddur_hl_aneinu">עננו</string>
+    <string name="siddur_hl_havdala">אתה חוננתנו</string>
+    <string name="siddur_hl_vihi_noam">ויהי נועם</string>
+    <string name="siddur_hl_omer">ספירת העומר</string>
+    <string name="siddur_hl_ledavid">לדוד ה׳ אורי</string>
+    <string name="siddur_hl_no_lamenatzeach">אין למנצח</string>
+    <string name="siddur_hl_no_mizmor_letoda">אין מזמור לתודה</string>
+    <string name="siddur_hl_retzeh">רצה והחליצנו</string>
+    <string name="siddur_part_kabbalat_shabbat">קבלת שבת</string>
+    <string name="siddur_part_maariv_shabbat">ערבית לשבת</string>
+    <string name="siddur_part_leil_shabbat">שולחן ליל שבת</string>
+    <string name="siddur_part_shacharit_shabbat">שחרית ומוסף לשבת</string>
+    <string name="siddur_part_seudat_shabbat">סעודת שבת</string>
+    <string name="siddur_part_mincha_shabbat">מנחה לשבת</string>
+    <string name="siddur_part_havdala">הבדלה</string>
+    <string name="siddur_part_maariv_yom_tov">ערבית</string>
+    <string name="siddur_part_leil_yom_tov">קידוש וסעודת הלילה</string>
+    <string name="siddur_part_shacharit_yom_tov">שחרית ומוסף</string>
+    <string name="siddur_part_seudat_yom_tov">קידושא רבא</string>
+    <string name="siddur_part_mincha_yom_tov">מנחה</string>
+    <string name="siddur_part_neila">נעילה</string>
+    <string name="siddur_occasion_rosh_hashana">ראש השנה</string>
+    <string name="siddur_occasion_yom_kippur">יום הכיפורים</string>
+    <string name="siddur_occasion_pesach">פסח</string>
+    <string name="siddur_occasion_shvii_shel_pesach">שביעי של פסח</string>
+    <string name="siddur_occasion_shavuot">שבועות</string>
+    <string name="siddur_occasion_sukkot">סוכות</string>
+    <string name="siddur_occasion_shmini_atzeret">שמיני עצרת</string>
+    <string name="siddur_occasion_simchat_torah">שמחת תורה</string>
+    <string name="siddur_occasion_shmini_atzeret_simchat_torah">שמיני עצרת ושמחת תורה</string>
+    <string name="siddur_occasion_shabbat_and">שבת ו%1$s</string>
+    <string name="siddur_part_of">%1$s · %2$s</string>
+    <string name="siddur_birkat_hachodesh">המולד: יום %1$s, %2$s ו־%3$d חלקים · ראש חודש %4$s: %5$s</string>
+    <string name="siddur_zman_shema">סוף זמן ק״ש %1$s</string>
+    <string name="siddur_zman_tefila">סוף זמן תפילה %1$s</string>
+    <string name="siddur_zman_sunset">שקיעה %1$s</string>
+    <string name="siddur_zman_tzeit">צאת הכוכבים %1$s</string>
+    <string name="siddur_open_siddur">פתח סידור</string>
 
 </resources>

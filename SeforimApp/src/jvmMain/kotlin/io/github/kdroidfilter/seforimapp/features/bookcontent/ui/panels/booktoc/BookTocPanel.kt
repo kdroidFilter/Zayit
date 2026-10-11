@@ -9,7 +9,12 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.components.HorizontalDivider
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.TocFilterResult
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneSearchButton
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneSearchLayout
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.rememberPaneSearchFocus
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.toTocEntry
 import io.github.kdroidfilter.seforimapp.features.search.domain.TocTree
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
@@ -21,6 +26,8 @@ import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.no_alt_toc_available
 import seforimapp.seforimapp.generated.resources.select_book_for_toc
 import seforimapp.seforimapp.generated.resources.table_of_contents
+import seforimapp.seforimapp.generated.resources.toc_search
+import seforimapp.seforimapp.generated.resources.toc_search_no_results
 
 @Composable
 fun BookTocPanel(
@@ -33,6 +40,7 @@ fun BookTocPanel(
             androidx.compose.foundation.interaction
                 .MutableInteractionSource()
         }
+    val searchFocus = rememberPaneSearchFocus()
     Column(
         modifier =
             modifier
@@ -43,6 +51,16 @@ fun BookTocPanel(
             label = stringResource(Res.string.table_of_contents),
             interactionSource = paneHoverSource,
             onHide = { onEvent(BookContentEvent.ToggleToc) },
+            actions = {
+                if (uiState.navigation.selectedBook != null) {
+                    PaneSearchButton(
+                        isOpen = uiState.toc.search != null,
+                        focus = searchFocus,
+                        onClick = { onEvent(BookContentEvent.ToggleTocSearch) },
+                        contentDescription = stringResource(Res.string.toc_search),
+                    )
+                }
+            },
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
             when {
@@ -55,14 +73,25 @@ fun BookTocPanel(
                     }
                 }
                 else -> {
-                    val hasAlt = uiState.navigation.selectedBook.hasAltStructures
+                    val search = uiState.toc.search
+                    // While searching, the matches of both trees replace them
+                    val searching = search != null && search.query.isNotBlank()
+                    val showAlt = uiState.navigation.selectedBook.hasAltStructures && !searching
                     Column(modifier = Modifier.fillMaxHeight()) {
-                        BookTocView(
-                            uiState = uiState,
-                            onEvent = onEvent,
-                            modifier = if (hasAlt) Modifier.weight(1f) else Modifier.fillMaxHeight(),
-                        )
-                        if (hasAlt) {
+                        PaneSearchLayout(
+                            search = search,
+                            focus = searchFocus,
+                            placeholder = stringResource(Res.string.toc_search),
+                            noResults = stringResource(Res.string.toc_search_no_results),
+                            onQueryChange = { onEvent(BookContentEvent.TocSearchQueryChanged(it)) },
+                            onSelect = { onEvent(BookContentEvent.TocSearchEntrySelected(it)) },
+                            onClose = { onEvent(BookContentEvent.CloseTocSearch) },
+                            modifier = if (showAlt) Modifier.weight(1f) else Modifier.fillMaxHeight(),
+                            regular = { BookTocView(uiState = uiState, onEvent = onEvent, modifier = Modifier.fillMaxHeight()) },
+                        ) { result, activeId ->
+                            TocSearchResults(result = result, activeId = activeId, onEvent = onEvent)
+                        }
+                        if (showAlt) {
                             Box(modifier = Modifier.padding(vertical = 8.dp)) {
                                 HorizontalDivider()
                             }
@@ -181,6 +210,45 @@ fun SearchBookTocPanel(
     }
 }
 
+/** The matches of the TOC above those of the alt TOC, each tree taking a share of the height. */
+@Composable
+private fun TocSearchResults(
+    result: TocFilterResult,
+    activeId: Long?,
+    onEvent: (BookContentEvent) -> Unit,
+) {
+    val select = { entry: TocEntry -> onEvent(BookContentEvent.TocSearchEntrySelected(entry.id)) }
+
+    @Composable
+    fun Tree(
+        roots: List<TocEntry>,
+        modifier: Modifier = Modifier,
+    ) = BookTocView(
+        tocEntries = roots.toImmutableList(),
+        expandedEntries = result.children.keys,
+        tocChildren = result.children,
+        scrollIndex = 0,
+        scrollOffset = 0,
+        onEntryClick = select,
+        // Every row of the filtered tree is a destination: parents open too
+        onEntryExpand = select,
+        onScroll = { _, _ -> },
+        selectedTocEntryId = activeId,
+        modifier = modifier,
+        highlights = result.highlights,
+    )
+
+    Column(modifier = Modifier.fillMaxHeight()) {
+        if (result.roots.isNotEmpty()) Tree(result.roots, Modifier.weight(1f))
+        if (result.roots.isNotEmpty() && result.altRoots.isNotEmpty()) {
+            Box(modifier = Modifier.padding(vertical = 8.dp)) {
+                HorizontalDivider()
+            }
+        }
+        if (result.altRoots.isNotEmpty()) Tree(result.altRoots, Modifier.weight(1f))
+    }
+}
+
 @Composable
 private fun AltBookTocSection(
     uiState: BookContentState,
@@ -261,16 +329,3 @@ private data class AltTocUi(
     val childrenMap: Map<Long, List<TocEntry>>,
     val altEntryById: Map<Long, AltTocEntry>,
 )
-
-private fun AltTocEntry.toTocEntry(bookId: Long): TocEntry =
-    TocEntry(
-        id = id,
-        bookId = bookId,
-        parentId = parentId,
-        textId = textId,
-        text = text,
-        level = level,
-        lineId = lineId,
-        isLastChild = isLastChild,
-        hasChildren = hasChildren,
-    )

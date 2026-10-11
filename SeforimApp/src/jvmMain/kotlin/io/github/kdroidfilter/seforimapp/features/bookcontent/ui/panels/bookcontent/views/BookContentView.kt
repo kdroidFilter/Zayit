@@ -8,19 +8,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.*
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -32,7 +31,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
@@ -40,14 +38,18 @@ import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
@@ -59,25 +61,33 @@ import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 import io.github.kdroidfilter.seforimapp.core.annotations.UserNote
 import io.github.kdroidfilter.seforimapp.core.coroutines.EfficiencyCoreDispatcher
-import io.github.kdroidfilter.seforimapp.core.presentation.components.CountBadge
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.core.e2e.E2e
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eReader
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.rememberAppTextZoom
+import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.CurrentFindMatchColor
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.drawNoteUnderlines
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.text.normalizeQueryForHebrew
 import io.github.kdroidfilter.seforimapp.core.presentation.text.noteDisplayRanges
+import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookFindMatches
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.findInBook
+import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.queryNarrows
+import io.github.kdroidfilter.seforimapp.features.search.semantic.installedSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.AltTocEntry
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,8 +103,6 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Text
-import kotlin.math.abs
-import kotlin.math.exp
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(FlowPreview::class, ExperimentalCoroutinesApi::class, ExperimentalComposeUiApi::class)
@@ -111,10 +119,14 @@ fun BookContentView(
     onLineSelect: (Line, Boolean) -> Unit,
     onEvent: (BookContentEvent) -> Unit,
     tabId: String,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
     draftNote: NoteDraftAnchor? = null,
     isTocEntrySelection: Boolean = false,
+    // Lines by index, tinted, with an end mark after the last: a passage to read, such as the day's limud
+    markedLines: IntRange? = null,
+    // Each verse twice, then its targum: shnayim mikra
+    shnayimMikra: Boolean = false,
     preservedListState: LazyListState? = null,
     scrollIndex: Int = 0,
     scrollOffset: Int = 0,
@@ -123,14 +135,19 @@ fun BookContentView(
     anchorIndex: Int = 0,
     topAnchorLineId: Long = -1L,
     topAnchorTimestamp: Long = 0L,
-    onScroll: (Long, Int, Int, Int) -> Unit = { _, _, _, _ -> },
+    onScroll: (Long, Long, Int, Int, Int) -> Unit = { _, _, _, _, _ -> },
     altHeadingsByLineId: StableAltHeadings = StableAltHeadings.Empty,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     onPrefetchLineConnections: (List<Long>) -> Unit = {},
+    // A line under the pointer, likely to be selected next: its commentaries can be loaded ahead
+    onLineHover: (Long) -> Unit = {},
     isSelected: Boolean = true,
     bookCharCounts: IntArray? = null,
     onPointerZoomInProgressChange: (Boolean) -> Unit = {},
+    // Bumped to take the keyboard focus back (a breadcrumb popup closed)
+    focusRequest: Int = 0,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     // Don't use the saved scroll position initially if we have an anchor
     // The restoration will be handled after pagination loads
     val listState =
@@ -147,135 +164,13 @@ fun BookContentView(
     var textLayoutWidthPx by remember(bookId) { mutableIntStateOf(0) }
 
     // Collect text size from settings
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
-    val currentOnPointerZoomInProgressChange by rememberUpdatedState(onPointerZoomInProgressChange)
-    val pointerZoomScope = rememberCoroutineScope()
-    var pointerZoomRenderJob by remember { mutableStateOf<Job?>(null) }
-    var pointerZoomCommitJob by remember { mutableStateOf<Job?>(null) }
-    var pointerZoomEndJob by remember { mutableStateOf<Job?>(null) }
-    var isPointerZooming by remember { mutableStateOf(false) }
-    var pointerZoomRenderedTextSize by remember { mutableFloatStateOf(rawTextSize) }
-    val pointerZoomAccumulator = remember { PointerZoomAccumulator(rawTextSize) }
-
-    fun setPointerZooming(value: Boolean) {
-        if (isPointerZooming != value) {
-            isPointerZooming = value
-            currentOnPointerZoomInProgressChange(value)
-        }
-    }
-
-    fun beginPointerZoom() {
-        if (!isPointerZooming) {
-            val currentTextSize = AppSettings.textSizeFlow.value
-            pointerZoomAccumulator.targetTextSize = currentTextSize
-            pointerZoomRenderedTextSize = currentTextSize
-            setPointerZooming(true)
-        }
-        pointerZoomEndJob?.cancel()
-        pointerZoomEndJob = null
-    }
-
-    fun applyPointerZoomTargetToMainContent() {
-        val targetTextSize =
-            pointerZoomAccumulator.targetTextSize.coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
-        if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
-            pointerZoomRenderedTextSize = targetTextSize
-        }
-    }
-
-    fun schedulePointerZoomRenderUpdate() {
-        if (pointerZoomRenderJob?.isActive == true) return
-
-        pointerZoomRenderJob =
-            pointerZoomScope.launch {
-                withFrameNanos { }
-                applyPointerZoomTargetToMainContent()
-                pointerZoomRenderJob = null
-            }
-    }
-
-    fun finishPointerZoom() {
-        pointerZoomEndJob?.cancel()
-        pointerZoomEndJob =
-            pointerZoomScope.launch {
-                delay(50.milliseconds)
-                setPointerZooming(false)
-            }
-    }
-
-    fun commitPointerZoom(cancelPendingJob: Boolean = true) {
-        if (!isPointerZooming) return
-        if (cancelPendingJob) {
-            pointerZoomCommitJob?.cancel()
-        }
-        pointerZoomCommitJob = null
-        pointerZoomRenderJob?.cancel()
-        pointerZoomRenderJob = null
-
-        val targetTextSize =
-            pointerZoomAccumulator.targetTextSize.coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
-        if (abs(targetTextSize - pointerZoomRenderedTextSize) >= 0.01f) {
-            pointerZoomRenderedTextSize = targetTextSize
-        }
-        if (abs(targetTextSize - AppSettings.textSizeFlow.value) >= 0.01f) {
-            AppSettings.setTextSize(targetTextSize)
-        }
-        pointerZoomAccumulator.targetTextSize = targetTextSize
-        finishPointerZoom()
-    }
-
-    fun schedulePointerZoomCommit() {
-        pointerZoomCommitJob?.cancel()
-        pointerZoomCommitJob =
-            pointerZoomScope.launch {
-                delay(120.milliseconds)
-                commitPointerZoom(cancelPendingJob = false)
-            }
-    }
-
-    fun applyPointerZoomFactor(factor: Float) {
-        if (!factor.isFinite() || factor <= 0f) return
-
-        beginPointerZoom()
-        val currentTextSize = pointerZoomAccumulator.targetTextSize
-        val newTextSize =
-            (currentTextSize * factor)
-                .coerceIn(AppSettings.MIN_TEXT_SIZE, AppSettings.MAX_TEXT_SIZE)
-
-        if (abs(newTextSize - currentTextSize) >= 0.01f) {
-            pointerZoomAccumulator.targetTextSize = newTextSize
-            schedulePointerZoomRenderUpdate()
-        }
-    }
-
-    val applyPointerZoomFactorState = rememberUpdatedState<(Float) -> Unit> { factor -> applyPointerZoomFactor(factor) }
-
-    LaunchedEffect(rawTextSize, isPointerZooming) {
-        if (!isPointerZooming) {
-            pointerZoomAccumulator.targetTextSize = rawTextSize
-            pointerZoomRenderedTextSize = rawTextSize
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            pointerZoomRenderJob?.cancel()
-            pointerZoomCommitJob?.cancel()
-            pointerZoomEndJob?.cancel()
-            currentOnPointerZoomInProgressChange(false)
-        }
-    }
-
-    // Animate text size changes only for the active tab; background tabs snap instantly
-    val textSize by animateFloatAsState(
-        targetValue = if (isPointerZooming) pointerZoomRenderedTextSize else rawTextSize,
-        animationSpec = if (isTabSelected && !isPointerZooming) tween(durationMillis = 300) else snap(),
-        label = "textSizeAnimation",
-    )
+    // Ctrl/Cmd + wheel, a trackpad pinch or two fingers zoom the text
+    val zoom = rememberAppTextZoom(onPointerZoomInProgressChange)
+    val textSize = zoom.textSize
 
     // Collect line height from settings
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
 
     // Animate line height changes only for the active tab
     val lineHeight by animateFloatAsState(
@@ -285,14 +180,13 @@ fun BookContentView(
     )
 
     // Selected font for main book content
-    val bookFontCode by AppSettings.bookFontCodeFlow.collectAsState()
+    val bookFontCode by appSettings.bookFontCodeFlow.collectAsState()
     val hebrewFontFamily = FontCatalog.familyFor(bookFontCode)
+    val targumFontCode by appSettings.targumFontCodeFlow.collectAsState()
+    val targumFontFamily = FontCatalog.familyFor(targumFontCode)
+    val shnayimMikraTargum = rememberShnayimMikraTargum(bookId, shnayimMikra)
     // macOS fallback: some Hebrew fonts have no Bold face; slightly scale bold text for visibility
-    val boldScaleForPlatform =
-        remember(bookFontCode) {
-            val lacksBold = bookFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
-        }
+    val boldScaleForPlatform = FontCatalog.boldScaleFor(bookFontCode)
 
     // Track restoration state per book. Plain remember: a tab is kept alive across switches and is
     // never rebuilt on a switch, so this only resets when the composition is actually torn down
@@ -317,6 +211,7 @@ fun BookContentView(
             !hasRestored &&
             (hasTopAnchorRequest || (topAnchorTimestamp == 0L && hasSavedInitialPosition))
     val contentAlpha = if (needsInitialPositioning) 0f else 1f
+    if (E2e.enabled) SideEffect { E2eReader.bookShown(bookId, listState, visible = contentAlpha == 1f) }
 
     // selectedLineId is now passed as a parameter for stability
 
@@ -591,7 +486,11 @@ fun BookContentView(
         val stableAnchorId = data.anchorId.takeIf { it > 0 } ?: savedAnchorIdUpdated
         val stableAnchorIndex = if (data.anchorId > 0) data.anchorIndex else savedAnchorIndexUpdated
 
-        onScrollUpdated(stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
+        // Tag the save with the book this list belongs to. `bookId` is captured from the
+        // composition that created this list: the teardown save of an outgoing book (fired
+        // while a new book is loading) carries the OLD id and is rejected by the ViewModel,
+        // so it can never overwrite the new book's freshly-reset anchor.
+        onScrollUpdated(bookId, stableAnchorId, stableAnchorIndex, data.scrollIndex, data.scrollOffset)
     }
 
     DisposableEffect(listState, lazyPagingItems) {
@@ -633,38 +532,99 @@ fun BookContentView(
     }
 
     // Find-in-page UI state (scoped per tab)
-    val showFind by AppSettings.findBarOpenFlow(tabId).collectAsState()
-    val persistedFindQuery by AppSettings.findQueryFlow(tabId).collectAsState("")
-    val smartModeEnabled by AppSettings.findSmartModeFlow(tabId).collectAsState()
+    val showFind by appSettings.findBarOpenFlow(tabId).collectAsState()
+    val persistedFindQuery by appSettings.findQueryFlow(tabId).collectAsState("")
+    val smartModeEnabled by appSettings.findSmartModeFlow(tabId).collectAsState()
+    val findFocusRequest by appSettings.findFocusRequestFlow(tabId).collectAsState()
     val findState = remember(tabId) { TextFieldState() }
-    LaunchedEffect(persistedFindQuery) {
-        val current = findState.text.toString()
-        if (current != persistedFindQuery) {
-            findState.edit { replace(0, length, persistedFindQuery) }
-        }
-    }
+    LaunchedEffect(persistedFindQuery) { syncFindField(findState, persistedFindQuery) }
 
-    // Smart mode: get highlight terms from search engine with dictionary expansion
+    // Smart find = embedding-based (vs simple mode which matches literal words): for the typed
+    // query we fetch the lines of THIS book closest in meaning (dense KNN over the index) and the
+    // passage to highlight in each. Per-line highlight reads from this map; navigation jumps
+    // between its lines. Computed off-main; empty when dense search is unavailable.
     val appGraph = LocalAppGraph.current
-    val smartHighlightTerms by remember(smartModeEnabled, findState) {
-        derivedStateOf {
-            if (smartModeEnabled) {
-                val query = findState.text.toString()
-                if (query.length >= 2) {
-                    appGraph.searchEngine.buildHighlightTerms(query)
-                } else {
-                    emptyList()
-                }
+    // Tagged with its query: until the new query's lines arrive, the previous ones must not pass for them
+    val semanticFind by androidx.compose.runtime.produceState(
+        SemanticFind("", false, -1, emptySet()),
+        smartModeEnabled,
+        persistedFindQuery,
+        bookId,
+    ) {
+        val query = persistedFindQuery
+        val ids =
+            if (!smartModeEnabled || query.length < 2) {
+                emptySet()
             } else {
-                emptyList()
+                withContext(kotlinx.coroutines.Dispatchers.Default) {
+                    try {
+                        appGraph.searchEngine.semanticFind(query, bookId, SMART_FIND_LIMIT).toSet()
+                    } catch (c: kotlinx.coroutines.CancellationException) {
+                        throw c // composition left / keys changed — not a real failure
+                    } catch (_: Throwable) {
+                        emptySet()
+                    }
+                }
             }
+        value = SemanticFind(query, smartModeEnabled, bookId, ids)
+    }
+    val semanticFindIds = semanticFind.takeIf { it.isFor(persistedFindQuery, bookId) }?.ids ?: emptySet()
+
+    // Matches across the whole book, not only its loaded pages (#451): Lucene candidates
+    // confirmed off-main; smart mode wraps its semantic lines. Navigation and count read from it.
+    val findResults by androidx.compose.runtime.produceState(
+        FindResults.None,
+        showFind,
+        smartModeEnabled,
+        persistedFindQuery,
+        semanticFind,
+        bookId,
+    ) {
+        val query = persistedFindQuery
+        val smart = smartModeEnabled
+        if (query.length < 2) {
+            // Untagged: nothing to show nor to narrow a next query with
+            value = FindResults.None
+            return@produceState
         }
+        // Kept while hidden: reopening the bar on the same query reuses them
+        if (!showFind) return@produceState
+        // Smart mode waits for this query's semantic lines; the previous results stay untagged for it
+        val semanticIds = if (smart) semanticFind.takeIf { it.isFor(query, bookId) }?.ids ?: return@produceState else null
+        val previous = value.takeIf { !smart && !it.smart && it.bookId == bookId }
+        // Same query once normalized (a trailing space, nikud): same matches
+        if (previous != null && normalizeQueryForHebrew(previous.query) == normalizeQueryForHebrew(query)) {
+            value = FindResults(query, false, bookId, previous.matches)
+            return@produceState
+        }
+        if (!smart) delay(FIND_DEBOUNCE) // let the typing settle before querying the index
+        // Typing on: only the lines that held the previous query can hold this one
+        val narrowing = previous?.takeIf { queryNarrows(query, it.query) }?.matches
+        runSuspendCatching {
+            if (semanticIds != null) {
+                BookFindMatches.ofLines(appGraph.repository.getLinesByIds(semanticIds))
+            } else {
+                findInBook(
+                    searchEngine = appGraph.searchEngine,
+                    loadLines = appGraph.repository::getLinesByIds,
+                    loadRange = { start, end -> appGraph.repository.getLines(bookId, start, end) },
+                    bookId = bookId,
+                    query = query,
+                    narrowing = narrowing,
+                )
+            }
+        }.onSuccess { value = FindResults(query, smart, bookId, it) }
+            .onFailure { e -> debugln { "find-in-book failed: $e" } }
     }
 
-    var currentHitLineIndex by remember { mutableIntStateOf(-1) }
-    var currentMatchLineId by remember { mutableStateOf<Long?>(null) }
-    var currentMatchStart by remember { mutableIntStateOf(-1) }
-    val plainTextCache = remember(bookId) { mutableStateMapOf<Long, String>() }
+    var currentMatch by remember(bookId) { mutableStateOf<BookFindMatches.Match?>(null) }
+    // The current match while it belongs to the results shown: one kept from older results isn't
+    val liveMatch = currentMatch?.takeIf { it in findResults.matches }
+    val findMatchLocator = remember { FindMatchLocator() }
+    val findNavigation = remember { FindNavigation() }
+    // A new query or mode starts over from the viewport, and so does a session reopened
+    LaunchedEffect(persistedFindQuery, smartModeEnabled) { currentMatch = null }
+    LaunchedEffect(showFind) { if (!showFind) currentMatch = null }
 
     // Theme-derived inputs to the HTML annotation, hoisted here so the off-screen prefetcher
     // can build keys/annotations identical to those produced inside LineItem.
@@ -678,8 +638,8 @@ fun BookContentView(
     // Backed by a ConcurrentHashMap: the prefetcher writes from EfficiencyCoreDispatcher while
     // LineItem reads during composition on the main thread.
     val stableAnnotatedCache =
-        remember(bookId, textSize, boldScaleForPlatform, showDiacritics) {
-            StableAnnotatedCache(java.util.concurrent.ConcurrentHashMap())
+        remember(bookId, textSize, boldScaleForPlatform, diacritics) {
+            StableAnnotatedCache()
         }
 
     // Warm the annotation cache for lines just outside the viewport so they render straight from
@@ -693,7 +653,7 @@ fun BookContentView(
         prefetchImageBuilder,
         textSize,
         boldScaleForPlatform,
-        showDiacritics,
+        diacritics,
         footnoteMarkerColor,
         isDarkTheme,
     ) {
@@ -719,7 +679,7 @@ fun BookContentView(
                     for (line in lines) {
                         ensureActive()
                         val processed =
-                            if (showDiacritics) line.content else HebrewTextUtils.removeAllDiacritics(line.content)
+                            diacritics.apply(line.content)
                         val key =
                             htmlAnnotationCacheKey(
                                 lineId = line.id,
@@ -748,38 +708,112 @@ fun BookContentView(
     // Navigate to next/previous line containing the query (wrap-around)
     val scope = rememberCoroutineScope()
 
+    val density = LocalDensity.current
+
+    /**
+     * Centers the current match in the viewport, as browsers do: the match itself, not its line,
+     * which may be taller than the screen. With [onlyIfHidden], leaves a match already readable
+     * where it is. Returns false while its line isn't laid out.
+     */
+    suspend fun revealFindMatch(
+        lineId: Long,
+        onlyIfHidden: Boolean,
+    ): Boolean {
+        val top = findMatchLocator.matchTop(lineId) ?: return false
+        val viewport = listState.layoutInfo.viewportSize.height
+        val readable = with(density) { FIND_BAR_RESERVE.toPx() }..(viewport - with(density) { FIND_BOTTOM_RESERVE.toPx() })
+        if (onlyIfHidden && top in readable) return true
+        if (onlyIfHidden && top !in -viewport.toFloat()..viewport * 2f) return false // far off: jump instead
+        listState.scrollBy(top - viewport / 2f)
+        return true
+    }
+
+    /** The list index of the book line [lineIndex], rebuilding the pager around it when it isn't loaded. */
+    suspend fun loadLine(lineIndex: Int): Int? {
+        // Loaded lines are sorted by lineIndex: binary search, as the scrollbar does
+        fun loadedIndex() = lazyPagingItems.itemSnapshotList.items.binarySearchBy(lineIndex) { it.lineIndex }
+        return loadedIndex().takeIf { it >= 0 }
+            ?: run {
+                onEvent(BookContentEvent.ContentScrollToLineIndex(lineIndex))
+                withTimeoutOrNull(FIND_JUMP_TIMEOUT) { snapshotFlow { loadedIndex() }.first { it >= 0 } }
+            }
+    }
+
     fun navigateToMatch(
         next: Boolean,
         @StructuredScope scope: CoroutineScope,
     ) {
-        val query = findState.text.toString()
-        if (query.length < 2) return
-        val snapshot = lazyPagingItems.itemSnapshotList
-        if (snapshot.isEmpty()) return
-        val startIndex =
-            if (currentHitLineIndex in snapshot.indices) currentHitLineIndex else listState.firstVisibleItemIndex
-        val step = if (next) 1 else -1
-        val size = snapshot.size
+        // One navigation at a time: a held Enter must not pile up scrolls and pager rebuilds
+        findNavigation.job?.cancel()
+        findNavigation.job =
+            scope.launch {
+                // The matches of the query as typed: Enter or Ctrl+G may come before they are ready
+                val matches =
+                    withTimeoutOrNull(FIND_RESULTS_TIMEOUT) {
+                        snapshotFlow {
+                            findResults
+                                .takeIf {
+                                    showFind &&
+                                        it.query == persistedFindQuery &&
+                                        (it.query.isEmpty() || (it.smart == smartModeEnabled && it.bookId == bookId))
+                                }?.matches
+                        }.filterNotNull().first()
+                    } ?: return@launch
+                // Match by match from the current one, else from the viewport top (included when going forward)
+                val match =
+                    currentMatch?.takeIf { it in matches }?.let { matches.next(it, forward = next) }
+                        ?: listState.firstVisibleItemIndex
+                            .takeIf { it < lazyPagingItems.itemCount }
+                            ?.let { lazyPagingItems.peek(it)?.lineIndex }
+                            ?.let { matches.nextAfterLine(if (next) it - 1 else it, forward = next) }
+                        ?: return@launch
+                currentMatch = match
 
-        scope.launch(kotlinx.coroutines.Dispatchers.Default) {
-            var i = startIndex
-            var guard = 0
-            while (guard++ < size) {
-                i = (i + step + size) % size
-                val line = snapshot[i] ?: continue
-                val text =
-                    plainTextCache.getOrPut(line.id) {
-                        buildAnnotatedFromHtml(line.content, textSize).text
-                    }
-                val start = findAllMatchesOriginal(text, query).firstOrNull()?.first ?: -1
-                if (start >= 0) {
-                    kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                        currentHitLineIndex = i
-                        currentMatchLineId = line.id
-                        currentMatchStart = start
-                        listState.scrollToItem(i, 32)
-                    }
-                    break
+                // A match already on screen moves only if hidden by the find bar or at the very bottom
+                awaitNextLayout() // let its line recompose and publish where the match sits
+                if (revealFindMatch(match.lineId, onlyIfHidden = true)) return@launch
+                listState.scrollToItem(loadLine(match.lineIndex) ?: return@launch)
+                // The line's annotation may still be building off-main: retry until it's laid out
+                withTimeoutOrNull(FIND_JUMP_TIMEOUT) {
+                    do awaitNextLayout() while (!revealFindMatch(match.lineId, onlyIfHidden = false))
+                }
+            }
+    }
+
+    // Ctrl+Enter, as in Chromium: ends the find session acting on the current match, here by
+    // selecting its line as a click would
+    fun activateCurrentMatch() {
+        appSettings.closeFindBar(tabId)
+        val match = currentMatch ?: return
+        lazyPagingItems.itemSnapshotList.items
+            .firstOrNull { it.id == match.lineId }
+            ?.let { onLineSelect(it, false) }
+    }
+
+    // Ctrl/Cmd+G and F3 come from the window's shortcuts
+    val navigateToMatchLatest by rememberUpdatedState<(Boolean) -> Unit> { navigateToMatch(it, scope) }
+    LaunchedEffect(tabId) {
+        appSettings.findStepRequests(tabId).collect { forward -> navigateToMatchLatest(forward) }
+    }
+
+    // Ctrl+Home / Ctrl+End: first or last line of the whole book, loaded or not. The line count
+    // arrives after the first composition, which the remembered key handler would otherwise keep.
+    val bookLineCount by rememberUpdatedState(bookCharCounts?.size)
+
+    fun scrollToBookEdge(
+        end: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        val lineIndex = if (end) (bookLineCount ?: return) - 1 else 0
+        scope.launch {
+            val index = loadLine(lineIndex) ?: return@launch
+            listState.scrollToItem(index)
+            // The last line may be taller than the viewport: down to its very end
+            if (end) {
+                val info = listState.layoutInfo
+                info.visibleItemsInfo.firstOrNull { it.index == index }?.let {
+                    val overflow = it.offset + it.size - info.viewportEndOffset
+                    if (overflow > 0) listState.scrollBy(overflow.toFloat())
                 }
             }
         }
@@ -829,9 +863,19 @@ fun BookContentView(
                             true
                         }
 
+                        // Also from the find field, which Chromium forwards them from
+                        Key.MoveHome, Key.MoveEnd -> {
+                            if (keyEvent.isCtrlPressed || keyEvent.isMetaPressed) {
+                                scrollToBookEdge(end = keyEvent.key == Key.MoveEnd, scope)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+
                         Key.Escape -> {
                             if (showFind) {
-                                AppSettings.closeFindBar(tabId)
+                                appSettings.closeFindBar(tabId)
                                 true
                             } else {
                                 false
@@ -851,6 +895,9 @@ fun BookContentView(
     // Request initial focus so arrow keys work as soon as the view appears
     val focusRequester = remember { FocusRequester() }
     LaunchedEffect(bookId) { focusRequester.requestFocus() }
+    LaunchedEffect(focusRequest) {
+        if (focusRequest > 0) focusRequester.requestFocus()
+    }
     LaunchedEffect(showFind) {
         if (!showFind) {
             focusRequester.requestFocus()
@@ -863,68 +910,31 @@ fun BookContentView(
         }
     }
 
-    SafeSelectionContainer(
+    // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
+    // mikra, whose items are more than their line). Its offsets index the text as displayed: new for another diacritics mode
+    val bookSelection = remember(bookId, shnayimMikra, diacritics) { if (shnayimMikra) null else BookSelection() }
+    BookSelectionContainer(
+        selection = bookSelection,
         modifier =
             modifier
                 .fillMaxSize()
                 .graphicsLayer { alpha = contentAlpha } // Hide until positioned to prevent glitch
-                .onPointerEvent(PointerEventType.Scroll) { event ->
-                    val isZoomScroll = event.keyboardModifiers.isCtrlPressed || event.keyboardModifiers.isMetaPressed
-                    if (!isZoomScroll) return@onPointerEvent
-
-                    val scrollDelta = event.changes.firstOrNull()?.scrollDelta ?: Offset.Zero
-                    val zoomDelta =
-                        if (abs(scrollDelta.y) >= abs(scrollDelta.x)) {
-                            scrollDelta.y
-                        } else {
-                            scrollDelta.x
-                        }
-                    if (zoomDelta == 0f) return@onPointerEvent
-
-                    val exponent = (-zoomDelta * 0.08f).coerceIn(-0.25f, 0.25f)
-                    applyPointerZoomFactorState.value(exp(exponent.toDouble()).toFloat())
-                    schedulePointerZoomCommit()
-                    event.changes.forEach { it.consume() }
-                }.pointerInput(Unit) {
-                    awaitEachGesture {
-                        var previousDistance = 0f
-                        var hasZoomed = false
-
-                        do {
-                            val event = awaitPointerEvent(PointerEventPass.Main)
-                            val pressedChanges = event.changes.filter { it.pressed }
-
-                            if (pressedChanges.size >= 2) {
-                                val distance = averageDistanceToCentroid(pressedChanges)
-                                if (previousDistance > 0f && distance > 0f) {
-                                    val zoomFactor = (distance / previousDistance).coerceIn(0.85f, 1.18f)
-                                    if (abs(zoomFactor - 1f) > 0.002f) {
-                                        applyPointerZoomFactorState.value(zoomFactor)
-                                        hasZoomed = true
-                                    }
-                                }
-                                previousDistance = distance
-
-                                if (hasZoomed) {
-                                    event.changes.forEach { it.consume() }
-                                }
-                            } else {
-                                previousDistance = 0f
-                            }
-                        } while (event.changes.any { it.pressed })
-
-                        if (hasZoomed) {
-                            commitPointerZoom()
-                        }
-                    }
-                }.focusRequester(focusRequester)
+                .then(zoom.modifier)
+                .focusRequester(focusRequester)
                 .onPreviewKeyEvent(previewKeyHandler)
                 .focusable(),
     ) {
         Box(modifier = Modifier.fillMaxSize().padding(bottom = 8.dp)) {
             LazyColumn(
                 state = listState,
-                modifier = Modifier.fillMaxSize().padding(end = 16.dp),
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(end = 16.dp)
+                        .onGloballyPositioned {
+                            findMatchLocator.list = it
+                            if (E2e.enabled) E2eReader.bookList = it
+                        },
             ) {
                 items(
                     count = lazyPagingItems.itemCount,
@@ -934,6 +944,8 @@ fun BookContentView(
                     val line = lazyPagingItems[index]
 
                     if (line != null) {
+                        // Smart find: the line is highlighted as a search result is (see LineItem)
+                        val isSmartMatch = showFind && smartModeEnabled && line.id in semanticFindIds
                         val altHeadings = altHeadingsByLineId[line.id]
                         val isCurrentSelected = line.id in selectedLineIds
                         val useThickBar = shouldUseThickBar(line.id, primarySelectedLineId, isTocEntrySelection)
@@ -980,20 +992,21 @@ fun BookContentView(
                             }
                         }
 
+                        val isMarked = markedLines?.contains(line.lineIndex) == true
                         Row(
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
+                                    .then(if (isMarked) Modifier.background(markedTint()) else Modifier)
                                     .padding(horizontal = 8.dp)
-                                    .height(IntrinsicSize.Min),
+                                    .selectionBar(
+                                        isSelected = isCurrentSelected,
+                                        isNextSelected = isNextSelected,
+                                        color = borderColor,
+                                        isPrimary = useThickBar,
+                                    ),
                         ) {
-                            SelectionBar(
-                                isSelected = isCurrentSelected,
-                                isNextSelected = isNextSelected,
-                                color = borderColor,
-                                isPrimary = useThickBar,
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                            Spacer(modifier = Modifier.width(SelectionBarWidth + 8.dp))
                             Column(
                                 modifier = Modifier.weight(1f),
                             ) {
@@ -1017,23 +1030,27 @@ fun BookContentView(
                                     val lineNotes = notesByLine[line.id] ?: emptyList()
                                     LineItem(
                                         lineId = line.id,
+                                        lineIndex = line.lineIndex,
                                         lineContent = line.content,
                                         userHighlights = lineHighlights,
                                         userNotes = lineNotes,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                        onHover = { onLineHover(line.id) },
                                         isSelected = isCurrentSelected,
                                         isPrimary = useThickBar,
                                         baseTextSize = textSize,
                                         lineHeight = lineHeight,
                                         boldScale = boldScaleForPlatform,
-                                        highlightQuery =
-                                            findState.text.toString().takeIf { showFind && !smartModeEnabled },
-                                        highlightTerms = smartHighlightTerms.takeIf { showFind && smartModeEnabled },
-                                        currentMatchStart =
-                                            if (showFind && currentMatchLineId == line.id) currentMatchStart else null,
+                                        // Simple mode: the literal query; smart mode: the search's highlighting
+                                        highlightQuery = findState.text.toString().takeIf { showFind && !smartModeEnabled },
+                                        smartQuery = persistedFindQuery.takeIf { isSmartMatch && it.length >= 2 },
+                                        currentMatchOrdinal =
+                                            liveMatch?.takeIf { showFind && it.lineId == line.id }?.ordinal,
+                                        findMatchLocator =
+                                            findMatchLocator.takeIf { showFind && liveMatch?.lineId == line.id },
                                         annotatedCache = stableAnnotatedCache,
-                                        showDiacritics = showDiacritics,
+                                        diacritics = diacritics,
                                         onLayoutWidthMeasure = { width ->
                                             if (textLayoutWidthPx == 0 && width > 0) {
                                                 textLayoutWidthPx = width
@@ -1047,6 +1064,37 @@ fun BookContentView(
                                         },
                                     )
                                 }
+                                // The verse read again, then its targum (headings have no reference)
+                                if (shnayimMikra && !line.heRef.isNullOrBlank()) {
+                                    Box(modifier = Modifier.padding(vertical = LineItemVerticalPaddingPerSide)) {
+                                        LineItem(
+                                            lineId = line.id,
+                                            lineIndex = line.lineIndex,
+                                            lineContent = line.content,
+                                            userHighlights = highlightsByLine[line.id] ?: emptyList(),
+                                            userNotes = notesByLine[line.id] ?: emptyList(),
+                                            fontFamily = hebrewFontFamily,
+                                            onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                            onHover = { onLineHover(line.id) },
+                                            isSelected = isCurrentSelected,
+                                            isPrimary = useThickBar,
+                                            baseTextSize = textSize,
+                                            lineHeight = lineHeight,
+                                            boldScale = boldScaleForPlatform,
+                                            annotatedCache = stableAnnotatedCache,
+                                            diacritics = diacritics,
+                                            // The context menu acts on this verse, as from its first reading
+                                            onContextClick = {
+                                                selectionContext.setCurrentLineId(line.id)
+                                                selectionContext.setActiveCommentaryColumn(emptyList())
+                                            },
+                                        )
+                                    }
+                                    shnayimMikraTargum.targumOf(line.heRef)?.let {
+                                        ShnayimMikraTargum(it, targumFontFamily, textSize, lineHeight, diacritics)
+                                    }
+                                }
+                                if (markedLines?.last == line.lineIndex) MarkedEnd(if (shnayimMikra) "סוף הקריאה" else "סוף הלימוד")
                             }
                         }
                     } else {
@@ -1098,7 +1146,6 @@ fun BookContentView(
             // scrollbar itself no longer averages visible items' sizes: that was the
             // root cause of the thumb resizing, since per-item padding and item-mix
             // variation broke the `Σ size / Σ lineCount` assumption.
-            val density = LocalDensity.current
             val textMeasurer = rememberTextMeasurer()
             val lineHeightPx = with(density) { (textSize * lineHeight).sp.toPx() }
             val paddingPerItemPx = with(density) { (LineItemVerticalPaddingPerSide * 2).toPx() }
@@ -1138,65 +1185,38 @@ fun BookContentView(
             )
         }
 
-        // Find-in-page bar overlay with result count badge (uniform style)
+        // Find-in-page bar overlay, top end as in browsers
         if (showFind) {
-            // Compute total matches across currently loaded snapshot (approximate)
-            val queryText = findState.text.toString()
-            val snapshotItems = lazyPagingItems.itemSnapshotList.items
-            val matchCount by produceState(0, queryText, snapshotItems) {
-                value =
-                    if (queryText.length < 2) {
-                        0
-                    } else {
-                        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-                            var total = 0
-                            for (ln in snapshotItems) {
-                                val text =
-                                    try {
-                                        buildAnnotatedFromHtml(ln.content, textSize).text
-                                    } catch (_: Throwable) {
-                                        ln.content
-                                    }
-                                total += findAllMatchesOriginal(text, queryText).size
-                            }
-                            total
-                        }
-                    }
-            }
-            Row(
+            // Counter only once the results are those of the query as typed (none while computing)
+            val results =
+                findResults.takeIf {
+                    persistedFindQuery.length >= 2 && it.query == persistedFindQuery && it.smart == smartModeEnabled && it.bookId == bookId
+                }
+            Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(12.dp)
                         .zIndex(2f),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
+                contentAlignment = Alignment.TopEnd,
             ) {
-                if (queryText.length >= 2) {
-                    // Wrap badge in a small panel background to improve border contrast,
-                    // keeping the badge's own border color (disabled) identical to the tree.
-                    Box(
-                        modifier =
-                            Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(JewelTheme.globalColors.panelBackground)
-                                .padding(2.dp),
-                    ) {
-                        CountBadge(count = matchCount)
-                    }
-                    Spacer(Modifier.width(8.dp))
-                }
                 FindInPageBar(
                     state = findState,
                     onEnterNext = { navigateToMatch(true, scope) },
                     onEnterPrev = { navigateToMatch(false, scope) },
-                    onClose = { AppSettings.closeFindBar(tabId) },
+                    onClose = { appSettings.closeFindBar(tabId) },
+                    onActivate = ::activateCurrentMatch,
+                    focusRequest = findFocusRequest,
+                    matchCount = results?.matches?.occurrences,
+                    matchPosition = liveMatch?.position,
                     smartModeEnabled = smartModeEnabled,
-                    onToggleSmartMode = { AppSettings.toggleFindSmartMode(tabId) },
+                    // Also while on without the addon (set by opening a search result), so it can be turned off
+                    onToggleSmartMode =
+                        { appSettings.toggleFindSmartMode(tabId) }.takeIf { installedSemanticSearch != null || smartModeEnabled },
                 )
                 LaunchedEffect(findState.text, showFind) {
                     val q = findState.text.toString()
-                    AppSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
+                    appSettings.setFindQuery(tabId, if (q.length >= 2) q else "")
                 }
             }
         }
@@ -1215,6 +1235,106 @@ internal val LineItemVerticalPaddingPerSide = 8.dp
 private const val HTML_PREFETCH_AHEAD = 16
 private const val HTML_PREFETCH_BEHIND = 8
 
+// Smart (embedding) find: max semantically-closest lines fetched per query for the current book.
+private const val SMART_FIND_LIMIT = 60
+
+// Literal find: pause after the last keystroke before querying the index
+private val FIND_DEBOUNCE = 150.milliseconds
+
+// Longest wait for the matches of a query just typed before stepping to the next one
+private val FIND_RESULTS_TIMEOUT = 30_000.milliseconds
+
+/** The matches computed for [query] in [smart] mode, so navigation can wait for those of the query as typed. */
+private class FindResults(
+    val query: String,
+    val smart: Boolean,
+    val bookId: Long,
+    val matches: BookFindMatches,
+) {
+    companion object {
+        val None = FindResults("", false, -1, BookFindMatches.Empty)
+    }
+}
+
+/** The semantic lines found for [query] in [bookId]; empty when computed outside [smart] mode. */
+private class SemanticFind(
+    val query: String,
+    val smart: Boolean,
+    val bookId: Long,
+    val ids: Set<Long>,
+) {
+    fun isFor(
+        query: String,
+        bookId: Long,
+    ) = smart && this.query == query && this.bookId == bookId
+}
+
+/** The running find-in-page navigation, cancelled by the next one. */
+private class FindNavigation {
+    var job: Job? = null
+}
+
+// Longest wait for the pager rebuilt around a far match before giving up on scrolling to it
+private val FIND_JUMP_TIMEOUT = 3000.milliseconds
+
+// A frame callback runs before that frame's layout: the second one follows a completed layout
+private suspend fun awaitNextLayout() = repeat(2) { withFrameNanos { } }
+
+// Find bar overlaying the top of the text: a match under it isn't readable
+private val FIND_BAR_RESERVE = 64.dp
+
+// Bottom margin under which a match counts as hidden
+private val FIND_BOTTOM_RESERVE = 48.dp
+
+/**
+ * Where the current find-in-page match sits, for the list to scroll it into view. Published by the
+ * line showing it on layout and read on demand after a scroll: plain fields, not state, so
+ * publishing never recomposes.
+ */
+private class FindMatchLocator {
+    var list: LayoutCoordinates? = null
+    var matchStart: Int = 0
+    private var lineId: Long = -1
+    private var text: LayoutCoordinates? = null
+    private var layout: TextLayoutResult? = null
+
+    fun publishText(
+        lineId: Long,
+        coordinates: LayoutCoordinates,
+    ) {
+        if (this.lineId != lineId) layout = null
+        this.lineId = lineId
+        text = coordinates
+    }
+
+    /** Drops what [lineId] published: its node may be reused for another line. */
+    fun forget(lineId: Long) {
+        if (this.lineId != lineId) return
+        text = null
+        layout = null
+    }
+
+    fun publishLayout(
+        lineId: Long,
+        result: TextLayoutResult,
+    ) {
+        if (this.lineId != lineId) text = null
+        this.lineId = lineId
+        layout = result
+    }
+
+    /** Top of the match in [lineId], in the list's viewport; null until that line is laid out. */
+    fun matchTop(lineId: Long): Float? {
+        if (this.lineId != lineId) return null
+        val list = list?.takeIf { it.isAttached } ?: return null
+        val text = text?.takeIf { it.isAttached } ?: return null
+        val layout = layout ?: return null
+        val length = layout.layoutInput.text.length
+        val top = if (length == 0) 0f else layout.getBoundingBox(matchStart.coerceIn(0, length - 1)).top
+        return list.localPositionOf(text, Offset(0f, top)).y
+    }
+}
+
 // Data class for anchor information
 private data class AnchorData(
     val anchorId: Long,
@@ -1222,28 +1342,6 @@ private data class AnchorData(
     val scrollIndex: Int,
     val scrollOffset: Int,
 )
-
-private fun averageDistanceToCentroid(changes: List<PointerInputChange>): Float {
-    if (changes.isEmpty()) return 0f
-
-    var centroid = Offset.Zero
-    changes.forEach { change ->
-        centroid += change.position
-    }
-    centroid /= changes.size.toFloat()
-
-    var totalDistance = 0f
-    changes.forEach { change ->
-        totalDistance += (change.position - centroid).getDistance()
-    }
-    return totalDistance / changes.size.toFloat()
-}
-
-private class PointerZoomAccumulator(
-    initialTextSize: Float,
-) {
-    var targetTextSize: Float = initialTextSize
-}
 
 /**
  * Stable wrapper for alt headings map to avoid unnecessary recompositions.
@@ -1300,33 +1398,32 @@ private fun AltHeadingItem(
 @Composable
 private fun LineItem(
     lineId: Long,
+    lineIndex: Int,
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
+    onHover: () -> Unit = {},
     isSelected: Boolean = false,
     isPrimary: Boolean = false,
     baseTextSize: Float = 16f,
     lineHeight: Float = 1.5f,
     boldScale: Float = 1.0f,
     highlightQuery: String? = null,
-    highlightTerms: List<String>? = null,
-    currentMatchStart: Int? = null,
+    // Smart find: the line highlighted for this query as a find by meaning (its passage closest in meaning, and the
+    // query's words), on the text as displayed
+    smartQuery: String? = null,
+    currentMatchOrdinal: Int? = null,
+    // Given to the line showing the current match only, which publishes where the match sits
+    findMatchLocator: FindMatchLocator? = null,
     annotatedCache: StableAnnotatedCache? = null,
-    showDiacritics: Boolean = true,
+    diacritics: DiacriticsMode = DiacriticsMode.All,
     userHighlights: List<UserHighlight> = emptyList(),
     userNotes: List<UserNote> = emptyList(),
     onLayoutWidthMeasure: (Int) -> Unit = {},
     onContextClick: () -> Unit = {},
 ) {
-    // Process content: remove diacritics if setting is disabled
-    val processedContent =
-        remember(lineContent, showDiacritics) {
-            if (showDiacritics) {
-                lineContent
-            } else {
-                HebrewTextUtils.removeAllDiacritics(lineContent)
-            }
-        }
+    // Process content: remove the diacritics the current mode hides
+    val processedContent = remember(lineContent, diacritics) { diacritics.apply(lineContent) }
 
     // Footnote marker color from theme
     val footnoteMarkerColor = JewelTheme.globalColors.outlines.focused
@@ -1356,13 +1453,14 @@ private fun LineItem(
                     onClick(isModifier)
                 }
             }
-        }.onPointerEvent(PointerEventType.Press) { event ->
-            // Record this line as the right-click target so the context menu can offer a
-            // "copy link to this line" action even when no text is selected.
-            if (event.buttons.isSecondaryPressed) onContextClick()
-        }
+        }.onPointerEvent(PointerEventType.Enter) { onHover() }
+            .onPointerEvent(PointerEventType.Press) { event ->
+                // Record this line as the right-click target so the context menu can offer a
+                // "copy link to this line" action even when no text is selected.
+                if (event.buttons.isSecondaryPressed) onContextClick()
+            }
 
-    val localAnnotatedCache = remember { StableAnnotatedCache(mutableStateMapOf()) }
+    val localAnnotatedCache = remember { StableAnnotatedCache() }
     val annotationCache = annotatedCache ?: localAnnotatedCache
     val annotationCacheKey =
         remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
@@ -1387,6 +1485,9 @@ private fun LineItem(
             annotatedCache = annotationCache,
         )
 
+    if (E2e.enabled) SideEffect { E2eReader.lineDrawn(lineId, ready = lineAnnotation != null) }
+    // The book view's selection: extended from this line's characters, drawn as Compose draws its own
+    val bookSelection = LocalBookSelection.current
     if (lineAnnotation == null) {
         Text(
             text = htmlAnnotationPlaceholderText(processedContent.length),
@@ -1394,7 +1495,7 @@ private fun LineItem(
             fontFamily = fontFamily,
             fontSize = baseTextSize.sp,
             lineHeight = (baseTextSize * lineHeight).sp,
-            modifier = textModifier,
+            modifier = if (bookSelection != null) textModifier.selectableLine(bookSelection, lineIndex) { null } else textModifier,
             onTextLayout = { result ->
                 val cw = result.layoutInput.constraints.maxWidth
                 if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
@@ -1409,28 +1510,44 @@ private fun LineItem(
     // Plain text of the line WITH diacritics: user-highlight offsets are stored against this
     // representation, so it is needed to remap them when diacritics are hidden. The text is
     // independent of font size, so [lineContent] alone is a safe cache key.
+    // Only needed to remap highlights or notes when diacritics are hidden: skip a second parse otherwise.
+    val needsOriginalText = diacritics != DiacriticsMode.All && (userHighlights.isNotEmpty() || userNotes.isNotEmpty())
     val originalPlainText =
-        remember(lineContent) {
-            buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text
+        remember(lineContent, needsOriginalText) {
+            if (needsOriginalText) buildAnnotatedFromHtml(lineContent, baseTextSize, boldScale = 1f).text else null
         }
+
+    val searchEngine = LocalAppGraph.current.searchEngine
+    val smartRanges by produceState<List<IntRange>?>(null, annotated.text, smartQuery) {
+        value =
+            smartQuery?.let { query ->
+                runSuspendCatching {
+                    searchEngine
+                        .highlights(
+                            listOf(annotated.text),
+                            query,
+                            alwaysByMeaning = true,
+                        ).single()
+                        .ranges
+                }.getOrNull()
+            }
+    }
 
     // Build highlighted text when a query is active (>= 2 chars)
     val baseHl =
         JewelTheme.globalColors.outlines.focused
             .copy(alpha = 0.22f)
-    val currentHl =
-        JewelTheme.globalColors.outlines.focused
-            .copy(alpha = 0.42f)
+    val currentHl = CurrentFindMatchColor
     val displayText: AnnotatedString =
         remember(
             annotated,
             highlightQuery,
-            highlightTerms,
-            currentMatchStart,
+            currentMatchOrdinal,
+            smartRanges,
             baseHl,
             currentHl,
             userHighlights,
-            showDiacritics,
+            diacritics,
             originalPlainText,
         ) {
             // User highlights first, then search highlights on top. Note markers are drawn
@@ -1440,24 +1557,17 @@ private fun LineItem(
                     annotated = annotated,
                     highlights = userHighlights,
                     originalText = originalPlainText,
-                    showDiacritics = showDiacritics,
+                    diacritics = diacritics,
                 )
-            if (!highlightTerms.isNullOrEmpty()) {
-                // Smart mode: highlight multiple terms from dictionary expansion
-                io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithTerms(
-                    annotated = withUserHighlights,
-                    terms = highlightTerms,
-                    currentStart = currentMatchStart?.takeIf { it >= 0 },
-                    baseColor = baseHl,
-                    currentColor = currentHl,
-                )
+            val ranges = smartRanges
+            if (ranges != null) {
+                // The line is one smart match: all its spans take the current color when it is the current one
+                withUserHighlights.withBackground(ranges, if (currentMatchOrdinal != null) currentHl else baseHl)
             } else {
-                // Normal mode: highlight single query
                 io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotatedWithCurrent(
                     annotated = withUserHighlights,
                     query = highlightQuery,
-                    currentStart = currentMatchStart?.takeIf { it >= 0 },
-                    currentLength = highlightQuery?.length,
+                    currentIndex = currentMatchOrdinal,
                     baseColor = baseHl,
                     currentColor = currentHl,
                 )
@@ -1467,63 +1577,83 @@ private fun LineItem(
     // Dotted grey underline marking the noted ranges (drawn from the text layout so it supports
     // wrapping and RTL). Offsets are remapped to the displayed text when diacritics are hidden.
     val noteRanges =
-        remember(userNotes, originalPlainText, showDiacritics, displayText) {
-            noteDisplayRanges(userNotes, originalPlainText, showDiacritics, displayText.length)
+        remember(userNotes, originalPlainText, diacritics, displayText) {
+            noteDisplayRanges(userNotes, originalPlainText, diacritics, displayText.length)
         }
     val noteUnderlineColor = JewelTheme.globalColors.text.info
     var noteLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
 
+    if (findMatchLocator != null) {
+        val matchStart =
+            remember(displayText, highlightQuery, smartRanges, currentMatchOrdinal) {
+                (smartRanges ?: highlightQuery?.let { findAllMatchesOriginal(displayText.text, it) })
+                    ?.getOrNull(if (smartRanges != null) 0 else currentMatchOrdinal ?: 0)
+                    ?.first ?: 0
+            }
+        SideEffect { findMatchLocator.matchStart = matchStart }
+        DisposableEffect(findMatchLocator, lineId) { onDispose { findMatchLocator.forget(lineId) } }
+    }
+
+    val selectionBackground = LocalTextSelectionColors.current.backgroundColor
     Text(
         text = displayText,
         textAlign = TextAlign.Justify,
         fontFamily = fontFamily,
         lineHeight = (baseTextSize * lineHeight).sp,
         modifier =
-            textModifier.drawBehind {
-                noteLayout?.let { drawNoteUnderlines(it, noteRanges, noteUnderlineColor) }
-            },
+            textModifier
+                .then(
+                    if (bookSelection != null) {
+                        Modifier.selectableLine(bookSelection, lineIndex) { noteLayout }
+                    } else {
+                        Modifier
+                    },
+                ).drawBehind {
+                    val layout = noteLayout ?: return@drawBehind
+                    bookSelection?.selectedRangeOf(lineIndex, layout.layoutInput.text.length)?.takeIf { !it.isEmpty() }?.let {
+                        drawPath(layout.getPathForRange(it.first, it.last + 1), selectionBackground)
+                    }
+                    drawNoteUnderlines(layout, noteRanges, noteUnderlineColor)
+                }.then(
+                    if (findMatchLocator != null) {
+                        Modifier.onGloballyPositioned { findMatchLocator.publishText(lineId, it) }
+                    } else {
+                        Modifier
+                    },
+                ),
         inlineContent = inlineImageContent,
         onTextLayout = { result ->
             noteLayout = result
+            findMatchLocator?.publishLayout(lineId, result)
             val cw = result.layoutInput.constraints.maxWidth
             if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
         },
     )
 }
 
+// The selection bar's slot at the start of a line: the same whether the bar is thick or thin, so content never shifts.
+private val SelectionBarWidth = 4.dp
+
 /**
- * Selection bar that extends into adjacent padding when consecutive lines are selected.
- * [isPrimary] controls the bar thickness: 4.dp for the primary line, 1.5.dp for secondary.
+ * Draws a line's selection bar in the slot at its start, the line's full height, reaching down to the next line
+ * when it is selected too. Drawn rather than laid out: a bar child sized to its line needed the line's intrinsic
+ * height, laying its text out twice.
  */
-@Composable
-private fun SelectionBar(
+private fun Modifier.selectionBar(
     isSelected: Boolean,
     isNextSelected: Boolean,
     color: Color,
-    isPrimary: Boolean = true,
-) {
-    // Layout always occupies 4.dp so switching between thick/thin doesn't shift content.
-    val drawWidth = if (isPrimary) 4.dp else 2.dp
-    val extendBottom = isSelected && isNextSelected
-    Box(
-        modifier =
-            Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .zIndex(1f)
-                .graphicsLayer { clip = false }
-                .drawBehind {
-                    val extraBottom = if (extendBottom) 8.dp.toPx() else 0f
-                    val w = drawWidth.toPx()
-                    val offsetX = (size.width - w) / 2f
-                    drawRect(
-                        color = color,
-                        topLeft = Offset(offsetX, 0f),
-                        size = Size(w, size.height + extraBottom),
-                    )
-                },
-    )
-}
+    isPrimary: Boolean,
+): Modifier =
+    drawBehind {
+        if (!isSelected) return@drawBehind
+        val slot = SelectionBarWidth.toPx()
+        val w = (if (isPrimary) 4.dp else 2.dp).toPx()
+        val inSlot = (slot - w) / 2f
+        val x = if (layoutDirection == LayoutDirection.Rtl) size.width - slot + inSlot else inSlot
+        val extraBottom = if (isNextSelected) 8.dp.toPx() else 0f
+        drawRect(color = color, topLeft = Offset(x, 0f), size = Size(w, size.height + extraBottom))
+    }
 
 // Extract reusable components to avoid inline composition
 @Composable
@@ -1569,5 +1699,25 @@ private fun ErrorIndicator(message: String) {
             text = message,
             color = Color.Red,
         )
+    }
+}
+
+@Composable
+private fun markedTint() =
+    JewelTheme.globalColors.outlines.focused
+        .copy(alpha = 0.07f)
+
+/** Where a marked passage ends: [label] between two rules, "סוף הלימוד" or, for an aliya read, "סוף הקריאה". */
+@Composable
+private fun MarkedEnd(label: String) {
+    val color = JewelTheme.globalColors.outlines.focused
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(color.copy(alpha = 0.5f)))
+        Text(label, color = color, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        Box(Modifier.weight(1f).height(1.dp).background(color.copy(alpha = 0.5f)))
     }
 }

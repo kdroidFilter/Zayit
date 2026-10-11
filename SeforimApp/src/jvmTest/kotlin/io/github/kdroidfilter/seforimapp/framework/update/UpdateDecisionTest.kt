@@ -10,10 +10,20 @@ import kotlin.test.assertTrue
 /** N1 — pure decision logic, no I/O. */
 class UpdateDecisionTest {
     @Test
-    fun `patch is silent on windows and macos only`() {
+    fun `patch is silent on windows and macos, and on linux only with the passwordless helper`() {
         assertEquals(UpdateMode.SILENT_ON_CLOSE, resolveUpdateMode(UpdateLevel.PATCH, Platform.Windows))
         assertEquals(UpdateMode.SILENT_ON_CLOSE, resolveUpdateMode(UpdateLevel.PATCH, Platform.MacOS))
         assertEquals(UpdateMode.PROMPT, resolveUpdateMode(UpdateLevel.PATCH, Platform.Linux))
+        assertEquals(
+            UpdateMode.SILENT_ON_CLOSE,
+            resolveUpdateMode(UpdateLevel.PATCH, Platform.Linux, linuxPasswordless = true),
+        )
+    }
+
+    @Test
+    fun `minor and major prompt on linux even with the passwordless helper`() {
+        assertEquals(UpdateMode.PROMPT, resolveUpdateMode(UpdateLevel.MINOR, Platform.Linux, linuxPasswordless = true))
+        assertEquals(UpdateMode.PROMPT, resolveUpdateMode(UpdateLevel.MAJOR, Platform.Linux, linuxPasswordless = true))
     }
 
     @Test

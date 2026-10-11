@@ -97,6 +97,31 @@ The `SeforimLibrary` composite build provides the core functionality for Jewish 
 - **Dependencies**: Core + DAO + Lucene + JSoup + compression libraries
 - **Platform**: JVM only (heavy processing)
 
+### Multi-Window & Virtual Desktops
+The app is multi-window (Chrome-style tabs + drag & drop between windows). A virtual
+desktop = a user-curated set of tabs in 1..n windows; several desktops can be open at
+once, each in its own window(s). `DesktopManager` owns desktops/windows; each
+`OpenWindow` carries a window-scoped `TabsViewModel` + `SearchHomeViewModel` and its
+`WindowState` (geometry persisted & restored). `TabDockManager` handles cross-window
+tab drag & drop. See `TAB_SYSTEM_README.md`.
+
+### Open Core: the Smart Siddur
+The smart siddur (סידור חכם) is proprietary, in the official builds only. Its logic and texts are the private
+`kdroidFilter/SeforimSiddur` repo, published to GitHub Packages as `io.github.kdroidfilter:seforim-siddur`
+(`libs.seforim.siddur`). Its screen is in `SeforimApp/addons/siddur/enabled`, which the build compiles only when it can read
+the package (`siddur.token` Gradle property, `SEFORIM_SIDDUR_TOKEN`, or a `gh` CLI with access and `read:packages`)
+or with `-Psiddur.local=true` (includes `../SeforimSiddur` as a composite build). Otherwise it compiles
+`addons/siddur/disabled`, where `installedSiddur` is null and the app hides the siddur. Core code reaches the siddur only
+through `SiddurFeature`/`installedSiddur`, never by importing `addons/siddur` code.
+
+The semantic search (own embedding model, dense KNN fused with lexical search by RRF) follows the same pattern: the
+private `io.github.kdroidfilter:seforim-semantic` package (module `semantic/` of the private `SeforimEmbedding` repo,
+read with the siddur's token by default, or `semantic.token`/`SEFORIM_SEMANTIC_TOKEN`/`gh`, or `-Psemantic.local=true`),
+whose jar carries the int8 model as a resource (never in the DB bundle). `addons/semantic/enabled` holds the
+`HybridSearchEngine`; `disabled` makes `installedSemanticSearch` null and the app uses `LuceneSearchEngine` alone. Core
+code reaches it only through `SemanticSearchFeature`/`installedSemanticSearch`. With the same token, SeforimLibrary's
+generator embeds the corpus into the index's vectors (`:searchindex:embedCorpus`, GPU via CUDA, no Python).
+
 ### Memory-Efficient Tab System
 See `TAB_SYSTEM_README.md` for complete details. Key points:
 - Each tab owns its own `SimpleTabViewModelOwner` (ViewModel lifecycle), which stays alive while the tab exists
@@ -121,10 +146,13 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - `icons`: Application icons and resources
 - `jewel`: Jetbrains Jewel desktop UI components
 - `logger`: Logging utilities
+- `luach`: The luach month (`LuachMonth`) and its date picker (`LuachPopup`, `LuachDateButton`), shared by the Calendar widget, the siddur, the Earth widget and the solar system's full window
 - `navigation`: Navigation helpers and utilities
 - `pagination`: Pagination support for large datasets
 - `texteffects`: Text rendering effects and styling
 - `network`: Network utilities and Ktor client setup
+- `backup`: Backup core, Android-BackupAgent/Transport style: `BackupSource` (what: the app's `UserDataBackup`, user DB + portable prefs), `BackupDestination` (where: `LocalFileDestination`, …), `BackupManager` (the only code linking both)
+- `backup-drive`: Google Drive `BackupDestination` + `GoogleDriveSync` (OAuth PKCE loopback, hidden `appDataFolder`, append-only with the 10 latest kept as IntelliJ settings sync, never restores without asking, on-quit + daily auto backup paused while a restore is pending)
 
 ## Key Technologies & Dependencies
 
@@ -176,18 +204,26 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - **Secrets**: Never commit to repository; use `local.properties` for machine-specific settings
 - **Logging**: Add `-Dorg.slf4j.simpleLogger.defaultLogLevel=debug` to JVM args for verbose logging
 
+### Git & Pull Requests
+- **DCO sign-off required**: every commit needs a `Signed-off-by:` trailer (`git commit -s`); the "Check DCO sign-off" CI job blocks PRs otherwise. Fix unsigned commits with `git rebase --signoff <base>` then `git push --force-with-lease`.
+- **CLA**: contributors sign `CLA.md` once (CLA Assistant bot on their first PR); the maintainer is allowlisted.
+- **PRs target `dev`** (`gh pr create --base dev`); `master` only moves via releases.
+
 ## Development Tips
 
 ### Tab System Usage
 ```kotlin
-// Open new tab
-val tabsVm = LocalAppGraph.current.tabsViewModel
+// Open new tab in the current window (TabsViewModel is window-scoped, via LocalOpenWindow)
+val tabsVm = LocalOpenWindow.current.tabsViewModel
 scope.launch {
     tabsVm.openTab(TabsDestination.BookContent(bookId = "123", tabId = UUID.randomUUID().toString()))
 }
 
 // Replace current tab destination
 tabsVm.replaceCurrentTabDestination(TabsDestination.Home(currentTabId))
+
+// From a per-tab ViewModel (no composition): resolve the hosting window at call time
+desktopManager.tabsViewModelFor(tabId)?.openTab(destination)
 ```
 
 ### ViewModel Creation

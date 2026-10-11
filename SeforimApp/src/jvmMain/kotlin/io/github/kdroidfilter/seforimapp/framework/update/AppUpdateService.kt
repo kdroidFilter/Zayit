@@ -23,12 +23,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 
 /** How an available update is surfaced to the user. */
 enum class UpdateMode {
-    /** Downloaded silently and installed on app close, no UI (Win/Mac PATCH only). */
+    /** Downloaded silently and installed on app close, no UI (PATCH only, see [resolveUpdateMode]). */
     SILENT_ON_CLOSE,
 
     /** Surfaced via the title-bar icon + dialog; requires explicit user action. */
@@ -95,18 +96,50 @@ val UpdateUiState.availableVersion: String?
 // --- Pure decision functions (no I/O) — see UpdateDecisionTest ---
 
 /**
- * PATCH (0.0.x) updates install transparently on Windows/macOS; everything else
- * (MINOR/MAJOR, any Linux, pre-release) is surfaced through the prompt UI.
+ * PATCH (0.0.x) updates install transparently on Windows/macOS, and on Linux when the install can
+ * apply them without a password ([linuxPasswordless]); everything else (MINOR/MAJOR, pre-release,
+ * Linux without the update helper) is surfaced through the prompt UI.
  */
 fun resolveUpdateMode(
     level: UpdateLevel,
     os: Platform,
-): UpdateMode =
-    if (level == UpdateLevel.PATCH && (os == Platform.Windows || os == Platform.MacOS)) {
-        UpdateMode.SILENT_ON_CLOSE
-    } else {
-        UpdateMode.PROMPT
+    linuxPasswordless: Boolean = false,
+): UpdateMode {
+    val silentCapable =
+        when (os) {
+            Platform.Windows, Platform.MacOS -> true
+            Platform.Linux -> linuxPasswordless
+            else -> false
+        }
+    return if (level == UpdateLevel.PATCH && silentCapable) UpdateMode.SILENT_ON_CLOSE else UpdateMode.PROMPT
+}
+
+/** Root-owned helper shipped by signed deb/rpm packages built with Nucleus' Linux `silentUpdate`. */
+private const val LINUX_UPDATE_HELPER = "nucleus-update-helper"
+
+/** Parents walked up from the launcher, as Nucleus does (`/usr/bin/zayit` → `/opt/Zayit/...`). */
+private const val LINUX_HELPER_SEARCH_DEPTH = 3
+
+/**
+ * True when this install carries Nucleus' passwordless update helper (signed deb/rpm), mirroring the
+ * lookup Nucleus does at install time. Pacman, AppImage and older unsigned installs return false and
+ * keep the `pkexec` password prompt.
+ */
+fun hasLinuxUpdateHelper(): Boolean {
+    val launcher =
+        ProcessHandle
+            .current()
+            .info()
+            .command()
+            .orElse(null) ?: return false
+    var dir: File? = runCatching { File(launcher).canonicalFile.parentFile }.getOrNull()
+    repeat(LINUX_HELPER_SEARCH_DEPTH) {
+        val current = dir ?: return false
+        if (File(current, LINUX_UPDATE_HELPER).isFile) return true
+        dir = current.parentFile
     }
+    return false
+}
 
 /**
  * MINOR/MAJOR app updates may raise the minimum required database version and trigger the
@@ -194,8 +227,9 @@ data class AppUpdateConfig(
  * Orchestrates the semi-automatic auto-update flow on top of Nucleus.
  *
  * Behaviour:
- * - Win/Mac PATCH → pre-download at startup, then [installPendingOnClose] silently on close.
- * - Linux PATCH → pre-download at startup, then prompt (icon + dialog) since `pkexec` needs interaction.
+ * - Win/Mac PATCH, and Linux PATCH with the passwordless helper → pre-download at startup, then
+ *   [installPendingOnClose] silently on close.
+ * - Other Linux PATCH → pre-download at startup, then prompt (icon + dialog) since `pkexec` needs interaction.
  * - Any MINOR/MAJOR → prompt; download on user action; warns about a possible ~3.5 GB DB update.
  *
  * [checkOnStartup] is suspending (driven by the startup `LaunchedEffect`); [startDownload] launches
@@ -206,6 +240,7 @@ class AppUpdateService(
     private val updaterProvider: () -> Updater,
     private val config: AppUpdateConfig,
     private val os: Platform,
+    private val linuxPasswordless: Boolean = false,
     // App-lifetime scope so a user-triggered download keeps running after the dialog is closed.
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
@@ -225,6 +260,8 @@ class AppUpdateService(
         if (config.fakeState != null) return // state pre-seeded by initialFakeState()
         if (_state.value != UpdateUiState.Idle) return
         _state.value = UpdateUiState.Checking
+        // Building the updater reads the system trust store: not on the UI thread this startup check is called from
+        val updater = withContext(Dispatchers.IO) { updater }
         when (val result = updater.checkForUpdates()) {
             is UpdateResult.NotAvailable -> _state.value = UpdateUiState.UpToDate
             is UpdateResult.Error -> {
@@ -233,7 +270,7 @@ class AppUpdateService(
             }
             is UpdateResult.Available -> {
                 pendingInfo = result.info
-                val mode = resolveUpdateMode(result.level, os)
+                val mode = resolveUpdateMode(result.level, os, linuxPasswordless)
                 val warn = needsDbWarning(result.level)
                 infoln { "[update] available v${result.info.version} level=${result.level} mode=$mode" }
                 _state.value = UpdateUiState.Available(result.info.version, result.level, mode, warn)
@@ -295,7 +332,7 @@ class AppUpdateService(
                 val file = progress.file
                 if (file != null) {
                     infoln { "[update] download ready v${info.version} -> ${file.name}" }
-                    _state.value = UpdateUiState.ReadyToInstall(info.version, level, mode, warn, file)
+                    _state.value = UpdateUiState.ReadyToInstall(info.version, level, readyMode(mode, file), warn, file)
                 } else {
                     _state.value = UpdateUiState.Downloading(info.version, level, mode, warn, progress.percent.toInt())
                 }
@@ -310,6 +347,21 @@ class AppUpdateService(
         }
     }
 
+    /**
+     * The Linux helper only installs a package whose detached `<pkg>.asc` was downloaded next to it;
+     * without it Nucleus falls back to `pkexec`, so prompt now rather than ask for a password on close.
+     */
+    private fun readyMode(
+        mode: UpdateMode,
+        file: File,
+    ): UpdateMode =
+        if (mode == UpdateMode.SILENT_ON_CLOSE && os == Platform.Linux && !File("${file.path}.asc").isFile) {
+            infoln { "[update] no detached signature for ${file.name}; prompting instead of a silent install" }
+            UpdateMode.PROMPT
+        } else {
+            mode
+        }
+
     /** Installs the ready update and relaunches the app (from the dialog button). */
     fun installAndRestart() {
         val current = _state.value
@@ -323,7 +375,7 @@ class AppUpdateService(
     }
 
     /**
-     * Called from the window close handler. If a silent (Win/Mac PATCH) update is ready, launches
+     * Called from the window close handler. If a silent PATCH update is ready, launches
      * the installer (which exits the process) and returns `true`; otherwise a no-op returning `false`.
      */
     fun installPendingOnClose(): Boolean {
@@ -356,7 +408,12 @@ class AppUpdateService(
         val version = config.forceVersion ?: "9.9.9"
         return when (fake) {
             "patch" ->
-                UpdateUiState.Available(version, UpdateLevel.PATCH, resolveUpdateMode(UpdateLevel.PATCH, os), false)
+                UpdateUiState.Available(
+                    version,
+                    UpdateLevel.PATCH,
+                    resolveUpdateMode(UpdateLevel.PATCH, os, linuxPasswordless),
+                    false,
+                )
             "minor" ->
                 UpdateUiState.Available(version, UpdateLevel.MINOR, UpdateMode.PROMPT, true)
             "major" ->
@@ -407,6 +464,7 @@ class AppUpdateService(
                 },
                 config = config,
                 os = os,
+                linuxPasswordless = os == Platform.Linux && hasLinuxUpdateHelper(),
             )
     }
 }

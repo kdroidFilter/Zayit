@@ -9,6 +9,14 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    # The official builds include the smart siddur and the semantic search (open core): their private Maven packages
+    # are readable only with the access of their own repositories, so a classic token with read:packages (GITHUB_TOKEN
+    # cannot reach them); the semantic search uses the siddur's token too
+    env:
+      SEFORIM_SIDDUR_TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+      GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
     strategy:
       fail-fast: false
       matrix:
@@ -55,7 +63,7 @@ jobs:
             rust_target: x86_64-pc-windows-msvc
             graalvm: true
 
-          # Windows ARM64 - JBR (no Liberica NIK available)
+          # Windows ARM64 - JVM (no native-image toolchain)
           - os: windows-11-arm
             arch: arm64
             rust_target: aarch64-pc-windows-msvc
@@ -106,14 +114,41 @@ jobs:
           echo "ASSET_NAME=release-assets-${plat}-${{ matrix.arch || matrix.jdk_arch }}${pkg_suffix}" >> "$GITHUB_ENV"
 
       - name: Setup Nucleus
-        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@789704a9b63c5b2a0ff4d6e1cd85711ab2e4286b
-
-      - name: Setup GraalVM (Liberica NIK)
-        if: matrix.graalvm
-        uses: graalvm/setup-graalvm@v1
+        uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@712f1e520c73fd68e1e7514b17700e577643802c
+        # The Nucleus plugin provisions the GraalVM toolchain itself (Oracle GraalVM per the
+        # graalvm { toolchain { } } DSL, Liberica NIK on Intel macs); this only sets up
+        # Xcode/MSVC and caches the toolchain.
         with:
-          java-version: '25'
-          distribution: 'liberica'
+          graalvm: ${{ matrix.graalvm }}
+          graalvm-distribution: oracle
+
+      # GPG-signs the .deb/.rpm and enables Nucleus' passwordless self-update: the package ships a
+      # root-owned update helper + polkit policy that installs an update only if its detached
+      # <pkg>.asc verifies against the public key bundled in the app.
+      - name: Setup Linux signing
+        if: startsWith(matrix.os, 'ubuntu') && (matrix.pkg == 'deb' || matrix.pkg == 'rpm')
+        shell: bash
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          LINUX_GPG_KEY_ID: ${{ secrets.LINUX_GPG_KEY_ID }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$LINUX_GPG_PRIVATE_KEY" ]; then
+            echo "::warning::No LINUX_GPG_PRIVATE_KEY secret; Linux packages stay unsigned (password-prompted updates)."
+            exit 0
+          fi
+          KEY_FILE="$RUNNER_TEMP/zayit-signing-key.asc"
+          printf '%s' "$LINUX_GPG_PRIVATE_KEY" > "$KEY_FILE"
+          {
+            echo ""
+            echo "compose.desktop.linux.sign=true"
+            echo "compose.desktop.linux.signing.keyId=$LINUX_GPG_KEY_ID"
+            echo "compose.desktop.linux.signing.keyFile=$KEY_FILE"
+            echo "compose.desktop.linux.signing.passphrase=$LINUX_GPG_PASSPHRASE"
+            echo "compose.desktop.linux.signing.silentUpdate=true"
+          } >> gradle.properties
+          echo "LINUX_SIGNED=true" >> "$GITHUB_ENV"
 
       # Linux builds
       - name: Build & stage Linux .deb
@@ -127,6 +162,11 @@ jobs:
           [ -n "$src" ] || { echo "::error::No .deb produced"; exit 1; }
           # Name kept in sync with website/public/download/launch.linux deb pattern.
           cp "$src" "staging/zayit_${VERSION}_${{ matrix.arch }}.deb"
+          # Detached signature, fetched by the updater next to the package for the passwordless install.
+          if [ "${LINUX_SIGNED:-}" = "true" ]; then
+            [ -f "$src.asc" ] || { echo "::error::No detached signature for $src"; exit 1; }
+            cp "$src.asc" "staging/zayit_${VERSION}_${{ matrix.arch }}.deb.asc"
+          fi
 
       - name: Build & stage Linux .rpm
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
@@ -144,6 +184,10 @@ jobs:
           esac
           # Name kept in sync with website/public/download/launch.linux rpm pattern.
           cp "$src" "staging/zayit-${VERSION}-1.${rpm_arch}.rpm"
+          if [ "${LINUX_SIGNED:-}" = "true" ]; then
+            [ -f "$src.asc" ] || { echo "::error::No detached signature for $src"; exit 1; }
+            cp "$src.asc" "staging/zayit-${VERSION}-1.${rpm_arch}.rpm.asc"
+          fi
 
       - name: Build & stage Linux .pacman
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'pacman'
@@ -168,8 +212,8 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:packageGraalvmNsis
 
-      # Windows JBR build (ARM64)
-      - name: Build Windows NSIS installer (JBR)
+      # Windows JVM build (ARM64)
+      - name: Build Windows NSIS installer (JVM)
         if: startsWith(matrix.os, 'windows') && !matrix.graalvm
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:createReleaseDistributable :SeforimApp:packageReleaseNsis
@@ -275,7 +319,7 @@ jobs:
       # (latest.yml / latest-mac.yml / latest-linux.yml) — handles multi-arch and the
       # Rust-wrapped exe / manual macOS zip correctly since it hashes the final assets.
       - name: Generate auto-update feeds (latest*.yml)
-        uses: kdroidFilter/Nucleus/.github/actions/generate-update-yml@main
+        uses: kdroidFilter/Nucleus/.github/actions/generate-update-yml@712f1e520c73fd68e1e7514b17700e577643802c
         with:
           artifacts-path: artifacts
           version: ${{ env.VERSION }}
@@ -283,7 +327,7 @@ jobs:
 
       # Creates/updates the GitHub release and uploads every installer + the consolidated feeds.
       - name: Create release and upload installers + feeds
-        uses: kdroidFilter/Nucleus/.github/actions/publish-release@main
+        uses: kdroidFilter/Nucleus/.github/actions/publish-release@712f1e520c73fd68e1e7514b17700e577643802c
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}

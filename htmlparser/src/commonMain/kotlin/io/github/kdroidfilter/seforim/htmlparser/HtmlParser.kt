@@ -26,6 +26,8 @@ data class ParsedHtmlElement(
     val imageMime: String? = null,
     val imageWidth: Int? = null,
     val imageHeight: Int? = null,
+    /** Target of a citation link (`<a class="ref" href="seforim://line/<id>">`), null for plain text. */
+    val href: String? = null,
 ) {
     val isImage: Boolean get() = imageBytes != null
 }
@@ -49,6 +51,7 @@ class HtmlParser {
                 commentatorOrder = null,
                 isFootnoteMarker = false,
                 isFootnoteContent = false,
+                href = null,
             )
         }
         // Avoids a "line after": removes terminal <br> tags
@@ -70,6 +73,7 @@ class HtmlParser {
         commentatorOrder: String?,
         isFootnoteMarker: Boolean,
         isFootnoteContent: Boolean,
+        href: String?,
     ) {
         when (node) {
             is TextNode -> {
@@ -85,6 +89,7 @@ class HtmlParser {
                     commentatorOrder = commentatorOrder,
                     isFootnoteMarker = isFootnoteMarker,
                     isFootnoteContent = isFootnoteContent,
+                    href = href,
                 )
             }
             is Element -> {
@@ -114,6 +119,7 @@ class HtmlParser {
                 val nextHeaderLevel = if (isHeaderTag) tag.substring(1).toInt() else headerLevel
                 val nextFootnoteMarker = isFootnoteMarker || isFootnoteMarkerTag
                 val nextFootnoteContent = isFootnoteContent || isFootnoteContentTag
+                val nextHref = if (tag == "a" && node.hasClass("ref")) node.attr("href").ifBlank { null } else href
 
                 if (node.childNodeSize() == 1 && node.childNode(0) is TextNode) {
                     appendSegment(
@@ -128,6 +134,7 @@ class HtmlParser {
                         commentatorOrder = commentatorOrder,
                         isFootnoteMarker = nextFootnoteMarker,
                         isFootnoteContent = nextFootnoteContent,
+                        href = nextHref,
                     )
                     return
                 }
@@ -145,6 +152,7 @@ class HtmlParser {
                         commentatorOrder = commentatorOrder,
                         isFootnoteMarker = nextFootnoteMarker,
                         isFootnoteContent = nextFootnoteContent,
+                        href = nextHref,
                     )
                 }
             }
@@ -163,6 +171,7 @@ class HtmlParser {
         commentatorOrder: String?,
         isFootnoteMarker: Boolean,
         isFootnoteContent: Boolean,
+        href: String?,
     ) {
         // Normalizes multiple spaces into a single space, but preserves leading/trailing spaces
         val normalizedText = textRaw.replace(WHITESPACE_REGEX, " ")
@@ -200,7 +209,8 @@ class HtmlParser {
                     last.commentator == commentator &&
                     last.commentatorOrder == commentatorOrder &&
                     last.isFootnoteMarker == isFootnoteMarker &&
-                    last.isFootnoteContent == isFootnoteContent
+                    last.isFootnoteContent == isFootnoteContent &&
+                    last.href == href
 
             if (sameStyle) {
                 // Fusion avec le segment précédent du même style
@@ -254,6 +264,7 @@ class HtmlParser {
                 commentatorOrder = commentatorOrder,
                 isFootnoteMarker = isFootnoteMarker,
                 isFootnoteContent = isFootnoteContent,
+                href = href,
             ),
         )
     }

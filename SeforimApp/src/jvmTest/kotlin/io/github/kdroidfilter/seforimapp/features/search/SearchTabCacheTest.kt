@@ -2,22 +2,12 @@ package io.github.kdroidfilter.seforimapp.features.search
 
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Category
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SearchTabCacheTest {
-    @BeforeTest
-    fun setup() {
-        // Clear cache before each test
-        repeat(10) { i ->
-            SearchTabCache.clear("tab-$i")
-        }
-    }
-
     private fun createTestSnapshot(): SearchTabCache.Snapshot =
         SearchTabCache.Snapshot(
             results = emptyList(),
@@ -30,48 +20,6 @@ class SearchTabCacheTest {
             tocCounts = emptyMap(),
             tocTree = null,
         )
-
-    // SearchTabCache tests
-    @Test
-    fun `put stores snapshot`() {
-        val snapshot = createTestSnapshot()
-        SearchTabCache.put("test-tab", snapshot)
-        assertNotNull(SearchTabCache.get("test-tab"))
-    }
-
-    @Test
-    fun `get returns null for non-existent tab`() {
-        assertNull(SearchTabCache.get("non-existent"))
-    }
-
-    @Test
-    fun `clear removes snapshot`() {
-        val snapshot = createTestSnapshot()
-        SearchTabCache.put("clear-test", snapshot)
-        SearchTabCache.clear("clear-test")
-        assertNull(SearchTabCache.get("clear-test"))
-    }
-
-    @Test
-    fun `put overwrites existing snapshot`() {
-        val snapshot1 = createTestSnapshot()
-        val snapshot2 =
-            SearchTabCache.Snapshot(
-                results = emptyList(),
-                categoryAgg =
-                    SearchTabCache.CategoryAggSnapshot(
-                        categoryCounts = mapOf(1L to 10),
-                        bookCounts = emptyMap(),
-                        booksForCategory = emptyMap(),
-                    ),
-                tocCounts = emptyMap(),
-                tocTree = null,
-            )
-        SearchTabCache.put("overwrite-test", snapshot1)
-        SearchTabCache.put("overwrite-test", snapshot2)
-        val result = SearchTabCache.get("overwrite-test")
-        assertEquals(mapOf(1L to 10), result?.categoryAgg?.categoryCounts)
-    }
 
     // CategoryAggSnapshot tests
     @Test

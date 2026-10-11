@@ -85,6 +85,7 @@ class BookContentEventTest {
     fun `ContentScrolled stores all scroll parameters`() {
         val event =
             BookContentEvent.ContentScrolled(
+                bookId = 1L,
                 anchorId = 100L,
                 anchorIndex = 5,
                 scrollIndex = 10,
@@ -172,7 +173,7 @@ class BookContentEventTest {
                 BookContentEvent.ToggleCommentaries,
                 BookContentEvent.ToggleTargum,
                 BookContentEvent.ToggleSources,
-                BookContentEvent.ToggleDiacritics,
+                BookContentEvent.CycleDiacritics,
                 BookContentEvent.SaveState,
                 BookContentEvent.NavigateToPreviousLine,
                 BookContentEvent.NavigateToNextLine,

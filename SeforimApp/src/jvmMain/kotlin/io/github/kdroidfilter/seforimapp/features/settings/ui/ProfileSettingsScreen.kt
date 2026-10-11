@@ -27,7 +27,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigState
 import io.github.kdroidfilter.seforimapp.features.onboarding.region.RegionConfigViewModel
@@ -35,6 +34,7 @@ import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Communi
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileState
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.UserProfileViewModel
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -79,6 +79,7 @@ private fun ProfileSettingsView(
     regionState: RegionConfigState,
     onRegionEvent: (RegionConfigEvents) -> Unit,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val currentOnUserProfileEvent by rememberUpdatedState(onUserProfileEvent)
     VerticallyScrollableContainer(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -104,7 +105,7 @@ private fun ProfileSettingsView(
                             if (value != userProfileState.firstName) {
                                 currentOnUserProfileEvent(UserProfileEvents.FirstNameChanged(value))
                             }
-                            AppSettings.setUserFirstName(value.trim())
+                            appSettings.setUserFirstName(value.trim())
                         }
                         TextField(state = firstNameState, modifier = Modifier.widthIn(max = 240.dp))
                     }
@@ -122,7 +123,7 @@ private fun ProfileSettingsView(
                             if (value != userProfileState.lastName) {
                                 currentOnUserProfileEvent(UserProfileEvents.LastNameChanged(value))
                             }
-                            AppSettings.setUserLastName(value.trim())
+                            appSettings.setUserLastName(value.trim())
                         }
                         TextField(state = lastNameState, modifier = Modifier.widthIn(max = 240.dp))
                     }
@@ -151,7 +152,7 @@ private fun ProfileSettingsView(
                         onSelectedItemChange = { index ->
                             onUserProfileEvent(UserProfileEvents.SelectCommunity(index))
                             val community = userProfileState.communities.getOrNull(index)
-                            AppSettings.setUserCommunityCode(community?.name)
+                            appSettings.setUserCommunityCode(community?.name)
                         },
                         modifier = Modifier.fillMaxWidth(0.33f),
                     )
@@ -175,7 +176,7 @@ private fun ProfileSettingsView(
                         onSelectedItemChange = { index ->
                             onRegionEvent(RegionConfigEvents.SelectCountry(index))
                             val country = regionState.countries.getOrNull(index)
-                            AppSettings.setRegionCountry(country)
+                            appSettings.setRegionCountry(country)
                         },
                         modifier = Modifier.fillMaxWidth(0.33f),
                     )
@@ -196,7 +197,7 @@ private fun ProfileSettingsView(
                         onSelectedItemChange = { index ->
                             onRegionEvent(RegionConfigEvents.SelectCity(index))
                             val city = regionState.cities.getOrNull(index)
-                            AppSettings.setRegionCity(city)
+                            appSettings.setRegionCity(city)
                         },
                         enabled = regionState.selectedCountryIndex >= 0,
                         modifier = Modifier.fillMaxWidth(0.33f),

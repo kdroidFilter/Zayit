@@ -1,15 +1,23 @@
+@file:OptIn(ExperimentalNucleusApi::class)
+
 package io.github.kdroidfilter.seforimapp.core.presentation.tabs
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.*
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,15 +27,17 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.RenderVectorGroup
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.isSecondary
@@ -35,9 +45,12 @@ import androidx.compose.ui.input.pointer.isTertiary
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -47,17 +60,37 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import androidx.compose.ui.zIndex
+import dev.nucleusframework.window.ExperimentalNucleusApi
+import dev.nucleusframework.window.tao.TabDropGhost
+import dev.nucleusframework.window.tao.TabGripCursor
+import dev.nucleusframework.window.tao.TabHoverPreview
+import dev.nucleusframework.window.tao.TabHoverPreviewPopup
+import dev.nucleusframework.window.tao.TabHoverPreviewScope
+import dev.nucleusframework.window.tao.TabPreview
+import dev.nucleusframework.window.tao.TabStripScope
+import dev.nucleusframework.window.tao.dropGhost
+import dev.nucleusframework.window.tao.rememberTabStripDrag
+import dev.nucleusframework.window.tao.tabStripCarry
+import dev.nucleusframework.window.tao.tabStripGeometry
+import dev.nucleusframework.window.tao.tabStripGrip
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
+import io.github.kdroidfilter.seforimapp.core.presentation.components.SharedIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
+import io.github.kdroidfilter.seforimapp.core.presentation.window.TabDragGhostCard
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.CloseAll
+import io.github.kdroidfilter.seforimapp.icons.JournalBookmark
 import io.github.kdroidfilter.seforimapp.icons.Link
+import io.github.kdroidfilter.seforimapp.icons.NotebookPen
 import io.github.kdroidfilter.seforimapp.icons.Tab_close
 import io.github.kdroidfilter.seforimapp.icons.Tab_close_right
+import io.github.kdroidfilter.seforimapp.icons.WritingHand
 import io.github.kdroidfilter.seforimapp.icons.bookOpenTabs
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
@@ -82,9 +115,7 @@ import org.jetbrains.jewel.ui.theme.defaultTabStyle
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
-import sh.calvin.reorderable.ReorderableRow
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
+import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -103,30 +134,66 @@ private data class TabEntry(
     val onCloseRight: () -> Unit,
     // null when the destination has nothing shareable (e.g. Home, or a book still loading)
     val onCopyLink: (() -> Unit)?,
+    // null when the tab is the window's only one (the window itself already is that tab)
+    val onDetach: (() -> Unit)?,
+    // Moves the tab to the desktop of that id; null for the window's only tab
+    val onMoveToDesktop: ((String) -> Unit)?,
+    val pinned: Boolean,
+    // What the tab shows once pinned instead of its icon; null for the icon alone
+    val pinnedLabel: String?,
+    val onTogglePin: () -> Unit,
 )
 
 private val TabTooltipWidthThreshold = 140.dp
 private val CompactTabWidthThreshold = 50.dp
-private val HideCloseTabWidthThreshold = 80.dp
+
+// Chromium's kMinimumContentsWidthForCloseButtons: below it an inactive tab drops its close button,
+// so the title always keeps some room next to it.
+private val MinContentWidthForCloseButton = 68.dp
+private val TabOuterHorizontalPadding = 2.dp
+
+// A pinned tab: its icon and padding only (Chromium's TabStyle::GetPinnedWidth, without the corners).
+private val PinnedTabWidth = 40.dp
+
+// A pinned tab showing a label grows to fit it, up to this; a longer one fades out.
+private val PinnedLabelTabMaxWidth = 80.dp
+
+// Width of the fade replacing the ellipsis on a cut title (Chromium's FADE_TAIL).
+private val TitleFadeWidth = 24.dp
 
 /** When true, [SingleLineTabContent] hides the label and shows only the icon. */
 private val LocalCompactIconOnly = compositionLocalOf { false }
 
 @Composable
 fun TabsView() {
-    val viewModel: TabsViewModel = LocalAppGraph.current.tabsViewModel
-    val state = rememberTabsState(viewModel)
-    DefaultTabShowcase(state = state, onEvents = viewModel::onEvent)
+    val openWindow = LocalOpenWindow.current
+    val viewModel: TabsViewModel = openWindow.tabsViewModel
+    val state by viewModel.state.collectAsState()
+    // The strip of this window's group: what tab drags, drops and tear-offs resolve against.
+    val workspace = openWindow.session.workspace
+    val group = openWindow.group() ?: return
+    val stripScope =
+        remember(workspace, group) {
+            object : TabStripScope {
+                override val workspace = workspace
+                override val group = group
+            }
+        }
+    with(stripScope) { DefaultTabShowcase(state = state, onEvents = viewModel::onEvent) }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DefaultTabShowcase(
+private fun TabStripScope.DefaultTabShowcase(
     onEvents: (TabsEvents) -> Unit,
     state: TabsState,
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val isRtl = layoutDirection == LayoutDirection.Rtl
+    val desktopManager = LocalAppGraph.current.desktopManager
+    val windowId = LocalOpenWindow.current.id
+    val tabsViewModel = LocalOpenWindow.current.tabsViewModel
+    val copyToClipboard = rememberCopyToClipboard()
 
     // Track for auto-scrolling (no-op in shrink-to-fit mode)
     var previousTabCount by remember { mutableStateOf(state.tabs.size) }
@@ -152,6 +219,18 @@ private fun DefaultTabShowcase(
                                     val icon: Painter =
                                         if (tabItem.tabType == TabType.BOOK) {
                                             rememberVectorPainter(bookOpenTabs(JewelTheme.contentColor))
+                                        } else if (tabItem.tabType == TabType.HISTORY) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Vcs.History)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        } else if (tabItem.tabType == TabType.FAVORITES) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Nodes.Favorite)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        } else if (tabItem.tabType == TabType.NOTES) {
+                                            rememberTintedVectorPainter(NotebookPen, JewelTheme.contentColor)
+                                        } else if (tabItem.tabType == TabType.SIDDUR) {
+                                            rememberTintedVectorPainter(JournalBookmark, JewelTheme.contentColor)
+                                        } else if (tabItem.tabType == TabType.AUTHOR) {
+                                            rememberTintedVectorPainter(WritingHand, JewelTheme.contentColor)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -201,6 +280,21 @@ private fun DefaultTabShowcase(
                             onCloseLeft = { onEvents(TabsEvents.CloseRight(actualIndex)) },
                             onCloseRight = { onEvents(TabsEvents.CloseLeft(actualIndex)) },
                             onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
+                            onDetach =
+                                if (state.tabs.size > 1) {
+                                    { desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId) }
+                                } else {
+                                    null
+                                },
+                            onMoveToDesktop =
+                                if (state.tabs.size > 1) {
+                                    { desktopId -> desktopManager.moveTabToDesktop(tabItem.destination.tabId, windowId, desktopId) }
+                                } else {
+                                    null
+                                },
+                            pinned = tabItem.pinned,
+                            pinnedLabel = tabItem.pinnedLabel(),
+                            onTogglePin = { tabsViewModel.setPinned(actualIndex, !tabItem.pinned) },
                         )
                     }.toImmutableList()
             } else {
@@ -216,6 +310,18 @@ private fun DefaultTabShowcase(
                                     val icon: Painter =
                                         if (tabItem.tabType == TabType.BOOK) {
                                             rememberVectorPainter(bookOpenTabs(JewelTheme.globalColors.text.normal))
+                                        } else if (tabItem.tabType == TabType.HISTORY) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Vcs.History)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        } else if (tabItem.tabType == TabType.FAVORITES) {
+                                            val iconProvider = rememberResourcePainterProvider(AllIconsKeys.Nodes.Favorite)
+                                            iconProvider.getPainter(Stateful(tabState)).value
+                                        } else if (tabItem.tabType == TabType.NOTES) {
+                                            rememberTintedVectorPainter(NotebookPen, JewelTheme.globalColors.text.normal)
+                                        } else if (tabItem.tabType == TabType.SIDDUR) {
+                                            rememberTintedVectorPainter(JournalBookmark, JewelTheme.globalColors.text.normal)
+                                        } else if (tabItem.tabType == TabType.AUTHOR) {
+                                            rememberTintedVectorPainter(WritingHand, JewelTheme.globalColors.text.normal)
                                         } else {
                                             if (tabItem.title.isEmpty()) {
                                                 rememberVectorPainter(
@@ -264,6 +370,21 @@ private fun DefaultTabShowcase(
                             onCloseLeft = { onEvents(TabsEvents.CloseLeft(index)) },
                             onCloseRight = { onEvents(TabsEvents.CloseRight(index)) },
                             onCopyLink = tabItem.destination.toShareLink()?.let { link -> { copyToClipboard(link) } },
+                            onDetach =
+                                if (state.tabs.size > 1) {
+                                    { desktopManager.detachTabToNewWindow(tabItem.destination.tabId, windowId) }
+                                } else {
+                                    null
+                                },
+                            onMoveToDesktop =
+                                if (state.tabs.size > 1) {
+                                    { desktopId -> desktopManager.moveTabToDesktop(tabItem.destination.tabId, windowId, desktopId) }
+                                } else {
+                                    null
+                                },
+                            pinned = tabItem.pinned,
+                            pinnedLabel = tabItem.pinnedLabel(),
+                            onTogglePin = { tabsViewModel.setPinned(index, !tabItem.pinned) },
                         )
                     }.toImmutableList()
             }
@@ -287,7 +408,7 @@ private fun DefaultTabShowcase(
 }
 
 @Composable
-private fun RtlAwareTabStripWithAddButton(
+private fun TabStripScope.RtlAwareTabStripWithAddButton(
     tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     isRtl: Boolean,
@@ -313,7 +434,7 @@ private fun RtlAwareTabStripWithAddButton(
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-private fun RtlAwareTabStripContent(
+private fun TabStripScope.RtlAwareTabStripContent(
     tabs: ImmutableList<TabEntry>,
     style: TabStyle,
     onAddClick: () -> Unit,
@@ -331,7 +452,28 @@ private fun RtlAwareTabStripContent(
     val containerTransitionDurationMs = enterDurationMs + 80
 
     // Track which tabs already existed to avoid double width + expand animation on new entries
-    val tabsViewModel = LocalAppGraph.current.tabsViewModel
+    val openWindow = LocalOpenWindow.current
+    val tabsViewModel = openWindow.tabsViewModel
+    // The workspace's gestures for this strip: carry along it, slide home, hand-over to another
+    // window or a new one once a tab leaves it (the platform drag session on native Wayland).
+    val tabDrag = rememberTabStripDrag()
+    TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
+    // The last look at the selected tab before a click may leave it (see rememberTabThumbnails).
+    val stripHovered by interactionSource.collectIsHoveredAsState()
+    // Chromium's tab closing mode: closing tabs with the mouse keeps the others at their width, so the
+    // next close button lands under the pointer; they reflow once it leaves the strip or a tab is added.
+    var frozenTabWidth by remember { mutableStateOf<Dp?>(null) }
+    LaunchedEffect(stripHovered) {
+        openWindow.pointerOnStrip = stripHovered
+        if (!stripHovered) frozenTabWidth = null
+    }
+    var tabCount by remember { mutableIntStateOf(tabs.size) }
+    LaunchedEffect(tabs.size) {
+        if (tabs.size > tabCount) frozenTabWidth = null
+        tabCount = tabs.size
+    }
+    // Chrome-like: the tab being dragged is selected.
+    LaunchedEffect(tabDrag.held) { tabDrag.held?.let(workspace::select) }
     val skipAnimation by tabsViewModel.skipNextAnimation.collectAsState()
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
     val currentKeys = remember(tabs) { tabs.map { it.key } }
@@ -366,13 +508,30 @@ private fun RtlAwareTabStripContent(
         // + button (40.dp) + divider (1.dp) + divider padding (8.dp) + reserved drag area
         val extrasWidth = 40.dp + 1.dp + 8.dp + reservedDragArea
         val availableForTabs = (maxWidthDp - extrasWidth).coerceAtLeast(0.dp)
-        val tabsCount = tabs.size.coerceAtLeast(1)
+        // Pinned tabs keep their narrow width; the others share what is left (Chromium's layout).
+        val pinnedWidths = rememberPinnedTabWidths(tabs, style)
+        val pinnedCount = pinnedWidths.size
+        val tabsCount = (tabs.size - pinnedCount).coerceAtLeast(1)
         // Chrome-like: tabs shrink to fill available width, capped by a max width
         val maxTabWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
-        val naturalTabWidth = (availableForTabs / tabsCount)
+        val pinnedTotal = pinnedWidths.values.fold(0.dp) { sum, width -> sum + width }
+        // A tab dragged in from another window opens a slot where it would drop; the others make room.
+        val ghost = dropGhost?.takeIf { tabDrag.animating == null }
+        val ghostWidth = ghost?.width ?: 0.dp
+        // When the tab lands, its slot vanishes at once rather than shutting beside it (Nucleus's TabStrip).
+        val landing = remember(group) { DropLanding() }
+        workspace.draggedTab?.let { dragged -> if (ghost != null) landing.expect(dragged.id, ghost.index) }
+        if (ghost == null) landing.settle(group.ids)
+        val naturalTabWidth = ((availableForTabs - pinnedTotal - ghostWidth).coerceAtLeast(0.dp) / tabsCount)
         val computedTabWidthTarget = naturalTabWidth.coerceAtMost(maxTabWidth)
-        val tabWidth = computedTabWidthTarget
+        val tabWidth = frozenTabWidth?.coerceAtMost(computedTabWidthTarget) ?: computedTabWidthTarget
 
+        // The whole strip is the drop target of a tab dragged from another window (Chrome accepts
+        // drops on the whole strip area). Published left to right: the tabs are laid out in their
+        // logical order from the left edge, whatever the app's direction.
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            Box(Modifier.matchParentSize().tabStripGeometry(workspace, group))
+        }
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
@@ -415,37 +574,48 @@ private fun RtlAwareTabStripContent(
                 val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
                 val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
 
-                ReorderableRow(
-                    list = currentKeys,
-                    onSettle = { fromIdx, toIdx ->
-                        if (!reorderingEnabled) return@ReorderableRow
-                        onReorder(fromIdx, toIdx)
-                    },
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = rowModifier,
-                ) { index, key, isBeingDragged ->
-                    val tabEntry = tabEntriesByKey[key] ?: return@ReorderableRow
-                    key(key) {
-                        val isClosing = closingKeys.contains(tabEntry.key)
-                        val isNew = !knownKeys.contains(tabEntry.key)
+                ) {
+                    // Gap i is before logical tab i, logical 0 at the left: in RTL the keys come reversed, so the
+                    // gap follows its tab here, and the one after the last tab comes first.
+                    key(landing.generation) { if (isRtl) DropGhostSlot(ghost, currentKeys.size) }
+                    currentKeys.forEachIndexed { index, key ->
+                        key(landing.generation, "gap", index) { if (!isRtl) DropGhostSlot(ghost, index) }
+                        val tabEntry = tabEntriesByKey[key] ?: return@forEachIndexed
+                        val workspaceTab = workspace.tab(key) ?: return@forEachIndexed
+                        key(key) {
+                            val isClosing = closingKeys.contains(tabEntry.key)
+                            val isNew = !knownKeys.contains(tabEntry.key)
 
-                        ReorderableItem {
                             Box(
                                 modifier =
-                                    Modifier.draggableHandle(
-                                        enabled = reorderingEnabled && !isClosing,
-                                        onDragStarted = {
-                                            // Chrome-like behavior: selecting a tab when starting to drag it
-                                            tabEntry.onClick()
-                                        },
-                                    ),
+                                    Modifier
+                                        // Carried or sliding home, it is drawn over its neighbours.
+                                        .zIndex(if (tabDrag.animating == key) 1f else 0f)
+                                        .then(
+                                            // A tab closing (or just moved away) is no longer in the group.
+                                            if (reorderingEnabled && !isClosing && key in group.ids) {
+                                                Modifier.tabStripGrip(
+                                                    this@RtlAwareTabStripContent,
+                                                    tabDrag,
+                                                    workspaceTab,
+                                                    group.ids.indexOf(key),
+                                                    // The strip keeps the plain arrow over its tabs.
+                                                    cursor = TabGripCursor.None,
+                                                )
+                                            } else {
+                                                Modifier
+                                            },
+                                        ),
                             ) {
                                 var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                 LaunchedEffect(isClosing) {
                                     visible = !isClosing
                                 }
-                                Row {
+                                Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
                                     AnimatedVisibility(
                                         visible = visible,
                                         exit =
@@ -460,10 +630,14 @@ private fun RtlAwareTabStripContent(
                                             tabStyle = style,
                                             tabIndex = index,
                                             tabCount = tabs.size,
-                                            tabWidth = tabWidth,
+                                            tabWidth = pinnedWidths[tabEntry.key] ?: tabWidth,
+                                            pinned = tabEntry.pinned,
+                                            pinnedLabel = tabEntry.pinnedLabel,
+                                            onTogglePin = tabEntry.onTogglePin,
                                             labelProvider = tabEntry.labelProvider,
                                             onClick = tabEntry.onClick,
                                             onClose = {
+                                                if (stripHovered && frozenTabWidth == null) frozenTabWidth = tabWidth
                                                 if (!closingKeys.contains(tabEntry.key)) {
                                                     closingKeys = closingKeys + tabEntry.key
                                                     closeTabWithAnimation(
@@ -479,16 +653,20 @@ private fun RtlAwareTabStripContent(
                                             onCloseLeft = tabEntry.onCloseLeft,
                                             onCloseRight = tabEntry.onCloseRight,
                                             onCopyLink = tabEntry.onCopyLink,
+                                            onDetach = tabEntry.onDetach,
+                                            onMoveToDesktop = tabEntry.onMoveToDesktop,
                                             animateWidth = !isNew,
                                             enterFromSmall = isNew,
                                             enterDurationMs = enterDurationMs,
-                                            isDragging = isBeingDragged,
+                                            isDragging = tabDrag.held == key,
                                         )
                                     }
                                 }
                             }
                         }
+                        key(landing.generation, "gap", index) { if (isRtl) DropGhostSlot(ghost, currentKeys.size - 1 - index) }
                     }
+                    key(landing.generation) { if (!isRtl) DropGhostSlot(ghost, currentKeys.size) }
                 }
             }
 
@@ -554,6 +732,9 @@ private fun RtlAwareTab(
     tabIndex: Int,
     tabCount: Int,
     tabWidth: Dp,
+    pinned: Boolean,
+    pinnedLabel: String?,
+    onTogglePin: () -> Unit,
     labelProvider: @Composable () -> String,
     onClick: () -> Unit,
     onClose: () -> Unit,
@@ -563,6 +744,8 @@ private fun RtlAwareTab(
     onCloseRight: () -> Unit,
     modifier: Modifier = Modifier,
     onCopyLink: (() -> Unit)? = null,
+    onDetach: (() -> Unit)? = null,
+    onMoveToDesktop: ((String) -> Unit)? = null,
     animateWidth: Boolean = true,
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
@@ -594,21 +777,13 @@ private fun RtlAwareTab(
         targetValue = if (isDragging) 0.7f else 1f,
         animationSpec = tween(durationMillis = 150),
     )
-    val isIslands = ThemeUtils.isIslandsStyle()
-    val lineColor by tabStyle.colors.underlineFor(tabState)
-    val lineThickness = tabStyle.metrics.underlineThickness
-    val defaultBg by tabStyle.colors.backgroundFor(state = tabState)
     val accent = JewelTheme.globalColors.outlines.focused
     val backgroundColor =
-        if (isIslands) {
-            when {
-                tabState.isSelected -> accent.copy(alpha = 0.20f)
-                tabState.isPressed -> accent.copy(alpha = 0.18f)
-                tabState.isHovered -> accent.copy(alpha = 0.10f)
-                else -> Color.Transparent
-            }
-        } else {
-            defaultBg
+        when {
+            tabState.isSelected -> accent.copy(alpha = 0.20f)
+            tabState.isPressed -> accent.copy(alpha = 0.18f)
+            tabState.isHovered -> accent.copy(alpha = 0.10f)
+            else -> Color.Transparent
         }
     val resolvedContentColor =
         tabStyle.colors
@@ -644,18 +819,21 @@ private fun RtlAwareTab(
         var contextMenuOpen by remember { mutableStateOf(false) }
         var contextClickOffset by remember { mutableStateOf(IntOffset.Zero) }
 
+        val tabPadding = tabStyle.metrics.tabPadding
+        val contentWidth =
+            tabWidth - TabOuterHorizontalPadding * 2 -
+                tabPadding.calculateLeftPadding(LayoutDirection.Ltr) - tabPadding.calculateRightPadding(LayoutDirection.Ltr)
+        // A pinned tab never shows its close button (Chromium's Tab::UpdateIconVisibility).
+        val roomForCloseButton = !pinned && contentWidth >= MinContentWidthForCloseButton
+
         val container: @Composable () -> Unit = {
             Row(
                 modifier
                     .height(tabStyle.metrics.tabHeight)
                     .width(widthForThisTab)
-                    .let { m ->
-                        if (isIslands) {
-                            m.padding(horizontal = 2.dp, vertical = 4.dp).clip(RoundedCornerShape(8.dp))
-                        } else {
-                            m
-                        }
-                    }.background(backgroundColor)
+                    .padding(horizontal = TabOuterHorizontalPadding, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(backgroundColor)
                     .alpha(dragAlpha)
                     .onGloballyPositioned { coords ->
                         val pos = coords.positionInWindow()
@@ -667,29 +845,10 @@ private fun RtlAwareTab(
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Tab,
-                    ).let { m ->
-                        if (isIslands) {
-                            m
-                        } else {
-                            m.drawBehind {
-                                val strokeThickness = lineThickness.toPx()
-                                val startY = size.height - (strokeThickness / 2f)
-                                val endX = size.width
-                                val capDxFix = strokeThickness / 2f
-
-                                drawLine(
-                                    brush = SolidColor(lineColor),
-                                    start = Offset(0 + capDxFix, startY),
-                                    end = Offset(endX - capDxFix, startY),
-                                    strokeWidth = strokeThickness,
-                                    cap = StrokeCap.Round,
-                                )
-                            }
-                        }
-                    }.padding(tabStyle.metrics.tabPadding)
+                    ).padding(tabStyle.metrics.tabPadding)
                     .onPointerEvent(PointerEventType.Release) { ev ->
-                        // Middle-click closes tab (Chrome-like)
-                        if (ev.button.isTertiary) onClose()
+                        // Middle-click closes tab (Chrome-like), but not a pinned one: pinning guards against that.
+                        if (ev.button.isTertiary && !pinned) onClose()
                         // Right-click opens context menu
                         if (ev.button.isSecondary) {
                             val p = ev.changes.firstOrNull()?.position ?: Offset.Zero
@@ -699,7 +858,7 @@ private fun RtlAwareTab(
                         }
                     },
                 horizontalArrangement =
-                    if (tabWidth >= HideCloseTabWidthThreshold || tabData.selected) {
+                    if (roomForCloseButton || tabData.selected) {
                         Arrangement.spacedBy(tabStyle.metrics.closeContentGap)
                     } else {
                         Arrangement.spacedBy(0.dp)
@@ -709,8 +868,7 @@ private fun RtlAwareTab(
                 val isCompact = tabWidth < CompactTabWidthThreshold
                 val isSelected = tabData.selected
                 // Hide close for non-selected tabs when space is tight, always show for selected
-                val showCloseIcon =
-                    tabData.closable && (isSelected || tabWidth >= HideCloseTabWidthThreshold)
+                val showCloseIcon = tabData.closable && !pinned && (isSelected || roomForCloseButton)
 
                 val closeIconComposable: @Composable () -> Unit = {
                     if (showCloseIcon) {
@@ -728,7 +886,7 @@ private fun RtlAwareTab(
                             }
                         }
 
-                        Icon(
+                        SharedIcon(
                             key = tabStyle.icons.close,
                             modifier =
                                 Modifier
@@ -739,19 +897,25 @@ private fun RtlAwareTab(
                                         role = Role.Button,
                                     ).size(16.dp),
                             contentDescription = stringResource(Res.string.close_tab),
-                            hint = Stateful(closeButtonState),
+                            hints = *arrayOf(Stateful(closeButtonState)),
                         )
                     }
                 }
 
                 // In compact mode, selected tab shows only close icon (centered)
-                if (isCompact && isSelected) {
+                if (isCompact && isSelected && !pinned) {
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         closeIconComposable()
                     }
+                } else if (pinned && pinnedLabel != null) {
+                    // A pinned book or author tab is its label: its icon is every book's (or author's).
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        SingleLineTabContent(label = pinnedLabel, state = tabState, icon = null)
+                    }
                 } else {
-                    val iconOnly = isCompact
-                    Box(Modifier.weight(1f)) {
+                    val iconOnly = isCompact || pinned
+                    // A pinned tab is its icon, centred.
+                    Box(Modifier.weight(1f), contentAlignment = if (pinned) Alignment.Center else Alignment.TopStart) {
                         CompositionLocalProvider(LocalCompactIconOnly provides iconOnly) {
                             tabData.content(TabContentScopeContainer(), tabState)
                         }
@@ -762,9 +926,11 @@ private fun RtlAwareTab(
         }
 
         val label = labelProvider()
+        // The hover card replaces the tooltip on every tab it is shown for (all but the selected one).
         val showTooltip =
             label.isNotBlank() &&
-                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold)
+                (label.length > AppSettings.MAX_TAB_TITLE_LENGTH || tabWidth < TabTooltipWidthThreshold) &&
+                tabData.selected
 
         // Read theme colors outside remember so they act as a cache key.
         val tooltipColors = JewelTheme.tooltipStyle.colors
@@ -826,12 +992,51 @@ private fun RtlAwareTab(
             val closeLeftLabel = stringResource(Res.string.close_tabs_left)
             val closeRightLabel = stringResource(Res.string.close_tabs_right)
             val copyLinkLabel = stringResource(Res.string.copy_tab_link)
+            val detachLabel = stringResource(Res.string.tab_open_in_new_window)
+            val pinLabel = stringResource(if (pinned) Res.string.unpin_tab else Res.string.pin_tab)
+            val desktops by LocalAppGraph.current.desktopManager.desktops
+                .collectAsState()
+            val currentDesktopId = LocalOpenWindow.current.session.desktopId
+            val otherDesktops = desktops.filter { it.id != currentDesktopId }
+            val moveToDesktopLabels =
+                otherDesktops.associate { it.id to stringResource(Res.string.tab_move_to_desktop, it.name) }
 
             TabContextMenu(
                 anchorOffset = anchorOffset,
                 contextClickOffset = contextClickOffset,
                 onDismissRequest = { contextMenuOpen = false },
             ) {
+                tabContextMenuItem(
+                    label = pinLabel,
+                    icon = AllIconsKeys.General.Pin_tab,
+                    onClick = {
+                        contextMenuOpen = false
+                        onTogglePin()
+                    },
+                )
+                if (onDetach != null) {
+                    tabContextMenuItem(
+                        label = detachLabel,
+                        icon = AllIconsKeys.Actions.OpenNewTab,
+                        onClick = {
+                            contextMenuOpen = false
+                            onDetach()
+                        },
+                    )
+                }
+                // ponytail: flat items, not a submenu — Jewel's submenu always opens to the right, even in RTL
+                if (onMoveToDesktop != null) {
+                    otherDesktops.forEach { desktop ->
+                        tabContextMenuItem(
+                            label = moveToDesktopLabels.getValue(desktop.id),
+                            icon = AllIconsKeys.Actions.MoveTo2,
+                            onClick = {
+                                contextMenuOpen = false
+                                onMoveToDesktop(desktop.id)
+                            },
+                        )
+                    }
+                }
                 if (onCopyLink != null) {
                     tabContextMenuItem(
                         label = copyLinkLabel,
@@ -886,6 +1091,34 @@ private fun RtlAwareTab(
     }
 }
 
+/** The hover card of a tab: its full title over the picture of the window as the tab was left. */
+@Composable
+private fun TabHoverPreviewScope.TabPreviewCard() {
+    val colors = JewelTheme.tooltipStyle.colors
+    val shape = RoundedCornerShape(8.dp)
+    Column(
+        Modifier
+            .width(TabPreviewCardWidth)
+            .background(colors.background, shape)
+            .border(1.dp, colors.border, shape)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+    ) {
+        Text(
+            text = tab.title,
+            color = colors.content,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (thumbnail != null) {
+            Spacer(Modifier.height(8.dp))
+            TabPreview(tab, Modifier.fillMaxWidth().clip(RoundedCornerShape(4.dp)))
+        }
+    }
+}
+
+private val TabPreviewCardWidth = 280.dp
+
 // TabContentScopeContainer implementation (same as Jewel's internal)
 private class TabContentScopeContainer : TabContentScope {
     @Composable
@@ -922,13 +1155,123 @@ private fun SingleLineTabContent(
             )
         }
         if (!iconOnly) {
+            // The side the title is cut on: its paragraph's end, whatever the strip's direction.
+            var cutSide by remember { mutableStateOf<ResolvedTextDirection?>(null) }
             Text(
                 label,
-                modifier = Modifier.alpha(contentAlpha),
+                modifier = Modifier.alpha(contentAlpha).fadeCutEnd(cutSide),
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                softWrap = false,
+                overflow = TextOverflow.Clip,
+                onTextLayout = { layout ->
+                    cutSide = if (layout.hasVisualOverflow) layout.getParagraphDirection(0) else null
+                },
             )
         }
+    }
+}
+
+/**
+ * Which tab the open drop slot stands for, and where: the frame that shows it landed there turns
+ * [generation] over, and the slots keyed on it leave at once. Plain fields, bookkeeping only.
+ */
+private class DropLanding {
+    private var tabId: String? = null
+    private var index = -1
+
+    var generation = 0
+        private set
+
+    fun expect(
+        tabId: String,
+        index: Int,
+    ) {
+        this.tabId = tabId
+        this.index = index
+    }
+
+    fun settle(ids: List<String>) {
+        val expected = tabId ?: return
+        if (ids.getOrNull(index) == expected) generation++
+        tabId = null
+        index = -1
+    }
+}
+
+/**
+ * The gap before logical tab [index] (or after the last): opens to [ghost]'s width while a tab
+ * dragged from another window would drop there, and shuts when it moves on.
+ */
+@Composable
+private fun DropGhostSlot(
+    ghost: TabDropGhost?,
+    index: Int,
+) {
+    val shown = ghost?.takeIf { it.index == index }
+    // Kept through the exit, which still needs a width and a title to shut.
+    var last by remember { mutableStateOf(shown) }
+    if (shown != null) last = shown
+    AnimatedVisibility(
+        visible = shown != null,
+        enter = expandHorizontally(tween(DROP_SLOT_MS)),
+        exit = shrinkHorizontally(tween(DROP_SLOT_MS)),
+    ) {
+        last?.let {
+            TabDragGhostCard(
+                title = it.tab.title,
+                modifier = Modifier.width(it.width).fillMaxHeight().padding(horizontal = TabOuterHorizontalPadding, vertical = 4.dp),
+            )
+        }
+    }
+}
+
+private const val DROP_SLOT_MS = 200
+
+/** A pinned tab's label: its short title (a book's acronym), else the title of a book, search or author tab. */
+private fun TabItem.pinnedLabel(): String? =
+    shortTitle.ifBlank { title.takeIf { tabType in LABELED_WHEN_PINNED }.orEmpty() }.ifBlank { null }
+
+private val LABELED_WHEN_PINNED = setOf(TabType.BOOK, TabType.SEARCH, TabType.AUTHOR)
+
+/** The width of each pinned tab, by key: its icon's, or its label's measured width. */
+@Composable
+private fun rememberPinnedTabWidths(
+    tabs: List<TabEntry>,
+    style: TabStyle,
+): Map<String, Dp> {
+    val measurer = rememberTextMeasurer()
+    val textStyle = JewelTheme.defaultTextStyle
+    val density = LocalDensity.current
+    val padding = style.metrics.tabPadding
+    val chrome =
+        TabOuterHorizontalPadding * 2 + padding.calculateLeftPadding(LayoutDirection.Ltr) +
+            padding.calculateRightPadding(LayoutDirection.Ltr)
+    return remember(tabs, textStyle, density, chrome) {
+        tabs.filter { it.pinned }.associate { tab ->
+            val label = tab.pinnedLabel ?: return@associate tab.key to PinnedTabWidth
+            val textWidth =
+                with(density) {
+                    measurer
+                        .measure(label, textStyle, maxLines = 1)
+                        .size.width
+                        .toDp()
+                }
+            tab.key to (textWidth + chrome).coerceIn(PinnedTabWidth, PinnedLabelTabMaxWidth)
+        }
+    }
+}
+
+/** Fades the last [TitleFadeWidth] of a cut title out instead of an ellipsis (Chromium's FADE_TAIL). */
+private fun Modifier.fadeCutEnd(direction: ResolvedTextDirection?): Modifier {
+    if (direction == null) return this
+    return graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+        drawContent()
+        val fade = TitleFadeWidth.toPx().coerceAtMost(size.width / 2)
+        val (startX, endX) = if (direction == ResolvedTextDirection.Rtl) fade to 0f else size.width - fade to size.width
+        drawRect(
+            brush = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = startX, endX = endX),
+            blendMode = BlendMode.DstIn,
+        )
     }
 }
 
@@ -985,8 +1328,28 @@ private fun TabContextMenu(
     }
 }
 
-private fun copyToClipboard(text: String) {
-    Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+private fun MenuScope.tabContextMenuItem(
+    label: String,
+    icon: org.jetbrains.jewel.ui.icon.IconKey,
+    onClick: () -> Unit,
+) {
+    selectableItem(
+        selected = false,
+        onClick = onClick,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                key = icon,
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+                tint = JewelTheme.globalColors.text.normal,
+            )
+            Text(label)
+        }
+    }
 }
 
 private fun MenuScope.tabContextMenuItem(
@@ -1018,3 +1381,20 @@ private fun MenuScope.tabContextMenuItem(
         }
     }
 }
+
+/** The icon sets are drawn in black: tint them so they follow the theme (dark mode). */
+@Composable
+private fun rememberTintedVectorPainter(
+    image: ImageVector,
+    tint: Color,
+): Painter =
+    rememberVectorPainter(
+        defaultWidth = image.defaultWidth,
+        defaultHeight = image.defaultHeight,
+        viewportWidth = image.viewportWidth,
+        viewportHeight = image.viewportHeight,
+        name = image.name,
+        tintColor = tint,
+        tintBlendMode = BlendMode.SrcIn,
+        autoMirror = image.autoMirror,
+    ) { _, _ -> RenderVectorGroup(group = image.root) }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -25,7 +26,6 @@ import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Constraints
@@ -38,17 +38,15 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.PaneHeader
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.SafeSelectionContainer
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
-import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -81,23 +79,25 @@ private fun SingleLineTargumView(
     buildLinksPagerFor: (Long, Long?) -> Flow<PagingData<CommentaryWithText>>,
     getAvailableLinksForLine: suspend (Long) -> Map<String, Long>,
     getLinkCharCountsForLine: suspend (Long, Long, ConnectionType) -> List<Int>,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     commentariesScrollIndex: Int = 0,
     commentariesScrollOffset: Int = 0,
     initiallySelectedSourceIds: Set<Long> = emptySet(),
     onSelectedSourcesChange: (Set<Long>) -> Unit = {},
     onLinkClick: (CommentaryWithText) -> Unit = {},
+    onOpenBook: (BookContentEvent) -> Unit = {},
     onScroll: (Int, Int) -> Unit = { _, _ -> },
     onHide: () -> Unit = {},
     highlightQuery: String = "",
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     availabilityType: ConnectionType = ConnectionType.TARGUM,
-    fontCodeFlow: StateFlow<String> = AppSettings.targumFontCodeFlow,
+    fontCodeFlow: StateFlow<String> = LocalAppGraph.current.appSettings.targumFontCodeFlow,
     titleRes: StringResource = Res.string.links,
     selectLineRes: StringResource = Res.string.select_line_for_links,
     emptyRes: StringResource = Res.string.no_links_for_line,
 ) {
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val appSettings = LocalAppGraph.current.appSettings
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
     val isBookContentZoomInProgress = LocalBookContentZoomInProgress.current
     val zoomAnimSpec = if (isTabSelected && !isBookContentZoomInProgress) tween<Float>(durationMillis = 300) else snap()
@@ -106,7 +106,7 @@ private fun SingleLineTargumView(
         animationSpec = zoomAnimSpec,
         label = "linkTextSizeAnim",
     )
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
         animationSpec = zoomAnimSpec,
@@ -120,11 +120,7 @@ private fun SingleLineTargumView(
     // Selected font for targumim
     val targumFontCode by fontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
-    val boldScaleForPlatform =
-        remember(targumFontCode) {
-            val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
-        }
+    val boldScaleForPlatform = FontCatalog.boldScaleFor(targumFontCode)
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
@@ -224,7 +220,7 @@ private fun SingleLineTargumView(
                             }
                         val annotationCache =
                             remember(selectedLine.id, availabilityType) {
-                                StableAnnotatedCache(mutableStateMapOf())
+                                StableAnnotatedCache()
                             }
 
                         val listState =
@@ -304,7 +300,7 @@ private fun SingleLineTargumView(
                             }
                         }
 
-                        SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+                        SelectionContainer(modifier = Modifier.fillMaxSize()) {
                             Box(modifier = Modifier.fillMaxSize()) {
                                 LazyColumn(
                                     modifier = Modifier.fillMaxSize().padding(end = 12.dp),
@@ -313,12 +309,10 @@ private fun SingleLineTargumView(
                                 ) {
                                     sourceSections.forEach { section ->
                                         item(key = "header-${section.bookId}") {
-                                            Text(
-                                                text = section.title,
-                                                fontWeight = FontWeight.Bold,
-                                                fontSize = (commentTextSize * 1.1f).sp,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier.fillMaxWidth(),
+                                            CommentatorHeader(
+                                                commentator = section.title,
+                                                commentTextSize = commentTextSize,
+                                                onClick = { onOpenBook(section.openBookEvent()) },
                                             )
                                         }
 
@@ -341,7 +335,7 @@ private fun SingleLineTargumView(
                                                     boldScale = boldScaleForPlatform,
                                                     highlightQuery = highlightQuery,
                                                     onClick = { onLinkClick(item) },
-                                                    showDiacritics = showDiacritics,
+                                                    diacritics = diacritics,
                                                     annotationCache = annotationCache,
                                                     onLayoutWidthMeasure = { width ->
                                                         if (textLayoutWidthPx == 0 && width > 0) {
@@ -396,10 +390,11 @@ private fun SingleLineTargumView(
 fun LineTargumView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
     availabilityType: ConnectionType = ConnectionType.TARGUM,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val providers = uiState.providers ?: return
     val contentState = uiState.content
     val selectedLineIds = contentState.selectedLineIds.toList()
@@ -407,8 +402,8 @@ fun LineTargumView(
     // TOC entry selection = afficher targum/sources seulement de la ligne primaire
     val isManualMultiSelection = selectedLineIds.size > 1 && !contentState.isTocEntrySelection
     val windowInfo = LocalWindowInfo.current
-    val findQuery by AppSettings.findQueryFlow(uiState.tabId).collectAsState("")
-    val showFind by AppSettings.findBarOpenFlow(uiState.tabId).collectAsState()
+    val findQuery by appSettings.findQueryFlow(uiState.tabId).collectAsState("")
+    val showFind by appSettings.findBarOpenFlow(uiState.tabId).collectAsState()
     val activeQuery = if (showFind) findQuery else ""
 
     // Sélectionner les bons providers et callbacks selon le type
@@ -473,14 +468,14 @@ fun LineTargumView(
     val selectLineRes =
         if (isSourceType) Res.string.select_line_for_sources else Res.string.select_line_for_links
     val emptyRes = if (isSourceType) Res.string.no_sources_for_line else Res.string.no_links_for_line
-    val fontCodeFlow = if (isSourceType) AppSettings.sourceFontCodeFlow else AppSettings.targumFontCodeFlow
+    val fontCodeFlow = if (isSourceType) appSettings.sourceFontCodeFlow else appSettings.targumFontCodeFlow
 
     if (isManualMultiSelection) {
         MultiLineTargumView(
             selectedLineIds = selectedLineIds,
             uiState = uiState,
             onEvent = onEvent,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
             availabilityType = availabilityType,
             highlightQuery = activeQuery,
             onHide = onHide,
@@ -496,6 +491,7 @@ fun LineTargumView(
             initiallySelectedSourceIds = initiallySelectedIds,
             onSelectedSourcesChange = onSelectedSourcesChange,
             onLinkClick = onLinkClick,
+            onOpenBook = onEvent,
             onScroll = onScroll,
             onHide = onHide,
             highlightQuery = activeQuery,
@@ -505,7 +501,7 @@ fun LineTargumView(
             titleRes = titleRes,
             selectLineRes = selectLineRes,
             emptyRes = emptyRes,
-            showDiacritics = showDiacritics,
+            diacritics = diacritics,
         )
     }
 }
@@ -519,17 +515,18 @@ private fun MultiLineTargumView(
     selectedLineIds: List<Long>,
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     availabilityType: ConnectionType,
     highlightQuery: String,
     onHide: () -> Unit,
 ) {
+    val appSettings = LocalAppGraph.current.appSettings
     val providers = uiState.providers ?: return
     val contentState = uiState.content
     val windowInfo = LocalWindowInfo.current
     val currentOnEvent by rememberUpdatedState(onEvent)
 
-    val rawTextSize by AppSettings.textSizeFlow.collectAsState()
+    val rawTextSize by appSettings.textSizeFlow.collectAsState()
     val isTabSelected = LocalTabSelected.current
     val isBookContentZoomInProgress = LocalBookContentZoomInProgress.current
     val zoomAnimSpec = if (isTabSelected && !isBookContentZoomInProgress) tween<Float>(durationMillis = 300) else snap()
@@ -538,7 +535,7 @@ private fun MultiLineTargumView(
         animationSpec = zoomAnimSpec,
         label = "multiLineLinkTextSizeAnim",
     )
-    val rawLineHeight by AppSettings.lineHeightFlow.collectAsState()
+    val rawLineHeight by appSettings.lineHeightFlow.collectAsState()
     val lineHeight by animateFloatAsState(
         targetValue = rawLineHeight,
         animationSpec = zoomAnimSpec,
@@ -546,13 +543,9 @@ private fun MultiLineTargumView(
     )
 
     // Selected font for targumim
-    val targumFontCode by AppSettings.targumFontCodeFlow.collectAsState()
+    val targumFontCode by appSettings.targumFontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
-    val boldScaleForPlatform =
-        remember(targumFontCode) {
-            val lacksBold = targumFontCode in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")
-            if (PlatformInfo.isMacOS && lacksBold) 1.08f else 1.0f
-        }
+    val boldScaleForPlatform = FontCatalog.boldScaleFor(targumFontCode)
 
     val paneInteractionSource = remember { MutableInteractionSource() }
 
@@ -626,7 +619,7 @@ private fun MultiLineTargumView(
                     }
                 val annotationCache =
                     remember(selectedLineIds, availabilityType) {
-                        StableAnnotatedCache(mutableStateMapOf())
+                        StableAnnotatedCache()
                     }
 
                 val listState =
@@ -703,7 +696,7 @@ private fun MultiLineTargumView(
                     }
                 }
 
-                SafeSelectionContainer(modifier = Modifier.fillMaxSize()) {
+                SelectionContainer(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         LazyColumn(
                             modifier = Modifier.fillMaxSize().padding(end = 12.dp),
@@ -712,12 +705,10 @@ private fun MultiLineTargumView(
                         ) {
                             sourceSections.forEach { section ->
                                 item(key = "header-${section.bookId}") {
-                                    Text(
-                                        text = section.title,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = (commentTextSize * 1.1f).sp,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.fillMaxWidth(),
+                                    CommentatorHeader(
+                                        commentator = section.title,
+                                        commentTextSize = commentTextSize,
+                                        onClick = { onEvent(section.openBookEvent()) },
                                     )
                                 }
 
@@ -750,7 +741,7 @@ private fun MultiLineTargumView(
                                                     )
                                                 }
                                             },
-                                            showDiacritics = showDiacritics,
+                                            diacritics = diacritics,
                                             annotationCache = annotationCache,
                                             onLayoutWidthMeasure = { width ->
                                                 if (textLayoutWidthPx == 0 && width > 0) {
@@ -804,6 +795,18 @@ private data class SourceSection(
     val items: LazyPagingItems<CommentaryWithText>,
 )
 
+/**
+ * Opens this section's book in a new tab, like a commentator title: at the line it links to
+ * for the displayed base line(s), or at the book's start when no link is loaded yet.
+ */
+private fun SourceSection.openBookEvent(): BookContentEvent =
+    items.itemSnapshotList.items
+        .firstOrNull()
+        ?.link
+        ?.targetLineId
+        ?.let { BookContentEvent.OpenCommentaryTarget(bookId = bookId, lineId = it) }
+        ?: BookContentEvent.OpenBookByIdInNewTab(bookId)
+
 private data class SourceMeta(
     val title: String,
     val bookId: Long,
@@ -818,7 +821,7 @@ private fun LinkItem(
     fontFamily: FontFamily,
     highlightQuery: String,
     onClick: () -> Unit,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     annotationCache: StableAnnotatedCache,
     boldScale: Float = 1.0f,
     onLayoutWidthMeasure: (Int) -> Unit = {},
@@ -833,8 +836,8 @@ private fun LinkItem(
                 },
     ) {
         val processedText =
-            remember(linkId, targetText, showDiacritics) {
-                if (showDiacritics) targetText else HebrewTextUtils.removeAllDiacritics(targetText)
+            remember(linkId, targetText, diacritics) {
+                diacritics.apply(targetText)
             }
 
         // Footnote marker color from theme

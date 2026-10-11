@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.features.settings
 
-import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.fonts.FontsSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import kotlin.test.Test
@@ -72,13 +71,6 @@ class SettingsEventsTest {
         val event = GeneralSettingsEvents.SetPersistSession(value = true)
         assertTrue(event.value)
         assertIs<GeneralSettingsEvents>(event)
-    }
-
-    @Test
-    fun `DisplaySettingsEvents SetShowZmanimWidgets stores value`() {
-        val event = DisplaySettingsEvents.SetShowZmanimWidgets(value = false)
-        assertFalse(event.value)
-        assertIs<DisplaySettingsEvents>(event)
     }
 
     @Test

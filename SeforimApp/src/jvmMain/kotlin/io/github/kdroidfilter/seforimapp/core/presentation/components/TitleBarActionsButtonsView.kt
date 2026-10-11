@@ -7,9 +7,10 @@ import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.update.showTitleBarIcon
@@ -26,12 +27,13 @@ private val SystemTheme = PathIconKey("icons/system_theme.svg", SystemThemeIconA
 
 @Composable
 fun TitleBarActionsButtonsView() {
+    val appSettings = LocalAppGraph.current.appSettings
     val appGraph = LocalAppGraph.current
     val mainAppState = appGraph.mainAppState
     val theme = mainAppState.theme.collectAsState().value
 
-    // Update badge: shown only for PROMPT updates (MINOR/MAJOR any OS, or Linux PATCH).
-    // Silent Win/Mac PATCH updates apply on close and never surface here.
+    // Update badge: shown only for PROMPT updates (MINOR/MAJOR any OS, or Linux PATCH without
+    // the passwordless helper). Silent PATCH updates apply on close and never surface here.
     val updateState =
         appGraph.appUpdateService.state
             .collectAsState()
@@ -42,23 +44,11 @@ fun TitleBarActionsButtonsView() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val settingsState = settingsViewModel.state.collectAsState().value
 
-    // Access app graph outside of callbacks to avoid reading CompositionLocals in non-composable contexts
-    val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
+    // Access the window's tabs outside of callbacks to avoid reading CompositionLocals in non-composable contexts
+    val tabsViewModel: TabsViewModel = LocalOpenWindow.current.tabsViewModel
     val tabsState = tabsViewModel.state.collectAsState().value
     val currentTab = tabsState.tabs.getOrNull(tabsState.selectedTabIndex)
-    val findEnabled =
-        when (val dest = currentTab?.destination) {
-            is TabsDestination.Search -> true
-            is TabsDestination.BookContent -> {
-                (
-                    appGraph.tabPersistedStateStore
-                        .get(dest.tabId)
-                        ?.bookContent
-                        ?.selectedBookId ?: -1L
-                ) > 0L
-            }
-            else -> false
-        }
+    val findEnabled = currentTab?.destination?.hasFindInPage(appGraph.tabPersistedStateStore) == true
 
     val iconDescription =
         when (theme) {
@@ -108,8 +98,6 @@ fun TitleBarActionsButtonsView() {
         contentDescription = stringResource(Res.string.home),
         onClick = {
             // Replace current tab destination with Home, preserving tabId
-            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
-
             val tabs = tabsViewModel.tabs.value
             val selectedIndex = tabsViewModel.selectedTabIndex.value
             val currentTabId = tabs.getOrNull(selectedIndex)?.destination?.tabId
@@ -126,13 +114,12 @@ fun TitleBarActionsButtonsView() {
         key = AllIconsKeys.Actions.Find,
         contentDescription = stringResource(Res.string.find),
         onClick = {
-            val tabsViewModel: TabsViewModel = appGraph.tabsViewModel
             val tabs = tabsViewModel.tabs.value
             val selectedIndex = tabsViewModel.selectedTabIndex.value
             val tabId = tabs.getOrNull(selectedIndex)?.destination?.tabId ?: return@TitleBarActionButton
             // Toggle the Find-in-Page bar for the current tab only
-            val isOpen = AppSettings.findBarOpenFlow(tabId).value
-            if (isOpen) AppSettings.closeFindBar(tabId) else AppSettings.openFindBar(tabId)
+            val isOpen = appSettings.findBarOpenFlow(tabId).value
+            if (isOpen) appSettings.closeFindBar(tabId) else appSettings.showFindBar(tabId, appGraph.selectionContext.selectedTextIn(tabId))
         },
         tooltipText =
             if (findEnabled) {
@@ -145,6 +132,14 @@ fun TitleBarActionsButtonsView() {
         shortcutHint = findShortcutHint,
         enabled = findEnabled,
     )
+
+    // Chrome-like Tab Search (open tabs + visit history) and Favorites menu.
+    // On macOS the native History/Favorites menus (searchable) cover them; shortcuts still work.
+    if (!PlatformInfo.isMacOS) {
+        FavoritesMenuButton()
+        TabSearchButton()
+        ToolsMenuButton()
+    }
     // On macOS, theme toggle and settings are handled by the native menu bar
     if (!PlatformInfo.isMacOS) {
         TitleBarActionButton(

@@ -21,40 +21,42 @@ import kotlin.test.assertTrue
  * validation logic, and data flow between screens.
  */
 class OnboardingFlowIntegrationTest {
+    private val progressBarState = ProgressBarState()
+
     @BeforeTest
     fun setup() {
         // Reset progress bar state before each test
-        ProgressBarState.resetProgress()
+        progressBarState.resetProgress()
     }
 
     // ==================== Progress Bar State Tests ====================
 
     @Test
     fun `ProgressBarState starts at 0`() {
-        ProgressBarState.resetProgress()
-        assertEquals(0f, ProgressBarState.progress.value)
+        progressBarState.resetProgress()
+        assertEquals(0f, progressBarState.progress.value)
     }
 
     @Test
     fun `ProgressBarState setProgress updates value`() {
-        ProgressBarState.setProgress(0.5f)
-        assertEquals(0.5f, ProgressBarState.progress.value)
+        progressBarState.setProgress(0.5f)
+        assertEquals(0.5f, progressBarState.progress.value)
     }
 
     @Test
     fun `ProgressBarState improveBy increases value`() {
-        ProgressBarState.resetProgress()
-        ProgressBarState.improveBy(0.2f)
-        assertEquals(0.2f, ProgressBarState.progress.value)
-        ProgressBarState.improveBy(0.3f)
-        assertEquals(0.5f, ProgressBarState.progress.value)
+        progressBarState.resetProgress()
+        progressBarState.improveBy(0.2f)
+        assertEquals(0.2f, progressBarState.progress.value)
+        progressBarState.improveBy(0.3f)
+        assertEquals(0.5f, progressBarState.progress.value)
     }
 
     @Test
     fun `ProgressBarState resetProgress returns to 0`() {
-        ProgressBarState.setProgress(0.8f)
-        ProgressBarState.resetProgress()
-        assertEquals(0f, ProgressBarState.progress.value)
+        progressBarState.setProgress(0.8f)
+        progressBarState.resetProgress()
+        assertEquals(0f, progressBarState.progress.value)
     }
 
     // ==================== Destination Flow Tests ====================

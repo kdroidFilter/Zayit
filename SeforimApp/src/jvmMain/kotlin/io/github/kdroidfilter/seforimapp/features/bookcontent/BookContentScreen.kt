@@ -9,7 +9,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -23,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusManager
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.InputModeManager
@@ -39,44 +39,41 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightColors
 import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
 import io.github.kdroidfilter.seforimapp.core.annotations.resolveHighlightRangesForSelection
+import io.github.kdroidfilter.seforimapp.core.bookErrorReportMailto
 import io.github.kdroidfilter.seforimapp.core.buildCopyWithSourcePayload
 import io.github.kdroidfilter.seforimapp.core.deeplink.bookShareLink
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeUtils
+import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
 import io.github.kdroidfilter.seforimapp.core.resolveLineRangeFromSelection
-import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
-import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EndVerticalBar
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.StartVerticalBar
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.booktoc.BookTocPanel
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.categorytree.CategoryTreePanel
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.LocalBookSelection
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.highlightRangesOf
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.resolveComposeSelection
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.resolveRange
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
-import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NotesPanel
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
-import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.Ink_pen
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.stringResource
-import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import org.jetbrains.compose.splitpane.SplitPaneState
 import org.jetbrains.jewel.foundation.InternalJewelApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ContextMenuItemOption
@@ -101,20 +98,19 @@ import seforimapp.seforimapp.generated.resources.context_menu_copy_with_source
 import seforimapp.seforimapp.generated.resources.context_menu_copy_without_nikud
 import seforimapp.seforimapp.generated.resources.context_menu_find_in_page
 import seforimapp.seforimapp.generated.resources.context_menu_highlight
+import seforimapp.seforimapp.generated.resources.context_menu_report_error
 import seforimapp.seforimapp.generated.resources.context_menu_search_selected_text
-import java.awt.Toolkit
-import java.awt.datatransfer.StringSelection
 import java.awt.event.InputEvent
 import javax.swing.KeyStroke
-import kotlin.math.roundToInt
 import androidx.compose.foundation.ContextMenuRepresentation as ComposeContextMenuRepresentation
+import org.jetbrains.jewel.ui.component.ContextMenuRepresentation as JewelContextMenuRepresentation
+import org.jetbrains.jewel.ui.component.TextContextMenu as JewelTextContextMenu
 
 private val TextSearchContextMenuIconKey = PathIconKey("icons/lucide_text_search.svg", BookContentViewModel::class.java)
 
 private class ContextMenuItemOptionWithKeybinding(
     val icon: org.jetbrains.jewel.ui.icon.IconKey? = null,
     val keybinding: Set<String>? = null,
-    val enabled: Boolean = true,
     label: String,
     action: () -> Unit,
 ) : ContextMenuItem(label, action)
@@ -307,7 +303,7 @@ private fun applyHighlightFromSelection(
     bookId: Long,
     commentaryColumn: List<io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef>,
     color: Color,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
     store: HighlightStore,
     @StructuredScope scope: CoroutineScope,
 ) {
@@ -316,7 +312,7 @@ private fun applyHighlightFromSelection(
     if (commentaryColumn.isNotEmpty()) {
         val commentaryBookId = commentaryColumn.first().bookId
         val sorted = commentaryColumn.map { it.lineId to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-        val ranges = resolveHighlightRangesForSelection(sorted, selectedText, showDiacritics)
+        val ranges = resolveHighlightRangesForSelection(sorted, selectedText, diacritics)
         persistHighlights(commentaryBookId, ranges, color, store, scope)
         return
     }
@@ -327,7 +323,7 @@ private fun applyHighlightFromSelection(
         lines
             .sortedBy { it.lineIndex }
             .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-    val mainRanges = resolveHighlightRangesForSelection(mainSorted, selectedText, showDiacritics)
+    val mainRanges = resolveHighlightRangesForSelection(mainSorted, selectedText, diacritics)
     persistHighlights(bookId, mainRanges, color, store, scope)
 }
 
@@ -358,13 +354,13 @@ private fun persistHighlights(
 private fun resolveNoteDraft(
     selectedText: String,
     lines: List<io.github.kdroidfilter.seforimlibrary.core.models.Line>,
-    showDiacritics: Boolean,
+    diacritics: DiacriticsMode,
 ): NoteDraftAnchor? {
     val sorted =
         lines
             .sortedBy { it.lineIndex }
             .map { it.id to buildAnnotatedFromHtml(it.content, baseTextSize = 16f, boldScale = 1f).text }
-    val range = resolveHighlightRangesForSelection(sorted, selectedText, showDiacritics).firstOrNull() ?: return null
+    val range = resolveHighlightRangesForSelection(sorted, selectedText, diacritics).firstOrNull() ?: return null
     return NoteDraftAnchor(
         lineId = range.lineId,
         startOffset = range.range.first,
@@ -439,31 +435,26 @@ private fun composeKeyEventToSwingKeyStroke(event: KeyEvent): KeyStroke? {
 }
 
 /**
- * Displays the content view of a book with multiple panels configured within split panes.
- *
- * @param uiState The complete UI state used for rendering the book content screen, capturing navigation, TOC, content display, layout management, and more.
- * @param onEvent Function that handles various user-driven events or state updates within the book content view.
- * @param showDiacritics Whether to render Hebrew diacritics for the current root category.
+ * The text context menu of everything drawing [uiState]'s book — the text itself and the dock panes
+ * (commentaries, links, notes): copy without nikud, copy with source, share link, search, find in
+ * page, add note, highlight. [tabUi] carries the note draft the "add note" action opens.
  */
-@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BookContentScreen(
+fun BookTextMenus(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    showDiacritics: Boolean,
-    searchUi: SearchHomeUiState,
-    searchCallbacks: HomeSearchCallbacks,
-    isRestoringSession: Boolean = false,
-    isSelected: Boolean = true,
-    bookCharCounts: IntArray? = null,
+    diacritics: DiacriticsMode,
+    tabUi: BookTabUi,
+    content: @Composable () -> Unit,
 ) {
-    val currentOnEvent by rememberUpdatedState(onEvent)
     val searchSelectedLabel = stringResource(Res.string.context_menu_search_selected_text)
     val findInPageLabel = stringResource(Res.string.context_menu_find_in_page)
     val copyWithoutNikudLabel = stringResource(Res.string.context_menu_copy_without_nikud)
     val copyWithSourceLabel = stringResource(Res.string.context_menu_copy_with_source)
     val copyLinkLabel = stringResource(Res.string.context_menu_copy_link)
     val addNoteLabel = stringResource(Res.string.context_menu_add_note)
+    val reportErrorLabel = stringResource(Res.string.context_menu_report_error)
     val baseTextContextMenu = LocalTextContextMenu.current
     val tabId = uiState.tabId
     val selectedBook = uiState.navigation.selectedBook
@@ -473,40 +464,10 @@ fun BookContentScreen(
     val currentSelectedBook by rememberUpdatedState(selectedBook)
     val currentNotesVisible by rememberUpdatedState(uiState.notes.isVisible)
     val currentPrimaryLineId by rememberUpdatedState(uiState.content.primaryLine?.id)
-
-    // User-highlight persistence (separate local user DB).
     val highlightStore = LocalAppGraph.current.highlightStore
     val highlightScope = rememberCoroutineScope()
+    val reportScope = rememberCoroutineScope()
     val bookId = selectedBook?.id ?: 0L
-
-    // User notes: a pending draft (anchored, not yet saved) opened from the context menu and
-    // edited inline in the notes pane (Google-Docs style).
-    val noteStore = LocalAppGraph.current.noteStore
-    var noteDraft by remember { mutableStateOf<NoteDraftAnchor?>(null) }
-    // Primary line captured when the draft was opened. Selecting a different line drops the unsaved
-    // explicit draft so the editor reflects the newly selected line instead of the stale anchor.
-    var noteDraftBaselineLine by remember { mutableStateOf<Long?>(null) }
-    LaunchedEffect(uiState.content.primaryLine?.id) {
-        if (noteDraft != null && uiState.content.primaryLine?.id != noteDraftBaselineLine) {
-            noteDraft = null
-        }
-    }
-
-    // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
-    // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
-    // clears are tabId-scoped so a backgrounded or disposed tab cannot wipe the foreground
-    // tab's published book — even when both tabs happen to reference the same book.
-    LaunchedEffect(selectedBook, isSelected, tabId, selectionContext) {
-        if (isSelected) {
-            val rootTitle = selectedBook?.let { CatalogCache.getRootForBook(it)?.title }
-            selectionContext.setActiveBook(tabId, selectedBook, rootTitle)
-        } else {
-            selectionContext.clearActiveBookIfOwnedBy(tabId)
-        }
-    }
-    DisposableEffect(tabId, selectionContext) {
-        onDispose { selectionContext.clearActiveBookIfOwnedBy(tabId) }
-    }
 
     val textContextMenu =
         remember(
@@ -518,7 +479,7 @@ fun BookContentScreen(
             copyWithoutNikudLabel,
             copyWithSourceLabel,
             copyLinkLabel,
-            showDiacritics,
+            diacritics,
             bookHasDiacritics,
             bookId,
         ) {
@@ -530,22 +491,66 @@ fun BookContentScreen(
                     state: ContextMenuState,
                     content: @Composable () -> Unit,
                 ) {
+                    val appSettings = LocalAppGraph.current.appSettings
+                    val repository = LocalAppGraph.current.repository
+                    val copyToClipboard = rememberCopyToClipboard()
+                    // The book view's selection located in the book (Compose's from the press it started at, or the
+                    // Shift+click one read from the database): what the copies, highlights and sources take, the AWT
+                    // shortcuts included through the SelectionContext
+                    val bookSelection = LocalBookSelection.current
+                    val shiftRange = bookSelection?.range
+                    val rawText = textManager.selectedText.text
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
-                    LaunchedEffect(textManager.selectedText.text) {
-                        selectionContext.setSelectedText(textManager.selectedText.text)
+                    // A new Compose selection (a drag) replaces the Shift+click one; a Shift+click leaves Compose's as is
+                    LaunchedEffect(rawText) { if (rawText.isNotEmpty()) bookSelection?.clear() }
+                    LaunchedEffect(rawText, shiftRange, diacritics) {
+                        bookSelection?.resolved = null
+                        // A Shift+click selection is not Compose's, still drawn from an earlier drag: nothing until read
+                        selectionContext.setSelectedText(tabId, if (shiftRange != null) "" else rawText)
+                        val pressedAt = bookSelection?.pressedAt
+                        val resolved =
+                            when {
+                                bookSelection == null || bookId <= 0 -> null
+                                shiftRange != null -> resolveRange(shiftRange, bookId, repository, diacritics)
+                                rawText.isNotEmpty() && pressedAt != null -> {
+                                    // Across lines, once the drag rests rather than on each of its moves; within a line (a
+                                    // double click, a word) at once, a single line to read, before the menu opens
+                                    if ('\n' in rawText) delay(SELECTION_SETTLE_MS)
+                                    resolveComposeSelection(rawText, pressedAt, bookId, repository, diacritics)
+                                }
+                                else -> null
+                            }
+                        if (resolved != null) {
+                            bookSelection?.resolved = resolved
+                            selectionContext.setSelectedText(tabId, resolved.text, resolved.first to resolved.last)
+                        }
                     }
+                    val resolved = bookSelection?.resolved
+                    val owned = resolved?.takeIf { it.owned }
+                    val menuTextManager =
+                        owned?.let { selection ->
+                            object : TextContextMenu.TextManager by textManager {
+                                override val selectedText = AnnotatedString(selection.text)
+                                override val copy = TextContextMenu.Action(enabled = true) { copyToClipboard(selection.text) }
+
+                                // A right-click keeps the Shift+click selection rather than selecting a word
+                                override fun selectWordAtPositionIfNotAlreadySelected(offset: Offset) = Unit
+                            }
+                        } ?: textManager
 
                     ContextMenuDataProvider(
                         items = {
                             val query = normalizeSearchQuery(textManager.selectedText.text)
                             val selectedText = textManager.selectedText.text
+                            // What the copies take: the Shift+click selection, beyond the lines composed
+                            val copiedText = owned?.text ?: selectedText
                             buildList {
-                                // Copy without nikud option - first position, only show when book has diacritics and they are enabled
+                                // Copy without nikud option - first position, only show when book has diacritics and they are shown
                                 if (bookHasDiacritics &&
-                                    showDiacritics &&
-                                    selectedText.isNotBlank() &&
-                                    (HebrewTextUtils.containsNikud(selectedText) || HebrewTextUtils.containsTeamim(selectedText))
+                                    diacritics != DiacriticsMode.None &&
+                                    copiedText.isNotBlank() &&
+                                    (HebrewTextUtils.containsNikud(copiedText) || HebrewTextUtils.containsTeamim(copiedText))
                                 ) {
                                     add(
                                         ContextMenuItemOptionWithKeybinding(
@@ -558,15 +563,14 @@ fun BookContentScreen(
                                                 },
                                             label = copyWithoutNikudLabel,
                                         ) {
-                                            val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(selectedText)
-                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                            clipboard.setContents(StringSelection(textWithoutDiacritics), null)
+                                            val textWithoutDiacritics = HebrewTextUtils.removeAllDiacritics(copiedText)
+                                            copyToClipboard(textWithoutDiacritics)
                                         },
                                     )
                                 }
                                 // Copy with source: append "(book ref – line ref)" to the selection
                                 val bookForCopy = currentSelectedBook
-                                if (bookForCopy != null && selectedText.isNotBlank()) {
+                                if (bookForCopy != null && copiedText.isNotBlank()) {
                                     add(
                                         ContextMenuItemOptionWithKeybinding(
                                             icon = AllIconsKeys.Actions.Copy,
@@ -580,13 +584,13 @@ fun BookContentScreen(
                                         ) {
                                             val payload =
                                                 buildCopyWithSourcePayload(
-                                                    selectedText,
+                                                    copiedText,
                                                     bookForCopy,
                                                     selectionContext.activeBook.value?.rootTitle,
                                                     selectionContext.visibleLines.value.lines,
+                                                    resolved?.let { it.first to it.last },
                                                 )
-                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                            clipboard.setContents(StringSelection(payload), null)
+                                            copyToClipboard(payload)
                                         },
                                     )
                                 }
@@ -600,7 +604,9 @@ fun BookContentScreen(
                                             label = copyLinkLabel,
                                         ) {
                                             val lineId =
-                                                if (selectedText.isNotBlank()) {
+                                                if (resolved != null) {
+                                                    resolved.first.id
+                                                } else if (selectedText.isNotBlank()) {
                                                     resolveLineRangeFromSelection(
                                                         selectedText,
                                                         selectionContext.visibleLines.value.lines,
@@ -609,8 +615,7 @@ fun BookContentScreen(
                                                     selectionContext.currentLineId.value.takeIf { it > 0 }
                                                 }
                                             val link = bookShareLink(bookForCopy.id, lineId)
-                                            val clipboard = Toolkit.getDefaultToolkit().systemClipboard
-                                            clipboard.setContents(StringSelection(link), null)
+                                            copyToClipboard(link)
                                         },
                                     )
                                 }
@@ -636,9 +641,9 @@ fun BookContentScreen(
                                         label = findInPageLabel,
                                     ) {
                                         if (query.isNotBlank()) {
-                                            AppSettings.setFindQuery(tabId, query)
+                                            appSettings.setFindQuery(tabId, query)
                                         }
-                                        AppSettings.openFindBar(tabId)
+                                        appSettings.showFindBar(tabId)
                                     },
                                 )
                                 // Add note (main pane only): anchors a note to the selected text,
@@ -656,35 +661,87 @@ fun BookContentScreen(
                                             val lines = selectionContext.visibleLines.value.lines
                                             val draft =
                                                 if (selectedText.isNotBlank()) {
-                                                    resolveNoteDraft(selectedText, lines, showDiacritics)
+                                                    resolveNoteDraft(selectedText, lines, diacritics)
                                                 } else {
                                                     resolveWholeLineNoteDraft(selectionContext.currentLineId.value, lines)
                                                 }
                                             if (draft != null) {
-                                                noteDraft = draft
-                                                noteDraftBaselineLine = currentPrimaryLineId
+                                                tabUi.noteDraft = draft
+                                                tabUi.noteDraftBaselineLine = currentPrimaryLineId
                                                 if (!currentNotesVisible) onEvent(BookContentEvent.ToggleNotes)
+                                            }
+                                        },
+                                    )
+                                }
+                                // Report an error (main pane only) in the selection, or the right-clicked line without one
+                                if (bookForCopy != null &&
+                                    selectionContext.activeCommentaryColumn.value
+                                        .isEmpty() &&
+                                    (copiedText.isNotBlank() || selectionContext.currentLineId.value > 0)
+                                ) {
+                                    add(
+                                        ContextMenuItemOption(
+                                            icon = AllIconsKeys.General.Warning,
+                                            label = reportErrorLabel,
+                                        ) {
+                                            val lines = selectionContext.visibleLines.value.lines
+                                            val range =
+                                                resolved?.let { it.first to it.last }
+                                                    ?: copiedText
+                                                        .takeIf { it.isNotBlank() }
+                                                        ?.let { resolveLineRangeFromSelection(it, lines) }
+                                                    ?: lines
+                                                        .firstOrNull { it.id == selectionContext.currentLineId.value }
+                                                        ?.let { it to it }
+                                            val rootTitle = selectionContext.activeBook.value?.rootTitle
+                                            reportScope.launch {
+                                                UrlOpener.open(bookErrorReportMailto(repository, bookForCopy, rootTitle, range, copiedText))
                                             }
                                         },
                                     )
                                 }
                                 // Highlight color picker (last item): persists a position-based
                                 // highlight for the selected text on its resolved line.
-                                if (selectedText.isNotBlank() && bookId > 0) {
+                                if (copiedText.isNotBlank() && bookId > 0) {
                                     add(
                                         ContextMenuHighlightColorPicker(
                                             colors = HighlightColors.allWithClear,
                                             onColorSelected = { color ->
-                                                applyHighlightFromSelection(
-                                                    selectedText = selectedText,
-                                                    lines = selectionContext.visibleLines.value.lines,
-                                                    bookId = bookId,
-                                                    commentaryColumn = selectionContext.activeCommentaryColumn.value,
-                                                    color = color,
-                                                    showDiacritics = showDiacritics,
-                                                    store = highlightStore,
-                                                    scope = highlightScope,
-                                                )
+                                                // Located in the book: exactly the selected characters, computed off the UI thread
+                                                val selection = resolved
+                                                if (selection != null) {
+                                                    highlightScope.launch {
+                                                        val located =
+                                                            withContext(Dispatchers.Default) {
+                                                                highlightRangesOf(selection.range, selection.lines, diacritics)
+                                                            }
+                                                        if (located != null) {
+                                                            persistHighlights(bookId, located, color, highlightStore, highlightScope)
+                                                        } else {
+                                                            applyHighlightFromSelection(
+                                                                selectedText = copiedText,
+                                                                lines = selection.lines,
+                                                                bookId = bookId,
+                                                                commentaryColumn = selectionContext.activeCommentaryColumn.value,
+                                                                color = color,
+                                                                diacritics = diacritics,
+                                                                store = highlightStore,
+                                                                scope = highlightScope,
+                                                            )
+                                                        }
+                                                    }
+                                                } else {
+                                                    applyHighlightFromSelection(
+                                                        selectedText = copiedText,
+                                                        lines = selectionContext.visibleLines.value.lines,
+                                                        bookId = bookId,
+                                                        commentaryColumn = selectionContext.activeCommentaryColumn.value,
+                                                        color = color,
+                                                        diacritics = diacritics,
+                                                        store = highlightStore,
+                                                        scope = highlightScope,
+                                                    )
+                                                }
                                             },
                                             onDismiss = { state.status = ContextMenuState.Status.Closed },
                                         ),
@@ -694,7 +751,7 @@ fun BookContentScreen(
                         },
                     ) {
                         baseTextContextMenu.Area(
-                            textManager = textManager,
+                            textManager = menuTextManager,
                             state = state,
                             content = content,
                         )
@@ -703,191 +760,127 @@ fun BookContentScreen(
             }
         }
 
-    // Configuration of split panes to monitor
-    val splitPaneConfigs =
-        listOf(
-            SplitPaneConfig(
-                splitState = uiState.layout.mainSplitState,
-                isVisible = uiState.navigation.isVisible,
-                positionFilter = { it > 0 },
-            ),
-            SplitPaneConfig(
-                splitState = uiState.layout.tocSplitState,
-                isVisible = uiState.toc.isVisible,
-                positionFilter = { it > 0 },
-            ),
-            SplitPaneConfig(
-                splitState = uiState.layout.notesSplitState,
-                isVisible = uiState.notes.isVisible,
-                positionFilter = { it > 0 },
-            ),
-            SplitPaneConfig(
-                splitState = uiState.layout.contentSplitState,
-                isVisible = uiState.content.showCommentaries,
-                positionFilter = { it > 0 && it < 1 },
-            ),
-            SplitPaneConfig(
-                splitState = uiState.layout.targumSplitState,
-                isVisible = uiState.content.showTargum,
-                positionFilter = { it > 0 && it < 1 },
-            ),
-        )
+    CompositionLocalProvider(
+        LocalTextContextMenu provides textContextMenu,
+        LocalContextMenuRepresentation provides BookContentContextMenuRepresentationWithKeybindings,
+        content = content,
+    )
+}
 
-    // Monitor all split panes with the same logic
-    splitPaneConfigs.forEach { config ->
-        LaunchedEffect(config.splitState, config.isVisible) {
-            if (config.isVisible) {
-                snapshotFlow { config.splitState.positionPercentage }
-                    .map { ((it * 100).roundToInt() / 100f) }
-                    .distinctUntilChanged()
-                    .debounce(300)
-                    .filter(config.positionFilter)
-                    .collect { currentOnEvent(BookContentEvent.SaveState) }
-            }
+/**
+ * Restores Jewel's default text context menu (copy/cut/paste) for editable fields inside a
+ * book screen, where [BookTextMenus] (copy link, highlight, add note…) is irrelevant. Both the
+ * items and the representation are reset, since [BookTextMenus] overrides both.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun PlainTextMenus(content: @Composable () -> Unit) {
+    CompositionLocalProvider(
+        LocalTextContextMenu provides JewelTextContextMenu,
+        LocalContextMenuRepresentation provides JewelContextMenuRepresentation,
+        content = content,
+    )
+}
+
+/**
+ * The text of a book tab: the book (or Home when none is open) with its breadcrumb. Its panes —
+ * tree, contents, notes, links, commentaries, sources — are dock satellites of the window
+ * (see `ReaderPanes`), drawing the same ViewModel.
+ */
+@OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
+@Composable
+fun BookContentScreen(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    diacritics: DiacriticsMode,
+    searchUi: SearchHomeUiState,
+    searchCallbacks: HomeSearchCallbacks,
+    tabUi: BookTabUi,
+    isRestoringSession: Boolean = false,
+    isSelected: Boolean = true,
+    bookCharCounts: IntArray? = null,
+) {
+    val currentOnEvent by rememberUpdatedState(onEvent)
+    val tabId = uiState.tabId
+    val selectedBook = uiState.navigation.selectedBook
+    val selectionContext = LocalAppGraph.current.selectionContext
+    val catalogCache = LocalAppGraph.current.catalogCache
+
+    // Selecting a different line drops the unsaved explicit note draft so the editor reflects the
+    // newly selected line instead of the stale anchor.
+    LaunchedEffect(uiState.content.primaryLine?.id) {
+        if (tabUi.noteDraft != null && uiState.content.primaryLine?.id != tabUi.noteDraftBaselineLine) {
+            tabUi.noteDraft = null
         }
+    }
+
+    // Publish the active book + its root category to the SelectionContext so the Ctrl+Alt+C
+    // dispatcher and the context-menu action can apply per-tradition formatting. Lifecycle
+    // clears are tabId-scoped so a backgrounded or disposed tab cannot wipe the foreground
+    // tab's published book — even when both tabs happen to reference the same book.
+    LaunchedEffect(selectedBook, isSelected, tabId, selectionContext) {
+        if (isSelected) {
+            val rootTitle = selectedBook?.let { catalogCache.getRootForBook(it)?.title }
+            selectionContext.setActiveBook(tabId, selectedBook, rootTitle)
+        } else {
+            selectionContext.clearActiveBookIfOwnedBy(tabId)
+        }
+    }
+    DisposableEffect(tabId, selectionContext) {
+        onDispose { selectionContext.clearActiveBookIfOwnedBy(tabId) }
     }
 
     DisposableEffect(Unit) {
         onDispose { currentOnEvent(BookContentEvent.SaveState) }
     }
 
-    CompositionLocalProvider(
-        LocalTextContextMenu provides textContextMenu,
-        LocalContextMenuRepresentation provides BookContentContextMenuRepresentationWithKeybindings,
-    ) {
-        Row(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .onPreviewKeyEvent { keyEvent ->
-                        if (keyEvent.type == KeyEventType.KeyDown) {
-                            val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
-                            when {
-                                isCtrlOrCmd && keyEvent.key == Key.B -> {
-                                    if (keyEvent.isShiftPressed) {
-                                        onEvent(BookContentEvent.ToggleToc)
-                                    } else {
-                                        onEvent(BookContentEvent.ToggleBookTree)
-                                    }
-                                    true
-                                }
-                                isCtrlOrCmd && keyEvent.key == Key.K -> {
-                                    if (keyEvent.isShiftPressed) {
-                                        onEvent(BookContentEvent.ToggleTargum)
-                                    } else {
-                                        onEvent(BookContentEvent.ToggleCommentaries)
-                                    }
-                                    true
-                                }
-                                isCtrlOrCmd && keyEvent.key == Key.J -> {
-                                    onEvent(BookContentEvent.ToggleDiacritics)
-                                    true
-                                }
-                                else -> false
-                            }
-                        } else {
-                            false
-                        }
-                    },
-        ) {
-            StartVerticalBar(uiState = uiState, onEvent = onEvent)
-
-            val isHome = uiState.navigation.selectedBook == null
-            val isIslands = ThemeUtils.isIslandsStyle()
-            val panelCardModifier =
-                if (isIslands) {
-                    Modifier
-                        .fillMaxSize()
-                        .padding(vertical = 6.dp, horizontal = 4.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(JewelTheme.globalColors.panelBackground)
-                } else {
-                    Modifier
-                }
-
-            EnhancedHorizontalSplitPane(
-                splitPaneState = uiState.layout.mainSplitState.asStable(),
-                modifier = Modifier.weight(1f),
-                firstMinSize = if (uiState.navigation.isVisible) SplitDefaults.MIN_MAIN else 0f,
-                firstContent = {
-                    if (uiState.navigation.isVisible) {
-                        CategoryTreePanel(uiState = uiState, onEvent = onEvent, modifier = panelCardModifier)
-                    }
-                },
-                secondContent = {
-                    EnhancedHorizontalSplitPane(
-                        splitPaneState = uiState.layout.tocSplitState.asStable(),
-                        firstMinSize = if (uiState.toc.isVisible) SplitDefaults.MIN_TOC else 0f,
-                        firstContent = {
-                            if (uiState.toc.isVisible) {
-                                BookTocPanel(uiState = uiState, onEvent = onEvent, modifier = panelCardModifier)
-                            }
-                        },
-                        secondContent = {
-                            EnhancedHorizontalSplitPane(
-                                splitPaneState = uiState.layout.notesSplitState.asStable(),
-                                firstMinSize = if (uiState.notes.isVisible) SplitDefaults.MIN_NOTES else 0f,
-                                firstContent = {
-                                    if (uiState.notes.isVisible) {
-                                        NotesPanel(
-                                            uiState = uiState,
-                                            onEvent = onEvent,
-                                            bookId = bookId,
-                                            noteStore = noteStore,
-                                            selectedLineIds = uiState.content.selectedLineIds,
-                                            primarySelectedLine = uiState.content.primaryLine,
-                                            draft = noteDraft,
-                                            onConsumeDraft = { noteDraft = null },
-                                            modifier = panelCardModifier,
-                                        )
-                                    }
-                                },
-                                secondContent = {
-                                    BookContentPanel(
-                                        uiState = uiState,
-                                        onEvent = onEvent,
-                                        showDiacritics = showDiacritics,
-                                        isRestoringSession = isRestoringSession,
-                                        searchUi = searchUi,
-                                        searchCallbacks = searchCallbacks,
-                                        isSelected = isSelected,
-                                        bookCharCounts = bookCharCounts,
-                                        noteDraft = noteDraft,
-                                    )
-                                },
-                                showSplitter = uiState.notes.isVisible,
-                            )
-                        },
-                        showSplitter = uiState.toc.isVisible,
-                    )
-                },
-                showSplitter = uiState.navigation.isVisible,
-            )
-
-            if (!isHome) {
-                EndVerticalBar(uiState = uiState, onEvent = onEvent, showDiacritics = showDiacritics)
-            }
-        }
+    BookTextMenus(uiState = uiState, onEvent = onEvent, diacritics = diacritics, tabUi = tabUi) {
+        BookContentPanel(
+            uiState = uiState,
+            onEvent = onEvent,
+            diacritics = diacritics,
+            isRestoringSession = isRestoringSession,
+            searchUi = searchUi,
+            searchCallbacks = searchCallbacks,
+            isSelected = isSelected,
+            bookCharCounts = bookCharCounts,
+            noteDraft = tabUi.noteDraft,
+            tabUi = tabUi,
+        )
     }
 }
 
 /**
- * Represents the configuration used to manage the state and behavior of a split-pane component.
- *
- * @property splitState The state object representing the current split position and related properties.
- * @property isVisible Indicates whether the split-pane is visible or not.
- * @property positionFilter A filter function applied to the split position value to determine its validity.
+ * Book-view shortcuts: Ctrl/Cmd+B tree (Shift: contents), Ctrl/Cmd+K commentaries (Shift: links, Alt: sources),
+ * Ctrl/Cmd+J nikud.
  */
-@Stable
-private data class SplitPaneConfig
-    @OptIn(ExperimentalSplitPaneApi::class)
-    constructor(
-        val splitState: SplitPaneState,
-        val isVisible: Boolean,
-        val positionFilter: (Float) -> Boolean,
-    )
+fun handleBookShortcut(
+    keyEvent: KeyEvent,
+    onEvent: (BookContentEvent) -> Unit,
+): Boolean {
+    if (keyEvent.type != KeyEventType.KeyDown) return false
+    val isCtrlOrCmd = keyEvent.isCtrlPressed || keyEvent.isMetaPressed
+    if (!isCtrlOrCmd) return false
+    val event =
+        when (keyEvent.key) {
+            Key.B -> if (keyEvent.isShiftPressed) BookContentEvent.ToggleToc else BookContentEvent.ToggleBookTree
+            Key.K ->
+                when {
+                    keyEvent.isAltPressed -> BookContentEvent.ToggleSources
+                    keyEvent.isShiftPressed -> BookContentEvent.ToggleTargum
+                    else -> BookContentEvent.ToggleCommentaries
+                }
+            Key.J -> BookContentEvent.CycleDiacritics
+            else -> return false
+        }
+    onEvent(event)
+    return true
+}
 
 private fun normalizeSearchQuery(text: String): String {
     val normalizedLineBreaks = text.replace('\n', ' ').replace('\r', ' ')
     return normalizedLineBreaks.replace(Regex("\\s+"), " ").trim()
 }
+
+// How long a Compose selection rests before it is located in the book
+private const val SELECTION_SETTLE_MS = 150L

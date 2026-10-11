@@ -9,6 +9,13 @@ object StateKeys {
     const val BOOK_ID = "bookId"
     const val LINE_ID = "lineId"
 
+    // Scope of a fresh search tab (a search reopened from history)
+    const val SEARCH_SCOPE = "searchScope"
+    const val SEARCH_GLOBAL_EXTENDED = "searchGlobalExtended"
+
+    // Open the notes pane on the requested line (a note opened from the notes page or widget)
+    const val OPEN_NOTES = "openNotes"
+
     // Source hints for book opening (ephemeral)
     const val OPEN_SOURCE = "bookOpenSource"
 
@@ -33,8 +40,10 @@ object StateKeys {
     // Content
     const val SELECTED_LINE = "selectedLine"
     const val SELECTED_LINE_ID = "selectedLineId"
+    const val MARK_END_LINE_ID = "markEndLineId"
     const val SHOW_COMMENTARIES = "showCommentaries"
     const val SHOW_TARGUM = "showTargum"
+    const val SHNAYIM_MIKRA = "shnayimMikra"
     const val SHOW_SOURCES = "showSources"
     const val PARAGRAPH_SCROLL_POSITION = "paragraphScrollPosition"
     const val CHAPTER_SCROLL_POSITION = "chapterScrollPosition"

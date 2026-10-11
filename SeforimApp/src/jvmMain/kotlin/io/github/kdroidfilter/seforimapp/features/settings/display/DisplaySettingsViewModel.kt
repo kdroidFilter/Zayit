@@ -15,49 +15,52 @@ import kotlinx.coroutines.flow.stateIn
 @ContributesIntoMap(AppScope::class)
 @ViewModelKey
 @Inject
-class DisplaySettingsViewModel : ViewModel() {
-    private val showZmanim = MutableStateFlow(AppSettings.isShowZmanimWidgetsEnabled())
-    private val showHomeWallpaper = MutableStateFlow(AppSettings.isShowHomeWallpaperEnabled())
-    private val compactMode = MutableStateFlow(AppSettings.isCompactModeEnabled())
-    private val maxCommentatorsPerPage = MutableStateFlow(AppSettings.getMaxCommentatorsPerPage())
+class DisplaySettingsViewModel(
+    private val appSettings: AppSettings,
+) : ViewModel() {
+    private val showHomeWallpaper = MutableStateFlow(appSettings.isShowHomeWallpaperEnabled())
+    private val compactMode = MutableStateFlow(appSettings.isCompactModeEnabled())
+    private val maxCommentatorsPerPage = MutableStateFlow(appSettings.getMaxCommentatorsPerPage())
 
     val state =
-        combine(showZmanim, showHomeWallpaper, compactMode, maxCommentatorsPerPage) { z, wallpaper, compact, maxCommentators ->
+        combine(
+            showHomeWallpaper,
+            compactMode,
+            maxCommentatorsPerPage,
+            appSettings.antiAliasingFlow,
+        ) { wallpaper, compact, maxCommentators, antiAliasing ->
             DisplaySettingsState(
-                showZmanimWidgets = z,
                 showHomeWallpaper = wallpaper,
                 compactMode = compact,
                 maxCommentatorsPerPage = maxCommentators,
+                antiAliasing = antiAliasing,
             )
         }.stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5_000),
             DisplaySettingsState(
-                showZmanimWidgets = showZmanim.value,
                 showHomeWallpaper = showHomeWallpaper.value,
                 compactMode = compactMode.value,
                 maxCommentatorsPerPage = maxCommentatorsPerPage.value,
+                antiAliasing = appSettings.antiAliasingFlow.value,
             ),
         )
 
     fun onEvent(event: DisplaySettingsEvents) {
         when (event) {
-            is DisplaySettingsEvents.SetShowZmanimWidgets -> {
-                AppSettings.setShowZmanimWidgetsEnabled(event.value)
-                showZmanim.value = event.value
-            }
             is DisplaySettingsEvents.SetShowHomeWallpaper -> {
-                AppSettings.setShowHomeWallpaperEnabled(event.value)
+                appSettings.setShowHomeWallpaperEnabled(event.value)
                 showHomeWallpaper.value = event.value
             }
             is DisplaySettingsEvents.SetCompactMode -> {
-                AppSettings.setCompactModeEnabled(event.value)
+                appSettings.setCompactModeEnabled(event.value)
                 compactMode.value = event.value
             }
             is DisplaySettingsEvents.SetMaxCommentatorsPerPage -> {
-                AppSettings.setMaxCommentatorsPerPage(event.value)
-                maxCommentatorsPerPage.value = AppSettings.getMaxCommentatorsPerPage()
+                appSettings.setMaxCommentatorsPerPage(event.value)
+                maxCommentatorsPerPage.value = appSettings.getMaxCommentatorsPerPage()
             }
+            is DisplaySettingsEvents.SetAntiAliasing -> appSettings.setAntiAliasing(event.value)
         }
     }
 }

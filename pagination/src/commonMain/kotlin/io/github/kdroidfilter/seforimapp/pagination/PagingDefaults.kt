@@ -10,8 +10,10 @@ import androidx.paging.PagingConfig
  */
 object PagingDefaults {
     object LINES {
-        const val PAGE_SIZE: Int = 10
-        const val PREFETCH_DISTANCE: Int = 10
+        // Loaded well ahead of the viewport: a fast wheel scroll moves ~15 lines a frame, and once it
+        // reaches the last loaded line the list clamps there then jumps back as the next page lands.
+        const val PAGE_SIZE: Int = 50
+        const val PREFETCH_DISTANCE: Int = 100
         const val INITIAL_LOAD_SIZE: Int = 30
 
         fun config(placeholders: Boolean = false): PagingConfig =

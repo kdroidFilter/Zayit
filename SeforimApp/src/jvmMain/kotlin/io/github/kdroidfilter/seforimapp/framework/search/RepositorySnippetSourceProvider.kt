@@ -3,74 +3,21 @@ package io.github.kdroidfilter.seforimapp.framework.search
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import io.github.kdroidfilter.seforimlibrary.search.LineSnippetInfo
 import io.github.kdroidfilter.seforimlibrary.search.SnippetProvider
+import io.github.kdroidfilter.seforimlibrary.search.SnippetSource
+import io.github.kdroidfilter.seforimlibrary.search.SnippetSources
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.jsoup.Jsoup
-import org.jsoup.safety.Safelist
 
-// Must match the indexer constants
-private const val SNIPPET_NEIGHBOR_WINDOW = 4
-private const val SNIPPET_MIN_LENGTH = 280
-
-/**
- * Implementation of [SnippetProvider] that fetches line content from the database
- * and reproduces the exact same snippet source logic as the indexer.
- *
- * This allows removing the text_raw field from the Lucene index to reduce index size,
- * while maintaining identical search behavior.
- */
+/** [SnippetProvider] over the app's database: the lines come from [repository]. */
 class RepositorySnippetSourceProvider(
     private val repository: SeforimRepository,
 ) : SnippetProvider {
-    override suspend fun getSnippetSources(lines: List<LineSnippetInfo>): Map<Long, String> {
+    override suspend fun getSnippetSources(lines: List<LineSnippetInfo>): Map<Long, SnippetSource> {
         if (lines.isEmpty()) return emptyMap()
-
         return withContext(Dispatchers.IO) {
-            // Group lines by bookId for efficient batch loading
-            val byBook = lines.groupBy { it.bookId }
-            val result = mutableMapOf<Long, String>()
-
-            for ((bookId, bookLines) in byBook) {
-                // Determine the range of line indices we need to load (including neighbors)
-                val minIdx = bookLines.minOf { it.lineIndex }
-                val maxIdx = bookLines.maxOf { it.lineIndex }
-                val rangeStart = (minIdx - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
-                val rangeEnd = maxIdx + SNIPPET_NEIGHBOR_WINDOW
-
-                // Load all lines in the extended range
-                val allLines = repository.getLines(bookId, rangeStart, rangeEnd)
-
-                // Create a map of lineIndex -> cleaned plain text
-                val plainByIndex =
-                    allLines.associate { line ->
-                        line.lineIndex to cleanHtml(line.content)
-                    }
-
-                // Build snippet source for each requested line
-                for (info in bookLines) {
-                    val basePlain = plainByIndex[info.lineIndex].orEmpty()
-                    val snippetSource =
-                        if (basePlain.length >= SNIPPET_MIN_LENGTH) {
-                            basePlain
-                        } else {
-                            // Include neighboring lines to get enough context
-                            val start = (info.lineIndex - SNIPPET_NEIGHBOR_WINDOW).coerceAtLeast(0)
-                            val end = info.lineIndex + SNIPPET_NEIGHBOR_WINDOW
-                            (start..end)
-                                .mapNotNull { plainByIndex[it] }
-                                .joinToString(" ")
-                        }
-                    result[info.lineId] = snippetSource
-                }
+            SnippetSources.build(lines) { bookId, from, to ->
+                repository.getLines(bookId, from, to).associate { it.lineIndex to it.content }
             }
-
-            result
         }
     }
-
-    private fun cleanHtml(content: String): String =
-        Jsoup
-            .clean(content, Safelist.none())
-            .replace("\\s+".toRegex(), " ")
-            .trim()
 }

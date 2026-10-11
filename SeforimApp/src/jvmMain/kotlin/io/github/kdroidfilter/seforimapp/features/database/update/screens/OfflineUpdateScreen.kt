@@ -11,11 +11,11 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabasePreparationUseCase
 import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateDestination
-import io.github.kdroidfilter.seforimapp.features.database.update.navigation.DatabaseUpdateProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadErrorKind
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractEvents
 import io.github.kdroidfilter.seforimapp.features.onboarding.extract.ExtractViewModel
+import io.github.kdroidfilter.seforimapp.features.onboarding.offline.isCompleteBundle
 import io.github.kdroidfilter.seforimapp.features.onboarding.offline.pickDatabaseParts
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -32,6 +32,7 @@ fun OfflineUpdateScreen(
     navController: NavController,
     onUpdateComplete: () -> Unit,
 ) {
+    val progressBarState = LocalAppGraph.current.databaseUpdateProgressBarState
     val extractViewModel: ExtractViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val extractState by extractViewModel.state.collectAsState()
@@ -45,10 +46,10 @@ fun OfflineUpdateScreen(
 
     LaunchedEffect(extractState) {
         if (extractState.inProgress) {
-            DatabaseUpdateProgressBarState.setDownloadProgress(extractState.progress)
+            progressBarState.setDownloadProgress(extractState.progress)
         }
         if (extractState.completed && hasStartedExtraction) {
-            DatabaseUpdateProgressBarState.setUpdateComplete()
+            progressBarState.setUpdateComplete()
             navController.navigate(DatabaseUpdateDestination.CompletionScreen) {
                 popUpTo<DatabaseUpdateDestination.OfflineUpdateScreen> { inclusive = true }
             }
@@ -61,11 +62,15 @@ fun OfflineUpdateScreen(
     ) {
         scope.launch {
             prepErrorKind = null
+            if (!isCompleteBundle(p1)) {
+                prepErrorKind = DownloadErrorKind.INCOMPLETE_BUNDLE
+                return@launch
+            }
             // Remove the old database and verify free space before extracting ~7.5 GB.
             when (prepUseCase.prepareForInstall()) {
                 DatabasePreparationUseCase.Result.Ready -> {
-                    // Start extraction with part01 path; ExtractUseCase discovers part02 automatically
-                    DatabaseUpdateProgressBarState.setDownloadStarted()
+                    // Start extraction with part01 path; ExtractUseCase discovers the other parts next to it
+                    progressBarState.setDownloadStarted()
                     processRepository.setPendingZstPath(p1)
                     extractViewModel.onEvent(ExtractEvents.StartIfPending)
                     hasStartedExtraction = true
@@ -102,6 +107,7 @@ fun OfflineUpdateScreen(
                             when (kind) {
                                 DownloadErrorKind.CLEANUP_FAILED -> stringResource(Res.string.db_install_cleanup_failed)
                                 DownloadErrorKind.INSUFFICIENT_SPACE -> stringResource(Res.string.db_install_insufficient_space)
+                                DownloadErrorKind.INCOMPLETE_BUNDLE -> stringResource(Res.string.db_install_incomplete_bundle)
                                 null -> ""
                             },
                         textAlign = TextAlign.Center,

@@ -7,22 +7,47 @@ exists. To bound memory, only a small LRU of tab compositions is kept actively
 composed; the rest are torn down and rebuilt from saved state when re‑selected.
 The full user session is still restored on cold boot.
 
+## Windows and Virtual Desktops
+
+The app is multi-window (Chrome-style). The model is: **a virtual desktop is a
+user-curated set of tabs laid out in 1..n OS windows**. A desktop is either OPEN
+(all its windows live) or DORMANT (a serialized snapshot); several desktops can be
+open at once — each in its own window(s) — but a desktop is never open twice.
+
+- `DesktopManager` (app singleton) owns desktops and windows. Each `OpenWindow`
+  carries its own window-scoped `TabsViewModel` + `SearchHomeViewModel` and its
+  Compose `WindowState` (geometry, persisted per window and restored at boot,
+  clamped to the current screens).
+- Inside a window's composition, `LocalOpenWindow.current` gives the window; use
+  `LocalOpenWindow.current.tabsViewModel` instead of a global TabsViewModel (there
+  is none anymore).
+- Per-tab ViewModels that need to navigate inject `DesktopManager` and resolve
+  their window at call time: `desktopManager.tabsViewModelFor(tabId)?.openTab(...)`.
+  This stays correct when the tab is dragged to another window.
+- `TabDockManager` implements cross-window tab drag & drop (IntelliJ DockManager
+  style): in-strip drags reorder as before; dragging past the strip shows a ghost
+  and the release either drops the tab on another window's strip or detaches it
+  into a new window of the same desktop. Desktops are never created implicitly.
+
 ## System Architecture
 
 The tab system consists of several key components working together:
 
-1. **TabsViewModel** – Manages tab list (create/select/close/replace), titles, and
-   the hover `preloadTabId`
+1. **TabsViewModel** – Manages one window's tab list (create/select/close/replace),
+   titles, and cross-window move primitives (`takeTab`/`insertTab`). One instance per window
 2. **TabsContent** – Renders tab content (no `NavHost`). Keeps a per‑tab
    `SimpleTabViewModelOwner` in a `tabOwners` map and retains an LRU of up to
    `MAX_RETAINED_TAB_COMPOSITIONS` (3) tab compositions. The selected tab is visible
    (`zIndex` 1, `alpha` 1); retained/preloaded tabs are stacked underneath at `alpha` 0
-3. **TabStateManager** – Persists lightweight, per‑tab state in memory and
-   coordinates with SessionManager for cold‑boot restoration
-4. **SessionManager** – Handles disk persistence of tabs and state across app restarts
+3. **TabPersistedStateStore** – App-wide per‑tab state keyed by tabId (UUIDs, so
+   entries from different windows/desktops never collide); the source of truth
+   serialized by SessionManager
+4. **SessionManager** – Handles disk persistence (desktops, windows, geometry, tab
+   state) across app restarts; debounced autosave (~2s) plus save on window close/quit
 5. **TabsDestination** – Strongly‑typed routes for Home, Search, and BookContent
 6. **TabsView** – Displays the tabs strip and emits user events (select/close/add),
-   and triggers hover‑preload of the pointed tab
+   registers the strip as a drag & drop target with TabDockManager
+7. **DesktopManager / OpenWindow / TabDockManager** – Multi-window layer (see above)
 
 ## Behavior: Bounded, Predictable Tabs
 
@@ -137,8 +162,8 @@ when (val destination = tabItem.destination) {
 Use `TabsViewModel.openTab(...)` to open a new tab with a destination:
 
 ```kotlin
-// Access the tabs VM from the app graph
-val tabsVm = LocalAppGraph.current.tabsViewModel
+// Access the current window's tabs VM (composition scope)
+val tabsVm = LocalOpenWindow.current.tabsViewModel
 val scope = rememberCoroutineScope()
 
 // Open a new tab
@@ -156,7 +181,7 @@ navigate to the new destination automatically:
 
 ```kotlin
 // Replace the current tab content with Home (preserve the same tabId)
-val tabsVm = LocalAppGraph.current.tabsViewModel
+val tabsVm = LocalOpenWindow.current.tabsViewModel
 val currentTabs = tabsVm.tabs.value
 val currentIndex = tabsVm.selectedTabIndex.value
 val currentTabId = currentTabs.getOrNull(currentIndex)?.destination?.tabId ?: return

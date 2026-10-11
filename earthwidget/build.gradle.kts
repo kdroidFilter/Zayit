@@ -23,15 +23,16 @@ kotlin {
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.components.resources)
+            implementation(libs.filament.compose)
         }
 
         jvmMain.dependencies {
             api(project(":jewel"))
-            api(project(":hebrewcalendar"))
+            implementation(project(":luach"))
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
-            implementation(libs.zmanim)
+            implementation(libs.kosherkotlin)
         }
 
         jvmTest.dependencies {

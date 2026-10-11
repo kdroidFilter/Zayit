@@ -82,6 +82,9 @@ internal const val DAYS_PER_JULIAN_CENTURY = 36525.0
 // RENDERING CONSTANTS
 // ============================================================================
 
+/** Orbit angle of Hebrew day 1 (conjunction): orbit labels start here, and the scene aims it at the Sun. */
+internal const val ORBIT_DAY_LABEL_START_DEGREES = 90f
+
 /** Camera distance factor for perspective projection. */
 internal const val CAMERA_DISTANCE_FACTOR = 1.6f
 
@@ -150,8 +153,11 @@ internal const val MIN_SPHERE_SIZE_PX = 8
 /** Orbit line alpha when in front of Earth. */
 internal const val ORBIT_ALPHA_FRONT = 0xC8
 
-/** Orbit line alpha when behind Earth. */
-internal const val ORBIT_ALPHA_BACK = 0x6C
+/** Orbit line alpha at its far side (faded continuously to the front one). */
+internal const val ORBIT_ALPHA_BACK = 0x22
+
+/** Depth bands the orbit is cut into for that fade. */
+internal const val ORBIT_DEPTH_BANDS = 8
 
 /** Orbit glow intensity multiplier. */
 internal const val ORBIT_GLOW_INTENSITY = 0.42f
@@ -197,7 +203,7 @@ internal const val KIDDUSH_LEVANA_COLOR_RGB = 0x00FFD700
 internal const val KIDDUSH_LEVANA_ALPHA_FRONT = 0xFF
 
 /** Kiddush Levana arc alpha when behind Earth. */
-internal const val KIDDUSH_LEVANA_ALPHA_BACK = 0xA0
+internal const val KIDDUSH_LEVANA_ALPHA_BACK = 0x48
 
 /** Kiddush Levana glow intensity multiplier. */
 internal const val KIDDUSH_LEVANA_GLOW_INTENSITY = 0.55f

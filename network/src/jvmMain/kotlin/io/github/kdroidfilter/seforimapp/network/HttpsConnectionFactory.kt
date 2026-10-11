@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.network
 
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
@@ -44,5 +45,5 @@ object HttpsConnectionFactory {
     fun openConnection(
         urlString: String,
         configure: (HttpURLConnection.() -> Unit)? = null,
-    ): HttpURLConnection = openConnection(URL(urlString), configure)
+    ): HttpURLConnection = openConnection(URI(urlString).toURL(), configure)
 }

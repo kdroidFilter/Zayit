@@ -5,6 +5,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 
+/** Background of in-text search matches. */
+val SearchHighlightColor = Color(0x66FFC107)
+
+/** Background of the current find-in-page match, set apart from the others as in Chrome. */
+val CurrentFindMatchColor = Color(0xCCFF9632)
+
 /**
  * Returns a copy of [annotated] with background highlight applied to all
  * diacritic-insensitive occurrences of [query] (Hebrew-aware). Activates when
@@ -13,7 +19,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
 fun highlightAnnotated(
     annotated: AnnotatedString,
     query: String?,
-    highlightColor: Color = Color(0x66FFC107),
+    highlightColor: Color = SearchHighlightColor,
 ): AnnotatedString {
     val q = query?.trim().orEmpty()
     if (q.length < 2) return annotated
@@ -31,17 +37,32 @@ fun highlightAnnotated(
     return builder.toAnnotatedString()
 }
 
+/** A copy of this text with a [color] background over each of [ranges]. */
+fun AnnotatedString.withBackground(
+    ranges: List<IntRange>,
+    color: Color,
+): AnnotatedString {
+    if (ranges.isEmpty()) return this
+    val builder = AnnotatedString.Builder()
+    builder.append(this)
+    for (r in ranges) {
+        val start = r.first.coerceIn(0, length)
+        val end = (r.last + 1).coerceAtMost(length)
+        if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
+    }
+    return builder.toAnnotatedString()
+}
+
 /**
- * Like [highlightAnnotated], but allows emphasizing a specific current match
- * range (by its start offset in original text) with a different color.
+ * Like [highlightAnnotated], but emphasizes the [currentIndex]-th match (from 0) with a different
+ * color. A rank, unlike an offset, holds whatever diacritics are hidden.
  */
 fun highlightAnnotatedWithCurrent(
     annotated: AnnotatedString,
     query: String?,
-    currentStart: Int? = null,
-    currentLength: Int? = null, // kept for API compatibility; not required here
     baseColor: Color,
     currentColor: Color,
+    currentIndex: Int? = null,
 ): AnnotatedString {
     val q = query?.trim().orEmpty()
     if (q.length < 2) return annotated
@@ -51,59 +72,10 @@ fun highlightAnnotatedWithCurrent(
 
     val builder = AnnotatedString.Builder()
     builder.append(annotated)
-    for (r in ranges) {
+    ranges.forEachIndexed { i, r ->
         val start = r.first.coerceIn(0, annotated.length)
         val end = (r.last + 1).coerceAtMost(annotated.length)
-        val color = if (currentStart != null && start == currentStart) currentColor else baseColor
-        if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
-    }
-    return builder.toAnnotatedString()
-}
-
-/**
- * Like [highlightAnnotatedWithCurrent], but highlights multiple terms.
- * Used for smart mode highlighting with dictionary expansion.
- */
-fun highlightAnnotatedWithTerms(
-    annotated: AnnotatedString,
-    terms: List<String>,
-    currentStart: Int? = null,
-    baseColor: Color,
-    currentColor: Color,
-): AnnotatedString {
-    if (terms.isEmpty()) return annotated
-
-    // Collect all ranges from all terms
-    val allRanges = mutableListOf<IntRange>()
-    for (term in terms) {
-        if (term.length >= 2) {
-            allRanges.addAll(findAllMatchesOriginal(annotated.text, term))
-        }
-    }
-    if (allRanges.isEmpty()) return annotated
-
-    // Merge overlapping ranges to avoid double highlighting
-    val sorted = allRanges.sortedBy { it.first }
-    val merged = mutableListOf<IntRange>()
-    var current = sorted.first()
-    for (i in 1 until sorted.size) {
-        val next = sorted[i]
-        current =
-            if (next.first <= current.last + 1) {
-                current.first..maxOf(current.last, next.last)
-            } else {
-                merged.add(current)
-                next
-            }
-    }
-    merged.add(current)
-
-    val builder = AnnotatedString.Builder()
-    builder.append(annotated)
-    for (r in merged) {
-        val start = r.first.coerceIn(0, annotated.length)
-        val end = (r.last + 1).coerceAtMost(annotated.length)
-        val color = if (currentStart != null && start == currentStart) currentColor else baseColor
+        val color = if (i == currentIndex) currentColor else baseColor
         if (end > start) builder.addStyle(SpanStyle(background = color), start, end)
     }
     return builder.toAnnotatedString()
@@ -113,20 +85,20 @@ fun highlightAnnotatedWithTerms(
  * Applies persisted user [highlights] (belonging to a single line) to [annotated].
  *
  * Highlight offsets are stored relative to the original text (with diacritics). When
- * diacritics are hidden, [originalText] is used to remap offsets onto the stripped
+ * some diacritics are hidden, [originalText] is used to remap offsets onto the stripped
  * text that is actually displayed.
  */
 fun applyUserHighlights(
     annotated: AnnotatedString,
     highlights: List<UserHighlight>,
     originalText: String? = null,
-    showDiacritics: Boolean = true,
+    diacritics: DiacriticsMode = DiacriticsMode.All,
     highlightAlpha: Float = 0.4f,
 ): AnnotatedString {
     if (highlights.isEmpty()) return annotated
 
     val originalToStrippedMap =
-        if (!showDiacritics && originalText != null) createOriginalToStrippedMap(originalText) else null
+        if (diacritics != DiacriticsMode.All && originalText != null) createOriginalToStrippedMap(originalText, diacritics) else null
 
     val builder = AnnotatedString.Builder()
     builder.append(annotated)

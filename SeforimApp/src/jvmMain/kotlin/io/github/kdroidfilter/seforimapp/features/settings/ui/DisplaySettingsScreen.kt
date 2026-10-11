@@ -30,9 +30,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
-import io.github.kdroidfilter.seforimapp.core.presentation.theme.ThemeStyle
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsViewModel
@@ -41,7 +41,6 @@ import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.ListComboBox
-import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
 import seforimapp.seforimapp.generated.resources.Res
@@ -51,6 +50,9 @@ import seforimapp.seforimapp.generated.resources.accent_color_green
 import seforimapp.seforimapp.generated.resources.accent_color_system
 import seforimapp.seforimapp.generated.resources.accent_color_teal
 import seforimapp.seforimapp.generated.resources.settings_accent_color_label
+import seforimapp.seforimapp.generated.resources.settings_antialiasing
+import seforimapp.seforimapp.generated.resources.settings_antialiasing_description
+import seforimapp.seforimapp.generated.resources.settings_antialiasing_off
 import seforimapp.seforimapp.generated.resources.settings_compact_mode
 import seforimapp.seforimapp.generated.resources.settings_compact_mode_description
 import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_page
@@ -58,11 +60,6 @@ import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_p
 import seforimapp.seforimapp.generated.resources.settings_max_commentators_per_page_description
 import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper
 import seforimapp.seforimapp.generated.resources.settings_show_home_wallpaper_description
-import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets
-import seforimapp.seforimapp.generated.resources.settings_show_zmanim_widgets_description
-import seforimapp.seforimapp.generated.resources.settings_theme_style_classic
-import seforimapp.seforimapp.generated.resources.settings_theme_style_islands
-import seforimapp.seforimapp.generated.resources.settings_theme_style_label
 
 @Composable
 fun DisplaySettingsScreen() {
@@ -70,14 +67,11 @@ fun DisplaySettingsScreen() {
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
     val state by viewModel.state.collectAsState()
     val mainAppState = LocalAppGraph.current.mainAppState
-    val themeStyle by mainAppState.themeStyle.collectAsState()
     val accentColor by mainAppState.accentColor.collectAsState()
     DisplaySettingsView(
         state = state,
-        themeStyle = themeStyle,
         accentColor = accentColor,
         onEvent = viewModel::onEvent,
-        onThemeStyleChange = { mainAppState.setThemeStyle(it) },
         onAccentColorChange = { mainAppState.setAccentColor(it) },
     )
 }
@@ -85,9 +79,7 @@ fun DisplaySettingsScreen() {
 @Composable
 private fun DisplaySettingsView(
     state: DisplaySettingsState,
-    themeStyle: ThemeStyle,
     onEvent: (DisplaySettingsEvents) -> Unit,
-    onThemeStyleChange: (ThemeStyle) -> Unit,
     accentColor: AccentColor = AccentColor.System,
     onAccentColorChange: (AccentColor) -> Unit = {},
 ) {
@@ -99,18 +91,9 @@ private fun DisplaySettingsView(
                     .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ThemeStyleCard(themeStyle = themeStyle, onStyleChange = onThemeStyleChange)
-
             AccentColorCard(
                 selectedAccent = accentColor,
                 onAccentChange = onAccentColorChange,
-            )
-
-            SettingCard(
-                title = Res.string.settings_show_zmanim_widgets,
-                description = Res.string.settings_show_zmanim_widgets_description,
-                checked = state.showZmanimWidgets,
-                onCheckedChange = { onEvent(DisplaySettingsEvents.SetShowZmanimWidgets(it)) },
             )
 
             SettingCard(
@@ -130,6 +113,11 @@ private fun DisplaySettingsView(
             MaxCommentatorsPerPageCard(
                 value = state.maxCommentatorsPerPage,
                 onValueChange = { onEvent(DisplaySettingsEvents.SetMaxCommentatorsPerPage(it)) },
+            )
+
+            AntiAliasingCard(
+                value = state.antiAliasing,
+                onValueChange = { onEvent(DisplaySettingsEvents.SetAntiAliasing(it)) },
             )
         }
     }
@@ -187,11 +175,13 @@ private fun MaxCommentatorsPerPageCard(
 }
 
 @Composable
-private fun ThemeStyleCard(
-    themeStyle: ThemeStyle,
-    onStyleChange: (ThemeStyle) -> Unit,
+private fun AntiAliasingCard(
+    value: WidgetAntiAliasing,
+    onValueChange: (WidgetAntiAliasing) -> Unit,
 ) {
     val shape = RoundedCornerShape(8.dp)
+    val modes = AppSettings.AVAILABLE_ANTI_ALIASING
+    val offLabel = stringResource(Res.string.settings_antialiasing_off)
     Column(
         modifier =
             Modifier
@@ -202,26 +192,42 @@ private fun ThemeStyleCard(
                 .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(text = stringResource(Res.string.settings_theme_style_label))
         Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            ThemeStyle.entries.forEach { style ->
-                val label =
-                    when (style) {
-                        ThemeStyle.Classic -> stringResource(Res.string.settings_theme_style_classic)
-                        ThemeStyle.Islands -> stringResource(Res.string.settings_theme_style_islands)
-                    }
-                RadioButtonRow(
-                    text = label,
-                    selected = themeStyle == style,
-                    onClick = { onStyleChange(style) },
-                )
-            }
+            Text(
+                text = stringResource(Res.string.settings_antialiasing),
+                modifier = Modifier.weight(1f),
+            )
+            ListComboBox(
+                items = remember(offLabel) { modes.map { antiAliasingLabel(it, offLabel) } },
+                selectedIndex = modes.indexOf(value).coerceAtLeast(0),
+                onSelectedItemChange = { onValueChange(modes[it]) },
+                modifier = Modifier.width(140.dp),
+            )
         }
+        Text(
+            text = stringResource(Res.string.settings_antialiasing_description),
+            fontSize = 12.sp,
+            color = JewelTheme.globalColors.text.info,
+        )
     }
 }
+
+private fun antiAliasingLabel(
+    mode: WidgetAntiAliasing,
+    offLabel: String,
+): String =
+    when (mode) {
+        WidgetAntiAliasing.OFF -> offLabel
+        WidgetAntiAliasing.FXAA -> "FXAA"
+        WidgetAntiAliasing.MSAA_2 -> "MSAA ×2"
+        WidgetAntiAliasing.MSAA_4 -> "MSAA ×4"
+        WidgetAntiAliasing.MSAA_8 -> "MSAA ×8"
+        WidgetAntiAliasing.TAA -> "TAA"
+    }
 
 @Composable
 private fun AccentColorCard(
@@ -327,9 +333,7 @@ private fun DisplaySettingsView_Preview() {
     PreviewContainer {
         DisplaySettingsView(
             state = DisplaySettingsState.preview,
-            themeStyle = ThemeStyle.Classic,
             onEvent = {},
-            onThemeStyleChange = {},
         )
     }
 }

@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.integration
 
 import io.github.kdroidfilter.seforimapp.features.onboarding.download.DownloadState
-import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsEvents
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import kotlin.test.Test
@@ -80,15 +79,6 @@ class SettingsAndDownloadStateIntegrationTest {
     fun `SetPersistSession event contains correct value`() {
         val eventTrue = GeneralSettingsEvents.SetPersistSession(true)
         val eventFalse = GeneralSettingsEvents.SetPersistSession(false)
-
-        assertTrue(eventTrue.value)
-        assertFalse(eventFalse.value)
-    }
-
-    @Test
-    fun `SetShowZmanimWidgets event contains correct value`() {
-        val eventTrue = DisplaySettingsEvents.SetShowZmanimWidgets(true)
-        val eventFalse = DisplaySettingsEvents.SetShowZmanimWidgets(false)
 
         assertTrue(eventTrue.value)
         assertFalse(eventFalse.value)

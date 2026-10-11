@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.formatBytes
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import io.github.koalaplot.core.pie.DefaultSlice
 import io.github.koalaplot.core.pie.PieChart
@@ -36,7 +37,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun AvailableDiskSpaceScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState,
+    progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
     val viewModel: AvailableDiskSpaceViewModel =
         metroViewModel(viewModelStoreOwner = LocalWindowViewModelStoreOwner.current)
@@ -92,19 +93,9 @@ fun AvailableDiskSpaceView(
                 PieChart(
                     values = slices,
                     modifier = Modifier.size(240.dp).weight(1f),
+                    // ponytail: koalaplot 0.12 dropped hoverElement; the legend shows the labels
                     slice = { i: Int ->
-                        val labelText =
-                            when (i) {
-                                0 -> stringResource(Res.string.disk_pie_used_with_value, formatBytes(used))
-                                1 -> stringResource(Res.string.disk_pie_permanent_space, formatBytes(permanentSpaceBytes))
-                                2 -> stringResource(Res.string.disk_pie_temporary_space, formatBytes(temporarySpaceBytes))
-                                else -> stringResource(Res.string.disk_pie_free_after_with_value, formatBytes(freeAfter))
-                            }
-                        DefaultSlice(
-                            color = colors[i],
-                            hoverExpandFactor = 1.05f,
-                            hoverElement = { Text(labelText) },
-                        )
+                        DefaultSlice(color = colors[i], hoverExpandFactor = 1.05f)
                     },
                     labelConnector = {},
                 )

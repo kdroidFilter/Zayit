@@ -1,0 +1,59 @@
+-- Chrome-like bookmarks: one row per favorited target ("book:<id>" / "book:<id>:<tocEntryId>"),
+-- optionally grouped into user-created folders.
+CREATE TABLE IF NOT EXISTS favorite_folder (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    createdAt INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS favorite (
+    key TEXT NOT NULL PRIMARY KEY,
+    bookId INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    folderId INTEGER,
+    createdAt INTEGER NOT NULL,
+    tocEntryId INTEGER,
+    lineId INTEGER
+);
+
+upsertFavorite:
+INSERT INTO favorite(key, bookId, title, folderId, createdAt, tocEntryId, lineId)
+VALUES (:key, :bookId, :title, :folderId, :createdAt, :tocEntryId, :lineId)
+ON CONFLICT(key) DO UPDATE SET
+    title = excluded.title,
+    lineId = excluded.lineId;
+
+selectAllFavorites:
+SELECT * FROM favorite ORDER BY createdAt DESC;
+
+searchFavoritesByTitle:
+SELECT * FROM favorite
+WHERE title LIKE '%' || :query || '%' ESCAPE '\'
+ORDER BY createdAt DESC;
+
+countFavorite:
+SELECT COUNT(*) FROM favorite WHERE key = :key;
+
+selectFavoriteByKey:
+SELECT * FROM favorite WHERE key = :key;
+
+setFavoriteFolder:
+UPDATE favorite SET folderId = :folderId WHERE key = :key;
+
+deleteFavoriteByKey:
+DELETE FROM favorite WHERE key = :key;
+
+insertFolder:
+INSERT INTO favorite_folder(name, createdAt) VALUES (:name, :createdAt);
+
+lastInsertedFolderId:
+SELECT last_insert_rowid();
+
+selectFolders:
+SELECT * FROM favorite_folder ORDER BY createdAt ASC;
+
+deleteFolder:
+DELETE FROM favorite_folder WHERE id = :id;
+
+clearFolderFromFavorites:
+UPDATE favorite SET folderId = NULL WHERE folderId = :folderId;

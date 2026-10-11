@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.stateIn
 @Inject
 class RegionConfigViewModel(
     private val useCase: RegionConfigUseCase,
+    private val appSettings: AppSettings,
 ) : ViewModel() {
     private val countries = useCase.getCountries()
 
@@ -43,12 +44,12 @@ class RegionConfigViewModel(
 
     init {
         // Initialize from persisted settings when available
-        val savedCountry = AppSettings.getRegionCountry()
+        val savedCountry = appSettings.getRegionCountry()
         val countryIdx = savedCountry?.let { countries.indexOf(it) } ?: -1
         if (countryIdx >= 0) {
             selectedCountryIndex.value = countryIdx
             val cities = useCase.getCities(countryIdx)
-            val savedCity = AppSettings.getRegionCity()
+            val savedCity = appSettings.getRegionCity()
             val cityIdx = savedCity?.let { cities.indexOf(it) } ?: -1
             if (cityIdx >= 0) selectedCityIndex.value = cityIdx
         }

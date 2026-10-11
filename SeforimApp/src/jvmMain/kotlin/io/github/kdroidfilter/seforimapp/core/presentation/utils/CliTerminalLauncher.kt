@@ -1,6 +1,5 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.utils
 
-import io.github.kdroidfilter.seforimapp.framework.database.getDatabasePath
 import io.github.kdroidfilter.seforimapp.logger.errorln
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import java.io.File
@@ -22,12 +21,17 @@ object CliTerminalLauncher {
      * Launches `<thisBinary> cli <commandArgs...> [--db ... --index ... --dict ...]` inside a native
      * terminal window. Runs off the UI thread; failures are logged, never thrown.
      *
+     * @param databasePath the app's database path (from [io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider]),
+     *   or null to let the CLI use its own defaults.
      * @param commandArgs the CLI command and its options, e.g. `listOf("search", "בראשית", "--json")`.
      *   Defaults to `help` so a bare call opens the usage screen.
      */
-    fun launch(commandArgs: List<String> = listOf("help")) {
+    fun launch(
+        databasePath: String?,
+        commandArgs: List<String> = listOf("help"),
+    ) {
         Thread {
-            runCatching { launchBlocking(commandArgs) }
+            runCatching { launchBlocking(databasePath, commandArgs) }
                 .onFailure { error -> errorln { "[cli] failed to launch CLI terminal: ${error.message}" } }
         }.apply {
             isDaemon = true
@@ -35,14 +39,17 @@ object CliTerminalLauncher {
         }.start()
     }
 
-    private fun launchBlocking(commandArgs: List<String>) {
+    private fun launchBlocking(
+        databasePath: String?,
+        commandArgs: List<String>,
+    ) {
         val exe = resolveExecutablePath() ?: error("could not resolve the running executable path")
         val tokens =
             buildList {
                 add(exe)
                 add("cli")
                 addAll(commandArgs)
-                addAll(resolveDataPathArgs())
+                addAll(resolveDataPathArgs(databasePath))
             }
         infoln { "[cli] opening terminal: ${tokens.joinToString(" ")}" }
 
@@ -90,9 +97,9 @@ object CliTerminalLauncher {
      * opens the exact same data set. Returns an empty list if the path can't be resolved (the CLI
      * then falls back to its own defaults).
      */
-    private fun resolveDataPathArgs(): List<String> =
+    private fun resolveDataPathArgs(databasePath: String?): List<String> =
         runCatching {
-            val dbPath = getDatabasePath()
+            val dbPath = checkNotNull(databasePath) { "database path unavailable" }
             val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lucene" else "$dbPath.luceneindex"
             val dictPath = Paths.get(indexPath).resolveSibling("lexical.db").toString()
             listOf("--db", dbPath, "--index", indexPath, "--dict", dictPath)

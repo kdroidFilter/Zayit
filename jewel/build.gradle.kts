@@ -22,6 +22,8 @@ kotlin {
         jvmMain.dependencies {
             implementation(libs.foundation.desktop)
             api(libs.intellij.platform.icons)
+            api(libs.intellij.platform.icons.api)
+            api(libs.intellij.platform.icons.impl)
             api(libs.jbr.api)
 
             // Jewel libraries with common exclusions

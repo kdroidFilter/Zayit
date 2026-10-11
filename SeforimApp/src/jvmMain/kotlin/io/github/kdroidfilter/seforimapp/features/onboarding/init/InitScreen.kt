@@ -12,6 +12,7 @@ import androidx.navigation.NavController
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.OnBoardingDestination
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
 import io.github.kdroidfilter.seforimapp.features.onboarding.ui.components.OnBoardingScaffold
+import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -24,7 +25,7 @@ import seforimapp.seforimapp.generated.resources.*
 @Composable
 fun InitScreen(
     navController: NavController,
-    progressBarState: ProgressBarState = ProgressBarState,
+    progressBarState: ProgressBarState = LocalAppGraph.current.onboardingProgressBarState,
 ) {
     LaunchedEffect(Unit) {
         progressBarState.resetProgress()

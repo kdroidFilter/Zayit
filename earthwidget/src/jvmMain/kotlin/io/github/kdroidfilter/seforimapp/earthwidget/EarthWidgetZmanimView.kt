@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.earthwidget
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -19,7 +18,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.text.font.FontWeight
@@ -27,14 +25,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kosherjava.zmanim.ComplexZmanimCalendar
-import com.kosherjava.zmanim.hebrewcalendar.HebrewDateFormatter
-import com.kosherjava.zmanim.hebrewcalendar.JewishCalendar
-import com.kosherjava.zmanim.hebrewcalendar.JewishDate
-import com.kosherjava.zmanim.util.GeoLocation
-import io.github.kdroidfilter.seforimapp.hebrewcalendar.CalendarMode
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
+import io.github.erkko68.filament.compose.rememberFilamentEngineAsync
+import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
+import io.github.kdroidfilter.kosherkotlin.Zman
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewDateFormatter
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
+import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
+import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
+import io.github.kdroidfilter.kosherkotlin.util.NOAACalculator
+import io.github.kdroidfilter.seforimapp.luach.LuachDateButton
+import kotlinx.datetime.toJavaLocalDate
+import kotlinx.datetime.toKotlinLocalDate
+import kotlinx.datetime.toKotlinTimeZone
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
@@ -46,6 +48,7 @@ import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.segmentedControlButtonStyle
 import seforimapp.earthwidget.generated.resources.*
+import java.time.Instant
 import java.time.LocalDate
 import java.util.*
 import kotlin.math.roundToInt
@@ -66,34 +69,14 @@ private const val DEFAULT_MARKER_ELEVATION = 800.0
 /** Default Earth axial tilt in degrees. */
 private const val DEFAULT_EARTH_TILT_DEGREES = 23.44f
 
-/** Starting orbit angle for day labels (day 1). */
-private const val ORBIT_DAY_LABEL_START_DEGREES = 90f
-
 /**
  * Lunar synodic month in milliseconds.
  * 29 days + 12 hours + 793 chalakim (where 1 chelek = 10/3 seconds).
  */
 private const val LUNAR_CYCLE_MILLIS = 29.0 * 86_400_000.0 + 12.0 * 3_600_000.0 + 793.0 * 10_000.0 / 3.0
 
-/** Degrees per hour for GMT offset calculation. */
-private const val DEGREES_PER_HOUR = 15.0
-
-/** Israel latitude bounds (south to north). */
-private const val ISRAEL_LAT_MIN = 29.0
-private const val ISRAEL_LAT_MAX = 34.8
-
 private val LOCATION_MENU_WIDTH = 320.dp
 private val LOCATION_MENU_HEIGHT = 260.dp
-
-/** Israel longitude bounds (west to east). */
-private const val ISRAEL_LON_MIN = 34.0
-private const val ISRAEL_LON_MAX = 36.6
-
-/** Minimum GMT offset in hours. */
-private const val MIN_GMT_OFFSET = -12
-
-/** Maximum GMT offset in hours. */
-private const val MAX_GMT_OFFSET = 14
 
 private val KIDDUSH_LEVANA_LEGEND_COLOR = Color(0xFFFFD700)
 
@@ -153,21 +136,11 @@ data class ZmanimTimes(
     val chatzosLayla: Date?,
 )
 
-/**
- * Enum representing the zmanim calculation opinion to use.
- */
+/** The luach the zmanim are read from: its sun, and which opinions it prints. */
 enum class ZmanimOpinion {
-    /**
-     * Default calculations using ComplexZmanimCalendar.
-     * Uses standard GRA and MGA calculations.
-     */
-    DEFAULT,
 
-    /**
-     * Sephardic calculations according to Rabbi Ovadiah Yosef ZT"L.
-     * Uses ROZmanimCalendar with zmaniyot-based calculations.
-     */
-    SEPHARDIC,
+    /** אור החיים, the luach Rabbi Ovadia Yosef used: zmaniyos minutes off an ordinary sun. */
+    OHR_HACHAIM,
 }
 
 // ============================================================================
@@ -195,7 +168,15 @@ fun EarthWidgetZmanimView(
     locationOptions: Map<String, Map<String, EarthWidgetLocation>> = emptyMap(),
     targetTimeMillis: Long? = null,
     targetDateEpochDay: Long? = null,
+    /** [targetTimeMillis] is a running clock (a moment per frame): the scene follows it as is, without easing. */
+    followClock: Boolean = false,
     onDateSelect: ((LocalDate) -> Unit)? = null,
+    /** Whether the luach of the date picker follows the holidays of the Land of Israel. */
+    inIsrael: Boolean = false,
+    /** The date picker's accent (today, the selection); the theme's focus colour by default. */
+    accentColor: Color? = null,
+    /** Shows the date picker; off where the host already has one (the solar system's full window). */
+    showDatePicker: Boolean = true,
     onLocationSelect: ((country: String, city: String, location: EarthWidgetLocation) -> Unit)? = null,
     containerBackground: Color? = null,
     contentPadding: Dp = 0.dp,
@@ -207,7 +188,6 @@ fun EarthWidgetZmanimView(
     kiddushLevanaLatestOpinion: KiddushLevanaLatestOpinion = KiddushLevanaLatestOpinion.BETWEEN_MOLDOS,
     initialShowKiddushLevana: Boolean = true,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     // Location state (defaults to Jerusalem, overridden by locationOverride)
     var markerLatitudeDegrees by remember { mutableFloatStateOf(DEFAULT_MARKER_LAT.toFloat()) }
@@ -222,9 +202,8 @@ fun EarthWidgetZmanimView(
     var showKiddushLevana by remember { mutableStateOf(initialShowKiddushLevana) }
     val showKiddushLevanaLegend = showKiddushLevana && showOrbitPath
 
-    // Earth rotation offset from user drag (added to marker longitude)
-    var earthRotationOffset by remember { mutableFloatStateOf(0f) }
-    var isDraggingEarth by remember { mutableStateOf(false) }
+    // Camera moved by the user: orbit around the ecliptic pole, elevation over the ecliptic, zoom
+    val camera = rememberOrbitCameraState()
 
     // Date/time selection - initialized once with the default timezone, then preserved across location changes
     val initialCalendar =
@@ -269,7 +248,7 @@ fun EarthWidgetZmanimView(
             markerLongitudeDegrees = override.longitude.toFloat()
             markerElevationMeters = override.elevationMeters
             timeZone = override.timeZone
-            earthRotationOffset = 0f
+            camera.reset()
 
             if (targetTimeMillis == null) {
                 val now = Calendar.getInstance(override.timeZone)
@@ -309,7 +288,7 @@ fun EarthWidgetZmanimView(
         }
     }
 
-    val referenceTime =
+    val pickedTime =
         remember(selectedDate, selectedHour, selectedMinute, timeZone) {
             Calendar
                 .getInstance(timeZone)
@@ -323,6 +302,11 @@ fun EarthWidgetZmanimView(
                     set(Calendar.MILLISECOND, 0)
                 }.time
         }
+    // Following a running clock, its instant is the one truth, read as is at each frame (no copy a frame behind, no
+    // rounding to the minute); else the date and time picked here
+    val clockMillis = targetTimeMillis?.takeIf { followClock }
+    val referenceTime = clockMillis?.let { Date(it) } ?: pickedTime
+    val shownDay = clockMillis?.let { Instant.ofEpochMilli(it).atZone(timeZone.toZoneId()).toLocalDate() } ?: selectedDate
 
     // Compute astronomical model
     val model =
@@ -345,7 +329,8 @@ fun EarthWidgetZmanimView(
         }
 
     val stableOrbitLabels =
-        remember(referenceTime, timeZone, showOrbitLabels) {
+        // By day, not by minute: a moment per frame (the solar system's play) would rebuild them at every frame
+        remember(shownDay, timeZone, showOrbitLabels) {
             StableOrbitLabels(
                 if (showOrbitLabels) {
                     computeHebrewMonthOrbitLabels(
@@ -361,7 +346,9 @@ fun EarthWidgetZmanimView(
     // Compute Kiddush Levana data
     val kiddushLevanaData =
         remember(
-            referenceTime,
+            shownDay,
+            // On a molad's day the window it opens starts at the molad: the hour sides with one month or the other
+            hebrewDayAt(referenceTime.time, timeZone).isAfterMolad(referenceTime.time),
             timeZone,
             showKiddushLevana,
             kiddushLevanaEarliestOpinion,
@@ -414,13 +401,12 @@ fun EarthWidgetZmanimView(
             }
         }
     val hebrewDateLabel =
-        remember(referenceTime, timeZone) {
-            val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-            val jewishDate = JewishDate().apply { setDate(calendar) }
+        remember(shownDay, timeZone) {
+            val jewishDate = jewishCalendarAt(referenceTime, timeZone)
             val dateFormatter =
                 HebrewDateFormatter().apply {
                     isHebrewFormat = true
-                    isUseGershGershayim = false
+                    isUseGershGershayim = true
                 }
             val dayOfMonth = dateFormatter.formatHebrewNumber(jewishDate.jewishDayOfMonth)
             val month = dateFormatter.formatMonth(jewishDate)
@@ -431,15 +417,16 @@ fun EarthWidgetZmanimView(
     val backgroundColor = containerBackground ?: JewelTheme.globalColors.panelBackground
     val globalMenuStyle = JewelTheme.menuStyle
 
+    val currentReferenceTime by rememberUpdatedState(referenceTime)
     // Stable callbacks to avoid recomposition - these lambdas reference mutableStateOf-backed vars
     // so they remain stable across recompositions while still accessing the latest state
-    val onEarthRotationDeltaCallback = remember { { delta: Float -> earthRotationOffset += delta } }
-    val onDragStateChangeCallback = remember { { dragging: Boolean -> isDraggingEarth = dragging } }
-    val onRecenterCallback = remember { { earthRotationOffset = 0f } }
+    val onRecenterCallback =
+        remember {
+            { camera.reset() }
+        }
 
     // Use rememberUpdatedState to keep the lambda stable while accessing latest values
     val currentTimeZone by rememberUpdatedState(timeZone)
-    val currentReferenceTime by rememberUpdatedState(referenceTime)
     val currentOnDateSelected by rememberUpdatedState(onDateSelect)
 
     val onResetDateTimeCallback: () -> Unit = {
@@ -461,13 +448,11 @@ fun EarthWidgetZmanimView(
     val onOrbitLabelClickHandler: (OrbitLabelData) -> Unit =
         remember {
             { label: OrbitLabelData ->
-                val calendar = Calendar.getInstance(currentTimeZone).apply { time = currentReferenceTime }
-                val jewishCalendar = JewishCalendar().apply { setDate(calendar) }
+                val jewishCalendar = jewishCalendarAt(currentReferenceTime, currentTimeZone)
                 val newDate =
-                    JewishDate()
-                        .apply {
-                            setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
-                        }.localDate
+                    JewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, label.dayOfMonth)
+                        .gregorianLocalDate
+                        .toJavaLocalDate()
                 selectedDate = newDate
                 currentOnDateSelected?.invoke(newDate)
             }
@@ -480,7 +465,7 @@ fun EarthWidgetZmanimView(
         markerLongitudeDegrees = location.longitude.toFloat()
         markerElevationMeters = location.elevationMeters
         timeZone = location.timeZone
-        earthRotationOffset = 0f
+        camera.reset()
         onLocationSelect?.invoke(country, city, location)
     }
 
@@ -494,12 +479,11 @@ fun EarthWidgetZmanimView(
     ) {
         EarthSceneContent(
             modifier = Modifier.fillMaxSize(),
+            followClock = followClock,
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
             markerLongitudeDegrees = markerLongitudeDegrees,
-            earthRotationOffset = earthRotationOffset,
-            onEarthRotationDelta = onEarthRotationDeltaCallback,
-            onDragStateChange = onDragStateChangeCallback,
+            camera = camera,
             model = model,
             markerLatitudeDegrees = markerLatitudeDegrees,
             showBackground = showBackground,
@@ -509,10 +493,8 @@ fun EarthWidgetZmanimView(
             showMoonFromMarker = showMoonFromMarker,
             showMoonInOrbit = showMoonInOrbit,
             earthSizeFraction = earthSizeFraction,
-            isDraggingEarth = isDraggingEarth,
             kiddushLevanaData = kiddushLevanaData,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-            renderDispatcher = renderDispatcher,
         )
         if (showKiddushLevanaLegend) {
             KiddushLevanaLegend(
@@ -523,7 +505,8 @@ fun EarthWidgetZmanimView(
                 legendColorRgb = kiddushLevanaColorRgb,
             )
         }
-        if (earthRotationOffset != 0f || isDateTimeModified) {
+        val isViewMoved = camera.isMoved
+        if (isViewMoved || isDateTimeModified) {
             Column(
                 modifier =
                     Modifier
@@ -537,22 +520,27 @@ fun EarthWidgetZmanimView(
                     onResetDateTime = onResetDateTimeCallback,
                 )
                 RecenterButton(
-                    earthRotationOffset = earthRotationOffset,
+                    isViewMoved = isViewMoved,
                     onRecenter = onRecenterCallback,
                 )
             }
         }
-        IntUiTheme(isDark = true) {
-            DateSelectionSplitButton(
-                label = hebrewDateLabel,
-                selectedDate = selectedDate,
-                onDateSelect = onCalendarDateSelected,
-                menuStyle = globalMenuStyle,
-                modifier =
-                    Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 8.dp, top = 8.dp),
-            )
+        if (showDatePicker) {
+            IntUiTheme(isDark = true) {
+                LuachDateButton(
+                    label = hebrewDateLabel,
+                    selected = selectedDate,
+                    today = LocalDate.now(timeZone.toZoneId()),
+                    inIsrael = inIsrael,
+                    accent = accentColor ?: JewelTheme.globalColors.outlines.focused,
+                    onSelect = onCalendarDateSelected,
+                    onToday = onResetDateTimeCallback,
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = 8.dp, top = 8.dp),
+                )
+            }
         }
         if (resolvedLocationLabel != null) {
             IntUiTheme(isDark = true) {
@@ -614,7 +602,6 @@ fun EarthWidgetMoonSkyView(
                 (with(density) { sphereSize.toPx() } * 1.35f).roundToInt().coerceAtLeast(160)
             }
         }
-    val renderer = remember { EarthWidgetRenderer() }
     val moonState =
         remember(
             resolvedRenderSizePx,
@@ -642,13 +629,12 @@ fun EarthWidgetMoonSkyView(
             )
         }
 
-    MoonFromMarkerWidgetView(
-        renderer = renderer,
-        moonTexture = null,
+    // Null while the engine is being created, off the UI thread
+    val engine = rememberFilamentEngineAsync(config = widgetEngineConfig()) ?: return WidgetLoader(modifier.size(sphereSize))
+    MoonFromMarkerSceneView(
         state = moonState,
-        modifier = modifier,
-        sphereSize = sphereSize,
-        animateTransitions = true,
+        engine = engine,
+        modifier = modifier.size(sphereSize),
     )
 }
 
@@ -665,9 +651,7 @@ private fun EarthSceneContent(
     sphereSize: Dp,
     renderSizePx: Int,
     markerLongitudeDegrees: Float,
-    earthRotationOffset: Float,
-    onEarthRotationDelta: (Float) -> Unit,
-    onDragStateChange: (Boolean) -> Unit,
+    camera: OrbitCameraState,
     model: ZmanimModel,
     markerLatitudeDegrees: Float,
     showBackground: Boolean,
@@ -677,45 +661,24 @@ private fun EarthSceneContent(
     showMoonFromMarker: Boolean,
     showMoonInOrbit: Boolean,
     earthSizeFraction: Float,
-    isDraggingEarth: Boolean,
     modifier: Modifier = Modifier,
     kiddushLevanaData: KiddushLevanaData? = null,
     kiddushLevanaColorRgb: Int = KIDDUSH_LEVANA_COLOR_RGB,
-    renderDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    followClock: Boolean = false,
 ) {
     val density = LocalDensity.current
-    val degreesPerPx =
-        remember(sphereSize) {
-            // Calculate how many degrees of rotation per pixel of drag
-            // A full drag across the sphere width = 180 degrees
-            with(density) { 180f / sphereSize.toPx() }
-        }
+    // A full drag across the sphere width = 180 degrees
+    val degreesPerPx = remember(sphereSize, density) { with(density) { 180f / sphereSize.toPx() } }
 
     Box(
-        modifier =
-            modifier.pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = { onDragStateChange(true) },
-                    onDragEnd = { onDragStateChange(false) },
-                    onDragCancel = { onDragStateChange(false) },
-                ) { change, dragAmount ->
-                    change.consume()
-                    // Horizontal drag rotates the Earth (negative because dragging right
-                    // should rotate the Earth to show what's on the left)
-                    onEarthRotationDelta(-dragAmount.x * degreesPerPx)
-                }
-            },
+        modifier = modifier.orbitCameraGestures(camera) { degreesPerPx },
         contentAlignment = Alignment.Center,
     ) {
         EarthWidgetScene(
             sphereSize = sphereSize,
             renderSizePx = renderSizePx,
-            earthRotationDegrees = markerLongitudeDegrees + earthRotationOffset,
-            // Compensate light direction for Earth rotation offset.
-            // Model computed lightDegrees for earthRotation = markerLongitude.
-            // Subtracting offset keeps the sun fixed relative to Earth's surface,
-            // so the marker always shows correct day/night for the selected time.
-            lightDegrees = model.lightDegrees - earthRotationOffset,
+            earthRotationDegrees = markerLongitudeDegrees,
+            lightDegrees = model.lightDegrees,
             sunElevationDegrees = model.sunElevationDegrees,
             earthTiltDegrees = DEFAULT_EARTH_TILT_DEGREES,
             moonOrbitDegrees = model.moonOrbitDegrees,
@@ -732,11 +695,14 @@ private fun EarthSceneContent(
             julianDay = model.julianDay,
             moonFromMarkerLightDegrees = model.lightDegrees,
             moonFromMarkerSunElevationDegrees = model.sunElevationDegrees,
-            animateEarthRotation = !isDraggingEarth, // Instant rotation during drag
+            animateEarthRotation = !camera.isGesturing, // Instant rotation during gestures
+            followClock = followClock,
             kiddushLevanaStartDegrees = kiddushLevanaData?.startDegrees,
             kiddushLevanaEndDegrees = kiddushLevanaData?.endDegrees,
             kiddushLevanaColorRgb = kiddushLevanaColorRgb,
-            renderDispatcher = renderDispatcher,
+            viewYawDegrees = camera.yaw,
+            viewPitchDegrees = camera.pitch,
+            viewZoom = camera.zoom,
         )
     }
 }
@@ -745,12 +711,12 @@ private fun EarthSceneContent(
  * Recenter button shown when Earth is rotated away from marker.
  */
 @Composable
-private fun RecenterButton(
-    earthRotationOffset: Float,
+internal fun RecenterButton(
+    isViewMoved: Boolean,
     onRecenter: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (earthRotationOffset != 0f) {
+    if (isViewMoved) {
         IntUiTheme(isDark = true) {
             OutlinedButton(
                 onClick = onRecenter,
@@ -813,7 +779,7 @@ private fun KiddushLevanaLegend(
         val background = JewelTheme.globalColors.panelBackground.copy(alpha = 0.86f)
         val borderColor = JewelTheme.globalColors.borders.disabled
         val textColor = JewelTheme.globalColors.text.normal
-        val legendColor = Color(0xFF000000.toLong() + legendColorRgb)
+        val legendColor = Color(0xFF000000 + legendColorRgb)
 
         Row(
             modifier =
@@ -841,24 +807,6 @@ private fun KiddushLevanaLegend(
             )
         }
     }
-}
-
-@Composable
-private fun DateSelectionSplitButton(
-    label: String,
-    selectedDate: LocalDate,
-    onDateSelect: (LocalDate) -> Unit,
-    modifier: Modifier = Modifier,
-    menuStyle: MenuStyle = JewelTheme.menuStyle,
-) {
-    io.github.kdroidfilter.seforimapp.hebrewcalendar.DateSelectionSplitButton(
-        label = label,
-        selectedDate = selectedDate,
-        onDateSelect = onDateSelect,
-        initialMode = CalendarMode.HEBREW,
-        menuStyle = menuStyle,
-        modifier = modifier,
-    )
 }
 
 @Composable
@@ -1067,18 +1015,18 @@ private fun computeZmanimModel(
 
     // Calculate moon position
     val julianDay = computeJulianDayUtc(referenceTime)
-    val phaseAngle = computeHalakhicPhaseAngle(referenceTime, timeZone)
+    // The Hebrew day, by day: a running clock asks for it at every frame
+    val hebrewDay = hebrewDayAt(referenceTime.time, timeZone)
+    val phaseAngle = hebrewDay.phaseAngleAt(referenceTime.time)
     val moonOrbitDegrees =
         run {
-            val jewishCalendar = JewishCalendar()
-            val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-            jewishCalendar.setDate(calendar)
-
-            val daysInMonth = jewishCalendar.daysInJewishMonth
-            val dayOfMonth = jewishCalendar.jewishDayOfMonth
+            val daysInMonth = hebrewDay.daysInMonth
+            val dayOfMonth = hebrewDay.dayOfMonth
             if (daysInMonth > 0 && dayOfMonth in 1..daysInMonth) {
                 val stepDegrees = 360f / daysInMonth.toFloat()
-                normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1) * stepDegrees)
+                // Gliding through the day from its label to the next one: a turn per month, no step at midnight
+                val dayFraction = (referenceTime.time - hebrewDay.startMillis).toFloat() / (hebrewDay.endMillis - hebrewDay.startMillis)
+                normalizeOrbitDegrees(ORBIT_DAY_LABEL_START_DEGREES + (dayOfMonth - 1 + dayFraction) * stepDegrees)
             } else {
                 normalizeOrbitDegrees(phaseAngle + ORBIT_DAY_LABEL_START_DEGREES)
             }
@@ -1101,9 +1049,7 @@ private fun computeHebrewMonthOrbitLabels(
     referenceTime: Date,
     timeZone: TimeZone,
 ): List<OrbitLabelData> {
-    val jewishCalendar = JewishCalendar()
-    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-    jewishCalendar.setDate(calendar)
+    val jewishCalendar = jewishCalendarAt(referenceTime, timeZone)
 
     val daysInMonth = jewishCalendar.daysInJewishMonth
     if (daysInMonth <= 0) return emptyList()
@@ -1111,7 +1057,7 @@ private fun computeHebrewMonthOrbitLabels(
     val formatter =
         HebrewDateFormatter().apply {
             isHebrewFormat = true
-            isUseGershGershayim = false
+            isUseGershGershayim = true
         }
 
     val stepDegrees = 360f / daysInMonth.toFloat()
@@ -1128,126 +1074,140 @@ private fun computeHebrewMonthOrbitLabels(
 fun computeZmanimTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
-    opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
+    inIsrael: Boolean = false,
 ): ZmanimTimes {
-    val geoLocation =
-        GeoLocation(
-            "earthwidget",
-            location.latitude,
-            location.longitude,
-            location.elevationMeters,
-            location.timeZone,
-        )
-
-    val javaCalendar = date.toNoonCalendar(location.timeZone)
-
+    val calendar = zmanimCalendar(date, location, opinion, inIsrael)
+    // GRA hours, chatzos and mincha ketana are shared; both luachs print sunrise במישור
     return when (opinion) {
-        ZmanimOpinion.SEPHARDIC -> computeZmanimTimesSephardic(geoLocation, javaCalendar)
-        ZmanimOpinion.DEFAULT -> computeZmanimTimesDefault(geoLocation, javaCalendar)
+            // The luach prints alos 90 במעלות in Israel and counts the MGA day from it; abroad it uses 72
+            val alosAt = alos.momentOfOccurrence
+            val mgaEndAt = mgaEnd.momentOfOccurrence
+            ZmanimTimes(
+                alosHashachar = alosAt?.toDate(),
+                sunrise = calendar.seaLevelSunrise?.toDate(),
+                sofZmanShmaGra = calendar.sofZmanShmaGRA.toDate(),
+                sofZmanShmaMga = calendar.getSofZmanShma(alosAt, mgaEndAt)?.toDate(),
+                sofZmanTfilaGra = calendar.sofZmanTfilaGRA.toDate(),
+                sofZmanTfilaMga = calendar.getSofZmanTfila(alosAt, mgaEndAt)?.toDate(),
+                chatzosHayom = calendar.chatzos.toDate(),
+                minchaGedola = calendar.minchaGedolaGreaterThan30.toDate(),
+                minchaKetana = calendar.minchaKetana.toDate(),
+                plagHamincha = calendar.plagHamincha.toDate(),
+                sunset = calendar.seaLevelSunset?.toDate(),
+                chatzosLayla = calendar.solarMidnight.toDate(),
+            )
+        }
+
+        ZmanimOpinion.OHR_HACHAIM ->
+            ZmanimTimes(
+                alosHashachar = calendar.alos72Zmanis.toDate(),
+                sunrise = calendar.seaLevelSunrise?.toDate(),
+                sofZmanShmaGra = calendar.sofZmanShmaGRA.toDate(),
+                sofZmanShmaMga = calendar.sofZmanShmaMGA72MinutesZmanis.toDate(),
+                sofZmanTfilaGra = calendar.sofZmanTfilaGRA.toDate(),
+                sofZmanTfilaMga = calendar.sofZmanTfilaMGA72MinutesZmanis.toDate(),
+                chatzosHayom = calendar.chatzos.toDate(),
+                minchaGedola = calendar.minchaGedolaOhrHaChaim.toDate(),
+                minchaKetana = calendar.minchaKetana.toDate(),
+                plagHamincha = calendar.plagHaminchaYalkutYosef.toDate(),
+                sunset = calendar.ohrHaChaimSunset?.toDate(),
+                tzais = calendar.tzais13Point5MinutesZmanis.toDate(),
+                tzaisRabbeinuTam = calendar.tzais72Zmanis.toDate(),
+                chatzosLayla = calendar.solarMidnight.toDate(),
+            )
     }
 }
 
 /**
- * Converts a LocalDate to a Calendar set to noon in the given timezone.
+ * A [ComplexZmanimCalendar] for [date] at [location], running on the sun of [opinion]'s luach.
+ * The אור החיים counts its day from the city's height in Israel, from sea level abroad.
  */
-private fun LocalDate.toNoonCalendar(timeZone: TimeZone): Calendar =
-    Calendar.getInstance(timeZone).apply {
-        set(Calendar.YEAR, year)
-        set(Calendar.MONTH, monthValue - 1)
-        set(Calendar.DAY_OF_MONTH, dayOfMonth)
-        set(Calendar.HOUR_OF_DAY, 12)
-        set(Calendar.MINUTE, 0)
-        set(Calendar.SECOND, 0)
-        set(Calendar.MILLISECOND, 0)
+fun zmanimCalendar(
+    date: LocalDate,
+    location: EarthWidgetLocation,
+    opinion: ZmanimOpinion,
+    inIsrael: Boolean,
+): ComplexZmanimCalendar {
+    val timeZone = location.timeZone.toKotlin()
+    return ComplexZmanimCalendar(
+        location = GeoLocation("earthwidget", location.latitude, location.longitude, location.elevationMeters, timeZone),
+        date = date.toKotlinLocalDate(),
+        useElevation = opinion == ZmanimOpinion.OHR_HACHAIM && inIsrael,
+    ).apply {
+        astronomicalCalculator =
+            when (opinion) {
+                ZmanimOpinion.OHR_HACHAIM -> NOAACalculator()
+            }
     }
-
-/**
- * Computes zmanim times using standard ComplexZmanimCalendar calculations.
- */
-private fun computeZmanimTimesDefault(
-    geoLocation: GeoLocation,
-    javaCalendar: Calendar,
-): ZmanimTimes {
-    val calendar =
-        ComplexZmanimCalendar(geoLocation).apply {
-            this.calendar = javaCalendar
-        }
-
-    return ZmanimTimes(
-        alosHashachar = calendar.alosHashachar,
-        sunrise = calendar.sunrise,
-        sofZmanShmaGra = calendar.sofZmanShmaGRA,
-        sofZmanShmaMga = calendar.sofZmanShmaMGA,
-        sofZmanTfilaGra = calendar.sofZmanTfilaGRA,
-        sofZmanTfilaMga = calendar.sofZmanTfilaMGA,
-        chatzosHayom = calendar.chatzos,
-        minchaGedola = calendar.minchaGedola,
-        minchaKetana = calendar.minchaKetana,
-        plagHamincha = calendar.plagHamincha,
-        sunset = calendar.sunset,
-        tzais = calendar.tzais,
-        tzaisRabbeinuTam = calendar.tzais72,
-        chatzosLayla = calendar.solarMidnight,
-    )
 }
 
-/**
- * Computes zmanim times according to Rabbi Ovadiah Yosef ZT"L's opinions.
- *
- * Key differences from standard calculations:
- * - Alos Hashachar: 72 zmaniyot minutes (1/10 of day) before sunrise
- * - Sof Zman Shema/Tefila MGA: Based on 72 zmaniyot alos/tzais
- * - Mincha Gedola: The later of 30 min after chatzos or standard calculation
- * - Plag HaMincha: 1.25 hours before tzais (not sunset)
- * - Tzais: 13.5 zmaniyot minutes after sunset (Geonim)
- * - Tzais Rabbeinu Tam: 72 zmaniyot minutes after sunset
- */
-private fun computeZmanimTimesSephardic(
-    geoLocation: GeoLocation,
-    javaCalendar: Calendar,
-): ZmanimTimes {
-    val isInIsrael = geoLocation.timeZone.id == "Asia/Jerusalem"
-    val useAmudehHoraah = !isInIsrael
-    val roCalendar =
-        ROZmanimCalendar(geoLocation).apply {
-            this.calendar = javaCalendar
-            isUseElevation = false
-            isUseAmudehHoraah = useAmudehHoraah
-        }
+/** The sunset the אור החיים zmaniyos are counted to: from height when elevation is on (mirrors the protected one). */
+val ComplexZmanimCalendar.ohrHaChaimSunset get() = if (isUseElevation) sunset else seaLevelSunset
 
-    // For GRA times, we still use the standard calculation
-    val complexCalendar =
-        ComplexZmanimCalendar(geoLocation).apply {
-            this.calendar = javaCalendar
-            isUseElevation = false
-        }
+fun Zman.DateBased.toDate(): Date? = momentOfOccurrence?.toDate()
 
-    return ZmanimTimes(
-        alosHashachar = roCalendar.getAlotHashachar72Zmaniyot(),
-        sunrise = roCalendar.sunrise,
-        sofZmanShmaGra = complexCalendar.sofZmanShmaGRA,
-        sofZmanShmaMga = roCalendar.getSofZmanShmaMGA72MinutesZmanis(),
-        sofZmanTfilaGra = complexCalendar.sofZmanTfilaGRA,
-        sofZmanTfilaMga = roCalendar.getSofZmanTfilaMGA72MinutesZmanis(),
-        chatzosHayom = roCalendar.getChatzotHayom(),
-        minchaGedola = roCalendar.getMinchaGedolaGreaterThan30(),
-        minchaKetana = roCalendar.minchaKetana,
-        plagHamincha = roCalendar.getPlagHaminchaYalkutYosef(),
-        sunset = roCalendar.sunset,
-        tzais = roCalendar.getTzeit(),
-        tzaisRabbeinuTam =
-            if (useAmudehHoraah) {
-                roCalendar.getTzais72ZmanisLkulah()
-            } else {
-                roCalendar.getTzais72Zmanis()
-            },
-        chatzosLayla = roCalendar.getChatzotLayla(),
-    )
-}
+fun kotlin.time.Instant.toDate(): Date = Date(toEpochMilliseconds())
+
+fun TimeZone.toKotlin(): kotlinx.datetime.TimeZone = toZoneId().toKotlinTimeZone()
+
+internal fun jewishCalendarAt(
+    time: Date,
+    timeZone: TimeZone,
+): JewishCalendar = JewishCalendar(kotlin.time.Instant.fromEpochMilliseconds(time.time), timeZone.toKotlin())
 
 // ============================================================================
 // MOON PHASE CALCULATION
 // ============================================================================
+
+/**
+ * The Hebrew calendar of one local day ([startMillis] until [endMillis]): its day of the month and the month's
+ * length, and the moladot an instant of it is aged from.
+ */
+internal class HebrewDay(
+    val zoneId: String,
+    val startMillis: Long,
+    val endMillis: Long,
+    val dayOfMonth: Int,
+    val daysInMonth: Int,
+    private val molad: Long,
+    private val previousMolad: Long,
+) {
+    /** Whether [millis] is past this month's molad (else the month is still aged from the previous one). */
+    fun isAfterMolad(millis: Long): Boolean = molad <= millis
+
+    /** As [computeHalakhicPhaseAngle]: the age since the last molad, as an angle. */
+    fun phaseAngleAt(millis: Long): Float {
+        val from = if (molad > millis) previousMolad else molad
+        return (((millis - from).toDouble() / LUNAR_CYCLE_MILLIS) * 360.0).toFloat() % 360f
+    }
+}
+
+// ponytail: one day cached (the shown one); a second widget on another zone recomputes on each switch
+@Volatile
+private var lastHebrewDay: HebrewDay? = null
+
+internal fun hebrewDayAt(
+    millis: Long,
+    timeZone: TimeZone,
+): HebrewDay {
+    lastHebrewDay?.let { if (it.zoneId == timeZone.id && millis >= it.startMillis && millis < it.endMillis) return it }
+    val zone = timeZone.toZoneId()
+    val date = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+    val start = date.atStartOfDay(zone).toInstant().toEpochMilli()
+    val end =
+        date
+            .plusDays(1)
+            .atStartOfDay(zone)
+            .toInstant()
+            .toEpochMilli()
+    val calendar = jewishCalendarAt(Date(millis), timeZone)
+    val dayOfMonth = calendar.jewishDayOfMonth
+    val daysInMonth = calendar.daysInJewishMonth
+    val molad = calendar.moladAsInstant.toDate().time
+    goToPreviousHebrewMonth(calendar)
+    val previousMolad = calendar.moladAsInstant.toDate().time
+    return HebrewDay(timeZone.id, start, end, dayOfMonth, daysInMonth, molad, previousMolad).also { lastHebrewDay = it }
+}
 
 /**
  * Computes the Halakhic moon phase angle based on the Hebrew calendar molad.
@@ -1260,20 +1220,18 @@ private fun computeZmanimTimesSephardic(
  * @param timeZone Local timezone.
  * @return Moon phase angle in degrees (0 = new moon, 180 = full moon).
  */
-private fun computeHalakhicPhaseAngle(
+internal fun computeHalakhicPhaseAngle(
     referenceTime: Date,
     timeZone: TimeZone,
 ): Float {
-    val jewishCalendar = JewishCalendar()
-    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-    jewishCalendar.setDate(calendar)
+    val jewishCalendar = jewishCalendarAt(referenceTime, timeZone)
 
-    var molad = jewishCalendar.moladAsDate
+    var molad = jewishCalendar.moladAsInstant.toDate()
 
     // If current month's molad is in the future, use previous month's molad
     if (molad.time > referenceTime.time) {
         goToPreviousHebrewMonth(jewishCalendar)
-        molad = jewishCalendar.moladAsDate
+        molad = jewishCalendar.moladAsInstant.toDate()
     }
 
     // Calculate age since molad and convert to phase angle
@@ -1289,33 +1247,10 @@ private fun computeHalakhicPhaseAngle(
  *
  * @param jewishCalendar Calendar to modify.
  */
-private fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
-    val currentMonth = jewishCalendar.jewishMonth
-    val currentYear = jewishCalendar.jewishYear
-
-    when (currentMonth) {
-        JewishDate.TISHREI -> {
-            // Tishrei -> previous year's Elul
-            jewishCalendar.jewishYear = currentYear - 1
-            jewishCalendar.jewishMonth = JewishDate.ELUL
-        }
-
-        JewishDate.NISSAN -> {
-            // Nissan -> Adar (or Adar II in leap year)
-            val prevMonth =
-                if (jewishCalendar.isJewishLeapYear) {
-                    JewishDate.ADAR_II
-                } else {
-                    JewishDate.ADAR
-                }
-            jewishCalendar.jewishMonth = prevMonth
-        }
-
-        else -> {
-            jewishCalendar.jewishMonth = currentMonth - 1
-        }
-    }
-    jewishCalendar.jewishDayOfMonth = 1
+internal fun goToPreviousHebrewMonth(jewishCalendar: JewishCalendar) {
+    jewishCalendar.setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, 1)
+    jewishCalendar.back() // lands on the last day of the previous month
+    jewishCalendar.setJewishDate(jewishCalendar.jewishYear, jewishCalendar.jewishMonth, 1)
 }
 
 // ============================================================================
@@ -1357,37 +1292,6 @@ private fun resolveInitialLocationSelection(
     return LocationSelection(fallbackCountry, fallbackCity)
 }
 
-/**
- * Determines timezone for a given location.
- *
- * Uses Asia/Jerusalem for coordinates within Israel, otherwise
- * calculates a GMT offset based on longitude.
- *
- * @param latitude Location latitude.
- * @param longitude Location longitude.
- * @return Appropriate timezone.
- */
-fun timeZoneForLocation(
-    latitude: Double,
-    longitude: Double,
-): TimeZone {
-    // Use Israel timezone for coordinates within Israel
-    if (latitude in ISRAEL_LAT_MIN..ISRAEL_LAT_MAX &&
-        longitude in ISRAEL_LON_MIN..ISRAEL_LON_MAX
-    ) {
-        return TimeZone.getTimeZone("Asia/Jerusalem")
-    }
-
-    // Calculate GMT offset from longitude
-    val offsetHours =
-        (longitude / DEGREES_PER_HOUR)
-            .roundToInt()
-            .coerceIn(MIN_GMT_OFFSET, MAX_GMT_OFFSET)
-    val zoneId = if (offsetHours >= 0) "GMT+$offsetHours" else "GMT$offsetHours"
-
-    return TimeZone.getTimeZone(zoneId)
-}
-
 // ============================================================================
 // KIDDUSH LEVANA CALCULATION
 // ============================================================================
@@ -1410,33 +1314,27 @@ private fun computeKiddushLevanaData(
     earliestOpinion: KiddushLevanaEarliestOpinion,
     latestOpinion: KiddushLevanaLatestOpinion,
 ): KiddushLevanaData {
-    val jewishCalendar = JewishCalendar()
-    val calendar = Calendar.getInstance(timeZone).apply { time = referenceTime }
-    jewishCalendar.setDate(calendar)
+    val jewishCalendar = jewishCalendarAt(referenceTime, timeZone)
 
     // Get earliest time based on opinion
-    val earliestTime: Date? =
+    val earliestTime =
         when (earliestOpinion) {
             KiddushLevanaEarliestOpinion.DAYS_3 -> jewishCalendar.tchilasZmanKidushLevana3Days
             KiddushLevanaEarliestOpinion.DAYS_7 -> jewishCalendar.tchilasZmanKidushLevana7Days
-        }
+        }.toDate()
 
     // Get latest time based on opinion
-    val latestTime: Date? =
+    val latestTime =
         when (latestOpinion) {
             KiddushLevanaLatestOpinion.BETWEEN_MOLDOS -> jewishCalendar.sofZmanKidushLevanaBetweenMoldos
             KiddushLevanaLatestOpinion.DAYS_15 -> jewishCalendar.sofZmanKidushLevana15Days
-        }
-
-    if (earliestTime == null || latestTime == null) {
-        return KiddushLevanaData.EMPTY
-    }
+        }.toDate()
 
     // Get the molad for the current month
-    var molad = jewishCalendar.moladAsDate
+    var molad = jewishCalendar.moladAsInstant.toDate()
     if (molad.time > referenceTime.time) {
         goToPreviousHebrewMonth(jewishCalendar)
-        molad = jewishCalendar.moladAsDate
+        molad = jewishCalendar.moladAsInstant.toDate()
     }
 
     val daysInMonth = jewishCalendar.daysInJewishMonth

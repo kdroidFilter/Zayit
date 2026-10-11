@@ -1,14 +1,18 @@
+import dev.nucleusframework.desktop.application.dsl.CompressionLevel
+import dev.nucleusframework.desktop.application.dsl.GraalvmDistribution
+import dev.nucleusframework.desktop.application.dsl.NativeImageOptimization
 import dev.nucleusframework.desktop.application.dsl.ReleaseChannel
 import dev.nucleusframework.desktop.application.dsl.ReleaseType
 import dev.nucleusframework.desktop.application.dsl.TargetFormat
+import io.github.kdroidfilter.buildsrc.SelectionPinPatch
 import io.github.kdroidfilter.buildsrc.Versioning
 import org.jetbrains.compose.reload.gradle.ComposeHotRun
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.multiplatform)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
-//    alias(libs.plugins.android.application)
     alias(libs.plugins.hotReload)
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.buildConfig)
@@ -19,6 +23,7 @@ plugins {
     alias(libs.plugins.nucleus)
     alias(libs.plugins.structured.coroutines)
     alias(libs.plugins.sentryJvmGradle)
+    alias(libs.plugins.ksp)
 }
 
 structuredCoroutines {
@@ -34,13 +39,21 @@ sentry {
     authToken = System.getenv("SENTRY_AUTH_TOKEN")
 }
 
+// The smart siddur is in the official builds only (open core): with its package's token or its sources beside
+// (settings.gradle.kts); a community build has none and addons/siddur/disabled says so
+val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
+
+// The semantic search too (open core): its package (code + model) with its token or its sources beside; without
+// them, addons/semantic/disabled leaves the search lexical only
+val withSemantic = gradle.extensions.extraProperties["semanticEnabled"] == true
+
 kotlin {
-//    androidTarget {
-//        // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-test.html
-//        instrumentedTestVariant.sourceSetTree.set(KotlinSourceSetTree.test)
-//    }
 
     jvm()
+    compilerOptions {
+        // Satellites, dock and tab windows (Nucleus 2.6) are experimental.
+        optIn.add("dev.nucleusframework.window.ExperimentalNucleusApi")
+    }
     jvmToolchain(
         libs.versions.jvmToolchain
             .get()
@@ -84,7 +97,6 @@ kotlin {
             implementation(libs.nucleus.application)
             implementation(libs.nucleus.aot.runtime)
             implementation(libs.nucleus.darkmode.detector)
-            implementation(libs.platformtools.appmanager)
             implementation(project(":releasefetcher"))
 
             // FileKit
@@ -104,6 +116,7 @@ kotlin {
             implementation(project(":pagination"))
             implementation(project(":texteffects"))
             implementation(project(":network"))
+            implementation(project(":backup-drive"))
 
             // Paging (AndroidX Paging 3)
             implementation(libs.androidx.paging.common)
@@ -122,21 +135,27 @@ kotlin {
             implementation(libs.compose.ui.test)
         }
 
+        jvmMain {
+            kotlin.srcDir(if (withSiddur) "addons/siddur/enabled/kotlin" else "addons/siddur/disabled/kotlin")
+            if (withSiddur) dependencies { implementation(libs.seforim.siddur) }
+        }
+        if (withSiddur) jvmTest { kotlin.srcDir("addons/siddur/test/kotlin") }
+
+        jvmMain {
+            kotlin.srcDir(if (withSemantic) "addons/semantic/enabled/kotlin" else "addons/semantic/disabled/kotlin")
+            if (withSemantic) dependencies { implementation(libs.seforim.semantic) }
+        }
+
         jvmTest.dependencies {
             implementation(libs.mockk)
             implementation(libs.kotlinx.coroutines.test)
         }
-//
-//        androidMain.dependencies {
-//            implementation(compose.uiTooling)
-//            implementation(libs.androidx.activityCompose)
-//            implementation(libs.ktor.client.okhttp)
-//        }
 
         jvmMain.dependencies {
             implementation(libs.hebrew.numerals)
             api(project(":jewel"))
             implementation(project(":earthwidget"))
+            implementation(project(":luach"))
             implementation(libs.nucleus.system.color)
             implementation(libs.nucleus.decorated.window.core)
             implementation(libs.nucleus.decorated.window.tao)
@@ -150,6 +169,7 @@ kotlin {
             implementation(libs.nucleus.launcher.linux)
             implementation(libs.nucleus.menu.macos)
             implementation(libs.nucleus.sf.symbols)
+            implementation(libs.nucleus.share)
             implementation(libs.nucleus.taskbar.progress.tao)
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
@@ -181,7 +201,7 @@ kotlin {
             // HTML sanitization for search snippets
             implementation(libs.jsoup)
 
-            implementation(libs.zmanim)
+            implementation(libs.kosherkotlin)
 
             implementation(libs.nucleus.notification.common)
 
@@ -192,71 +212,25 @@ kotlin {
     }
 }
 
-// android {
-//    namespace = "io.github.kdroidfilter.seforimapp"
-//    compileSdk = 35
-//
-//    defaultConfig {
-//        applicationId = "io.github.kdroidfilter.seforimapp.androidApp"
-//        minSdk = 21
-//        targetSdk = 35
-//        versionCode = 1
-//        versionName = "1.0.0"
-//
-//        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-//    }
-// }
-//
-// // https://developer.android.com/develop/ui/compose/testing#setup
-// dependencies {
-//    androidTestImplementation(libs.androidx.uitest.junit4)
-//    debugImplementation(libs.androidx.uitest.testManifest)
-// }
-
 nucleus.application {
 
     mainClass = "io.github.kdroidfilter.seforimapp.MainKt"
-
+    nucleusOptimization = true
     graalvm {
         isEnabled = true
-        javaLanguageVersion = 25
-        jvmVendor = JvmVendorSpec.BELLSOFT
         imageName = "zayit"
-        buildArgs.addAll(
-            // Enable native access for classpath (unnamed-module) code at IMAGE BUILD TIME so the
-            // generated binary never emits the JDK "restricted method ... System::load" warnings
-            // (triggered by sqlite-jdbc loading its JNI lib). The runtime `--enable-native-access`
-            // jvmArg below does NOT reach the GraalVM native binary, so it must be baked in here.
-            "--enable-native-access=ALL-UNNAMED",
-            "-H:+AddAllCharsets",
-            "-Djava.awt.headless=false",
-            "-Os",
-            "-H:+UnlockExperimentalVMOptions",
-            "-H:-IncludeMethodData",
-            // Enable shared arenas for Lucene's memory-mapped I/O (MemorySegmentIndexInput)
-            "-H:+SharedArenaSupport",
-            // Parallel GC for better throughput with large heaps
-            "--gc=parallel",
-            // Default max heap 2 GB
-            "-R:MaxHeapSize=2147483648",
-            // Exclude sqlite-jdbc's native-image.properties which references
-            // SqliteJdbcFeature (lives in META-INF/versions/9/ of the multi-release
-            // JAR, stripped by ProGuard shrinking). Equivalent metadata is already
-            // in the project's reachability-metadata.json.
-            "--exclude-config",
-            ".*\\.jar",
-            "META-INF/native-image/org\\.xerial/.*",
-            // Lucene classes initialize at runtime (GraalVM default).
-            // MethodHandle-based code paths are handled by substitution classes
-            // in io.github.kdroidfilter.seforimapp.graalvm.
-        )
-        march = providers.gradleProperty("nativeMarch").getOrElse("compatibility")
+        optimization = NativeImageOptimization.LEVEL_3
         nativeImageConfigBaseDir.set(layout.projectDirectory.dir("src/graalvm"))
+        buildArgs.add("--initialize-at-build-time=org.slf4j")
+        toolchain {
+            distribution = GraalvmDistribution.ORACLE
+        }
     }
     nativeDistributions {
         appName = "זית"
         packageName = "zayit"
         description = "ספריית הלימוד שמובילה ישר לטקסט"
+        compressionLevel = CompressionLevel.Ultra
 
         publish {
             github {
@@ -273,18 +247,6 @@ nucleus.application {
         enableAotCache = true
         homepage = "https://zayitapp.com"
         licenseFile.set(File(project.rootDir, "LICENSE"))
-        jvmArgs +=
-            listOf(
-                "--enable-native-access=ALL-UNNAMED",
-                "--add-modules=jdk.incubator.vector",
-            )
-        jvmArgs +=
-            listOf(
-                "-XX:+UseCompactObjectHeaders",
-                "-XX:+UseStringDeduplication",
-                "-XX:MaxGCPauseMillis=50",
-            )
-
         modules(
             "java.sql",
             "java.management",
@@ -321,7 +283,7 @@ nucleus.application {
             dirChooser = false
             shortcut = true
             upgradeUuid = "d9f21975-4359-4818-a623-6e9a3f0a07ca"
-            perUserInstall = true
+            msi { perMachine = false }
 
             nsis {
                 oneClick = true // Default: true
@@ -344,10 +306,10 @@ nucleus.application {
             packageName = "זית"
         }
         buildTypes.release.proguard {
-            version.set("7.9.0")
             isEnabled = true
             obfuscate.set(false)
             optimize.set(true)
+            consumerRules.set(true)
             configurationFiles.from(project.file("proguard-rules.pro"))
         }
     }
@@ -366,9 +328,36 @@ tasks.withType<ComposeHotRun>().configureEach {
     mainClass.set("io.github.kdroidfilter.seforimapp.MainKt")
 }
 
+// A Gradle property, else the same key in the (git-ignored) local.properties of the root project
+fun driveProperty(key: String): Provider<String> =
+    providers.gradleProperty(key).orElse(
+        providers.fileContents(rootProject.layout.projectDirectory.file("local.properties")).asText.map { text ->
+            Properties().apply { load(text.reader()) }.getProperty(key).orEmpty()
+        },
+    )
+
 buildConfig {
     // https://github.com/gmazzo/gradle-buildconfig-plugin#usage-in-kts
+    packageName("io.github.kdroidfilter.seforimapp")
+    // Official builds get the DSN from the SENTRY_DSN CI secret; without it crash reporting is disabled
+    val sentryDsn = providers.environmentVariable("SENTRY_DSN").orElse(providers.gradleProperty("sentry.dsn")).orElse("")
+    buildConfigField("SENTRY_DSN", sentryDsn)
+    // Google Drive backup (Desktop OAuth client); without it the Drive sync is hidden
+    val driveClientId =
+        providers.environmentVariable("GOOGLE_DRIVE_CLIENT_ID").orElse(driveProperty("drive.clientId")).orElse("")
+    val driveClientSecret =
+        providers.environmentVariable("GOOGLE_DRIVE_CLIENT_SECRET").orElse(driveProperty("drive.clientSecret")).orElse("")
+    buildConfigField("GOOGLE_DRIVE_CLIENT_ID", driveClientId)
+    buildConfigField("GOOGLE_DRIVE_CLIENT_SECRET", driveClientSecret)
 }
+
+// Jewel's icons-api pulls IntelliJ's coroutines fork, which duplicates kotlinx-coroutines-core-jvm classes
+configurations.configureEach {
+    exclude(group = "org.jetbrains.intellij.deps.kotlinx", module = "kotlinx-coroutines-core-jvm")
+}
+
+// Shift+click selection crash in lazy lists (Zayit #48): patches Compose's SelectionManager bytecode
+SelectionPinPatch.apply(project)
 
 tasks.withType<Jar> {
     exclude("META-INF/*.SF")
@@ -390,4 +379,9 @@ kover {
             }
         }
     }
+}
+
+dependencies {
+    // Generates availableHomeWidgets from every HomeWidget object (see :widgetprocessor).
+    add("kspJvm", project(":widgetprocessor"))
 }

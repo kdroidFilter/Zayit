@@ -41,6 +41,9 @@ data class Providers(
     // (filtered by target-book id + connection type). Mirror the pager ordering.
     val getLinkCharCountsForLine: suspend (Long, Long, ConnectionType) -> List<Int>,
     val getLinkCharCountsForLines: suspend (List<Long>, Long, ConnectionType) -> List<Int>,
+    // The breadcrumb popups' TOC levels: children of an entry, root entries of a book
+    val loadTocChildren: suspend (Long) -> List<TocEntry> = { emptyList() },
+    val loadRootToc: suspend (Long) -> List<TocEntry> = { emptyList() },
 )
 
 /**
@@ -57,6 +60,8 @@ data class VisibleTocEntry(
 
 @Immutable
 data class AltTocState(
+    // The book the structures belong to: kept until the next book's are loaded
+    val bookId: Long? = null,
     val structures: List<AltTocStructure> = emptyList(),
     val selectedStructureId: Long? = null,
     val entries: List<AltTocEntry> = emptyList(),
@@ -87,6 +92,9 @@ data class BookContentState
         val providers: Providers? = null,
     )
 
+/** Key of the root entries in the children maps of the TOC states. */
+const val ROOT_TOC_KEY = -1L
+
 @Immutable
 data class NavigationState(
     // Business
@@ -101,7 +109,25 @@ data class NavigationState(
     val isVisible: Boolean = true,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
+    // Search bar under the header (not persisted): null while hidden
+    val search: PaneSearchState<BookFilterResult>? = null,
+    // One-shot request to scroll the tree to this category, cleared once done (not persisted)
+    val categoryReveal: Long? = null,
+    // Every category of the catalog by id, built with it
+    val categoriesById: Map<Long, Category> = emptyMap(),
 )
+
+/** The book tree narrowed to the books suggested for the query, with their categories. */
+@Immutable
+data class BookFilterResult(
+    val roots: List<Category> = emptyList(),
+    val children: Map<Long, List<Category>> = emptyMap(),
+    val books: Set<Book> = emptySet(),
+    /** Every category of the filtered tree, all shown expanded. */
+    val categoryIds: Set<Long> = emptySet(),
+    override val matchIds: List<Long> = emptyList(),
+    override val bestMatchId: Long? = null,
+) : PaneSearchResult
 
 @Immutable
 data class TocState(
@@ -115,7 +141,42 @@ data class TocState(
     val isVisible: Boolean = false,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
+    // Search bar under the header (not persisted): null while hidden
+    val search: PaneSearchState<TocFilterResult>? = null,
 )
+
+/** What a pane search found: [matchIds] in display order, [bestMatchId] the one Enter opens. */
+interface PaneSearchResult {
+    val matchIds: List<Long>
+    val bestMatchId: Long?
+}
+
+/**
+ * The search bar of a side pane: the typed [query] and the last computed [result], which
+ * answers [resultQuery] and may lag behind [query] while the next one is computed.
+ */
+@Immutable
+data class PaneSearchState<T : PaneSearchResult>(
+    val query: String = "",
+    val result: T? = null,
+    val resultQuery: String? = null,
+)
+
+/**
+ * The TOC narrowed to the entries whose title matches the query, plus their ancestors; and
+ * likewise the shown alt TOC ([altRoots]), whose entries carry their negated id so the two
+ * trees share [children], [matchIds] and [highlights].
+ */
+@Immutable
+data class TocFilterResult(
+    val roots: List<TocEntry> = emptyList(),
+    val altRoots: List<TocEntry> = emptyList(),
+    val children: Map<Long, List<TocEntry>> = emptyMap(),
+    override val matchIds: List<Long> = emptyList(),
+    /** Ranges of the title to highlight, per matching entry. */
+    val highlights: Map<Long, List<IntRange>> = emptyMap(),
+    override val bestMatchId: Long? = null,
+) : PaneSearchResult
 
 @Immutable
 data class NotesState(
@@ -123,6 +184,14 @@ data class NotesState(
     val isVisible: Boolean = false,
     val scrollIndex: Int = 0,
     val scrollOffset: Int = 0,
+)
+
+/** Lines [first] to [last] of the book [bookId], by their index: a passage marked to be read. */
+@Immutable
+data class MarkedRange(
+    val bookId: Long,
+    val first: Int,
+    val last: Int,
 )
 
 @Immutable
@@ -138,6 +207,8 @@ data class ContentState(
     val showCommentaries: Boolean = false,
     val showTargum: Boolean = false,
     val showSources: Boolean = false,
+    // Each verse twice, then its targum
+    val shnayimMikra: Boolean = false,
     // Scroll positions
     val paragraphScrollPosition: Int = 0,
     val chapterScrollPosition: Int = 0,
@@ -171,12 +242,16 @@ data class ContentState(
     val selectedLinkSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
+    // Bumped to hand the keyboard focus back to the text, e.g. when a breadcrumb popup closes (not persisted)
+    val focusTextRequest: Int = 0,
     // Scrolling behavior control
     val shouldScrollToLine: Boolean = false,
     val scrollToLineTimestamp: Long = 0L,
     // One-shot request to top-anchor a specific line (e.g., from TOC)
     val topAnchorLineId: Long = -1L,
     val topAnchorRequestTimestamp: Long = 0L,
+    // A passage marked in the text, as the day's limud opened from the Home: not a selection, its commentaries unloaded
+    val markedRange: MarkedRange? = null,
 ) {
     /** The primary selected line (for TOC highlight, breadcrumb, etc.) */
     val primaryLine: Line?

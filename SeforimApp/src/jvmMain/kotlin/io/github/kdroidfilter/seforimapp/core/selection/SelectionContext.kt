@@ -41,6 +41,9 @@ data class CommentaryLineRef(
  */
 interface SelectionContext {
     val selectedText: StateFlow<String>
+
+    /** The first and last lines of [selectedText] when known exactly (a completed Shift+click selection). */
+    val selectedLineRange: StateFlow<Pair<Line, Line>?>
     val activeBook: StateFlow<ActiveBook?>
     val visibleLines: StateFlow<VisibleLines>
 
@@ -58,7 +61,15 @@ interface SelectionContext {
      */
     val currentLineId: StateFlow<Long>
 
-    fun setSelectedText(text: String)
+    /** Publishes the text selected in the tab [tabId], from line [lineRange]'s first to its last when known. */
+    fun setSelectedText(
+        tabId: String,
+        text: String,
+        lineRange: Pair<Line, Line>? = null,
+    )
+
+    /** The text selected in the tab [tabId], empty when the last selection was made in another tab. */
+    fun selectedTextIn(tabId: String): String
 
     fun clearSelectedText()
 
@@ -99,6 +110,12 @@ class DefaultSelectionContext : SelectionContext {
     private val _selectedText = MutableStateFlow("")
     override val selectedText: StateFlow<String> = _selectedText.asStateFlow()
 
+    private val _selectedLineRange = MutableStateFlow<Pair<Line, Line>?>(null)
+    override val selectedLineRange: StateFlow<Pair<Line, Line>?> = _selectedLineRange.asStateFlow()
+
+    // Tab whose selection _selectedText holds
+    @Volatile private var selectedTextTabId: String? = null
+
     private val _activeBook = MutableStateFlow<ActiveBook?>(null)
     override val activeBook: StateFlow<ActiveBook?> = _activeBook.asStateFlow()
 
@@ -111,15 +128,24 @@ class DefaultSelectionContext : SelectionContext {
     private val _activeCommentaryColumn = MutableStateFlow<List<CommentaryLineRef>>(emptyList())
     override val activeCommentaryColumn: StateFlow<List<CommentaryLineRef>> = _activeCommentaryColumn.asStateFlow()
 
-    override fun setSelectedText(text: String) {
+    override fun setSelectedText(
+        tabId: String,
+        text: String,
+        lineRange: Pair<Line, Line>?,
+    ) {
+        selectedTextTabId = tabId
+        _selectedLineRange.value = lineRange
         _selectedText.value = text
     }
+
+    override fun selectedTextIn(tabId: String): String = if (selectedTextTabId == tabId) _selectedText.value else ""
 
     override fun setActiveCommentaryColumn(lines: List<CommentaryLineRef>) {
         _activeCommentaryColumn.value = lines
     }
 
     override fun clearSelectedText() {
+        _selectedLineRange.value = null
         _selectedText.value = ""
     }
 

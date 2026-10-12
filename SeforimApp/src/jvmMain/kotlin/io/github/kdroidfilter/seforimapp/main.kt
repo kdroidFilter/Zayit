@@ -41,6 +41,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberWindowV
 import io.github.kdroidfilter.seforimapp.core.presentation.window.DesktopTabs
 import io.github.kdroidfilter.seforimapp.core.presentation.window.MainAppWindow
 import io.github.kdroidfilter.seforimapp.earthwidget.LocalWidgetAntiAliasing
+import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
 import io.github.kdroidfilter.seforimapp.features.database.update.DatabaseUpdateWindow
 import io.github.kdroidfilter.seforimapp.features.home.widgets.ToolWindowsHost
 import io.github.kdroidfilter.seforimapp.features.onboarding.OnBoardingWindow
@@ -219,8 +220,10 @@ fun main(args: Array<String>) {
             }
         }
 
-        // The 3D views' anti-aliasing (a display setting), for every window
-        val antiAliasing by appGraph.appSettings.antiAliasingFlow.collectAsState()
+        // The 3D views' anti-aliasing (a display setting), for every window; always off on a low-end machine, whose
+        // setting is hidden (a backup restored from a stronger one may still carry it)
+        val savedAntiAliasing by appGraph.appSettings.antiAliasingFlow.collectAsState()
+        val antiAliasing = if (PlatformInfo.isLowEnd) WidgetAntiAliasing.OFF else savedAntiAliasing
         CompositionLocalProvider(
             LocalAppGraph provides appGraph,
             LocalMetroViewModelFactory provides appGraph.metroViewModelFactory,

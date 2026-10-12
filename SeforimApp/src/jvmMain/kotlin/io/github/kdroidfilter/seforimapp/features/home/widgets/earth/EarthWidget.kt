@@ -10,7 +10,6 @@ import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetZmanimView
-import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.EarthPreview
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -21,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.home_widget_name_earth
@@ -32,7 +32,7 @@ internal object EarthWidget : HomeWidget {
     override val defaultSpan = CellSpan(7, 4)
     override val minSpan = CellSpan(5, 4)
     override val maxSpan = CellSpan(12, 8)
-    override val isSupported get() = isEarthWidgetSupported
+    override val isSupported get() = !PlatformInfo.isLowEnd
 
     @Composable
     override fun Preview(

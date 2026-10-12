@@ -37,6 +37,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettin
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.display.DisplaySettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -115,10 +116,13 @@ private fun DisplaySettingsView(
                 onValueChange = { onEvent(DisplaySettingsEvents.SetMaxCommentatorsPerPage(it)) },
             )
 
-            AntiAliasingCard(
-                value = state.antiAliasing,
-                onValueChange = { onEvent(DisplaySettingsEvents.SetAntiAliasing(it)) },
-            )
+            // A low-end machine always renders without anti-aliasing (see main): nothing to pick
+            if (!PlatformInfo.isLowEnd) {
+                AntiAliasingCard(
+                    value = state.antiAliasing,
+                    onValueChange = { onEvent(DisplaySettingsEvents.SetAntiAliasing(it)) },
+                )
+            }
         }
     }
 }

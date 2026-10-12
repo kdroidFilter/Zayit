@@ -11,6 +11,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidget
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.jewel.ui.icon.IconKey
 
@@ -117,8 +118,7 @@ data class WidgetPlacement(
 )
 
 /**
- * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky. Where some can't
- * be shown, the others are laid out on their own, so their places don't leave holes (see [defaultLayout]).
+ * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky.
  */
 val homeWidgets: List<WidgetPlacement> =
     listOf(
@@ -129,10 +129,12 @@ val homeWidgets: List<WidgetPlacement> =
         WidgetPlacement(SkyWidget, CellRect(15, 4, 5, 3)),
     )
 
-/** [homeWidgets] for a platform showing only the widgets [shown]: the others' areas left out, theirs dealt out again. */
-internal fun defaultLayout(shown: (HomeWidget) -> Boolean = { it.isSupported }): List<WidgetPlacement> {
-    if (homeWidgets.all { shown(it.widget) }) return homeWidgets
-    return homeWidgets.filter { shown(it.widget) }.fold(emptyList()) { layout, (widget, cell) ->
-        layout + WidgetPlacement(widget, layout.firstVacant(cell.span))
-    }
-}
+/** The default Home layout of a low-end machine, which can't run the heavy 3D widgets: the zmanim and the Temple. */
+val lowEndHomeWidgets: List<WidgetPlacement> =
+    listOf(
+        WidgetPlacement(ZmanimWidget, CellRect(0, 0, 12, 4)),
+        WidgetPlacement(TempleCountdownWidget, CellRect(12, 0, 7, 4)),
+    )
+
+/** [lowEndHomeWidgets] on a low-end machine, [homeWidgets] elsewhere. */
+internal fun defaultLayout(lowEnd: Boolean = PlatformInfo.isLowEnd): List<WidgetPlacement> = if (lowEnd) lowEndHomeWidgets else homeWidgets

@@ -52,26 +52,6 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-/**
- * Whether the 3D widget can run here: filament-kmp ships natives for these OS/arch pairs only
- * (no macOS Intel, no Windows ARM64). Callers hide the widget when false.
- */
-val isEarthWidgetSupported: Boolean by lazy {
-    val os = System.getProperty("os.name").orEmpty().lowercase()
-    val arm =
-        System
-            .getProperty("os.arch")
-            .orEmpty()
-            .lowercase()
-            .let { it == "aarch64" || it == "arm64" }
-    when {
-        os.contains("mac") -> arm
-        os.contains("win") -> !arm
-        os.contains("linux") -> true
-        else -> false
-    }
-}
-
 /** Rendering parameters for the Earth + Moon composite scene. [renderSizePx] sets the scene's geometry units. */
 @Immutable
 internal data class EarthRenderState(

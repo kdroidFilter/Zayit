@@ -457,7 +457,7 @@ fun SolarSystemWidgetView(
             )
         // Null while the engine is being created, off the UI thread: a loader meanwhile
         // The full window draws a larger scene: Filament's defaults there
-        val engine = rememberFilamentEngineAsync(config = if (fullWindow) null else widgetEngineConfig())
+        val engine = rememberFilamentEngineAsync(config = if (fullWindow) fullWindowEngineConfig() else widgetEngineConfig())
 
         Box(modifier = Modifier.fillMaxSize().orbitCameraGestures(camera) { 180f / widthPx }) {
             if (engine == null) {

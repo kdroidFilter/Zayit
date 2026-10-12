@@ -16,6 +16,9 @@ interface ReferenceSource {
     /** Books whose title or acronym equals [normalizedName] (see [ReferenceParser.normalizeName]). */
     suspend fun booksNamed(normalizedName: String): List<Book>
 
+    /** Whether a book title begins with [normalizedPrefix], as a name being typed (`בבא ק`). */
+    suspend fun titleStartsWith(normalizedPrefix: String): Boolean
+
     suspend fun toc(bookId: Long): List<TocNode>
 
     /** The book's alternative TOCs, one list of entries per structure. */
@@ -53,10 +56,19 @@ class ReferenceResolver(
         maxBooks: Int = 3,
         maxResults: Int = 5,
     ): List<ResolvedReference> {
+        // A query naming books whole (`בבא קמא`, `מאירי ע"ז`) only jumps within them, not into
+        // a book named by its first words (`בבא` → בבא בתרא, daf קמא). Some acronyms are only
+        // stored with their quotes (`חתם סופר ע"ז`), hence the query as typed too.
+        val typed = query.trim().replace(Regex("\\s+"), " ")
+        val named =
+            listOf(ReferenceParser.normalizeName(query), typed).distinct().flatMap { source.booksNamed(it) }.mapTo(HashSet()) { it.id }
         for (split in ReferenceParser.splits(query)) {
             for (name in nameVariants(split.bookName)) {
-                val books = source.booksNamed(name)
+                val books = source.booksNamed(name).filter { named.isEmpty() || it.id in named }
                 if (books.isEmpty()) continue
+                // `בבא ק` is בבא קמא being typed, not daf ק of בבא בתרא (acronym בבא)
+                val titled = books.any { ReferenceParser.normalizeName(it.title) == name }
+                if (!titled && source.titleStartsWith(ReferenceParser.normalizeName(query))) continue
                 return rank(books, name).take(maxBooks).flatMap { book -> locate(book, split.place, maxResults) }.take(maxResults)
             }
         }
@@ -179,16 +191,20 @@ class ReferenceResolver(
     }
 
     // The first entry of [level] matching the words at [position], in TOC order, looking through
-    // unnumbered entries (the book title, `חלק ראשון; ליקוטי אמרים`...) but not into other numbers
+    // unnumbered entries (the book title, `חלק ראשון; ליקוטי אמרים`...) but not into other numbers.
+    // A name holding a numeral alone in its level (`בבא קמא`, `חלק א`) is no numbering; a bare
+    // number alone (`סימן יז`) still is.
     private fun findEntry(
         level: List<TocNode>,
         children: Map<Long?, List<TocNode>>,
         place: List<ReferenceToken>,
         position: Int,
     ): Match? {
+        val numbered = level.count { TocNumber.of(it.text) != null } > 1
         for (candidate in level) {
             matchEntry(candidate, place, position)?.let { return it }
-            if (TocNumber.of(candidate.text) == null) {
+            val name = !numbered && ReferenceParser.placeWords(candidate.text).size > 1
+            if (name || TocNumber.of(candidate.text) == null) {
                 findEntry(children[candidate.id].orEmpty(), children, place, position)?.let { return it }
             }
         }

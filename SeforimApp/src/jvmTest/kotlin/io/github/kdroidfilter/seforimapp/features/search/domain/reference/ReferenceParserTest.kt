@@ -92,4 +92,9 @@ class ReferenceParserTest {
         assertTrue(!ReferenceParser.sameWord("בא", "א"))
         assertTrue(!ReferenceParser.sameWord("חלב", "חלק"))
     }
+
+    @Test
+    fun wordOfQuotesOnly() {
+        assertTrue(ReferenceParser.splits("שבת \"").isEmpty())
+    }
 }

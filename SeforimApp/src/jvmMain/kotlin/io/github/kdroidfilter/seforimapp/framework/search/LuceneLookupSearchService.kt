@@ -298,10 +298,26 @@ class LuceneLookupSearchService(
                 )
             }
 
-        // 4. Re-sort by enhanced score and return top results
-        return scoredHits
-            .sortedByDescending { it.score }
-            .take(limit)
+        // 4. Re-sort: titles equal to the query, then titles beginning with it, then the rest; the
+        // score only orders within a tier, as its base-book boost reads orderIndex, a rank within the
+        // category (תוספתא בבא קמא, alone in its own, came before בבא קמא for `בבא ק`). A short query
+        // or one that is a book's acronym (`חו"מ`, `הטור`) is no title being typed: no prefix tier.
+        val titleTyped = normalizedQuery.length > 3 && scoredHits.none { it.exactAcronym }
+        val order = compareByDescending<ScoredBookHit> { titleTier(it.title, normalizedQuery, titleTyped) }.thenByDescending { it.score }
+        return scoredHits.sortedWith(order).take(limit)
+    }
+
+    private fun titleTier(
+        title: String,
+        query: String,
+        titleTyped: Boolean,
+    ): Int {
+        val normalized = normalizeHebrew(title)
+        return when {
+            normalized == query -> 2
+            titleTyped && normalized.startsWith(query) -> 1
+            else -> 0
+        }
     }
 
     private fun calculateEnhancedScore(

@@ -5,7 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.SkyWidgetView
-import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -24,7 +23,6 @@ internal object SkyWidget : HomeWidget {
     override val defaultSpan = CellSpan(5, 3)
     override val minSpan = CellSpan(5, 3)
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
-    override val isSupported get() = isEarthWidgetSupported
 
     @Composable
     override fun Preview(

@@ -6,6 +6,7 @@ import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchFacets
 import io.github.kdroidfilter.seforimlibrary.search.SearchPage
+import io.github.kdroidfilter.seforimlibrary.search.SearchQueryParser
 import io.github.kdroidfilter.seforimlibrary.search.SearchSession
 import io.github.kdroidfilter.seforimlibrary.search.SnippetSources
 import io.github.kdroidfilter.seforimlibrary.search.WARMUP_PAGE_SIZE
@@ -75,7 +76,8 @@ internal class HybridSearchEngine(
         baseBookOnly: Boolean,
     ): SearchSession? {
         if (query.isBlank()) return null
-        if (!semanticConfigured || categoryFilter != null || lineIds != null) {
+        // A quoted phrase asks for those exact words: lexical only, no lines merely close in meaning
+        if (!semanticConfigured || categoryFilter != null || lineIds != null || SearchQueryParser.parse(query).hasExactPhrases) {
             return lexical.openSession(query, near, bookFilter, categoryFilter, bookIds, lineIds, baseBookOnly)
         }
         return HybridSession(query, near, bookIds ?: bookFilter?.let { listOf(it) }, baseBookOnly)

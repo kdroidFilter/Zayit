@@ -135,12 +135,16 @@ internal val WidgetPostProcessing =
 
 /**
  * The widgets' engine: a few small views (a globe, the Sun and two bodies) need a fraction of Filament's defaults, sized
- * for a full-screen scene. One job thread, small command and handle arenas, no parallel shader compilation.
+ * for a full-screen scene. One job thread, small command arenas, no parallel shader compilation.
+ *
+ * The handle arena is the exception: on Windows filament-compose shares one engine across every window, so the
+ * full-screen solar system draws on this engine too, and its detailed scene overflows a 1 MB arena (Windows' Filament
+ * build defaults to 1 MB); handles past it go to the heap, where the GL backend crashed.
  */
 internal fun widgetEngineConfig() =
     Engine.Config().apply {
         jobSystemThreadCount = 1
-        driverHandleArenaSizeMB = 1
+        driverHandleArenaSizeMB = 8
         commandBufferSizeMB = 1
         minCommandBufferSizeMB = 1
         perRenderPassArenaSizeMB = 1
@@ -148,6 +152,13 @@ internal fun widgetEngineConfig() =
         resourceAllocatorCacheSizeMB = 4
         disableParallelShaderCompile = true
     }
+
+/**
+ * The full-screen solar system's engine, where it gets one of its own (one per window off Windows): Filament's defaults,
+ * with the handle arena of [widgetEngineConfig] — Windows' Filament build defaults to a 1 MB arena, which this scene
+ * overflows.
+ */
+internal fun fullWindowEngineConfig() = Engine.Config().apply { driverHandleArenaSizeMB = 8 }
 
 /** How the widgets' 3D views smooth their edges: sharper and dearer down the list (TAA trails a moving scene). */
 enum class WidgetAntiAliasing(

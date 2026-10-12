@@ -271,8 +271,20 @@ class LuceneLookupSearchService(
             }
         }
 
-        // 1. Get base results from Lucene (existing logic)
-        val baseHits = searchBooksPrefix(raw, limit * 3) // Get more for re-ranking
+        // 1. Get base results from Lucene (existing logic), without those found by reading one title
+        // or acronym word twice (`בבא ב`: תוספתא בבא קמא). An acronym may be stored as one word
+        // (`דבהי ב` for דבהיב). When none is left, all are kept: the index misses some acronyms'
+        // books and finds their neighbours
+        val luceneHits = searchBooksPrefix(raw, limit * 3) // Get more for re-ranking
+        val typedJoined = normalizeHebrew(raw).replace(" ", "")
+        val baseHits =
+            luceneHits
+                .filter { hit ->
+                    typedAsWordsOf(raw, hit.title) ||
+                        getAcronymsForBook(hit.title).any { acronym ->
+                            typedAsWordsOf(raw, acronym) || normalizeHebrew(acronym).replace(" ", "").startsWith(typedJoined)
+                        }
+                }.ifEmpty { luceneHits }
 
         // 2. Normalize query for acronym matching
         val normalizedQuery = normalizeHebrew(raw)
@@ -298,10 +310,26 @@ class LuceneLookupSearchService(
                 )
             }
 
-        // 4. Re-sort by enhanced score and return top results
-        return scoredHits
-            .sortedByDescending { it.score }
-            .take(limit)
+        // 4. Re-sort: titles equal to the query, then titles beginning with it, then the rest; the
+        // score only orders within a tier, as its base-book boost reads orderIndex, a rank within the
+        // category (תוספתא בבא קמא, alone in its own, came before בבא קמא for `בבא ק`). A short query
+        // or one that is a book's acronym (`חו"מ`, `הטור`) is no title being typed: no prefix tier.
+        val titleTyped = normalizedQuery.length > 3 && scoredHits.none { it.exactAcronym }
+        val order = compareByDescending<ScoredBookHit> { titleTier(it.title, normalizedQuery, titleTyped) }.thenByDescending { it.score }
+        return scoredHits.sortedWith(order).take(limit)
+    }
+
+    private fun titleTier(
+        title: String,
+        query: String,
+        titleTyped: Boolean,
+    ): Int {
+        val normalized = normalizeHebrew(title)
+        return when {
+            normalized == query -> 2
+            titleTyped && normalized.startsWith(query) -> 1
+            else -> 0
+        }
     }
 
     private fun calculateEnhancedScore(
@@ -465,6 +493,35 @@ class LuceneLookupSearchService(
     }
 
     private fun getAcronymsForBook(bookTitle: String): List<String> = acronymCache?.getAcronymsForBook(bookTitle) ?: emptyList()
+
+    /**
+     * Whether each word of [typed] begins a different word of [name], as the index matches them but
+     * for one word read twice: the index takes each typed word as a prefix of any word, so `בבא ב`
+     * finds תוספתא בבא קמא and רב בבאר שבע, both words on the same בבא(ר). Words compare as the
+     * index normalizes them.
+     */
+    fun typedAsWordsOf(
+        typed: String,
+        name: String,
+    ): Boolean {
+        val words = normalizeHebrew(typed).split(' ').filter { it.isNotEmpty() }
+        val nameWords = normalizeHebrew(name).split(' ').filter { it.isNotEmpty() }
+        if (words.isEmpty() || words.size > nameWords.size) return false
+        val used = BooleanArray(nameWords.size)
+
+        // Backtracking: a short word must not take the only word a longer one could begin
+        fun assign(i: Int): Boolean {
+            if (i == words.size) return true
+            for (j in nameWords.indices) {
+                if (used[j] || !nameWords[j].startsWith(words[i])) continue
+                used[j] = true
+                if (assign(i + 1)) return true
+                used[j] = false
+            }
+            return false
+        }
+        return assign(0)
+    }
 
     private fun normalizeHebrew(input: String): String {
         if (input.isBlank()) return ""

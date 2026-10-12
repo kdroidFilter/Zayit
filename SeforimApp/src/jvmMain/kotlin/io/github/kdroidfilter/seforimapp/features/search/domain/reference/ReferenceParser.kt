@@ -74,7 +74,7 @@ object ReferenceParser {
                 tokens.attachAmud(if (bare == ":") Amud.B else Amud.A) ?: return null
                 continue
             }
-            val mark = bare.last().takeIf { it == '.' || it == ':' }
+            val mark = bare.lastOrNull()?.takeIf { it == '.' || it == ':' }
             val text = normalizeName(bare)
             if (text.isEmpty() || text in PLACE_WORDS) continue
             val digits = DIGITS.find(text)

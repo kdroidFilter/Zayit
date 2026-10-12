@@ -21,6 +21,9 @@ class RepositoryReferenceSource(
         return (byTitle + byAcronym).distinctBy { it.id }
     }
 
+    override suspend fun titleStartsWith(normalizedPrefix: String): Boolean =
+        repository.findBooksByTitleLikeCore("$normalizedPrefix%", limit = 1).isNotEmpty()
+
     override suspend fun toc(bookId: Long): List<TocNode> =
         tocs.getOrPut(bookId) {
             repository.getBookToc(bookId).map { TocNode(it.id, it.parentId, it.text, it.lineId) }

@@ -260,9 +260,15 @@ class SearchHomeViewModel(
 
                                     val authorsDeferred =
                                         async(Dispatchers.IO) {
-                                            lookup.suggestAuthors(q, limit = MAX_AUTHOR_SUGGESTIONS).map { hit ->
-                                                hit.copy(alias = AuthorNames.matchedAlias(q, hit.name, authorAliases(hit.id)))
-                                            }
+                                            // More than shown: those not typed word by word are dropped (`בבא ב`)
+                                            lookup
+                                                .suggestAuthors(q, limit = MAX_AUTHOR_SUGGESTIONS * 3)
+                                                .mapNotNull { hit ->
+                                                    val aliases = authorAliases(hit.id)
+                                                    val names = listOf(hit.name, AuthorNames.display(hit.name)) + aliases
+                                                    if (!AuthorNames.typedAs(q, names, lookup::typedAsWordsOf)) return@mapNotNull null
+                                                    hit.copy(alias = AuthorNames.matchedAlias(q, hit.name, aliases))
+                                                }.take(MAX_AUTHOR_SUGGESTIONS)
                                         }
 
                                     val jumpsDeferred =

@@ -12,6 +12,9 @@ class ReferenceResolverTest {
     private val bereshit = Book(id = 1, categoryId = 1, sourceId = 1, title = "בראשית", heRef = "בראשית", isBaseBook = true)
     private val tehilim = Book(id = 28, categoryId = 1, sourceId = 1, title = "תהילים", heRef = "תהילים", isBaseBook = true)
     private val otzaria = Book(id = 9, categoryId = 1, sourceId = 2, title = "ספר", heRef = null)
+    private val bavaBatra = Book(id = 124, categoryId = 1, sourceId = 1, title = "בבא בתרא", heRef = "בבא בתרא", isBaseBook = true)
+    private val bavaKamma = Book(id = 122, categoryId = 1, sourceId = 1, title = "בבא קמא", heRef = "בבא קמא", isBaseBook = true)
+    private val acronyms = mapOf("בבא" to bavaBatra, "תהילים כג" to tehilim)
 
     private val tocs =
         mapOf(
@@ -25,6 +28,8 @@ class ReferenceResolverTest {
             1L to listOf(TocNode(10, null, "בראשית", 1), TocNode(11, 10, "פרק א", 2)),
             28L to listOf(TocNode(30, null, "פרק כג", 300)),
             9L to listOf(TocNode(20, null, "סימן ה", 500)),
+            124L to listOf(TocNode(40, null, "בבא בתרא", 2000), TocNode(41, 40, "דף קמא.", 2141)),
+            122L to listOf(TocNode(50, null, "בבא קמא", 3000), TocNode(51, 50, "דף ב.", 3002)),
         )
 
     private val altTocs =
@@ -70,7 +75,11 @@ class ReferenceResolverTest {
         ReferenceResolver(
             object : ReferenceSource {
                 override suspend fun booksNamed(normalizedName: String) =
-                    listOf(chullin, bereshit, tehilim, otzaria).filter { it.title == normalizedName }
+                    listOf(chullin, bereshit, tehilim, otzaria, bavaBatra, bavaKamma).filter { it.title == normalizedName } +
+                        listOfNotNull(acronyms[normalizedName])
+
+                override suspend fun titleStartsWith(normalizedPrefix: String) =
+                    listOf(chullin, bereshit, tehilim, otzaria, bavaBatra, bavaKamma).any { it.title.startsWith(normalizedPrefix) }
 
                 override suspend fun toc(bookId: Long) = tocs[bookId].orEmpty()
 
@@ -172,5 +181,34 @@ class ReferenceResolverTest {
         // יום ד / יום ה are names; כ must not complete to the bare chapter כג
         assertEquals(listOf(250L, 260L), resolve("תהילים יום").map { it.lineId })
         assertTrue(resolve("תהילים כגג").isEmpty())
+    }
+
+    @Test
+    fun bookNamedWholeIsNotSplitIntoAnotherBook() {
+        // בבא is an acronym of בבא בתרא and קמא reads as 141, but בבא קמא names a book
+        assertTrue(resolve("בבא קמא").isEmpty())
+        assertEquals(listOf(2141L), resolve("בבא בתרא קמא").map { it.lineId })
+    }
+
+    @Test
+    fun bookNamedWholeStillJumpsWithinItself() {
+        // `תהילים כג` is (here) an acronym of תהילים itself
+        assertEquals(listOf(300L), resolve("תהילים כג").map { it.lineId })
+    }
+
+    @Test
+    fun titleHoldingANumeralIsLookedThrough() {
+        // the TOC root בבא קמא reads as 141 but is no numbering: its dapim are below it
+        val ref = resolve("בבא קמא ב").single()
+        assertEquals(3002, ref.lineId)
+        assertEquals("דף ב.", ref.label)
+    }
+
+    @Test
+    fun bookNameBeingTypedIsNoReference() {
+        // בבא ק begins בבא קמא: no daf ק of בבא בתרא, named only by its acronym בבא
+        assertTrue(resolve("בבא ק").isEmpty())
+        // a book named by its title still jumps
+        assertEquals(listOf(2141L), resolve("בבא בתרא קמא").map { it.lineId })
     }
 }

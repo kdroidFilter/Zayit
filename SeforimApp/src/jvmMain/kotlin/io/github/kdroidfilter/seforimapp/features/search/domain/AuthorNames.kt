@@ -77,6 +77,26 @@ object AuthorNames {
         return if (trimmed.startsWith("$HONORIFIC ")) trimmed.removePrefix(HONORIFIC).trimStart() else query
     }
 
+    /**
+     * Whether an author suggestion found by the lookup index reads as what was typed: each word
+     * begins a different word of its name or of an alias ([typedAsWordsOf]), after a leading title
+     * (`רבי יהודה`, names are stored without). The index reads one word twice: `בבא ב` finds רב
+     * בבאר שבע. A query with quotes is read by its initials (`ש"ך` for שבתי כהן): kept as found.
+     */
+    fun typedAs(
+        query: String,
+        names: List<String>,
+        typedAsWordsOf: (typed: String, name: String) -> Boolean,
+    ): Boolean {
+        if (QUOTES_AND_GERESH.containsMatchIn(query)) return true
+        val trimmed = query.trim()
+        val title = TITLES.firstOrNull { trimmed.startsWith("$it ") }
+        val typed = if (title != null) trimmed.removePrefix(title).trim() else trimmed
+        return names.any { typedAsWordsOf(typed, it) }
+    }
+
+    private val QUOTES_AND_GERESH = Regex("[\"'״׳]")
+
     // `רמב"ם`, `מהר"ם פדובה`; but not `יוסף בן משה באב"ד`, whose quote is in a later word
     private fun isAcronym(name: String): Boolean = QUOTES.containsMatchIn(name.substringBefore(' '))
 

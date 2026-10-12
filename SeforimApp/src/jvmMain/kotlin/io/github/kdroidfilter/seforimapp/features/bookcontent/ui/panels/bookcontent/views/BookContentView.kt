@@ -1523,11 +1523,8 @@ private fun LineItem(
             smartQuery?.let { query ->
                 runSuspendCatching {
                     searchEngine
-                        .highlights(
-                            listOf(annotated.text),
-                            query,
-                            alwaysByMeaning = true,
-                        ).single()
+                        .highlights(listOf(annotated.text), query)
+                        .single()
                         .ranges
                 }.getOrNull()
             }

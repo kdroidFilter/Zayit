@@ -874,13 +874,14 @@ private fun PassagePreview(
                     // The whole width, as the book's text
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 18.dp),
                 ) {
+                    val byMeaning = remember(query) { searchEngine.highlightsByMeaning(query) }
                     lines.forEach { line ->
                         val found = line.id == hit.lineId
                         val annotated = remember(line.id, textSize) { buildAnnotatedFromHtml(line.content, textSize) }
-                        // The search's own highlighting: the query's words, and in the found line, when none is there,
-                        // the passage closest in meaning (as its snippet)
+                        // The search's own highlighting (SearchEngine.highlights): by meaning, the passage closest in
+                        // meaning in the found line alone; else the query's words in every line
                         val ranges by produceState(
-                            searchEngine.highlightRanges(annotated.text, query),
+                            if (byMeaning) emptyList() else searchEngine.highlightRanges(annotated.text, query),
                             annotated,
                             query,
                             found,

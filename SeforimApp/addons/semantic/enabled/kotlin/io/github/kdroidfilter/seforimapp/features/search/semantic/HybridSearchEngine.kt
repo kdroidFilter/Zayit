@@ -102,7 +102,12 @@ internal class HybridSearchEngine(
     override fun rangeSnippet(
         text: String,
         ranges: List<IntRange>,
-    ): String = lexical.rangeSnippet(text, ranges)
+        lineStart: Int,
+        lineEnd: Int,
+    ): String = lexical.rangeSnippet(text, ranges, lineStart, lineEnd)
+
+    // A quoted phrase asks for those exact words: they alone are highlighted, as they alone are found
+    override fun highlightsByMeaning(query: String): Boolean = semanticConfigured && !SearchQueryParser.parse(query).hasExactPhrases
 
     override suspend fun passagesByMeaning(
         query: String,
@@ -244,22 +249,29 @@ internal class HybridSearchEngine(
             val withSnippets = if (snippets) lexical.attachSnippets(lexicalHits, query, near) else lexicalHits
             val lexicalById = withSnippets.associateBy { it.lineId }
             return entries.mapNotNull { entry ->
-                // Dense-only: a lexical snippet first, refined to the passage closest in meaning (refinedSnippets)
-                val hit = lexicalById[entry.lineId] ?: resolveLine(entry.lineId, query)
-                hit?.copy(score = entry.score)
+                val hit = lexicalById[entry.lineId] ?: denseHit(entry.lineId) ?: return@mapNotNull null
+                // No word in bold: the passage closest in meaning is highlighted once ready (refinedSnippets)
+                val snippet = if (snippets) lexical.rangeSnippet(hit.rawText, emptyList(), hit.lineStart, hit.lineEnd) else hit.snippet
+                hit.copy(score = entry.score, snippet = snippet)
             }
         }
 
+        // A dense-only line, its text cleaned as a lexical snippet source
+        private suspend fun denseHit(lineId: Long): LineHit? {
+            val hit = resolveLine(lineId, query) ?: return null
+            val text = SnippetSources.clean(hit.rawText)
+            return hit.copy(rawText = text, lineStart = 0, lineEnd = text.length)
+        }
+
         override suspend fun refinedSnippets(hits: List<LineHit>): Map<Long, String> {
-            val lexicalIds = fused.orEmpty().mapNotNullTo(HashSet()) { entry -> entry.lexical?.lineId }
-            val denseOnly = hits.filter { it.lineId !in lexicalIds && it.rawText.isNotBlank() }
-            if (denseOnly.isEmpty()) return emptyMap()
-            // Snippet text, as the lexical snippets: a line the query's words show in keeps its lexical snippet
-            val texts = denseOnly.map { SnippetSources.clean(it.rawText) }
-            val highlights = highlights(texts, query)
+            val shown = hits.filter { it.rawText.isNotBlank() && it.lineEnd > it.lineStart }
+            if (shown.isEmpty()) return emptyMap()
+            // The found line alone, not the neighbors its snippet shows around it
+            val highlights = highlights(shown.map { it.rawText.substring(it.lineStart, it.lineEnd) }, query)
             return buildMap {
-                denseOnly.forEachIndexed { i, hit ->
-                    if (highlights[i].byMeaning) put(hit.lineId, lexical.rangeSnippet(texts[i], highlights[i].ranges))
+                shown.forEachIndexed { i, hit ->
+                    val ranges = highlights[i].ranges.map { (it.first + hit.lineStart)..(it.last + hit.lineStart) }
+                    if (ranges.isNotEmpty()) put(hit.lineId, lexical.rangeSnippet(hit.rawText, ranges, hit.lineStart, hit.lineEnd))
                 }
             }
         }

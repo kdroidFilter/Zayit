@@ -40,6 +40,8 @@ fun main(args: Array<String>) {
             engine.warmUp()
             println("warmUp ${ms(w)} ms")
         }
+        var refineNanos = 0L
+        var refinedHits = 0
         repeat(rounds) { round ->
             println("--- round $round")
             for (q in System.getenv("BENCH_QUERY")?.let { listOf(it) } ?: QUERIES) {
@@ -58,6 +60,10 @@ fun main(args: Array<String>) {
                 val s3 = System.nanoTime()
                 val refined = page?.let { session.refinedSnippets(it.hits) }.orEmpty()
                 val tRefine = ms(s3)
+                if (round > 0) {
+                    refineNanos += System.nanoTime() - s3
+                    refinedHits += page?.hits?.size ?: 0
+                }
                 session?.close()
                 println(
                     "%-34s total=%6d facets=%6d page=%6d refine=%5d(%2d) hits=%8d first=%s".format(
@@ -73,8 +79,32 @@ fun main(args: Array<String>) {
                 )
             }
         }
+        if (refinedHits > 0) println("refine %.2f ms/result over %d results".format(refineNanos / 1e6 / refinedHits, refinedHits))
     }
+    println(memory())
     engine.close()
+}
+
+/**
+ * Resident memory: all of it (with the mapped index pages, which the page cache lends and takes back), the process's own
+ * (anonymous: heap, native ONNX arenas), and the live heap after a GC.
+ */
+private fun memory(): String {
+    repeat(3) { System.gc() }
+    val heap =
+        java.lang.management.ManagementFactory
+            .getMemoryMXBean()
+            .heapMemoryUsage.used / 1_000_000
+    // Linux only: elsewhere, the heap alone
+    val status = runCatching { java.io.File("/proc/self/status").readLines() }.getOrDefault(emptyList())
+
+    fun kb(key: String) =
+        status
+            .firstOrNull { it.startsWith(key) }
+            ?.filter(Char::isDigit)
+            ?.toLong()
+            ?.div(1000)
+    return "memory: rss=${kb("VmRSS:")} MB anon=${kb("RssAnon:")} MB heap=$heap MB"
 }
 
 private fun ms(start: Long) = (System.nanoTime() - start) / 1_000_000

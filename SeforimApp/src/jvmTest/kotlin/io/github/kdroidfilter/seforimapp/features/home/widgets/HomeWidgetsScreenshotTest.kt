@@ -42,7 +42,7 @@ class HomeWidgetsScreenshotTest {
     fun `render home widgets`() {
         for (width in listOf(1100, 800)) {
             for (dark in listOf(false, true)) {
-                shot("widgets", width, dark, sampleLayout)
+                shot("widgets", width, dark, homeWidgets)
             }
         }
     }
@@ -61,9 +61,9 @@ class HomeWidgetsScreenshotTest {
 
     @Test
     fun `render edit mode`() {
-        for (dark in listOf(false, true)) shot("edit", 1100, dark, sampleLayout.take(3), editing = true)
+        for (dark in listOf(false, true)) shot("edit", 1100, dark, homeWidgets.take(3), editing = true)
         // The Temple selected: its resize frame, a handle on each side
-        shot("edit-resize", 1100, false, sampleLayout.take(3), editing = true) { it.selectedWidget = TempleCountdownWidget.id }
+        shot("edit-resize", 1100, false, homeWidgets.take(3), editing = true) { it.selectedWidget = TempleCountdownWidget.id }
     }
 
     private fun shot(

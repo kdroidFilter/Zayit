@@ -33,27 +33,27 @@ class CellLayoutTest {
 
     @Test
     fun `the default layout fills its rows, nothing overlapping`() {
-        assertWellFormed(sampleLayout)
-        assertEquals(7, sampleLayout.bottom())
-        val cells = sampleLayout.sumOf { it.cell.w * it.cell.h }
+        assertWellFormed(homeWidgets)
+        assertEquals(7, homeWidgets.bottom())
+        val cells = homeWidgets.sumOf { it.cell.w * it.cell.h }
         assertEquals(HOME_GRID_COLUMNS * 4 + HOME_GRID_COLUMNS * 3, cells)
     }
 
     @Test
     fun `the nearest area is where the centre is, occupied or not`() {
         // The Temple's centre over the Earth's area
-        val centre = pitch.centre(sampleLayout.cellOf(EarthWidget))
-        val anywhere = sampleLayout.nearestArea(centre, CellSpan(6, 3), pitch, ignoreOccupied = true)
-        assertTrue(anywhere.overlaps(sampleLayout.cellOf(EarthWidget)))
+        val centre = pitch.centre(homeWidgets.cellOf(EarthWidget))
+        val anywhere = homeWidgets.nearestArea(centre, CellSpan(6, 3), pitch, ignoreOccupied = true)
+        assertTrue(anywhere.overlaps(homeWidgets.cellOf(EarthWidget)))
         // Vacant only: below every widget, the grid growing down
-        val vacant = sampleLayout.nearestArea(centre, CellSpan(6, 3), pitch)
-        assertTrue(sampleLayout.isVacant(vacant), "$vacant")
+        val vacant = homeWidgets.nearestArea(centre, CellSpan(6, 3), pitch)
+        assertTrue(homeWidgets.isVacant(vacant), "$vacant")
         assertEquals(7, vacant.y)
     }
 
     @Test
     fun `a widget added goes in the first hole big enough, row after row`() {
-        val withHole = sampleLayout.filterNot { it.widget.id == TempleCountdownWidget.id }
+        val withHole = homeWidgets.filterNot { it.widget.id == TempleCountdownWidget.id }
         assertEquals(CellRect(0, 4, 6, 3), withHole.firstVacant(CellSpan(6, 3)))
         // Too big for the hole: below everything
         assertEquals(CellRect(0, 7, 7, 5), withHole.firstVacant(CalendarWidget.defaultSpan))
@@ -61,20 +61,20 @@ class CellLayoutTest {
 
     @Test
     fun `a widget put over others moves only the ones in its way, to the vacant area nearest where they were`() {
-        val sky = sampleLayout.first { it.widget.id == SkyWidget.id }
+        val sky = homeWidgets.first { it.widget.id == SkyWidget.id }
         val onTheTemple = sky.copy(cell = sky.cell.at(0, 4))
-        val result = sampleLayout.reorder(onTheTemple, pitch)
+        val result = homeWidgets.reorder(onTheTemple, pitch)
         assertWellFormed(result)
         assertEquals(CellRect(0, 4, 5, 3), result.cellOf(SkyWidget))
         // The Temple was in the way; the zmanim, the Earth and the solar system weren't
-        for (w in listOf(ZmanimWidget, EarthWidget)) assertEquals(sampleLayout.cellOf(w), result.cellOf(w))
-        assertTrue(result.cellOf(TempleCountdownWidget) != sampleLayout.cellOf(TempleCountdownWidget))
-        assertEquals(sampleLayout.map { it.widget.id }, result.map { it.widget.id })
+        for (w in listOf(ZmanimWidget, EarthWidget)) assertEquals(homeWidgets.cellOf(w), result.cellOf(w))
+        assertTrue(result.cellOf(TempleCountdownWidget) != homeWidgets.cellOf(TempleCountdownWidget))
+        assertEquals(homeWidgets.map { it.widget.id }, result.map { it.widget.id })
     }
 
     @Test
     fun `a widget put where it was changes nothing`() {
-        for (placement in sampleLayout) assertEquals(sampleLayout, sampleLayout.reorder(placement, pitch))
+        for (placement in homeWidgets) assertEquals(homeWidgets, homeWidgets.reorder(placement, pitch))
     }
 
     @Test
@@ -111,7 +111,7 @@ class CellLayoutTest {
     @Test
     fun `random moves and resizes never overlap, never leave the grid, and put the widget where asked`() {
         val random = Random(42)
-        var layout = sampleLayout + WidgetPlacement(CalendarWidget, sampleLayout.firstVacant(CalendarWidget.defaultSpan))
+        var layout = homeWidgets + WidgetPlacement(CalendarWidget, homeWidgets.firstVacant(CalendarWidget.defaultSpan))
         repeat(3000) { step ->
             val placement = layout.random(random)
             val widget = placement.widget

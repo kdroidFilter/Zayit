@@ -31,11 +31,11 @@ class WidgetDragTest {
     fun `a removed widget comes back where it was`() {
         val saved = appSettings.homeWidgetsLayoutFlow.value
         try {
-            appSettings.setHomeWidgetsLayout(encodeLayout(sampleLayout))
+            appSettings.setHomeWidgetsLayout(encodeLayout(homeWidgets))
             val removed = layout.remove(TempleCountdownWidget)!!
             assertTrue(layout.current().none { it.widget.id == "temple_countdown" })
             layout.restore(removed)
-            assertEquals(sampleLayout.toSet(), layout.current().toSet())
+            assertEquals(homeWidgets.toSet(), layout.current().toSet())
         } finally {
             appSettings.setHomeWidgetsLayout(saved)
         }

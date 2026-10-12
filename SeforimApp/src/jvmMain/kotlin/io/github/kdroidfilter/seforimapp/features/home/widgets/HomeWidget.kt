@@ -6,9 +6,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
-import io.github.kdroidfilter.seforimapp.features.home.widgets.solarsystem.SolarSystemWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.temple.TempleCountdownWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.zmanim.ZmanimWidget
 import org.jetbrains.compose.resources.StringResource
@@ -117,22 +114,11 @@ data class WidgetPlacement(
 )
 
 /**
- * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky. Where some can't
- * be shown, the others are laid out on their own, so their places don't leave holes (see [defaultLayout]).
+ * The default Home layout: the zmanim and the Temple, both shown everywhere. The heavy 3D widgets (the Earth, the solar
+ * system, the sky) are left to the user to add from the gallery, where the machine can run them.
  */
 val homeWidgets: List<WidgetPlacement> =
     listOf(
-        WidgetPlacement(ZmanimWidget, CellRect(0, 0, 13, 4)),
-        WidgetPlacement(EarthWidget, CellRect(13, 0, 7, 4)),
-        WidgetPlacement(TempleCountdownWidget, CellRect(0, 4, 6, 3)),
-        WidgetPlacement(SolarSystemWidget, CellRect(6, 4, 9, 3)),
-        WidgetPlacement(SkyWidget, CellRect(15, 4, 5, 3)),
+        WidgetPlacement(ZmanimWidget, CellRect(0, 0, 12, 4)),
+        WidgetPlacement(TempleCountdownWidget, CellRect(12, 0, 7, 4)),
     )
-
-/** [homeWidgets] for a platform showing only the widgets [shown]: the others' areas left out, theirs dealt out again. */
-internal fun defaultLayout(shown: (HomeWidget) -> Boolean = { it.isSupported }): List<WidgetPlacement> {
-    if (homeWidgets.all { shown(it.widget) }) return homeWidgets
-    return homeWidgets.filter { shown(it.widget) }.fold(emptyList()) { layout, (widget, cell) ->
-        layout + WidgetPlacement(widget, layout.firstVacant(cell.span))
-    }
-}

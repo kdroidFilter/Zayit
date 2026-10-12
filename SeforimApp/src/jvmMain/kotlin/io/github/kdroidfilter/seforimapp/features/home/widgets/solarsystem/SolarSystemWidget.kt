@@ -18,6 +18,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.skyTimeMillisHere
+import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
@@ -32,7 +33,7 @@ internal object SolarSystemWidget : HomeWidget {
     override val minSpan = CellSpan(6, 3)
     override val settings get() = SolarSystemSettings
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
-    override val isSupported get() = isEarthWidgetSupported
+    override val isSupported get() = isEarthWidgetSupported && !PlatformInfo.isLowEnd
     override val toolWindowSize = DpSize(1200.dp, 720.dp)
     override val toolWindowMinSize = DpSize(800.dp, 500.dp)
     override val toolSymbol = "sun.max"

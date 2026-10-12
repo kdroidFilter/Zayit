@@ -38,15 +38,6 @@ class HomeWidgetsLayoutTest {
     }
 
     @Test
-    fun `where some widgets can't be shown, the default layout deals the others out with no hole`() {
-        val layout = defaultLayout { it.id in setOf("zmanim", "temple_countdown") }
-        assertEquals(listOf("zmanim", "temple_countdown"), ids(layout))
-        // The Temple beside the zmanim, where the Earth would have been, not left alone on the next row
-        assertEquals(CellRect(13, 0, 6, 3), layout[1].cell)
-        assertEquals(homeWidgets, defaultLayout { true })
-    }
-
-    @Test
     fun `unknown widgets, broken areas and duplicates never break a save`() {
         val layout = decodeLayout("gone@0,0,4,4;zmanim@0,0,13,4;calendar@x,0,7,5;zmanim@0,9,8,4;earth@13,0,7")
         assertEquals(listOf("zmanim"), ids(layout))
@@ -65,20 +56,20 @@ class HomeWidgetsLayoutTest {
     fun `a widget removed leaves its area empty, and comes back on it`() {
         val appSettings = testAppSettings()
         val layout = HomeWidgetsLayout(appSettings)
-        appSettings.setHomeWidgetsLayout(encodeLayout(homeWidgets))
+        appSettings.setHomeWidgetsLayout(encodeLayout(sampleLayout))
         val removed = layout.remove(TempleCountdownWidget)!!
         assertNull(layout.current().firstOrNull { it.widget.id == TempleCountdownWidget.id })
         // Nothing moved into the hole
-        assertEquals(homeWidgets - removed.placement, layout.current())
+        assertEquals(sampleLayout - removed.placement, layout.current())
         layout.restore(removed)
-        assertEquals(homeWidgets.toSet(), layout.current().toSet())
+        assertEquals(sampleLayout.toSet(), layout.current().toSet())
     }
 
     @Test
     fun `a widget added takes the first hole it fits`() {
         val appSettings = testAppSettings()
         val layout = HomeWidgetsLayout(appSettings)
-        appSettings.setHomeWidgetsLayout(encodeLayout(homeWidgets.filterNot { it.widget.id == EarthWidget.id }))
+        appSettings.setHomeWidgetsLayout(encodeLayout(sampleLayout.filterNot { it.widget.id == EarthWidget.id }))
         layout.add(TempleCountdownWidget) // already there: nothing
         layout.add(EarthWidget)
         assertEquals(CellRect(13, 0, 7, 4), layout.current().first { it.widget.id == EarthWidget.id }.cell)
@@ -106,7 +97,7 @@ class HomeWidgetsLayoutTest {
         val pitch = CellPitch(MAX_GRID_WIDTH)
         val layouts =
             listOf(
-                homeWidgets,
+                sampleLayout,
                 availableHomeWidgets.fold(emptyList<WidgetPlacement>()) { l, w -> l + WidgetPlacement(w, l.firstVacant(w.defaultSpan)) },
             )
         for (layout in layouts) {
@@ -121,10 +112,10 @@ class HomeWidgetsLayoutTest {
     @Test
     fun `arranging again gives another layout as tight`() {
         val pitch = CellPitch(MAX_GRID_WIDTH)
-        val first = homeWidgets.rearranged(pitch, 0)
+        val first = sampleLayout.rearranged(pitch, 0)
         val second = first.rearranged(pitch, 1)
-        assertTrue(first != homeWidgets && second != first)
-        assertEquals(homeWidgets.bottom(), second.bottom())
+        assertTrue(first != sampleLayout && second != first)
+        assertEquals(sampleLayout.bottom(), second.bottom())
         assertEquals(second.bottom() * HOME_GRID_COLUMNS, second.sumOf { it.cell.w * it.cell.h })
     }
 

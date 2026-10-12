@@ -86,7 +86,7 @@ class WidgetDragUiTest {
         widgets: ((String?) -> List<WidgetPlacement>) = ::decodeLayout,
         test: ComposeUiTest.(HomeWidgetsState) -> Unit,
     ) {
-        appSettings.setHomeWidgetsLayout(encodeLayout(homeWidgets))
+        appSettings.setHomeWidgetsLayout(encodeLayout(sampleLayout))
         val state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE, layout).also { it.editingWidgets = editing }
         runDesktopComposeUiTest(width = 1100, height = 1400) {
             setContent {
@@ -147,7 +147,7 @@ class WidgetDragUiTest {
             waitForIdle()
             val after = saved()
             assertTrue(after.cellOf(EarthWidget).y >= 7, "${after.cellOf(EarthWidget)}")
-            for (p in homeWidgets.filterNot { it.widget.id == EarthWidget.id }) assertEquals(p.cell, after.cellOf(p.widget))
+            for (p in sampleLayout.filterNot { it.widget.id == EarthWidget.id }) assertEquals(p.cell, after.cellOf(p.widget))
             assertNoOverlap(after)
         }
 
@@ -165,10 +165,10 @@ class WidgetDragUiTest {
             waitForIdle()
             val after = saved()
             assertTrue(
-                after.cellOf(TempleCountdownWidget).overlaps(homeWidgets.cellOf(EarthWidget)),
+                after.cellOf(TempleCountdownWidget).overlaps(sampleLayout.cellOf(EarthWidget)),
                 "${after.cellOf(TempleCountdownWidget)}",
             )
-            assertNotEquals(homeWidgets.cellOf(EarthWidget), after.cellOf(EarthWidget))
+            assertNotEquals(sampleLayout.cellOf(EarthWidget), after.cellOf(EarthWidget))
             assertNoOverlap(after)
         }
 
@@ -184,7 +184,7 @@ class WidgetDragUiTest {
             }
             waitForIdle()
             assertNull(state.drag.movingId)
-            assertEquals(homeWidgets, saved())
+            assertEquals(sampleLayout, saved())
             assertTrue(onAllNodesWithTag("widget-grip-earth", useUnmergedTree = true).fetchSemanticsNodes().isEmpty())
         }
 
@@ -327,7 +327,7 @@ class WidgetDragUiTest {
         }) { state ->
             val start = centreOf("widget-temple_countdown")
             // Where the hidden Earth is: free, so the Temple shows there at once, nothing pushed
-            val earthArea = homeWidgets.cellOf(EarthWidget)
+            val earthArea = sampleLayout.cellOf(EarthWidget)
             val zmanim = onNodeWithTag("widget-zmanim", useUnmergedTree = true).fetchSemanticsNode().boundsInRoot
             val there = Offset(zmanim.right + pitch.x * 3.5f, zmanim.top + pitch.y * 1.5f)
             onNodeWithTag("home").performMouseInput {
@@ -503,7 +503,7 @@ class WidgetDragUiTest {
             assertNull(state.drag.movingId)
             onNodeWithTag("home").performMouseInput { release() }
             waitForIdle()
-            assertEquals(homeWidgets.toSet(), saved().toSet())
+            assertEquals(sampleLayout.toSet(), saved().toSet())
         }
 
     @Test
@@ -545,7 +545,7 @@ class WidgetDragUiTest {
             repeat(40) { frame ->
                 mainClock.advanceTimeByFrame()
                 val outline = state.drag.outline
-                if (outlineFrame < 0 && outline != null && outline.overlaps(homeWidgets.cellOf(EarthWidget))) outlineFrame = frame
+                if (outlineFrame < 0 && outline != null && outline.overlaps(sampleLayout.cellOf(EarthWidget))) outlineFrame = frame
                 if (roomFrame < 0 && state.drag.preview != null) roomFrame = frame
             }
             assertTrue(outlineFrame in 0..2, "the outline came at frame $outlineFrame")
@@ -826,7 +826,7 @@ class WidgetDragUiTest {
                 }
                 waitForIdle()
                 val after = saved()
-                val before = homeWidgets.cellOf(TempleCountdownWidget)
+                val before = sampleLayout.cellOf(TempleCountdownWidget)
                 assertEquals(CellRect(before.x, before.y, before.w + 2, before.h + 1), after.cellOf(TempleCountdownWidget), "rtl=$rtl")
                 assertNoOverlap(after)
             }
@@ -860,7 +860,7 @@ class WidgetDragUiTest {
                     ).fetchSemanticsNodes().isNotEmpty()
                 }
             // The default page's widgets aren't offered, every other one is
-            val notOnPage = availableHomeWidgets.filter { widget -> widget.isSupported && homeWidgets.none { it.widget.id == widget.id } }
+            val notOnPage = availableHomeWidgets.filter { widget -> widget.isSupported && sampleLayout.none { it.widget.id == widget.id } }
             assertEquals(notOnPage, offered())
             // Added with a click: on the page, gone from the gallery
             onNodeWithTag("gallery-calendar", useUnmergedTree = true).performMouseInput { click(center) }

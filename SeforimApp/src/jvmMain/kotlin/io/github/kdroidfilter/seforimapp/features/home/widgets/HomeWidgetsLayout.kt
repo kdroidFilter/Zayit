@@ -18,7 +18,7 @@ private val SAVED_PITCH = CellPitch(MAX_GRID_WIDTH)
  * area nearest; a save of the format before areas keeps its widgets and their order.
  */
 internal fun decodeLayout(raw: String?): List<WidgetPlacement> {
-    if (raw == null) return defaultLayout()
+    if (raw == null) return homeWidgets
     if (raw.isNotBlank() && '@' !in raw) return decodeOrderLayout(raw)
     val layout = mutableListOf<WidgetPlacement>()
     for (entry in raw.split(';').filter { it.isNotBlank() }) {

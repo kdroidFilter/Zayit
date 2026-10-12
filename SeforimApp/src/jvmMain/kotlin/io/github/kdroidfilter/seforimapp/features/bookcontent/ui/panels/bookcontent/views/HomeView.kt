@@ -159,6 +159,8 @@ private sealed interface CatBookRow {
 /**
  * The book-stage rows in order: the references, then the books and authors named exactly as typed
  * (`חולין` opens Chullin on Enter; `שוע` puts the שולחן ערוך parts first), the text search, then the other authors and books.
+ * A title being typed past its first word (`בבא ק`) is no text search: with no book named exactly,
+ * the first book whose title it begins comes before the text search too.
  */
 private fun catBookRows(
     query: String,
@@ -172,14 +174,23 @@ private fun catBookRows(
         authors.partition { author ->
             listOfNotNull(author.name, AuthorNames.display(author.name), author.alias).any { it.searchKey() == key }
         }
-    val (exactBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.searchKey() == key }
+    val (namedBooks, otherBooks) = books.partition { it.exactAcronym || it.book.title.searchKey() == key }
+    val typedTitle =
+        otherBooks.firstOrNull()?.takeIf { book ->
+            val title =
+                book.book.title
+                    .searchKey()
+                    .replace(",", "")
+            namedBooks.isEmpty() && ' ' in key && title.startsWith(key)
+        }
+    val exactBooks = namedBooks + listOfNotNull(typedTitle)
     return buildList {
         jumps.mapTo(this) { CatBookRow.Jump(it) }
         exactBooks.mapTo(this) { CatBookRow.Book(it) }
         exactAuthors.mapTo(this) { CatBookRow.Author(it) }
         if (textSearch) add(CatBookRow.TextSearch)
         otherAuthors.mapTo(this) { CatBookRow.Author(it) }
-        otherBooks.mapTo(this) { CatBookRow.Book(it) }
+        otherBooks.filter { it !== typedTitle }.mapTo(this) { CatBookRow.Book(it) }
     }.toImmutableList()
 }
 

@@ -118,8 +118,7 @@ data class WidgetPlacement(
 )
 
 /**
- * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky. Where some can't
- * be shown, the others are laid out on their own, so their places don't leave holes (see [defaultLayout]).
+ * The default Home layout: the zmanim and the Earth, then the Temple, the solar system and the sky.
  */
 val homeWidgets: List<WidgetPlacement> =
     listOf(
@@ -137,17 +136,5 @@ val lowEndHomeWidgets: List<WidgetPlacement> =
         WidgetPlacement(TempleCountdownWidget, CellRect(12, 0, 7, 4)),
     )
 
-/**
- * [homeWidgets] for a platform showing only the widgets [shown]: the others' areas left out, theirs dealt out again;
- * [lowEndHomeWidgets] on a low-end machine.
- */
-internal fun defaultLayout(
-    lowEnd: Boolean = PlatformInfo.isLowEnd,
-    shown: (HomeWidget) -> Boolean = { it.isSupported },
-): List<WidgetPlacement> {
-    if (lowEnd) return lowEndHomeWidgets
-    if (homeWidgets.all { shown(it.widget) }) return homeWidgets
-    return homeWidgets.filter { shown(it.widget) }.fold(emptyList()) { layout, (widget, cell) ->
-        layout + WidgetPlacement(widget, layout.firstVacant(cell.span))
-    }
-}
+/** [lowEndHomeWidgets] on a low-end machine, [homeWidgets] elsewhere. */
+internal fun defaultLayout(lowEnd: Boolean = PlatformInfo.isLowEnd): List<WidgetPlacement> = if (lowEnd) lowEndHomeWidgets else homeWidgets

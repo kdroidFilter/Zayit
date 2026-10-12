@@ -7,7 +7,6 @@ import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.earthwidget.SolarSystemWidgetView
-import io.github.kdroidfilter.seforimapp.earthwidget.isEarthWidgetSupported
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HOME_GRID_COLUMNS
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -33,7 +32,7 @@ internal object SolarSystemWidget : HomeWidget {
     override val minSpan = CellSpan(6, 3)
     override val settings get() = SolarSystemSettings
     override val maxSpan = CellSpan(HOME_GRID_COLUMNS, 8)
-    override val isSupported get() = isEarthWidgetSupported && !PlatformInfo.isLowEnd
+    override val isSupported get() = !PlatformInfo.isLowEnd
     override val toolWindowSize = DpSize(1200.dp, 720.dp)
     override val toolWindowMinSize = DpSize(800.dp, 500.dp)
     override val toolSymbol = "sun.max"

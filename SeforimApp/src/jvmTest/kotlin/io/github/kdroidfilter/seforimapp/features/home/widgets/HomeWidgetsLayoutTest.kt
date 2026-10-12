@@ -38,17 +38,9 @@ class HomeWidgetsLayoutTest {
     }
 
     @Test
-    fun `where some widgets can't be shown, the default layout deals the others out with no hole`() {
-        val layout = defaultLayout(lowEnd = false) { it.id in setOf("zmanim", "temple_countdown") }
-        assertEquals(listOf("zmanim", "temple_countdown"), ids(layout))
-        // The Temple beside the zmanim, where the Earth would have been, not left alone on the next row
-        assertEquals(CellRect(13, 0, 6, 3), layout[1].cell)
-        assertEquals(homeWidgets, defaultLayout(lowEnd = false) { true })
-    }
-
-    @Test
     fun `a low-end machine gets its own default layout`() {
         assertEquals(lowEndHomeWidgets, defaultLayout(lowEnd = true))
+        assertEquals(homeWidgets, defaultLayout(lowEnd = false))
     }
 
     @Test

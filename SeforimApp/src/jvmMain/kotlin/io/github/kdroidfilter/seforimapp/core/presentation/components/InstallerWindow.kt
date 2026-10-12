@@ -73,7 +73,7 @@ fun NucleusApplicationScope.InstallerWindow(
     progress: StateFlow<Float>,
     content: @Composable (navController: NavHostController) -> Unit,
 ) {
-    val windowState = remember { getCenteredWindowState(720, 420) }
+    val windowState = remember { getCenteredWindowState(720, 460) }
     JewelDecoratedWindow(
         onCloseRequest = { exitApplication() },
         title = stringResource(Res.string.app_name),

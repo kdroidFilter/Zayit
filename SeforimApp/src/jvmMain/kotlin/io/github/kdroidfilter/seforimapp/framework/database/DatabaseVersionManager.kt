@@ -55,7 +55,7 @@ class DatabaseVersionManager(
          * Minimum required database version for this application release.
          * This should be updated when database schema or data structure changes.
          */
-        private const val MINIMUM_REQUIRED_VERSION = "20260601094341"
+        private const val MINIMUM_REQUIRED_VERSION = "20261011170830"
 
         /**
          * Compares two version strings in yyyyMMddHHmmss format.

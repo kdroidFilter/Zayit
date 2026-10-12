@@ -20,6 +20,19 @@ jobs:
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@712f1e520c73fd68e1e7514b17700e577643802c
 
+      # The private packages (smart siddur, semantic search) are compiled when the token is there; fork and Dependabot PRs
+      # get no secrets and build the community edition (an empty variable would enable them and fail on resolution)
+      - name: Expose the private packages token
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "SEFORIM_SIDDUR_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          else
+            echo "::notice::No SEFORIM_SIDDUR_TOKEN: building the community edition"
+          fi
+
       - name: Run ktlint
         run: ./gradlew ktlintCheck --no-daemon
 
@@ -55,6 +68,19 @@ jobs:
 
       - name: Setup Nucleus
         uses: kdroidFilter/Nucleus/.github/actions/setup-nucleus@712f1e520c73fd68e1e7514b17700e577643802c
+
+      # The private packages (smart siddur, semantic search) are compiled when the token is there; fork and Dependabot PRs
+      # get no secrets and build the community edition (an empty variable would enable them and fail on resolution)
+      - name: Expose the private packages token
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "SEFORIM_SIDDUR_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          else
+            echo "::notice::No SEFORIM_SIDDUR_TOKEN: building the community edition"
+          fi
 
       - name: Run tests with coverage
         run: ./gradlew :SeforimApp:jvmTest :SeforimApp:koverXmlReport :SeforimApp:koverHtmlReport --no-daemon
@@ -123,6 +149,19 @@ jobs:
         with:
           graalvm: ${{ matrix.graalvm }}
           graalvm-distribution: oracle
+
+      # The private packages (smart siddur, semantic search) are compiled when the token is there; fork and Dependabot PRs
+      # get no secrets and build the community edition (an empty variable would enable them and fail on resolution)
+      - name: Expose the private packages token
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.SEFORIM_SIDDUR_TOKEN }}
+        run: |
+          if [ -n "$TOKEN" ]; then
+            echo "SEFORIM_SIDDUR_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+          else
+            echo "::notice::No SEFORIM_SIDDUR_TOKEN: building the community edition"
+          fi
 
       # Build
       - name: Build

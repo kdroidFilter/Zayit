@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.utils
 
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -10,21 +11,15 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.logger.debugln
-import java.awt.Toolkit
 
 fun getCenteredWindowState(
     width: Int,
     height: Int,
-): WindowState {
-    val screenSize = Toolkit.getDefaultToolkit().screenSize
-    val windowX = (screenSize.width - width) / 2
-    val windowY = (screenSize.height - height) / 2
-
-    return WindowState(
+): WindowState =
+    WindowState(
         size = DpSize(width.dp, height.dp),
-        position = WindowPosition(windowX.dp, windowY.dp),
+        position = WindowPosition.Aligned(Alignment.Center),
     )
-}
 
 /** Whether this destination shows a find-in-page bar: the search results, and a book once one is open. */
 fun TabsDestination.hasFindInPage(store: TabPersistedStateStore): Boolean =

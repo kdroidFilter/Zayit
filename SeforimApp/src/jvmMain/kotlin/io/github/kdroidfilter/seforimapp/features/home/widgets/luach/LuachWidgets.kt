@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishCalendar
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.earthwidget.computeZmanimTimes
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -55,6 +56,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberOffMain
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.home.widgets.skyTimeMillisHere
 import io.github.kdroidfilter.seforimapp.features.siddur.installedSiddur
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -456,8 +458,16 @@ internal object TefilaWidget : HomeWidget {
         state: HomeWidgetsState,
         modifier: Modifier,
     ) {
-        // ponytail: the civil day's tefila; tonight's maariv already belongs to tomorrow's
-        val day = state.shownDateHere()
+        // From צאת הכוכבים of the moment shown (now, ticking, unless a zman or a play picks one), tonight's maariv is tomorrow's
+        val civilDay = state.shownDateHere()
+        val location = state.location
+        val tzais =
+            remember(civilDay, location, state.zmanimOpinion, state.inIsrael) {
+                computeZmanimTimes(civilDay, location, state.zmanimOpinion, state.inIsrael).tzais
+            }
+        val now = rememberMinute()
+        val moment = state.skyTimeMillisHere() ?: now.time
+        val day = if (tzais != null && moment >= tzais.time) civilDay.plusDays(1) else civilDay
         val lines = remember(day, state.inIsrael) { tefilaOfDay(day, state.inIsrael) }
         val hebrewDate =
             remember(day, state.inIsrael) {

@@ -66,10 +66,11 @@ abstract class SettingsGroup(
             { json.encodeToString(serializer, it) },
             { text -> runCatching { json.decodeFromString(serializer, text) }.getOrNull() },
         )
-
-    protected companion object {
-        private val json = Json { ignoreUnknownKeys = true }
-
-        fun splitList(text: String): Set<String> = text.split(',').filterTo(mutableSetOf()) { it.isNotEmpty() }
-    }
 }
+
+private val json = Json { ignoreUnknownKeys = true }
+
+// Top level, not in a protected companion: enumSet's inlined lambda is a class outside SettingsGroup's hierarchy,
+// so it could not read the protected Companion field (NoSuchFieldError in the native image).
+@PublishedApi
+internal fun splitList(text: String): Set<String> = text.split(',').filterTo(mutableSetOf()) { it.isNotEmpty() }

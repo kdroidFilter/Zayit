@@ -511,22 +511,23 @@ private fun TabStripScope.RtlAwareTabStripContent(
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
     val currentKeys = remember(tabs) { tabs.map { it.key } }
 
-    // A reorder not made by a drag (a pin, the overflow menu, a move between windows) slides the tabs it moved
-    // rather than jump them; a drag carries its own. Adds and closes have their own enter and exit animations.
-    var lastOrder by remember { mutableStateOf(currentKeys) }
-    var slideGeneration by remember { mutableIntStateOf(0) }
-    if (currentKeys != lastOrder) {
-        val reordered = currentKeys.size == lastOrder.size && currentKeys.toSet() == lastOrder.toSet()
-        if (reordered && tabDrag.held == null && tabDrag.animating == null) slideGeneration++
-        lastOrder = currentKeys
-    }
-
     // When desktop switch restores tabs, treat all as already known to skip enter animation
     var skipContainerAnimation by remember { mutableStateOf(false) }
     if (skipAnimation) {
         knownKeys = currentKeys.toSet()
         skipContainerAnimation = true
         tabsViewModel.consumeSkipAnimation()
+    }
+
+    // A reorder not made by a drag (a pin, the overflow menu, a move between windows) slides the tabs it moved
+    // rather than jump them; a drag carries its own. Adds and closes have their own enter and exit animations.
+    val stripOrder = remember { StripOrder(currentKeys) }
+    // Read by the tabs' placement only, so bumping it here recomposes nothing.
+    val slideGeneration = remember { mutableIntStateOf(0) }
+    if (stripOrder.reorderedTo(currentKeys, dragging = tabDrag.held != null || tabDrag.animating != null) &&
+        !skipContainerAnimation
+    ) {
+        slideGeneration.intValue++
     }
 
     val scope = rememberCoroutineScope()
@@ -693,14 +694,14 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                                 } else {
                                                     Modifier
                                                 },
-                                            ) // Inside the slot and the grip, so drags and drops resolve against its place.
-                                            .slideToNewPlace(slideGeneration),
+                                            ),
                                 ) {
                                     var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                     LaunchedEffect(isClosing) {
                                         visible = !isClosing
                                     }
-                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
+                                    // The tab as drawn and clicked slides; its slot and grip stay where drops resolve.
+                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab).slideToNewPlace(slideGeneration)) {
                                         AnimatedVisibility(
                                             visible = visible,
                                             exit =
@@ -1772,21 +1773,22 @@ private fun rememberPinnedTabWidths(
 }
 
 /**
- * Slides this element from where it stood in its parent to its new place on the first move after [slideGeneration]
- * changes; any other move (window resizes, drags) it follows at once.
+ * Slides this element from where its parent stood in the strip to the parent's new place, on the first move after
+ * [slideGeneration] changes; any other move (window resizes, drags) it follows at once.
  */
 @Composable
-private fun Modifier.slideToNewPlace(slideGeneration: Int): Modifier {
+private fun Modifier.slideToNewPlace(slideGeneration: IntState): Modifier {
     val scope = rememberCoroutineScope()
-    val generation by rememberUpdatedState(slideGeneration)
     val slide = remember { TabSlide() }
     return layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
         layout(placeable.width, placeable.height) {
-            // Its place as the parent has just set it, read in the same pass rather than a frame late.
-            val target = coordinates?.positionInParent()?.round()
+            // Every placement sees the generation, so only the move right after a reorder slides.
+            val slideRequested = slide.see(slideGeneration.intValue)
+            // The parent's place as the strip has just set it, read in the same pass rather than a frame late.
+            val target = coordinates?.parentLayoutCoordinates?.positionInParent()?.round()
             // Absolute: the place is measured from the left, whatever the strip's direction.
-            placeable.place(if (target == null) IntOffset.Zero else slide.offsetTo(target, generation, scope))
+            placeable.place(if (target == null) IntOffset.Zero else slide.offsetTo(target, slideRequested, scope))
         }
     }
 }
@@ -1798,15 +1800,19 @@ private class TabSlide {
     private var seenGeneration: Int? = null
     private var job: Job? = null
 
+    /** Whether [generation] is new since the last placement. */
+    fun see(generation: Int): Boolean {
+        val new = seenGeneration != null && generation != seenGeneration
+        seenGeneration = generation
+        return new
+    }
+
     /** Where to draw the element placed at [newTarget], relative to it. */
     fun offsetTo(
         newTarget: IntOffset,
-        generation: Int,
+        slideRequested: Boolean,
         @StructuredScope scope: CoroutineScope,
     ): IntOffset {
-        // Every placement sees the generation, so only the move right after a reorder slides.
-        val slideRequested = seenGeneration != null && generation != seenGeneration
-        seenGeneration = generation
         val sliding = job?.isActive == true
         val current = position
         if (newTarget != target) {
@@ -1821,6 +1827,32 @@ private class TabSlide {
         }
         val animated = position.takeIf { job?.isActive == true } ?: return IntOffset.Zero
         return animated.value - newTarget
+    }
+}
+
+/** The strip's order as last composed, and whether a drag has been under way since. */
+private class StripOrder(
+    private var keys: List<String>,
+) {
+    private var dragSeen = false
+
+    /**
+     * Records [newKeys]; true when they are the same tabs in another order, with no drag since the last order: a
+     * drag's own release reorders the strip once the tab is already home.
+     */
+    fun reorderedTo(
+        newKeys: List<String>,
+        dragging: Boolean,
+    ): Boolean {
+        if (dragging) dragSeen = true
+        if (newKeys == keys) {
+            if (!dragging) dragSeen = false
+            return false
+        }
+        val reordered = !dragSeen && newKeys.size == keys.size && newKeys.toSet() == keys.toSet()
+        keys = newKeys
+        if (!dragging) dragSeen = false
+        return reordered
     }
 }
 

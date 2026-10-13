@@ -72,8 +72,17 @@ gradle.extensions.extraProperties["semanticEnabled"] =
     providers.gradleProperty("semantic.local").orNull == "true"
 
 // The verse quote links of the Talmud, added to the lines read until the DB carries them (open core, temporary): its
-// private package, from mavenLocal for now (-Pquotelinks.local=true after publishToMavenLocal in SeforimQuoteLinks/jvm)
-gradle.extensions.extraProperties["quoteLinksEnabled"] = providers.gradleProperty("quotelinks.local").orNull == "true"
+// private package, with the siddur's token by default (quotelinks.token, SEFORIM_QUOTELINKS_TOKEN, the siddur's, or
+// gh), or from mavenLocal (-Pquotelinks.local=true after publishToMavenLocal in SeforimQuoteLinks/jvm)
+val quoteLinksToken: String? =
+    providers.gradleProperty("quotelinks.token").orNull
+        ?: providers.environmentVariable("SEFORIM_QUOTELINKS_TOKEN").orNull
+        ?: providers.gradleProperty("siddur.token").orNull
+        ?: providers.environmentVariable("SEFORIM_SIDDUR_TOKEN").orNull
+        ?: privatePackageToken("quotelinks.token", "SEFORIM_QUOTELINKS_TOKEN", "seforim-quotelinks")
+gradle.extensions.extraProperties["quoteLinksEnabled"] =
+    quoteLinksToken != null ||
+    providers.gradleProperty("quotelinks.local").orNull == "true"
 
 dependencyResolutionManagement {
     repositories {
@@ -109,6 +118,16 @@ dependencyResolutionManagement {
                     password = token
                 }
                 content { includeGroupAndSubgroups("io.github.kdroidfilter") }
+            }
+        }
+        // The quote links, for the official builds (open core): a private package, read with a token
+        quoteLinksToken?.let { token ->
+            maven("https://maven.pkg.github.com/kdroidFilter/SeforimQuoteLinks") {
+                credentials {
+                    username = "token"
+                    password = token
+                }
+                content { includeModule("io.github.kdroidfilter", "seforim-quotelinks") }
             }
         }
     }

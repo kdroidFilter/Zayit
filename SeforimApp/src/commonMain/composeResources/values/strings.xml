@@ -76,6 +76,7 @@
     <string name="desktop_default_name">מרחב %1$s</string>
     <string name="desktops_label">מרחבים</string>
     <string name="open_tabs">לשוניות פתוחות</string>
+    <string name="more_tabs">עוד %1$d</string>
     <string name="desktop_new">מרחב חדש</string>
     <string name="desktop_rename">שנה שם</string>
     <string name="desktop_delete">מחק</string>
@@ -167,6 +168,7 @@
     <string name="home">דף הבית</string>
     <string name="close_tab">סגור לשונית</string>
     <string name="close_all_tabs">סגור את כל הלשוניות</string>
+    <string name="close_hidden_tabs">סגור את הלשוניות המוסתרות</string>
     <string name="pin_tab">הצמד לשונית</string>
     <string name="unpin_tab">בטל הצמדה</string>
     <string name="close_pinned_tab_hint">לחץ שוב על %1$s כדי לסגור את הלשונית המוצמדת</string>

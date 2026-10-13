@@ -8,12 +8,15 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
  * community build compiles addons/quotelinks/disabled, where [installedQuoteLinks] is null.
  */
 interface QuoteLinksFeature {
-    /** Whether [bookId] has quote links; the first call reads a small index. */
+    /**
+     * Whether [bookId] has quote links: a set lookup, the first call of a session reading a small index (~0.6 ms). Any
+     * other book is loaded as without this feature.
+     */
     fun covers(bookId: Long): Boolean
 
     /**
-     * [lines] of [bookId] with their quote links; the lines themselves, for the cost of a set lookup, when the book has
-     * none. Call it off the UI thread, where the lines were loaded (it parses the book's links the first time).
+     * [lines] of a [covers]ed [bookId] with their quote links. Call it off the UI thread, where the lines were loaded (it
+     * parses the book's links the first time).
      * [linesByIds] reads the verses the links point to, once each, to drop a link whose verse is no longer the one it
      * was made for.
      */

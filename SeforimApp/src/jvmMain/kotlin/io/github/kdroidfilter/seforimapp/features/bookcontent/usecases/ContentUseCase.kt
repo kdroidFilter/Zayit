@@ -32,9 +32,11 @@ class ContentUseCase(
         bookId: Long,
         initialLineId: Long? = null,
     ): Flow<PagingData<Line>> {
-        // The verse quote links (official builds): decorate leaves the lines of any other book as they are
+        // The verse quote links (official builds), for the books that have some only: any other book loads as without
         val decorate: (suspend (List<Line>) -> List<Line>)? =
-            installedQuoteLinks?.let { quoteLinks -> { lines -> quoteLinks.decorate(bookId, lines, linesByIds) } }
+            installedQuoteLinks
+                ?.takeIf { it.covers(bookId) }
+                ?.let { quoteLinks -> { lines -> quoteLinks.decorate(bookId, lines, linesByIds) } }
         return Pager(
             config = PagingDefaults.LINES.config(placeholders = false),
             pagingSourceFactory = {

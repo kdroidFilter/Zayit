@@ -112,7 +112,11 @@ class QuoteLinksAddonTest {
         decorated: Boolean,
     ): List<Line> {
         val decorate: (suspend (List<Line>) -> List<Line>)? =
-            if (decorated) { lines -> quoteLinks.decorate(bookId, lines, repository::getLinesByIds) } else null
+            if (decorated && quoteLinks.covers(bookId)) {
+                { lines -> quoteLinks.decorate(bookId, lines, repository::getLinesByIds) }
+            } else {
+                null
+            }
         val page =
             LinesPagingSource(repository, bookId, decorate = decorate)
                 .load(PagingSource.LoadParams.Refresh(0, PagingDefaults.LINES.INITIAL_LOAD_SIZE, false))
@@ -125,8 +129,8 @@ class QuoteLinksAddonTest {
         decorated: Boolean,
     ): List<Line> {
         val decorate: (suspend (List<Line>) -> List<Line>)? =
-            // As ContentUseCase: every book goes through decorate, which leaves the uncovered ones as they are
-            if (decorated) {
+            // As ContentUseCase: only the covered books are decorated
+            if (decorated && quoteLinks.covers(bookId)) {
                 { lines -> quoteLinks.decorate(bookId, lines, repository::getLinesByIds) }
             } else {
                 null

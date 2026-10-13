@@ -28,7 +28,6 @@ internal object TalmudQuoteLinks : QuoteLinksFeature {
         lines: List<Line>,
         linesByIds: suspend (Collection<Long>) -> List<Line>,
     ): List<Line> {
-        // Any other book: a set lookup
         val book = book(bookId) ?: return lines
         val unchecked =
             lines

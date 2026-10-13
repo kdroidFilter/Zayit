@@ -66,7 +66,6 @@ import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.Text
-import org.jetbrains.jewel.ui.icon.IconKey
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.desktop_default_name
@@ -76,7 +75,11 @@ import sh.calvin.reorderable.ReorderableColumn
 import sh.calvin.reorderable.ReorderableItem
 
 @Composable
-fun DesktopSwitcher(modifier: Modifier = Modifier) {
+fun DesktopSwitcher(
+    modifier: Modifier = Modifier,
+    // Its icon and chevron alone, the name left out: when the tab strip needs the room.
+    compact: Boolean = false,
+) {
     val appGraph = LocalAppGraph.current
     val desktopManager = appGraph.desktopManager
     val openWindow = LocalOpenWindow.current
@@ -103,6 +106,7 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
     ) {
         DesktopSwitcherTrigger(
             desktopName = activeDesktop?.name ?: "1",
+            compact = compact,
             onClick = { showDropdown = !showDropdown },
         )
 
@@ -132,6 +136,7 @@ fun DesktopSwitcher(modifier: Modifier = Modifier) {
 @Composable
 private fun DesktopSwitcherTrigger(
     desktopName: String,
+    compact: Boolean,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -142,7 +147,7 @@ private fun DesktopSwitcherTrigger(
     Row(
         modifier =
             Modifier
-                .width(DESKTOP_SWITCHER_WIDTH)
+                .width(if (compact) DESKTOP_SWITCHER_COMPACT_WIDTH else DESKTOP_SWITCHER_WIDTH)
                 .fillMaxHeight()
                 .padding(horizontal = 2.dp, vertical = 4.dp)
                 .hoverable(interactionSource)
@@ -154,16 +159,19 @@ private fun DesktopSwitcherTrigger(
     ) {
         Image(
             painter = rememberVectorPainter(MaterialSymbolsDesktop_landscape),
-            contentDescription = null,
+            // Its name told some other way once it no longer shows.
+            contentDescription = if (compact) desktopName else null,
             modifier = Modifier.size(16.dp),
             colorFilter = ColorFilter.tint(JewelTheme.globalColors.text.normal),
         )
-        Text(
-            text = desktopName,
-            color = JewelTheme.globalColors.text.normal,
-            maxLines = 1,
-            modifier = Modifier.weight(1f),
-        )
+        if (!compact) {
+            Text(
+                text = desktopName,
+                color = JewelTheme.globalColors.text.normal,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+        }
         Icon(
             key = AllIconsKeys.General.ChevronDown,
             contentDescription = null,
@@ -352,39 +360,6 @@ private fun DesktopItem(
 }
 
 @Composable
-private fun ActionIcon(
-    key: IconKey,
-    visible: Boolean,
-    onClick: () -> Unit,
-    contentDescription: String? = null,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isHovered by interactionSource.collectIsHoveredAsState()
-    val accent = JewelTheme.globalColors.outlines.focused
-    val hoverBg = if (isHovered && visible) accent.copy(alpha = 0.12f) else Color.Transparent
-
-    Box(
-        modifier =
-            Modifier
-                .size(18.dp)
-                .hoverable(interactionSource)
-                .background(hoverBg, CircleShape)
-                .clickable(interactionSource = interactionSource, indication = null) {
-                    // Invisible icons still reserve their slot for alignment — don't let them click
-                    if (visible) onClick()
-                },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            key = key,
-            contentDescription = contentDescription,
-            modifier = Modifier.size(14.dp),
-            tint = if (visible) JewelTheme.globalColors.text.normal else Color.Transparent,
-        )
-    }
-}
-
-@Composable
 private fun HoverableRow(
     onClick: () -> Unit,
     hoverColor: Color,
@@ -466,6 +441,9 @@ private fun DesktopRenameField(
 }
 
 internal val DESKTOP_SWITCHER_WIDTH = 110.dp
+
+// Its icon and chevron alone: outer padding (2 × 2), inner padding (2 × 4), icon (16), gap (4) and chevron (14).
+internal val DESKTOP_SWITCHER_COMPACT_WIDTH = 46.dp
 
 // Wide enough for an 8-char Hebrew name plus the per-item actions (rename,
 // open-in-new-window, delete) that flank it.

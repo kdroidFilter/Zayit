@@ -10,6 +10,9 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.*
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitTouchSlopOrCancellation
 import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
@@ -39,10 +42,14 @@ import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.RenderVectorGroup
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.input.pointer.PointerButton
 import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isSecondary
 import androidx.compose.ui.input.pointer.isTertiary
 import androidx.compose.ui.input.pointer.onPointerEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -50,8 +57,8 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
@@ -62,6 +69,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
 import dev.nucleusframework.window.ExperimentalNucleusApi
+import dev.nucleusframework.window.tao.LocalTaoWindow
 import dev.nucleusframework.window.tao.TabDropGhost
 import dev.nucleusframework.window.tao.TabGripCursor
 import dev.nucleusframework.window.tao.TabHoverPreview
@@ -69,13 +77,17 @@ import dev.nucleusframework.window.tao.TabHoverPreviewPopup
 import dev.nucleusframework.window.tao.TabHoverPreviewScope
 import dev.nucleusframework.window.tao.TabPreview
 import dev.nucleusframework.window.tao.TabStripScope
+import dev.nucleusframework.window.tao.TaoWindow
 import dev.nucleusframework.window.tao.dropGhost
 import dev.nucleusframework.window.tao.rememberTabStripDrag
+import dev.nucleusframework.window.tao.tabSlot
 import dev.nucleusframework.window.tao.tabStripCarry
 import dev.nucleusframework.window.tao.tabStripGeometry
 import dev.nucleusframework.window.tao.tabStripGrip
 import io.github.kdroidfilter.seforim.tabs.*
 import io.github.kdroidfilter.seforimapp.core.deeplink.toShareLink
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ActionIcon
+import io.github.kdroidfilter.seforimapp.core.presentation.components.BelowAnchorEndPositionProvider
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SharedIcon
 import io.github.kdroidfilter.seforimapp.core.presentation.components.TitleBarActionButton
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToClipboard
@@ -116,6 +128,8 @@ import org.jetbrains.jewel.ui.theme.menuStyle
 import org.jetbrains.jewel.ui.theme.tooltipStyle
 import seforimapp.seforimapp.generated.resources.*
 import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
+import sh.calvin.reorderable.ReorderableColumn
+import java.text.Bidi
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -126,6 +140,8 @@ private data class TabEntry(
     val key: String,
     val data: TabData,
     val labelProvider: @Composable () -> String,
+    // By id, not index: a close run behind its exit animation (or a second click) must not hit the tab that has
+    // taken its index since.
     val onClose: () -> Unit,
     val onClick: () -> Unit,
     val onCloseAll: () -> Unit,
@@ -142,6 +158,8 @@ private data class TabEntry(
     // What the tab shows once pinned instead of its icon; null for the icon alone
     val pinnedLabel: String?,
     val onTogglePin: () -> Unit,
+    // Its place on the strip, left to right as laid out (what "close left/right" counts from).
+    val stripIndex: Int,
 )
 
 private val TabTooltipWidthThreshold = 140.dp
@@ -151,9 +169,6 @@ private val CompactTabWidthThreshold = 50.dp
 // so the title always keeps some room next to it.
 private val MinContentWidthForCloseButton = 68.dp
 private val TabOuterHorizontalPadding = 2.dp
-
-// A pinned tab: its icon and padding only (Chromium's TabStyle::GetPinnedWidth, without the corners).
-private val PinnedTabWidth = 40.dp
 
 // A pinned tab showing a label grows to fit it, up to this; a longer one fades out.
 private val PinnedLabelTabMaxWidth = 80.dp
@@ -272,7 +287,7 @@ private fun TabStripScope.DefaultTabShowcase(
                             key = tabItem.destination.tabId,
                             data = tabData,
                             labelProvider = labelProvider,
-                            onClose = { onEvents(TabsEvents.OnClose(actualIndex)) },
+                            onClose = { workspace.close(tabItem.destination.tabId) },
                             onClick = { onEvents(TabsEvents.OnSelect(actualIndex)) },
                             onCloseAll = { onEvents(TabsEvents.CloseAll) },
                             onCloseOthers = { onEvents(TabsEvents.CloseOthers(actualIndex)) },
@@ -295,6 +310,7 @@ private fun TabStripScope.DefaultTabShowcase(
                             pinned = tabItem.pinned,
                             pinnedLabel = tabItem.pinnedLabel(),
                             onTogglePin = { tabsViewModel.setPinned(actualIndex, !tabItem.pinned) },
+                            stripIndex = visualIndex,
                         )
                     }.toImmutableList()
             } else {
@@ -363,7 +379,7 @@ private fun TabStripScope.DefaultTabShowcase(
                             key = tabItem.destination.tabId,
                             data = tabData,
                             labelProvider = labelProvider,
-                            onClose = { onEvents(TabsEvents.OnClose(index)) },
+                            onClose = { workspace.close(tabItem.destination.tabId) },
                             onClick = { onEvents(TabsEvents.OnSelect(index)) },
                             onCloseAll = { onEvents(TabsEvents.CloseAll) },
                             onCloseOthers = { onEvents(TabsEvents.CloseOthers(index)) },
@@ -385,6 +401,7 @@ private fun TabStripScope.DefaultTabShowcase(
                             pinned = tabItem.pinned,
                             pinnedLabel = tabItem.pinnedLabel(),
                             onTogglePin = { tabsViewModel.setPinned(index, !tabItem.pinned) },
+                            stripIndex = index,
                         )
                     }.toImmutableList()
             }
@@ -457,6 +474,11 @@ private fun TabStripScope.RtlAwareTabStripContent(
     // The workspace's gestures for this strip: carry along it, slide home, hand-over to another
     // window or a new one once a tab leaves it (the platform drag session on native Wayland).
     val tabDrag = rememberTabStripDrag()
+    val taoWindow = LocalTaoWindow.current
+    val openWindowCount =
+        LocalAppGraph.current.desktopManager.windows
+            .collectAsState()
+            .value.size
     TabHoverPreviewPopup(remember { TabHoverPreview(content = { TabPreviewCard() }) })
     // The last look at the selected tab before a click may leave it (see rememberTabThumbnails).
     val stripHovered by interactionSource.collectIsHoveredAsState()
@@ -503,18 +525,12 @@ private fun TabStripScope.RtlAwareTabStripContent(
 
     BoxWithConstraints(modifier = modifier) {
         val maxWidthDp = this.maxWidth
-        // Reserve a non-interactive draggable area at the trailing edge to allow window move
-        val reservedDragArea = 40.dp
-        // + button (40.dp) + divider (1.dp) + divider padding (8.dp) + reserved drag area
-        val extrasWidth = 40.dp + 1.dp + 8.dp + reservedDragArea
-        val availableForTabs = (maxWidthDp - extrasWidth).coerceAtLeast(0.dp)
         // Pinned tabs keep their narrow width; the others share what is left (Chromium's layout).
         val pinnedWidths = rememberPinnedTabWidths(tabs, style)
         val pinnedCount = pinnedWidths.size
-        val tabsCount = (tabs.size - pinnedCount).coerceAtLeast(1)
-        // Chrome-like: tabs shrink to fill available width, capped by a max width
-        val maxTabWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
         val pinnedTotal = pinnedWidths.values.fold(0.dp) { sum, width -> sum + width }
+        // Sized for the most tabs it could ever count, so the + never gets pushed out.
+        val chipWidth = rememberTabOverflowChipWidth(tabs.size)
         // A tab dragged in from another window opens a slot where it would drop; the others make room.
         val ghost = dropGhost?.takeIf { tabDrag.animating == null }
         val ghostWidth = ghost?.width ?: 0.dp
@@ -522,9 +538,51 @@ private fun TabStripScope.RtlAwareTabStripContent(
         val landing = remember(group) { DropLanding() }
         workspace.draggedTab?.let { dragged -> if (ghost != null) landing.expect(dragged.id, ghost.index) }
         if (ghost == null) landing.settle(group.ids)
-        val naturalTabWidth = ((availableForTabs - pinnedTotal - ghostWidth).coerceAtLeast(0.dp) / tabsCount)
-        val computedTabWidthTarget = naturalTabWidth.coerceAtMost(maxTabWidth)
-        val tabWidth = frozenTabWidth?.coerceAtMost(computedTabWidthTarget) ?: computedTabWidthTarget
+        // Chrome-like: tabs shrink to fill available width, capped by a max width
+        val maxTabWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
+        val overflowMemory = remember { OverflowMemory() }
+        val layout =
+            computeTabStripLayout(
+                stripWidth = maxWidthDp,
+                tabCount = tabs.size,
+                pinnedCount = pinnedCount,
+                pinnedWidth = pinnedTotal,
+                chipWidth = chipWidth,
+                ghostWidth = ghostWidth,
+                maxTabWidth = maxTabWidth,
+                wasTooNarrow = overflowMemory.tooNarrow,
+            )
+        overflowMemory.tooNarrow = layout.tooNarrow
+        val reservedDragArea = layout.reservedDragArea
+        val naturalTabWidth = layout.naturalTabWidth
+        val noTabFits = layout.currentTabAsIcon
+        val showOverflowMenu = layout.overflowing
+        val visibleCount = layout.visibleCount
+        val tabWindow = remember { TabWindow() }
+        val visibleKeys =
+            remember(tabs, pinnedWidths, visibleCount, showOverflowMenu) {
+                if (!showOverflowMenu) {
+                    null
+                } else if (visibleCount == 0) {
+                    // The current tab always stays, as its icon at least.
+                    setOfNotNull(tabs.firstOrNull { it.data.selected }?.key)
+                } else {
+                    // In reading order, as the strip shows them.
+                    val unpinned = tabs.filter { it.key !in pinnedWidths }
+                    pinnedWidths.keys +
+                        tabWindow.follow(unpinned, visibleCount, unpinned.indexOfFirst { it.data.selected }).map { it.key }.toSet()
+                }
+            }
+        // The only tab on show has nowhere to go along the strip: dragging it moves the window, as the title bar
+        // does. Where the app places its windows, a window's real only tab needs nothing: Nucleus already carries
+        // the window with it, and merges it into the strip it is dropped on. On native Wayland the window can't
+        // follow a drag, so the tab keeps its drag-and-drop, the one way into another window's strip; with no other
+        // window open there is none to reach, and it moves the window too. Without a window, nothing to move.
+        val movesWindow =
+            taoWindow != null &&
+                (visibleKeys?.size ?: tabs.size) == 1 &&
+                if (taoWindow.canPlaceOnScreen) tabs.size > 1 else openWindowCount == 1
+        val tabWidth = frozenTabWidth?.coerceAtMost(layout.tabWidth) ?: layout.tabWidth
 
         // The whole strip is the drop target of a tab dragged from another window (Chrome accepts
         // drops on the whole strip area). Published left to right: the tabs are laid out in their
@@ -571,7 +629,8 @@ private fun TabStripScope.RtlAwareTabStripContent(
             // Helper to render all tab items with animations and reordering support
             val tabsOnly: @Composable RowScope.() -> Unit = {
                 val reorderingEnabled = closingKeys.isEmpty()
-                val rowModifier = if (shrinkToFitActive) Modifier.fillMaxWidth() else Modifier
+                val groupIndex = group.ids.withIndex().associate { (i, id) -> id to i }
+                val rowModifier = if (shrinkToFitActive && !showOverflowMenu) Modifier.fillMaxWidth() else Modifier
                 val tabEntriesByKey = remember(tabs) { tabs.associateBy { it.key } }
 
                 Row(
@@ -586,83 +645,93 @@ private fun TabStripScope.RtlAwareTabStripContent(
                         key(landing.generation, "gap", index) { if (!isRtl) DropGhostSlot(ghost, index) }
                         val tabEntry = tabEntriesByKey[key] ?: return@forEachIndexed
                         val workspaceTab = workspace.tab(key) ?: return@forEachIndexed
-                        key(key) {
-                            val isClosing = closingKeys.contains(tabEntry.key)
-                            val isNew = !knownKeys.contains(tabEntry.key)
+                        if (visibleKeys == null || tabEntry.key in visibleKeys) {
+                            key(key) {
+                                val isClosing = closingKeys.contains(tabEntry.key)
+                                val isNew = !knownKeys.contains(tabEntry.key)
 
-                            Box(
-                                modifier =
-                                    Modifier
-                                        // Carried or sliding home, it is drawn over its neighbours.
-                                        .zIndex(if (tabDrag.animating == key) 1f else 0f)
-                                        .then(
-                                            // A tab closing (or just moved away) is no longer in the group.
-                                            if (reorderingEnabled && !isClosing && key in group.ids) {
-                                                Modifier.tabStripGrip(
-                                                    this@RtlAwareTabStripContent,
-                                                    tabDrag,
-                                                    workspaceTab,
-                                                    group.ids.indexOf(key),
-                                                    // The strip keeps the plain arrow over its tabs.
-                                                    cursor = TabGripCursor.None,
-                                                )
-                                            } else {
-                                                Modifier
-                                            },
-                                        ),
-                            ) {
-                                var visible by remember(isClosing) { mutableStateOf(!isClosing) }
-                                LaunchedEffect(isClosing) {
-                                    visible = !isClosing
-                                }
-                                Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
-                                    AnimatedVisibility(
-                                        visible = visible,
-                                        exit =
-                                            shrinkHorizontally(
-                                                animationSpec = tween(durationMillis = exitDurationMs),
-                                                shrinkTowards = Alignment.Start,
-                                            ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing)),
-                                    ) {
-                                        RtlAwareTab(
-                                            isActive = isActive,
-                                            tabData = tabEntry.data,
-                                            tabStyle = style,
-                                            tabIndex = index,
-                                            tabCount = tabs.size,
-                                            tabWidth = pinnedWidths[tabEntry.key] ?: tabWidth,
-                                            pinned = tabEntry.pinned,
-                                            pinnedLabel = tabEntry.pinnedLabel,
-                                            onTogglePin = tabEntry.onTogglePin,
-                                            labelProvider = tabEntry.labelProvider,
-                                            onClick = tabEntry.onClick,
-                                            onClose = {
-                                                if (stripHovered && frozenTabWidth == null) frozenTabWidth = tabWidth
-                                                if (!closingKeys.contains(tabEntry.key)) {
-                                                    closingKeys = closingKeys + tabEntry.key
-                                                    closeTabWithAnimation(
-                                                        scope = scope,
-                                                        delayMs = exitDurationMs.toLong(),
-                                                        onClose = tabEntry.onClose,
-                                                        onFinished = { closingKeys = closingKeys - tabEntry.key },
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            // Carried or sliding home, it is drawn over its neighbours.
+                                            .zIndex(if (tabDrag.animating == key) 1f else 0f)
+                                            .then(
+                                                // A tab closing (or just moved away) is no longer in the group.
+                                                if (!isClosing && key in groupIndex && movesWindow) {
+                                                    Modifier.tabSlot(group, groupIndex.getValue(key))
+                                                } else if (reorderingEnabled && !isClosing && key in groupIndex) {
+                                                    Modifier.tabStripGrip(
+                                                        this@RtlAwareTabStripContent,
+                                                        tabDrag,
+                                                        workspaceTab,
+                                                        groupIndex.getValue(key),
+                                                        // The strip keeps the plain arrow over its tabs.
+                                                        cursor = TabGripCursor.None,
                                                     )
-                                                }
-                                            },
-                                            onCloseAll = tabEntry.onCloseAll,
-                                            onCloseOthers = tabEntry.onCloseOthers,
-                                            onCloseLeft = tabEntry.onCloseLeft,
-                                            onCloseRight = tabEntry.onCloseRight,
-                                            onCopyLink = tabEntry.onCopyLink,
-                                            onDetach = tabEntry.onDetach,
-                                            onMoveToDesktop = tabEntry.onMoveToDesktop,
-                                            animateWidth = !isNew,
-                                            enterFromSmall = isNew,
-                                            enterDurationMs = enterDurationMs,
-                                            isDragging = tabDrag.held == key,
-                                        )
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
+                                ) {
+                                    var visible by remember(isClosing) { mutableStateOf(!isClosing) }
+                                    LaunchedEffect(isClosing) {
+                                        visible = !isClosing
+                                    }
+                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
+                                        AnimatedVisibility(
+                                            visible = visible,
+                                            exit =
+                                                shrinkHorizontally(
+                                                    animationSpec = tween(durationMillis = exitDurationMs),
+                                                    shrinkTowards = Alignment.Start,
+                                                ) + fadeOut(animationSpec = tween(exitDurationMs, easing = LinearEasing)),
+                                        ) {
+                                            RtlAwareTab(
+                                                isActive = isActive,
+                                                tabData = tabEntry.data,
+                                                tabStyle = style,
+                                                tabIndex = index,
+                                                tabCount = tabs.size,
+                                                tabWidth = pinnedWidths[tabEntry.key] ?: tabWidth,
+                                                pinned = tabEntry.pinned,
+                                                pinnedLabel = tabEntry.pinnedLabel,
+                                                onTogglePin = tabEntry.onTogglePin,
+                                                labelProvider = tabEntry.labelProvider,
+                                                onClick = tabEntry.onClick,
+                                                onClose = {
+                                                    if (stripHovered && frozenTabWidth == null) frozenTabWidth = tabWidth
+                                                    if (!closingKeys.contains(tabEntry.key)) {
+                                                        closingKeys = closingKeys + tabEntry.key
+                                                        closeTabWithAnimation(
+                                                            scope = scope,
+                                                            delayMs = exitDurationMs.toLong(),
+                                                            onClose = tabEntry.onClose,
+                                                            onFinished = { closingKeys = closingKeys - tabEntry.key },
+                                                        )
+                                                    }
+                                                },
+                                                onCloseAll = tabEntry.onCloseAll,
+                                                onCloseOthers = tabEntry.onCloseOthers,
+                                                onCloseLeft = tabEntry.onCloseLeft,
+                                                onCloseRight = tabEntry.onCloseRight,
+                                                onCopyLink = tabEntry.onCopyLink,
+                                                onDetach = tabEntry.onDetach,
+                                                onMoveToDesktop = tabEntry.onMoveToDesktop,
+                                                animateWidth = !isNew,
+                                                enterFromSmall = isNew,
+                                                enterDurationMs = enterDurationMs,
+                                                isDragging = tabDrag.held == key,
+                                                windowToMove = if (movesWindow) taoWindow else null,
+                                                iconOnly = noTabFits,
+                                            )
+                                        }
                                     }
                                 }
                             }
+                        } else if (key in groupIndex) {
+                            // A hidden tab keeps an empty slot at its place, so drags and drops along the strip
+                            // still resolve against the whole group.
+                            key(key) { Box(Modifier.tabSlot(group, groupIndex.getValue(key))) }
                         }
                         key(landing.generation, "gap", index) { if (isRtl) DropGhostSlot(ghost, currentKeys.size - 1 - index) }
                     }
@@ -676,8 +745,13 @@ private fun TabStripScope.RtlAwareTabStripContent(
                 modifier =
                     Modifier
                         .let { baseModifier ->
-                            if (shrinkToFitActive) {
+                            // Overflowing, the + follows the current tab and its chip, as when the tabs are few.
+                            if (shrinkToFitActive && !showOverflowMenu) {
                                 baseModifier.weight(1f)
+                            } else if (showOverflowMenu) {
+                                // Measured after the + and the drag area, so on a strip too narrow even for the
+                                // current tab's icon and the chevron, those give way rather than the +.
+                                baseModifier.weight(1f, fill = false)
                             } else {
                                 baseModifier
                             }
@@ -686,26 +760,42 @@ private fun TabStripScope.RtlAwareTabStripContent(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 tabsOnly()
+                // A window's only tab, with no room left for it, just isn't shown: a menu of one tab would be noise.
+                if (showOverflowMenu && tabs.size > 1) {
+                    TabOverflowChip(
+                        hiddenTabs = tabs.filter { visibleKeys != null && it.key !in visibleKeys },
+                        tabCount = tabs.size,
+                        height = style.metrics.tabHeight,
+                        showCount = layout.chipShowsCount,
+                        // Onto the place of the hidden tab it was dropped on, in the whole strip.
+                        onMove = { fromKey, toKey ->
+                            onReorder(tabs.indexOfFirst { it.key == fromKey }, tabs.indexOfFirst { it.key == toKey })
+                        },
+                        // Only while the strip has no room for its own +.
+                        onAdd = if (layout.showAddButton) null else onAddClick,
+                    )
+                }
             }
 
-            Divider(
-                orientation = Orientation.Vertical,
-                modifier =
-                    Modifier
-                        .fillMaxHeight(0.8f)
-                        .padding(horizontal = 4.dp)
-                        .width(1.dp),
-                color = JewelTheme.globalColors.borders.disabled,
-            )
+            if (layout.showAddButton) {
+                Divider(
+                    orientation = Orientation.Vertical,
+                    modifier =
+                        Modifier
+                            .fillMaxHeight(0.8f)
+                            .padding(horizontal = 4.dp)
+                            .width(1.dp),
+                    color = JewelTheme.globalColors.borders.disabled,
+                )
 
-            val shortcutHint = if (PlatformInfo.isMacOS) "⌘+T" else "Ctrl+T"
-            TitleBarActionButton(
-                onClick = onAddClick,
-                key = AllIconsKeys.General.Add,
-                contentDescription = stringResource(Res.string.add_tab),
-                tooltipText = stringResource(Res.string.add_tab),
-                shortcutHint = shortcutHint,
-            )
+                TitleBarActionButton(
+                    onClick = onAddClick,
+                    key = AllIconsKeys.General.Add,
+                    contentDescription = stringResource(Res.string.add_tab),
+                    tooltipText = stringResource(Res.string.add_tab),
+                    shortcutHint = NewTabShortcutHint,
+                )
+            }
 
             // Reserved draggable area — intentionally empty/non-interactive
             Spacer(modifier = Modifier.width(reservedDragArea).fillMaxHeight())
@@ -750,6 +840,10 @@ private fun RtlAwareTab(
     enterFromSmall: Boolean = false,
     enterDurationMs: Int = 200,
     isDragging: Boolean = false,
+    // Set when dragging this tab moves the window rather than the tab.
+    windowToMove: TaoWindow? = null,
+    // Drawn as its icon alone, as a pinned tab is: the current tab once no readable one fits.
+    iconOnly: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     var tabState by remember { mutableStateOf(TabState.of(selected = tabData.selected, active = isActive)) }
@@ -824,7 +918,8 @@ private fun RtlAwareTab(
             tabWidth - TabOuterHorizontalPadding * 2 -
                 tabPadding.calculateLeftPadding(LayoutDirection.Ltr) - tabPadding.calculateRightPadding(LayoutDirection.Ltr)
         // A pinned tab never shows its close button (Chromium's Tab::UpdateIconVisibility).
-        val roomForCloseButton = !pinned && contentWidth >= MinContentWidthForCloseButton
+        val asIcon = pinned || iconOnly
+        val roomForCloseButton = !asIcon && contentWidth >= MinContentWidthForCloseButton
 
         val container: @Composable () -> Unit = {
             Row(
@@ -845,7 +940,9 @@ private fun RtlAwareTab(
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Tab,
-                    ).padding(tabStyle.metrics.tabPadding)
+                    ) // Inside the click, so a press the close button took never reaches the window move.
+                    .windowMoveGrip(windowToMove)
+                    .padding(tabStyle.metrics.tabPadding)
                     .onPointerEvent(PointerEventType.Release) { ev ->
                         // Middle-click closes tab (Chrome-like), but not a pinned one: pinning guards against that.
                         if (ev.button.isTertiary && !pinned) onClose()
@@ -868,7 +965,11 @@ private fun RtlAwareTab(
                 val isCompact = tabWidth < CompactTabWidthThreshold
                 val isSelected = tabData.selected
                 // Hide close for non-selected tabs when space is tight, always show for selected
-                val showCloseIcon = tabData.closable && !pinned && (isSelected || roomForCloseButton)
+                // Shrunk to its icon, the current tab trades it for its close button under the pointer.
+                val showCloseIcon =
+                    tabData.closable &&
+                        !pinned &&
+                        if (iconOnly) tabState.isHovered else isSelected || roomForCloseButton
 
                 val closeIconComposable: @Composable () -> Unit = {
                     if (showCloseIcon) {
@@ -903,7 +1004,7 @@ private fun RtlAwareTab(
                 }
 
                 // In compact mode, selected tab shows only close icon (centered)
-                if (isCompact && isSelected && !pinned) {
+                if ((isCompact && isSelected && !asIcon) || (iconOnly && showCloseIcon)) {
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         closeIconComposable()
                     }
@@ -913,10 +1014,10 @@ private fun RtlAwareTab(
                         SingleLineTabContent(label = pinnedLabel, state = tabState, icon = null)
                     }
                 } else {
-                    val iconOnly = isCompact || pinned
+                    val showIconOnly = isCompact || asIcon
                     // A pinned tab is its icon, centred.
-                    Box(Modifier.weight(1f), contentAlignment = if (pinned) Alignment.Center else Alignment.TopStart) {
-                        CompositionLocalProvider(LocalCompactIconOnly provides iconOnly) {
+                    Box(Modifier.weight(1f), contentAlignment = if (asIcon) Alignment.Center else Alignment.TopStart) {
+                        CompositionLocalProvider(LocalCompactIconOnly provides showIconOnly) {
                             tabData.content(TabContentScopeContainer(), tabState)
                         }
                     }
@@ -986,64 +1087,99 @@ private fun RtlAwareTab(
         ) { container() }
 
         if (contextMenuOpen) {
-            // Resource strings must be resolved outside MenuScope
-            val closeAllLabel = stringResource(Res.string.close_all_tabs)
-            val closeOthersLabel = stringResource(Res.string.close_other_tabs)
-            val closeLeftLabel = stringResource(Res.string.close_tabs_left)
-            val closeRightLabel = stringResource(Res.string.close_tabs_right)
-            val copyLinkLabel = stringResource(Res.string.copy_tab_link)
-            val detachLabel = stringResource(Res.string.tab_open_in_new_window)
-            val pinLabel = stringResource(if (pinned) Res.string.unpin_tab else Res.string.pin_tab)
-            val desktops by LocalAppGraph.current.desktopManager.desktops
-                .collectAsState()
-            val currentDesktopId = LocalOpenWindow.current.session.desktopId
-            val otherDesktops = desktops.filter { it.id != currentDesktopId }
-            val moveToDesktopLabels =
-                otherDesktops.associate { it.id to stringResource(Res.string.tab_move_to_desktop, it.name) }
-
-            TabContextMenu(
+            TabActionsMenu(
                 anchorOffset = anchorOffset,
+                contextClickOffset = contextClickOffset,
+                tabIndex = tabIndex,
+                tabCount = tabCount,
+                pinned = pinned,
+                onTogglePin = onTogglePin,
+                onDetach = onDetach,
+                onMoveToDesktop = onMoveToDesktop,
+                onCopyLink = onCopyLink,
+                onCloseAll = onCloseAll,
+                onCloseOthers = onCloseOthers,
+                onCloseLeft = onCloseLeft,
+                onCloseRight = onCloseRight,
+                onDismiss = { contextMenuOpen = false },
+            )
+        }
+    }
+}
+
+/**
+ * Stands for the tabs the strip has no room for: shaped like a tab, it tells how many there are and lists them, in
+ * their order (IntelliJ's hidden tabs).
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun TabOverflowChip(
+    hiddenTabs: List<TabEntry>,
+    tabCount: Int,
+    height: Dp,
+    showCount: Boolean,
+    onMove: (fromKey: String, toKey: String) -> Unit,
+    onAdd: (() -> Unit)?,
+) {
+    var visible by remember { mutableStateOf(false) }
+    var contextMenuOpen by remember { mutableStateOf(false) }
+    var contextClickOffset by remember { mutableStateOf(IntOffset.Zero) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+    val background =
+        when {
+            visible || contextMenuOpen -> accent.copy(alpha = 0.20f)
+            hovered -> accent.copy(alpha = 0.10f)
+            else -> Color.Transparent
+        }
+    val label = stringResource(Res.string.more_tabs, hiddenTabs.size)
+    Box {
+        Row(
+            modifier =
+                Modifier
+                    .height(height)
+                    .padding(horizontal = TabOuterHorizontalPadding, vertical = 4.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(background)
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.DropdownList,
+                        onClickLabel = stringResource(Res.string.open_tabs),
+                        onClick = { visible = !visible },
+                    ).onPointerEvent(PointerEventType.Release) { ev ->
+                        if (ev.button.isSecondary) {
+                            val p = ev.changes.firstOrNull()?.position ?: Offset.Zero
+                            contextClickOffset = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                            contextMenuOpen = true
+                            ev.changes.forEach { it.consume() }
+                        }
+                    }.padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showCount) Text(label, maxLines = 1)
+            Icon(AllIconsKeys.General.ChevronDown, contentDescription = if (showCount) null else label, modifier = Modifier.size(16.dp))
+        }
+        if (contextMenuOpen) {
+            // Resource strings must be resolved outside MenuScope
+            val closeHiddenLabel = stringResource(Res.string.close_hidden_tabs)
+            val closeAllLabel = stringResource(Res.string.close_all_tabs)
+            TabContextMenu(
+                anchorOffset = null,
                 contextClickOffset = contextClickOffset,
                 onDismissRequest = { contextMenuOpen = false },
             ) {
-                tabContextMenuItem(
-                    label = pinLabel,
-                    icon = AllIconsKeys.General.Pin_tab,
-                    onClick = {
-                        contextMenuOpen = false
-                        onTogglePin()
-                    },
-                )
-                if (onDetach != null) {
+                // With no tab on show, the hidden ones are all of them: "close all" says it already.
+                if (hiddenTabs.size < tabCount) {
                     tabContextMenuItem(
-                        label = detachLabel,
-                        icon = AllIconsKeys.Actions.OpenNewTab,
+                        label = closeHiddenLabel,
+                        icon = Tab_close,
                         onClick = {
                             contextMenuOpen = false
-                            onDetach()
-                        },
-                    )
-                }
-                // ponytail: flat items, not a submenu — Jewel's submenu always opens to the right, even in RTL
-                if (onMoveToDesktop != null) {
-                    otherDesktops.forEach { desktop ->
-                        tabContextMenuItem(
-                            label = moveToDesktopLabels.getValue(desktop.id),
-                            icon = AllIconsKeys.Actions.MoveTo2,
-                            onClick = {
-                                contextMenuOpen = false
-                                onMoveToDesktop(desktop.id)
-                            },
-                        )
-                    }
-                }
-                if (onCopyLink != null) {
-                    tabContextMenuItem(
-                        label = copyLinkLabel,
-                        icon = Link,
-                        onClick = {
-                            contextMenuOpen = false
-                            onCopyLink()
+                            // By id each: closing one doesn't shift the next.
+                            hiddenTabs.filterNot { it.pinned }.forEach { it.onClose() }
                         },
                     )
                 }
@@ -1052,41 +1188,339 @@ private fun RtlAwareTab(
                     icon = CloseAll,
                     onClick = {
                         contextMenuOpen = false
-                        onCloseAll()
+                        hiddenTabs.firstOrNull()?.onCloseAll?.invoke()
                     },
                 )
-                if (tabCount > 1) {
-                    tabContextMenuItem(
-                        label = closeOthersLabel,
-                        icon = Tab_close,
-                        onClick = {
-                            contextMenuOpen = false
-                            onCloseOthers()
+            }
+        }
+        if (visible) {
+            Popup(
+                onDismissRequest = { visible = false },
+                popupPositionProvider = BelowAnchorEndPositionProvider,
+                properties = PopupProperties(focusable = true),
+            ) {
+                TabOverflowMenu(
+                    tabs = hiddenTabs,
+                    tabCount = tabCount,
+                    onSelect = { tab ->
+                        visible = false
+                        tab.onClick()
+                    },
+                    onMove = onMove,
+                    onAdd =
+                        onAdd?.let { add ->
+                            {
+                                visible = false
+                                add()
+                            }
                         },
-                    )
-                }
-                if (tabIndex > 0) {
-                    tabContextMenuItem(
-                        label = closeLeftLabel,
-                        icon = Tab_close_right,
-                        onClick = {
-                            contextMenuOpen = false
-                            onCloseLeft()
-                        },
-                    )
-                }
-                if (tabIndex < tabCount - 1) {
-                    tabContextMenuItem(
-                        label = closeRightLabel,
-                        icon = Tab_close_right,
-                        mirrorIcon = true,
-                        onClick = {
-                            contextMenuOpen = false
-                            onCloseRight()
-                        },
-                    )
+                )
+            }
+        }
+    }
+}
+
+/** The hidden tabs, as the workspaces' menu lists its desktops: dragged to reorder, closed from their ×. */
+@Composable
+private fun TabOverflowMenu(
+    tabs: List<TabEntry>,
+    tabCount: Int,
+    onSelect: (TabEntry) -> Unit,
+    onMove: (fromKey: String, toKey: String) -> Unit,
+    // null while the strip shows its own +
+    onAdd: (() -> Unit)?,
+) {
+    val shape = RoundedCornerShape(6.dp)
+    val tabsByKey = remember(tabs) { tabs.associateBy { it.key } }
+    // Pinned tabs and the others reorder apart, as on the strip: a pinned one never moves among the rest.
+    val runs =
+        remember(tabs) {
+            tabs
+                .partition { it.pinned }
+                .toList()
+                .filter { it.isNotEmpty() }
+                .map { run -> run.map { it.key } }
+        }
+    Column(
+        Modifier
+            .width(TabOverflowMenuWidth)
+            .background(JewelTheme.globalColors.panelBackground, shape)
+            .border(1.dp, JewelTheme.globalColors.borders.normal, shape)
+            .padding(4.dp),
+    ) {
+        Column(Modifier.heightIn(max = TabOverflowMenuMaxHeight).verticalScroll(rememberScrollState())) {
+            TabOverflowMenuRuns(runs, tabsByKey, tabCount, onSelect, onMove)
+        }
+        if (onAdd != null) {
+            Divider(
+                orientation = Orientation.Horizontal,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                color = JewelTheme.globalColors.borders.disabled,
+            )
+            NewTabMenuRow(onAdd)
+        }
+    }
+}
+
+/** A tab opened from the overflow menu, as the + does, while the strip has no room for the +. */
+@Composable
+private fun NewTabMenuRow(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .hoverable(interactionSource)
+                .background(if (hovered) accent.copy(alpha = 0.10f) else Color.Transparent, RoundedCornerShape(4.dp))
+                .clickable(interactionSource = interactionSource, indication = null, role = Role.Button, onClick = onClick)
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Icon(AllIconsKeys.General.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+        Text(stringResource(Res.string.add_tab), modifier = Modifier.weight(1f), maxLines = 1)
+        Text(NewTabShortcutHint, color = JewelTheme.globalColors.text.disabled, maxLines = 1)
+    }
+}
+
+@Composable
+private fun TabOverflowMenuRuns(
+    runs: List<List<String>>,
+    tabsByKey: Map<String, TabEntry>,
+    tabCount: Int,
+    onSelect: (TabEntry) -> Unit,
+    onMove: (fromKey: String, toKey: String) -> Unit,
+) {
+    Column {
+        runs.forEach { keys ->
+            ReorderableColumn(
+                list = keys,
+                onSettle = { from, to -> if (from != to) onMove(keys[from], keys[to]) },
+            ) { _, key, isDragging ->
+                val tab = tabsByKey[key] ?: return@ReorderableColumn
+                val dragAlpha by animateFloatAsState(if (isDragging) 0.7f else 1f, tween(durationMillis = 150))
+                ReorderableItem {
+                    Box(Modifier.alpha(dragAlpha).draggableHandle()) {
+                        TabOverflowMenuItem(tab = tab, tabCount = tabCount, onClick = { onSelect(tab) })
+                    }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+private fun TabOverflowMenuItem(
+    tab: TabEntry,
+    tabCount: Int,
+    onClick: () -> Unit,
+) {
+    var contextMenuOpen by remember { mutableStateOf(false) }
+    var contextClickOffset by remember { mutableStateOf(IntOffset.Zero) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val hovered by interactionSource.collectIsHoveredAsState()
+    val accent = JewelTheme.globalColors.outlines.focused
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .hoverable(interactionSource)
+                .background(if (hovered) accent.copy(alpha = 0.10f) else Color.Transparent, RoundedCornerShape(4.dp))
+                .clickable(interactionSource = interactionSource, indication = null, role = Role.Tab, onClick = onClick)
+                .onPointerEvent(PointerEventType.Release) { ev ->
+                    // Middle-click closes, as on the strip, but not a pinned tab: pinning guards against that.
+                    if (ev.button.isTertiary && !tab.pinned) tab.onClose()
+                    // Right-click: the tab's own menu, as on the strip.
+                    if (ev.button.isSecondary) {
+                        val p = ev.changes.firstOrNull()?.position ?: Offset.Zero
+                        contextClickOffset = IntOffset(p.x.roundToInt(), p.y.roundToInt())
+                        contextMenuOpen = true
+                        ev.changes.forEach { it.consume() }
+                    }
+                }.padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Box(Modifier.weight(1f)) {
+            // Drawn as the current tab is, at full strength: an inactive tab's dimming would read as a disabled item.
+            tab.data.content(TabContentScopeContainer(), TabState.of(selected = true, hovered = hovered))
+        }
+        ActionIcon(
+            key = AllIconsKeys.Actions.Close,
+            // A pinned tab shows no close button, here as on the strip.
+            visible = hovered && !tab.pinned,
+            onClick = tab.onClose,
+            contentDescription = stringResource(Res.string.close_tab),
+        )
+        if (contextMenuOpen) {
+            TabActionsMenu(
+                anchorOffset = null,
+                contextClickOffset = contextClickOffset,
+                tabIndex = tab.stripIndex,
+                tabCount = tabCount,
+                pinned = tab.pinned,
+                onTogglePin = tab.onTogglePin,
+                onDetach = tab.onDetach,
+                onMoveToDesktop = tab.onMoveToDesktop,
+                onCopyLink = tab.onCopyLink,
+                onCloseAll = tab.onCloseAll,
+                onCloseOthers = tab.onCloseOthers,
+                onCloseLeft = tab.onCloseLeft,
+                onCloseRight = tab.onCloseRight,
+                onDismiss = { contextMenuOpen = false },
+            )
+        }
+    }
+}
+
+/** The overflow chip's width once it counts [count] tabs: its label, chevron, gap and paddings. */
+@Composable
+private fun rememberTabOverflowChipWidth(count: Int): Dp {
+    val label = stringResource(Res.string.more_tabs, count)
+    val measurer = rememberTextMeasurer()
+    val textStyle = JewelTheme.defaultTextStyle
+    val density = LocalDensity.current
+    return remember(label, textStyle, density) {
+        val text =
+            with(density) {
+                measurer
+                    .measure(label, textStyle, maxLines = 1)
+                    .size.width
+                    .toDp()
+            }
+        text + TabOverflowChipChrome
+    }
+}
+
+// Outer padding (2 × 2), inner padding (2 × 10), gap (4) and chevron (16).
+private val TabOverflowChipChrome = 44.dp
+
+// As wide as a tab of the strip at its full width.
+private val TabOverflowMenuWidth = AppSettings.TAB_FIXED_WIDTH_DP.dp
+private val TabOverflowMenuMaxHeight = 480.dp
+
+private val NewTabShortcutHint = if (PlatformInfo.isMacOS) "⌘+T" else "Ctrl+T"
+
+/** A tab's right-click menu, on the strip or in the overflow menu. [anchorOffset] `null`: the anchor's own corner. */
+@Composable
+private fun TabActionsMenu(
+    anchorOffset: IntOffset?,
+    contextClickOffset: IntOffset,
+    tabIndex: Int,
+    tabCount: Int,
+    pinned: Boolean,
+    onTogglePin: () -> Unit,
+    onDetach: (() -> Unit)?,
+    onMoveToDesktop: ((String) -> Unit)?,
+    onCopyLink: (() -> Unit)?,
+    onCloseAll: () -> Unit,
+    onCloseOthers: () -> Unit,
+    onCloseLeft: () -> Unit,
+    onCloseRight: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    // Resource strings must be resolved outside MenuScope
+    val closeAllLabel = stringResource(Res.string.close_all_tabs)
+    val closeOthersLabel = stringResource(Res.string.close_other_tabs)
+    val closeLeftLabel = stringResource(Res.string.close_tabs_left)
+    val closeRightLabel = stringResource(Res.string.close_tabs_right)
+    val copyLinkLabel = stringResource(Res.string.copy_tab_link)
+    val detachLabel = stringResource(Res.string.tab_open_in_new_window)
+    val pinLabel = stringResource(if (pinned) Res.string.unpin_tab else Res.string.pin_tab)
+    val desktops by LocalAppGraph.current.desktopManager.desktops
+        .collectAsState()
+    val currentDesktopId = LocalOpenWindow.current.session.desktopId
+    val otherDesktops = desktops.filter { it.id != currentDesktopId }
+    val moveToDesktopLabels =
+        otherDesktops.associate { it.id to stringResource(Res.string.tab_move_to_desktop, it.name) }
+
+    TabContextMenu(
+        anchorOffset = anchorOffset,
+        contextClickOffset = contextClickOffset,
+        onDismissRequest = onDismiss,
+    ) {
+        tabContextMenuItem(
+            label = pinLabel,
+            icon = AllIconsKeys.General.Pin_tab,
+            onClick = {
+                onDismiss()
+                onTogglePin()
+            },
+        )
+        if (onDetach != null) {
+            tabContextMenuItem(
+                label = detachLabel,
+                icon = AllIconsKeys.Actions.OpenNewTab,
+                onClick = {
+                    onDismiss()
+                    onDetach()
+                },
+            )
+        }
+        // ponytail: flat items, not a submenu — Jewel's submenu always opens to the right, even in RTL
+        if (onMoveToDesktop != null) {
+            otherDesktops.forEach { desktop ->
+                tabContextMenuItem(
+                    label = moveToDesktopLabels.getValue(desktop.id),
+                    icon = AllIconsKeys.Actions.MoveTo2,
+                    onClick = {
+                        onDismiss()
+                        onMoveToDesktop(desktop.id)
+                    },
+                )
+            }
+        }
+        if (onCopyLink != null) {
+            tabContextMenuItem(
+                label = copyLinkLabel,
+                icon = Link,
+                onClick = {
+                    onDismiss()
+                    onCopyLink()
+                },
+            )
+        }
+        tabContextMenuItem(
+            label = closeAllLabel,
+            icon = CloseAll,
+            onClick = {
+                onDismiss()
+                onCloseAll()
+            },
+        )
+        if (tabCount > 1) {
+            tabContextMenuItem(
+                label = closeOthersLabel,
+                icon = Tab_close,
+                onClick = {
+                    onDismiss()
+                    onCloseOthers()
+                },
+            )
+        }
+        if (tabIndex > 0) {
+            tabContextMenuItem(
+                label = closeLeftLabel,
+                icon = Tab_close_right,
+                onClick = {
+                    onDismiss()
+                    onCloseLeft()
+                },
+            )
+        }
+        if (tabIndex < tabCount - 1) {
+            tabContextMenuItem(
+                label = closeRightLabel,
+                icon = Tab_close_right,
+                mirrorIcon = true,
+                onClick = {
+                    onDismiss()
+                    onCloseRight()
+                },
+            )
         }
     }
 }
@@ -1155,20 +1589,53 @@ private fun SingleLineTabContent(
             )
         }
         if (!iconOnly) {
-            // The side the title is cut on: its paragraph's end, whatever the strip's direction.
-            var cutSide by remember { mutableStateOf<ResolvedTextDirection?>(null) }
+            // The paragraph's own direction (its first strong letter), whatever the strip's.
+            val rtl = remember(label) { !Bidi(label, Bidi.DIRECTION_DEFAULT_LEFT_TO_RIGHT).baseIsLeftToRight() }
+            // Read by the layer and the draw only, so a title crossing its width never recomposes the tab.
+            val cut = remember { mutableStateOf(false) }
             Text(
                 label,
-                modifier = Modifier.alpha(contentAlpha).fadeCutEnd(cutSide),
+                modifier =
+                    Modifier
+                        .fadeCutEnd(rtl, cut)
+                        .layout { measurable, constraints ->
+                            // Laid out whole, then pinned by its start, so only its end is cut (a Hebrew title clipped
+                            // from the left would lose its first letters instead).
+                            val placeable = measurable.measure(constraints.copy(minWidth = 0, maxWidth = Constraints.Infinity))
+                            val width = placeable.width.coerceIn(constraints.minWidth, constraints.maxWidth)
+                            cut.value = placeable.width > width
+                            layout(width, placeable.height) { placeable.place(if (rtl) width - placeable.width else 0, 0) }
+                        }.alpha(contentAlpha),
                 maxLines = 1,
                 softWrap = false,
                 overflow = TextOverflow.Clip,
-                onTextLayout = { layout ->
-                    cutSide = if (layout.hasVisualOverflow) layout.getParagraphDirection(0) else null
-                },
             )
         }
     }
+}
+
+/**
+ * Moves [window] once a primary or touch press on this element travels past the touch slop, with the platform's own
+ * move (the title bar's); a press that never travels stays a click, and one a child took is left to it. No-op
+ * without a window.
+ */
+@OptIn(ExperimentalComposeUiApi::class) // PointerEvent.button
+private fun Modifier.windowMoveGrip(window: TaoWindow?): Modifier {
+    if (window == null) return this
+    return pointerInput(window) {
+        awaitEachGesture {
+            val down = awaitFirstDown()
+            // Primary button or touch, as on the title bar.
+            if (currentEvent.button != PointerButton.Primary && down.type != PointerType.Touch) return@awaitEachGesture
+            val drag = awaitTouchSlopOrCancellation(down.id) { change, _ -> change.consume() }
+            if (drag != null) window.dragWindow()
+        }
+    }
+}
+
+/** The last layout's [TabStripLayout.tooNarrow], for its hysteresis. A plain field, bookkeeping only. */
+private class OverflowMemory {
+    var tooNarrow = false
 }
 
 /**
@@ -1262,24 +1729,29 @@ private fun rememberPinnedTabWidths(
 }
 
 /** Fades the last [TitleFadeWidth] of a cut title out instead of an ellipsis (Chromium's FADE_TAIL). */
-private fun Modifier.fadeCutEnd(direction: ResolvedTextDirection?): Modifier {
-    if (direction == null) return this
-    return graphicsLayer(compositingStrategy = CompositingStrategy.Offscreen).drawWithContent {
+private fun Modifier.fadeCutEnd(
+    rtl: Boolean,
+    cut: State<Boolean>,
+): Modifier =
+    graphicsLayer {
+        clip = true
+        compositingStrategy = if (cut.value) CompositingStrategy.Offscreen else CompositingStrategy.Auto
+    }.drawWithContent {
         drawContent()
+        if (!cut.value) return@drawWithContent
         val fade = TitleFadeWidth.toPx().coerceAtMost(size.width / 2)
-        val (startX, endX) = if (direction == ResolvedTextDirection.Rtl) fade to 0f else size.width - fade to size.width
+        val (startX, endX) = if (rtl) fade to 0f else size.width - fade to size.width
         drawRect(
             brush = Brush.horizontalGradient(listOf(Color.Black, Color.Transparent), startX = startX, endX = endX),
             blendMode = BlendMode.DstIn,
         )
     }
-}
 
 // Tab context menu using native Jewel styling
 @OptIn(InternalJewelApi::class)
 @Composable
 private fun TabContextMenu(
-    anchorOffset: IntOffset,
+    anchorOffset: IntOffset?,
     contextClickOffset: IntOffset,
     onDismissRequest: () -> Unit,
     style: MenuStyle = JewelTheme.menuStyle,
@@ -1302,8 +1774,9 @@ private fun TabContextMenu(
                     layoutDirection: LayoutDirection,
                     popupContentSize: IntSize,
                 ): IntOffset {
-                    var x = anchorOffset.x + contextClickOffset.x
-                    var y = anchorOffset.y + contextClickOffset.y
+                    val anchor = anchorOffset ?: anchorBounds.topLeft
+                    var x = anchor.x + contextClickOffset.x
+                    var y = anchor.y + contextClickOffset.y
                     if (x + popupContentSize.width > windowSize.width) {
                         x = (windowSize.width - popupContentSize.width).coerceAtLeast(0)
                     }

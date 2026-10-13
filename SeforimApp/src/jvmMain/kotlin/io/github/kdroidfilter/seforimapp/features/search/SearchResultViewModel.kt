@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimapp.features.search.domain.AuthorNames
 import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
 import io.github.kdroidfilter.seforimapp.features.search.domain.BuildSearchTreeUseCase
 import io.github.kdroidfilter.seforimapp.features.search.domain.CategoryNavigationUseCase
@@ -62,6 +63,9 @@ import java.util.UUID
 import kotlin.collections.ArrayDeque
 
 private const val LAZY_PAGE_SIZE = 25
+
+// No book has it: a filter on it finds nothing
+private const val NO_BOOK_ID = -1L
 
 @Stable
 data class SearchUiState(
@@ -139,6 +143,7 @@ class SearchResultViewModel(
             when (scope) {
                 SearchScope.Global, is SearchScope.Category -> null
                 is SearchScope.Book -> repository.getBookCore(scope.bookId)?.title
+                is SearchScope.Author -> repository.getAuthorDetails(scope.authorId)?.name?.let(AuthorNames::display)
                 is SearchScope.Toc ->
                     listOfNotNull(repository.getBookCore(scope.bookId)?.title, repository.getTocEntry(scope.tocId)?.text)
                         .joinToString(", ")
@@ -678,6 +683,25 @@ class SearchResultViewModel(
     private var tocParentById: Map<Long, Long?> = emptyMap()
     private val tocBookCache: MutableMap<Long, Long> = mutableMapOf()
 
+    // The books of the author last searched in, by author id
+    private var authorBookIdsCache: Pair<Long, List<Long>>? = null
+
+    /**
+     * The books searched when the search is scoped to an author, null for any other scope. An author
+     * without books searches none: a book id no book has (an empty filter would search everywhere).
+     */
+    private suspend fun authorBookIds(): List<Long>? {
+        val authorId = persistedSearchState().fetchAuthorId.takeIf { it > 0 } ?: return null
+        authorBookIdsCache?.let { (id, ids) -> if (id == authorId) return ids }
+        val ids =
+            runSuspendCatching { repository.getAuthorDetails(authorId)?.books?.map { it.id } }
+                .getOrNull()
+                .orEmpty()
+                .ifEmpty { listOf(NO_BOOK_ID) }
+        authorBookIdsCache = authorId to ids
+        return ids
+    }
+
     init {
         val navQuery = savedStateHandle.get<String>("searchQuery") ?: ""
         // A fresh tab opened with a scope (a search reopened from history) runs in that scope
@@ -778,11 +802,14 @@ class SearchResultViewModel(
                                 runSuspendCatching { collectBookIdsUnderCategory(catId) }.getOrDefault(emptyList())
                             }
                         }
+                    val authorBooks = authorBookIds()
                     val finalBookIds: List<Long>? =
                         when {
                             fetchBookId != null && fetchBookId > 0 -> listOf(fetchBookId)
+                            !allowedBooks.isNullOrEmpty() && authorBooks != null ->
+                                allowedBooks.filter { it in authorBooks }.ifEmpty { listOf(NO_BOOK_ID) }
                             !allowedBooks.isNullOrEmpty() -> allowedBooks
-                            else -> null
+                            else -> authorBooks
                         }
                     val session =
                         lucene.openSession(
@@ -791,7 +818,7 @@ class SearchResultViewModel(
                             bookFilter = null,
                             bookIds = finalBookIds,
                             lineIds = lineIds,
-                            baseBookOnly = baseBookOnly,
+                            baseBookOnly = baseBookOnly && authorBooks == null,
                         )
                     // Skip pages we already have and set up lazy loading state
                     if (session != null) {
@@ -974,8 +1001,10 @@ class SearchResultViewModel(
                     }
 
                     // Phase 1: Compute facets instantly for immediate tree display
-                    // A book or a TOC entry the user chose is searched whole, base book or not
-                    val baseBookOnly = !_uiState.value.globalExtended && fetchTocId == null && fetchBookId == null
+                    // A book, a TOC entry or an author the user chose is searched whole, base books or not
+                    val authorBooks = authorBookIds()
+                    val baseBookOnly =
+                        !_uiState.value.globalExtended && fetchTocId == null && fetchBookId == null && authorBooks == null
                     val facetsBookIds: Collection<Long>? =
                         when {
                             fetchTocId != null -> {
@@ -988,8 +1017,8 @@ class SearchResultViewModel(
                             }
 
                             else -> {
-                                null
-                            } // Use baseBookOnly parameter instead
+                                authorBooks
+                            } // Else the baseBookOnly parameter
                         }
 
                     // Close any existing session before opening a new one
@@ -1009,7 +1038,7 @@ class SearchResultViewModel(
                                 }
                             val pageJob =
                                 async {
-                                    prepareSearchSession(q, fetchBookId, fetchTocId)?.let { info ->
+                                    prepareSearchSession(q, fetchBookId, fetchTocId, authorBooks)?.let { info ->
                                         info to info.first.nextPage(LAZY_PAGE_SIZE)
                                     }
                                 }
@@ -1152,6 +1181,7 @@ class SearchResultViewModel(
         query: String,
         fetchBookId: Long?,
         fetchTocId: Long?,
+        authorBookIds: List<Long>?,
     ): Pair<SearchSession, Set<Long>>? {
         var tocAllowedLineIds: Set<Long> = emptySet()
         val baseBookOnly = !_uiState.value.globalExtended
@@ -1167,6 +1197,10 @@ class SearchResultViewModel(
 
                 fetchBookId != null -> {
                     lucene.openSession(query, DEFAULT_NEAR, bookIds = listOf(fetchBookId), baseBookOnly = false)
+                }
+
+                authorBookIds != null -> {
+                    lucene.openSession(query, DEFAULT_NEAR, bookIds = authorBookIds, baseBookOnly = false)
                 }
 
                 else -> {
@@ -1673,7 +1707,8 @@ class SearchResultViewModel(
                 scopeTocId = null,
             )
         tocBookCache.clear()
-        updatePersistedSearch { it.withScope(SearchScope.Global) }
+        // Back to all the results: an author's books stay the searched ones
+        updatePersistedSearch { it.withScope(it.scope as? SearchScope.Author ?: SearchScope.Global) }
     }
 
     /**
@@ -1707,6 +1742,17 @@ class SearchResultViewModel(
                     // Add directly selected books
                     bookIdsToFilter += selectedBooks
 
+                    // In an author's books only: theirs among those of the categories, all theirs without any
+                    val authorBooks = authorBookIds()
+                    if (authorBooks != null) {
+                        if (bookIdsToFilter.isEmpty()) {
+                            bookIdsToFilter += authorBooks
+                        } else if (selectedCats.isNotEmpty()) {
+                            bookIdsToFilter.retainAll(authorBooks.toSet() + selectedBooks)
+                            if (bookIdsToFilter.isEmpty()) bookIdsToFilter += NO_BOOK_ID
+                        }
+                    }
+
                     // Determine line IDs from selected TOCs
                     val lineIdsToFilter = mutableSetOf<Long>()
                     for (tocId in selectedTocs) {
@@ -1736,7 +1782,7 @@ class SearchResultViewModel(
                             }
 
                             bookIdsToFilter.isNotEmpty() -> {
-                                val onlyBooks = selectedCats.isEmpty()
+                                val onlyBooks = selectedCats.isEmpty() || authorBooks != null
                                 lucene.openSession(q, DEFAULT_NEAR, bookIds = bookIdsToFilter, baseBookOnly = baseBookOnly && !onlyBooks)
                             }
 

@@ -547,9 +547,9 @@ internal fun UnifiedSearchBar(
         focusRequester = mainSearchFocusRequester,
         autoFocus = autoFocus,
         // A picked TOC entry fills the field with its path: nothing to search then
-        // An author's books are picked, not searched in: no text row then
-        textSearchEnabled = searchUi.selectedScopeToc == null && searchUi.selectedScopeAuthor == null,
+        textSearchEnabled = searchUi.selectedScopeToc == null,
         textSearchInBook = searchUi.selectedScopeBook?.title,
+        textSearchInAuthor = searchUi.selectedScopeAuthor?.name?.let(AuthorNames::display),
         onTextSearch = ::searchText,
         // Before a book is picked: go-to rows, the text search and books; after: its TOC
         suggestionsVisible = if (!isTocInTopBar) searchUi.suggestionsVisible else false,
@@ -725,7 +725,8 @@ private fun SuggestionsPanel(
     // Runs a row: its main action (open, search) or its Tab one (search inside). By row, not index:
     // a click must run the row it lands on even if the list changed since this lambda was made
     onRow: (row: CatBookRow, open: Boolean) -> Unit,
-    onTextSearchAll: () -> Unit,
+    // Null when the text is searched in all the books anyway
+    onTextSearchAll: (() -> Unit)?,
     textSearchLabel: String?,
     textSearchQuery: String?,
     focusedIndex: Int = -1,
@@ -830,10 +831,14 @@ private fun SuggestionsPanel(
                                 emphasis = textSearchQuery,
                                 highlighted = focused,
                                 actions =
-                                    listOf(
-                                        RowAction(KEY_ENTER, stringResource(Res.string.row_action_search_base)) { onRow(row, true) },
-                                        RowAction(KEY_CTRL_ENTER, stringResource(Res.string.row_action_search_all), onTextSearchAll),
-                                    ),
+                                    if (onTextSearchAll == null) {
+                                        listOf(RowAction(KEY_ENTER, stringResource(Res.string.row_action_search)) { onRow(row, true) })
+                                    } else {
+                                        listOf(
+                                            RowAction(KEY_ENTER, stringResource(Res.string.row_action_search_base)) { onRow(row, true) },
+                                            RowAction(KEY_CTRL_ENTER, stringResource(Res.string.row_action_search_all), onTextSearchAll),
+                                        )
+                                    },
                             )
 
                         is CatBookRow.Author ->
@@ -985,11 +990,12 @@ private fun TocSuggestionsPanel(
 private fun textSearchLabel(
     query: String,
     inBook: String?,
+    inAuthor: String? = null,
 ): String =
-    if (inBook == null) {
-        stringResource(Res.string.search_text_row, query)
-    } else {
-        stringResource(Res.string.search_text_row_in_book, query, inBook)
+    when {
+        inBook != null -> stringResource(Res.string.search_text_row_in_book, query, inBook)
+        inAuthor != null -> stringResource(Res.string.search_text_row_in_author, query, inAuthor)
+        else -> stringResource(Res.string.search_text_row, query)
     }
 
 /**
@@ -1237,6 +1243,8 @@ private fun SearchBar(
     // The "search this text" row: offered while text is typed, Ctrl+Enter runs it from anywhere
     textSearchEnabled: Boolean = false,
     textSearchInBook: String? = null,
+    // Once an author is picked, the text is searched in all their books
+    textSearchInAuthor: String? = null,
     onTextSearch: (String) -> Unit = {},
     // TOC suggestions (for the second field)
     tocSuggestionsVisible: Boolean = false,
@@ -1774,12 +1782,13 @@ private fun SearchBar(
                         SuggestionsPanel(
                             rows = catBookRows,
                             onRow = { row, open -> runCatBookRow(row, open) },
-                            onTextSearchAll = { handleTextSearch(extended = true) },
+                            // An author's books are all searched: no base books to choose
+                            onTextSearchAll = if (textSearchInAuthor == null) ({ handleTextSearch(extended = true) }) else null,
                             textSearchLabel =
                                 if (textSearchEnabled &&
                                     state.text.isNotBlank()
                                 ) {
-                                    textSearchLabel(state.text.toString().trim(), null)
+                                    textSearchLabel(state.text.toString().trim(), null, textSearchInAuthor)
                                 } else {
                                     null
                                 },

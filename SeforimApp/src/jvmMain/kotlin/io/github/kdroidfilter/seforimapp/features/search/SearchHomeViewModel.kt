@@ -374,16 +374,22 @@ class SearchHomeViewModel(
         }
     }
 
-    /** Lists the books of [author], to pick one of them next. */
-    fun onPickAuthor(author: AuthorHit) {
+    /** Searches in the books of [author], listed to pick one of them instead. */
+    fun onPickAuthor(
+        author: AuthorHit,
+        // False to only show the author picked (a restored results tab), their books staying closed
+        showSuggestions: Boolean = true,
+    ) {
         _uiState.value =
             _uiState.value.copy(
                 selectedScopeAuthor = author,
+                selectedScopeBook = null,
+                selectedScopeToc = null,
                 authorSuggestions = emptyList(),
                 jumpSuggestions = emptyList(),
                 bookSuggestions = emptyList(),
-                isReferenceLoading = true,
-                suggestionsVisible = true,
+                isReferenceLoading = showSuggestions,
+                suggestionsVisible = showSuggestions,
             )
         viewModelScope.launch {
             authorBooks =
@@ -396,7 +402,9 @@ class SearchHomeViewModel(
                         .map { book -> BookSuggestionDto(book, buildCategoryPathTitlesCached(book.categoryId) + book.title) }
                 }
             if (_uiState.value.selectedScopeAuthor?.id == author.id) {
-                _uiState.value = _uiState.value.copy(bookSuggestions = authorBooks, isReferenceLoading = false)
+                val typed = referenceQuery.value.trim()
+                _uiState.value =
+                    _uiState.value.copy(bookSuggestions = authorBooks.filter { it.titleContains(typed) }, isReferenceLoading = false)
             }
         }
     }
@@ -522,13 +530,17 @@ class SearchHomeViewModel(
 
     /**
      * Puts the bar where [scope] searched, as a results tab opens, so that what it shows is where it
-     * searches: a book (a TOC entry's whole book), shown as its chip.
+     * searches: a book (a TOC entry's whole book) or an author, shown as its chip.
      */
     fun showScope(scope: SearchScope) {
         val bookId =
             when (scope) {
                 is SearchScope.Book -> scope.bookId
                 is SearchScope.Toc -> scope.bookId
+                is SearchScope.Author -> {
+                    showAuthorScope(scope.authorId)
+                    return
+                }
                 else -> return
             }
         viewModelScope.launch {
@@ -536,7 +548,16 @@ class SearchHomeViewModel(
         }
     }
 
-    /** Where the bar searches: its picked TOC entry or book, else everywhere. */
+    private fun showAuthorScope(authorId: Long) {
+        if (_uiState.value.selectedScopeAuthor?.id == authorId) return
+        viewModelScope.launch {
+            runSuspendCatching { repository.getAuthorDetails(authorId) }.getOrNull()?.let { author ->
+                onPickAuthor(AuthorHit(author.id, author.name, author.books.size), showSuggestions = false)
+            }
+        }
+    }
+
+    /** Where the bar searches: its picked TOC entry, book or author, else everywhere. */
     fun barScope(): SearchScope {
         val selected = _uiState.value
         return when {
@@ -545,6 +566,7 @@ class SearchHomeViewModel(
                 SearchScope.Toc(bookId = selected.selectedScopeToc.bookId, tocId = selected.selectedScopeToc.id)
             selected.selectedScopeToc != null -> SearchScope.Book(selected.selectedScopeToc.bookId)
             selected.selectedScopeBook != null -> SearchScope.Book(selected.selectedScopeBook.id)
+            selected.selectedScopeAuthor != null -> SearchScope.Author(selected.selectedScopeAuthor.id)
             else -> SearchScope.Global
         }
     }

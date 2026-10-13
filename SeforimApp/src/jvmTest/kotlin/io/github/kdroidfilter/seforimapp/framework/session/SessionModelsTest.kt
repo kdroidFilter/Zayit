@@ -169,4 +169,12 @@ class SessionModelsTest {
         assertEquals("global", again.datasetScope)
         assertEquals(SearchScope.Global, SearchPersistedState().withScope(SearchScope.Category(7L)).scope)
     }
+
+    @Test
+    fun `a search scoped to an author keeps it, and a book scope drops it`() {
+        val author = SearchPersistedState().withScope(SearchScope.Author(150L))
+        assertEquals(SearchScope.Author(150L), ProtoBuf.decodeFromByteArray<SearchPersistedState>(ProtoBuf.encodeToByteArray(author)).scope)
+        assertEquals(SearchScope.Book(3L), author.withScope(SearchScope.Book(3L)).scope)
+        assertEquals(SearchScope.Global, author.withScope(SearchScope.Global).scope)
+    }
 }

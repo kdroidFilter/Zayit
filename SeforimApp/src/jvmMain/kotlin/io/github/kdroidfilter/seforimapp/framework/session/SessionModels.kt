@@ -212,6 +212,8 @@ data class SearchPersistedState(
     // Appended last: the session is ProtoBuf, numbered by declaration order.
     // What the bar holds, typed but not searched yet (restored in the bar; [query] is what is searched)
     val draftQuery: String = "",
+    // The author whose books are searched (none with a book or TOC scope)
+    val fetchAuthorId: Long = 0L,
 ) {
     /** The scope the search runs in: its fetch scope, else its view filter. */
     val scope: SearchScope
@@ -221,6 +223,7 @@ data class SearchPersistedState(
             return when {
                 tocId != null && bookId != null -> SearchScope.Toc(bookId = bookId, tocId = tocId)
                 bookId != null -> SearchScope.Book(bookId)
+                fetchAuthorId > 0 -> SearchScope.Author(fetchAuthorId)
                 else -> SearchScope.Global
             }
         }
@@ -240,6 +243,7 @@ data class SearchPersistedState(
                     SearchScope.Global, is SearchScope.Category -> "global"
                     is SearchScope.Book -> "book"
                     is SearchScope.Toc -> "toc"
+                    is SearchScope.Author -> "author"
                 },
             filterCategoryId = 0L,
             filterBookId = bookId,
@@ -247,6 +251,7 @@ data class SearchPersistedState(
             fetchCategoryId = 0L,
             fetchBookId = bookId,
             fetchTocId = tocId,
+            fetchAuthorId = (scope as? SearchScope.Author)?.authorId ?: 0L,
         )
     }
 }

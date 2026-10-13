@@ -143,7 +143,7 @@ class SearchResultViewModel(
             when (scope) {
                 SearchScope.Global, is SearchScope.Category -> null
                 is SearchScope.Book -> repository.getBookCore(scope.bookId)?.title
-                is SearchScope.Author -> repository.getAuthorDetails(scope.authorId)?.name?.let(AuthorNames::display)
+                is SearchScope.Author -> authorScope(scope.authorId)?.name?.let(AuthorNames::display)
                 is SearchScope.Toc ->
                     listOfNotNull(repository.getBookCore(scope.bookId)?.title, repository.getTocEntry(scope.tocId)?.text)
                         .joinToString(", ")
@@ -683,8 +683,25 @@ class SearchResultViewModel(
     private var tocParentById: Map<Long, Long?> = emptyMap()
     private val tocBookCache: MutableMap<Long, Long> = mutableMapOf()
 
-    // The books of the author last searched in, by author id
-    private var authorBookIdsCache: Pair<Long, List<Long>>? = null
+    /** The name of an author and the ids of their books (the bar lists the same, SearchHomeViewModel.showAuthorBooks). */
+    private class AuthorScope(
+        val id: Long,
+        val name: String,
+        val bookIds: List<Long>,
+    )
+
+    // The author last searched in, loaded once for the search label and its books
+    private var authorScopeCache: AuthorScope? = null
+    private val authorScopeMutex = Mutex()
+
+    private suspend fun authorScope(authorId: Long): AuthorScope? =
+        authorScopeMutex.withLock {
+            authorScopeCache?.takeIf { it.id == authorId }?.let { return@withLock it }
+            runSuspendCatching { repository.getAuthorDetails(authorId) }
+                .getOrNull()
+                ?.let { author -> AuthorScope(author.id, author.name, author.books.map { it.id }) }
+                ?.also { authorScopeCache = it }
+        }
 
     /**
      * The books searched when the search is scoped to an author, null for any other scope. An author
@@ -692,14 +709,7 @@ class SearchResultViewModel(
      */
     private suspend fun authorBookIds(): List<Long>? {
         val authorId = persistedSearchState().fetchAuthorId.takeIf { it > 0 } ?: return null
-        authorBookIdsCache?.let { (id, ids) -> if (id == authorId) return ids }
-        val ids =
-            runSuspendCatching { repository.getAuthorDetails(authorId)?.books?.map { it.id } }
-                .getOrNull()
-                .orEmpty()
-                .ifEmpty { listOf(NO_BOOK_ID) }
-        authorBookIdsCache = authorId to ids
-        return ids
+        return authorScope(authorId)?.bookIds.orEmpty().ifEmpty { listOf(NO_BOOK_ID) }
     }
 
     init {
@@ -1333,6 +1343,8 @@ class SearchResultViewModel(
 
             updatePersistedSearch {
                 it.withScope(SearchScope.Book(bookId)).copy(
+                    // An author's search narrowed to one of their books goes back to all of them when cleared
+                    fetchAuthorId = it.fetchAuthorId,
                     selectedCategoryIds = emptySet(),
                     selectedBookIds = emptySet(),
                     selectedTocIds = emptySet(),
@@ -1372,6 +1384,7 @@ class SearchResultViewModel(
             val bookIdFromToc = toc?.bookId
             updatePersistedSearch {
                 it.withScope(SearchScope.Toc(bookId = bookIdFromToc ?: 0L, tocId = tocId)).copy(
+                    fetchAuthorId = it.fetchAuthorId,
                     selectedCategoryIds = emptySet(),
                     selectedBookIds = emptySet(),
                     selectedTocIds = emptySet(),
@@ -1708,7 +1721,7 @@ class SearchResultViewModel(
             )
         tocBookCache.clear()
         // Back to all the results: an author's books stay the searched ones
-        updatePersistedSearch { it.withScope(it.scope as? SearchScope.Author ?: SearchScope.Global) }
+        updatePersistedSearch { it.withScope(it.fetchAuthorId.takeIf { id -> id > 0 }?.let(SearchScope::Author) ?: SearchScope.Global) }
     }
 
     /**

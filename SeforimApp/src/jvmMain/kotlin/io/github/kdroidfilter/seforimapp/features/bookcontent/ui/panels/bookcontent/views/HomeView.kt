@@ -1547,7 +1547,8 @@ private fun SearchBar(
                                 ev.isCtrlPressed &&
                                 (ev.key == Key.Enter || ev.key == Key.NumPadEnter) &&
                                 ev.type == KeyEventType.KeyUp -> {
-                                handleTextSearch(extended = true)
+                                // An author's books are all searched already: Ctrl+Enter is Enter there
+                                handleTextSearch(extended = textSearchInAuthor == null)
                                 true
                             }
 

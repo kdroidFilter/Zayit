@@ -14,6 +14,7 @@ import dev.nucleusframework.window.ExperimentalNucleusApi
 import dev.nucleusframework.window.tao.TaoRootsForTest
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.bookcontent.quotelinks.installedQuoteLinks
+import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID
@@ -64,6 +65,13 @@ object E2eQuoteLinksScenario {
                 .filter { SemanticsActions.OnClick in it.config && itemBounds.contains(it.boundsInRoot.center) }
                 .filter { it.boundsInRoot.width < itemBounds.width * 0.9f }
         sc.note("QUOTELINKS clickable nodes in the line: ${links.size} ${links.map { it.boundsInRoot }}")
+        // The link's look: its color, its tint under the pointer, in both themes
+        links.firstOrNull()?.let { root.sendPointerEvent(PointerEventType.Move, it.boundsInRoot.center) }
+        sc.step("ql-01b-hover", 600)
+        graph.mainAppState.setTheme(IntUiThemes.Dark)
+        sc.step("ql-01c-dark", 1200)
+        graph.mainAppState.setTheme(IntUiThemes.Light)
+        delay(1200)
         val before = tabs.state.value.tabs.size
         val points =
             links.map { it.boundsInRoot.center } +

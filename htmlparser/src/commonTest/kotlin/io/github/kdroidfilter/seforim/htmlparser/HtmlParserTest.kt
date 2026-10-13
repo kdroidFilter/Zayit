@@ -166,6 +166,25 @@ class HtmlParserTest {
     }
 
     @Test
+    fun refLinkIsColoredNotUnderlined() {
+        // An underline would cross the vowels below the letters
+        val color = androidx.compose.ui.graphics.Color.Red
+        val annotated = buildAnnotatedFromHtml("""<a class="ref" href="seforim://line/1">וְאָכַלְתָּ</a>""", 16f, linkColor = color)
+        val styles =
+            (
+                annotated
+                    .getLinkAnnotations(
+                        0,
+                        annotated.length,
+                    ).single()
+                    .item as androidx.compose.ui.text.LinkAnnotation.Url
+            ).styles!!
+        assertEquals(color, styles.style?.color)
+        assertEquals(null, styles.style?.textDecoration)
+        assertEquals(color.copy(alpha = 0.16f), styles.hoveredStyle?.background)
+    }
+
+    @Test
     fun otherAnchorsStayPlainText() {
         val annotated = buildAnnotatedFromHtml("""ראה <a href="https://example.com">כאן</a>""", 16f)
         assertTrue(annotated.getLinkAnnotations(0, annotated.length).isEmpty())

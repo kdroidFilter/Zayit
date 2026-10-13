@@ -20,7 +20,9 @@ object E2ePinScenario {
         tabs.setPinned(2, true)
         tabs.setPinned(1, true)
         tabs.setPinned(0, true)
-        sc.step("pin-02-pinned", 2000)
+        // Mid-slide: the tab the pin moved is on its way to the pinned run.
+        sc.step("pin-02-sliding", 90)
+        sc.step("pin-03-pinned", 2000)
         val order =
             tabs.state.value.tabs
                 .joinToString { "${it.tabType}:${it.pinned}" }

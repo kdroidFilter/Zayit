@@ -894,36 +894,33 @@ private fun PassagePreview(
                         val text = remember(annotated, ranges, highlight) { annotated.withBackground(ranges, highlight) }
                         val lineHover = remember { MutableInteractionSource() }
                         val lineHovered by lineHover.collectIsHoveredAsState()
-                        Row(
+                        // The found line: a bar on its side, the text at full strength. Drawn, not measured: an
+                        // intrinsic height at a collapsed pane's 0 width overflows Constraints and crashes
+                        Text(
+                            text = text,
+                            fontFamily = fontFamily,
+                            fontSize = textSize.sp,
+                            lineHeight = (textSize * 1.8f).sp,
+                            color = if (found) ink else ink.copy(alpha = 0.45f),
+                            textAlign = TextAlign.Justify,
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
-                                    .height(IntrinsicSize.Min)
                                     .clip(RoundedCornerShape(6.dp))
                                     .background(if (lineHovered) accent.copy(alpha = 0.06f) else Color.Transparent)
-                                    .hoverable(lineHover)
+                                    .drawBehind {
+                                        if (found) {
+                                            val bar = 3.dp.toPx()
+                                            val x = if (layoutDirection == LayoutDirection.Rtl) size.width - bar else 0f
+                                            drawRect(accent, Offset(x, 0f), Size(bar, size.height))
+                                        }
+                                    }.hoverable(lineHover)
                                     .clickable(interactionSource = lineHover, indication = null) {
                                         if (found) onOpen() else onOpenLine(line.id)
                                     }.pointerHoverIcon(PointerIcon.Hand)
-                                    .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() },
-                        ) {
-                            // The found line: a bar on its side, the text at full strength
-                            Box(
-                                Modifier
-                                    .width(3.dp)
-                                    .fillMaxHeight()
-                                    .background(if (found) accent else Color.Transparent),
-                            )
-                            Text(
-                                text = text,
-                                fontFamily = fontFamily,
-                                fontSize = textSize.sp,
-                                lineHeight = (textSize * 1.8f).sp,
-                                color = if (found) ink else ink.copy(alpha = 0.45f),
-                                textAlign = TextAlign.Justify,
-                                modifier = Modifier.weight(1f).padding(start = 14.dp),
-                            )
-                        }
+                                    .onGloballyPositioned { if (found) foundTop = it.positionInParent().y.toInt() }
+                                    .padding(start = 17.dp),
+                        )
                     }
                 }
             }

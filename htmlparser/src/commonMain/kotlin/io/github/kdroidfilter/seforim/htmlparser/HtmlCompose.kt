@@ -11,6 +11,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.BaselineShift
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 
 /**
@@ -36,17 +37,14 @@ typealias HtmlImageContentBuilder = (element: ParsedHtmlElement, id: String) -> 
  */
 private val htmlParser = HtmlParser()
 
-// Background of a citation link under the pointer, over its color
-private const val LINK_HOVER_ALPHA = 0.16f
-
 /**
- * A citation link is told by its color, with a tint under the pointer: an underline would cross the vowels below the
- * letters (Compose draws it at the font's underline position, which can't be lowered).
+ * A citation link is told by its color, underlined only under the pointer: Compose draws an underline at the font's
+ * underline position, which can't be lowered and crosses the vowels below the letters.
  */
 private fun refLinkStyles(color: Color) =
     TextLinkStyles(
         style = SpanStyle(color = color),
-        hoveredStyle = SpanStyle(color = color, background = color.copy(alpha = LINK_HOVER_ALPHA)),
+        hoveredStyle = SpanStyle(color = color, textDecoration = TextDecoration.Underline),
     )
 
 /**

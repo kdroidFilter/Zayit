@@ -166,8 +166,8 @@ class HtmlParserTest {
     }
 
     @Test
-    fun refLinkIsColoredNotUnderlined() {
-        // An underline would cross the vowels below the letters
+    fun refLinkIsColoredAndUnderlinedOnlyUnderThePointer() {
+        // An underline would cross the vowels below the letters: only while hovered
         val color = androidx.compose.ui.graphics.Color.Red
         val annotated = buildAnnotatedFromHtml("""<a class="ref" href="seforim://line/1">וְאָכַלְתָּ</a>""", 16f, linkColor = color)
         val styles =
@@ -181,7 +181,7 @@ class HtmlParserTest {
             ).styles!!
         assertEquals(color, styles.style?.color)
         assertEquals(null, styles.style?.textDecoration)
-        assertEquals(color.copy(alpha = 0.16f), styles.hoveredStyle?.background)
+        assertEquals(androidx.compose.ui.text.style.TextDecoration.Underline, styles.hoveredStyle?.textDecoration)
     }
 
     @Test

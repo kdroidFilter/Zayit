@@ -133,6 +133,7 @@ import seforimapp.seforimapp.generated.resources.*
 import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
 import sh.calvin.reorderable.ReorderableColumn
 import java.text.Bidi
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -524,9 +525,8 @@ private fun TabStripScope.RtlAwareTabStripContent(
     val stripOrder = remember { StripOrder(currentKeys) }
     // Read by the tabs' placement only, so bumping it here recomposes nothing.
     val slideGeneration = remember { mutableIntStateOf(0) }
-    if (stripOrder.reorderedTo(currentKeys, dragging = tabDrag.held != null || tabDrag.animating != null) &&
-        !skipContainerAnimation
-    ) {
+    // Only the restore that asked for no animation is spared, not the moments after it.
+    if (stripOrder.reorderedTo(currentKeys, dragging = tabDrag.held != null || tabDrag.animating != null) && !skipAnimation) {
         slideGeneration.intValue++
     }
 
@@ -672,12 +672,14 @@ private fun TabStripScope.RtlAwareTabStripContent(
                             if (visibleKeys == null || tabEntry.key in visibleKeys) {
                                 val isClosing = closingKeys.contains(tabEntry.key)
                                 val isNew = !knownKeys.contains(tabEntry.key)
+                                val slide = remember { TabSlide() }
 
                                 Box(
                                     modifier =
                                         Modifier
-                                            // Carried or sliding home, it is drawn over its neighbours.
-                                            .zIndex(if (tabDrag.animating == key) 1f else 0f)
+                                            // Carried or sliding home, it is drawn over its neighbours; sliding after a
+                                            // reorder, over those that travel less.
+                                            .zIndex(if (tabDrag.animating == key) Float.MAX_VALUE else slide.lift)
                                             .then(
                                                 // A tab closing (or just moved away) is no longer in the group.
                                                 if (!isClosing && key in groupIndex && movesWindow) {
@@ -701,7 +703,7 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                         visible = !isClosing
                                     }
                                     // The tab as drawn and clicked slides; its slot and grip stay where drops resolve.
-                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab).slideToNewPlace(slideGeneration)) {
+                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab).slideToNewPlace(slide, slideGeneration)) {
                                         AnimatedVisibility(
                                             visible = visible,
                                             exit =
@@ -1777,9 +1779,11 @@ private fun rememberPinnedTabWidths(
  * [slideGeneration] changes; any other move (window resizes, drags) it follows at once.
  */
 @Composable
-private fun Modifier.slideToNewPlace(slideGeneration: IntState): Modifier {
+private fun Modifier.slideToNewPlace(
+    slide: TabSlide,
+    slideGeneration: IntState,
+): Modifier {
     val scope = rememberCoroutineScope()
-    val slide = remember { TabSlide() }
     return layout { measurable, constraints ->
         val placeable = measurable.measure(constraints)
         layout(placeable.width, placeable.height) {
@@ -1793,12 +1797,17 @@ private fun Modifier.slideToNewPlace(slideGeneration: IntState): Modifier {
     }
 }
 
-/** A tab's slide along the strip: read and written by its placement only, so nothing here is observed. */
+/** A tab's slide along the strip: read and written by its placement only, but for [lift]. */
 private class TabSlide {
-    private var position: Animatable<IntOffset, AnimationVector2D>? = null
+    // Where the tab rests, and its animated position only while it slides.
     private var target: IntOffset? = null
+    private var position: Animatable<IntOffset, AnimationVector2D>? = null
     private var seenGeneration: Int? = null
     private var job: Job? = null
+
+    /** How far the slide under way travels, 0 at rest: the farther, the higher it is drawn. */
+    var lift by mutableFloatStateOf(0f)
+        private set
 
     /** Whether [generation] is new since the last placement. */
     fun see(generation: Int): Boolean {
@@ -1813,16 +1822,27 @@ private class TabSlide {
         slideRequested: Boolean,
         @StructuredScope scope: CoroutineScope,
     ): IntOffset {
-        val sliding = job?.isActive == true
-        val current = position
-        if (newTarget != target) {
+        val from = target
+        if (newTarget != from) {
             target = newTarget
-            if (current != null && (slideRequested || sliding)) {
+            val sliding = job?.isActive == true
+            val current = position
+            if (from != null && (slideRequested || sliding)) {
                 // A slide under way follows its tab's place as the widths settle around it.
-                job = scope.launch { current.animateTo(newTarget, TabSlideSpec) }
+                val animatable = current?.takeIf { sliding } ?: Animatable(from, IntOffset.VectorConverter)
+                position = animatable
+                val starts = !sliding
+                job =
+                    scope.launch {
+                        if (starts) lift = (animatable.value - newTarget).x.absoluteValue.toFloat()
+                        animatable.animateTo(newTarget, TabSlideSpec)
+                        lift = 0f
+                    }
             } else {
-                position = Animatable(newTarget, IntOffset.VectorConverter)
+                job?.cancel()
                 job = null
+                position = null
+                lift = 0f
             }
         }
         val animated = position.takeIf { job?.isActive == true } ?: return IntOffset.Zero

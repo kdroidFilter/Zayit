@@ -3,7 +3,7 @@ package io.github.kdroidfilter.seforim.tabs
 import androidx.compose.runtime.Immutable
 import kotlinx.serialization.Serializable
 
-/** Where a search runs: the whole library, or one book or TOC entry. */
+/** Where a search runs: the whole library, one author's books, or one book or TOC entry. */
 @Serializable
 @Immutable
 sealed interface SearchScope {
@@ -28,5 +28,11 @@ sealed interface SearchScope {
     data class Toc(
         val bookId: Long,
         val tocId: Long,
+    ) : SearchScope
+
+    /** All the books of one author, base books or not. */
+    @Serializable
+    data class Author(
+        val authorId: Long,
     ) : SearchScope
 }

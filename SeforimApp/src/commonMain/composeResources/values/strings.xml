@@ -304,6 +304,7 @@
     <string name="author_bio_license">הביוגרפיה מתפרסמת ברישיון CC BY-SA 4.0, על פי המקורות המצוינים בה.</string>
     <string name="author_not_found">המחבר לא נמצא</string>
     <string name="search_text_row_in_book">חיפוש בתוך %2$s: %1$s</string>
+    <string name="search_text_row_in_author">חיפוש בספרי %2$s: %1$s</string>
     <string name="search_by_category_or_book">חפש לפי קטגוריה או ספר</string>
     <string name="remove_selected_book">הסר ספר שנבחר</string>
 

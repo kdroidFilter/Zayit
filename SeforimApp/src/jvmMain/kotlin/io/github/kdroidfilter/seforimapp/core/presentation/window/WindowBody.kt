@@ -68,6 +68,8 @@ fun WindowBody(openWindow: OpenWindow) {
         } else {
             null
         }
+    // Also from the window itself, which gets the keys when nothing has focus (no pane, no text).
+    openWindow.readerShortcuts = readerEvents?.let { events -> { event -> handleBookShortcut(event, events) } }
     val bottomOpen =
         lineWorkspace.satellites.any { entry ->
             entry.isOpen && (entry.placement as? SatellitePlacement.Docked)?.side == DockSide.Bottom

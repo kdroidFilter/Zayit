@@ -216,7 +216,16 @@ fun NucleusApplicationScope.MainAppWindow(
                 } else if (isCtrlOrCmd && keyEvent.key == Key.Comma) {
                     settingsWindowViewModel.onEvent(SettingsWindowEvents.OnOpen)
                     true
-                } else if (isCtrlOrCmd && !keyEvent.isAltPressed && keyEvent.key == Key.N) {
+                } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionRight) {
+                    desktopMgr.switchToNext(openWindow.id)
+                    true
+                } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft) {
+                    desktopMgr.switchToPrevious(openWindow.id)
+                    true
+                } else if (isCtrlOrCmd && keyEvent.isAltPressed && keyEvent.key == Key.N) {
+                    desktopMgr.createDesktop(openWindow.id, nextDesktopName)
+                    true
+                } else if (isCtrlOrCmd && keyEvent.key == Key.N) {
                     desktopMgr.createDesktopInNewWindow(nextDesktopName)
                     true
                 } else if (PlatformInfo.isMacOS && keyEvent.isMetaPressed && keyEvent.key == Key.M) {
@@ -229,6 +238,8 @@ fun NucleusApplicationScope.MainAppWindow(
                         } else {
                             WindowPlacement.Fullscreen
                         }
+                    true
+                } else if (openWindow.readerShortcuts?.invoke(keyEvent) == true) {
                     true
                 } else {
                     processKeyShortcuts(

@@ -8,6 +8,6 @@ repositories {
 }
 
 dependencies {
-    // Bytecode patch of Compose's SelectionManager (SelectionPinPatch)
+    // Bytecode patches of Compose (ComposePatches)
     implementation(libs.asm)
 }

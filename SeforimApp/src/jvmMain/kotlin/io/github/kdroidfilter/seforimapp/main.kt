@@ -22,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2eAuthorScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eFilamentScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eMemoryScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eNotesScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2ePinScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eQuoteLinksScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eReaderPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eRestoreScenario
@@ -425,6 +426,7 @@ fun main(args: Array<String>) {
                                         E2eMemoryScenario.run(it)
                                         E2eNotesScenario.run(it)
                                         E2eAuthorScenario.run(it)
+                                        E2ePinScenario.run(it)
                                         E2eRestoreScenario.run(it)
                                         E2eScrollbarScenario.run(it)
                                         E2eReaderPerfScenario.run(it)

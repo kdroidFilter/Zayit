@@ -161,7 +161,8 @@ class DesktopSession internal constructor(
 
     /**
      * Pins or unpins [tabId]: a pinned tab joins the end of the pinned run at the start of its
-     * strip, an unpinned one the start of the others (Chromium's SetTabPinned).
+     * strip, an unpinned one the start of the others (Chromium's SetTabPinned). The strip reads
+     * right to left from the end of the group, so the pinned run is the group's last tabs.
      */
     fun setPinned(
         tabId: String,
@@ -171,14 +172,14 @@ class DesktopSession internal constructor(
         if (index < 0 || tabs[index].pinned == pinned) return
         tabs[index] = tabs[index].copy(pinned = pinned)
         // Clamped by pinConstrained to the boundary of the two runs.
-        workspace.reorder(tabId, if (pinned) Int.MAX_VALUE else 0)
+        workspace.reorder(tabId, if (pinned) 0 else Int.MAX_VALUE)
     }
 
     fun isPinned(tabId: String): Boolean = item(tabId)?.pinned == true
 
     /**
-     * Where a tab may stand in [group] of this workspace: pinned tabs ahead of the others
-     * (Chromium's ConstrainMoveIndex). [pinned] is the tab's own state, which a tab dragged in
+     * Where a tab may stand in [group] of this workspace: pinned tabs ahead of the others in
+     * reading order, so after them in the group (Chromium's ConstrainMoveIndex). [pinned] is the tab's own state, which a tab dragged in
      * from another desktop does not have here.
      */
     fun pinConstrained(
@@ -187,8 +188,8 @@ class DesktopSession internal constructor(
         group: TabWindowGroup,
         index: Int,
     ): Int {
-        val pinnedCount = group.ids.count { it != tabId && isPinned(it) }
-        return if (pinned) index.coerceAtMost(pinnedCount) else index.coerceAtLeast(pinnedCount)
+        val unpinnedCount = group.ids.count { it != tabId && !isPinned(it) }
+        return if (pinned) index.coerceAtLeast(unpinnedCount) else index.coerceAtMost(unpinnedCount)
     }
 
     /** Closes [tabId] without making it reopenable (the tab lives on elsewhere, or was replaced). */
@@ -252,9 +253,9 @@ class DesktopSession internal constructor(
     fun restore(snapshots: List<WindowSnapshot>): List<String> {
         val groups =
             snapshots.map { saved ->
-                // Pinned tabs first, whatever the file says: one moved into a dormant desktop was appended.
+                // Pinned tabs last (the strip's start), whatever the file says: older sessions kept them first.
                 val selectedId = saved.destinations.getOrNull(saved.selectedIndex)?.tabId
-                val destinations = saved.destinations.sortedByDescending { saved.titles[it.tabId]?.pinned == true }
+                val destinations = saved.destinations.sortedBy { saved.titles[it.tabId]?.pinned == true }
                 val selectedIndex = destinations.indexOfFirst { it.tabId == selectedId }.coerceAtLeast(0)
                 val snapshot = saved.copy(destinations = destinations, selectedIndex = selectedIndex)
                 val groupId = newGroupId()

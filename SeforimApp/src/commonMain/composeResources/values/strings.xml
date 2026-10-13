@@ -171,6 +171,7 @@
     <string name="close_hidden_tabs">סגור את הלשוניות המוסתרות</string>
     <string name="pin_tab">הצמד לשונית</string>
     <string name="unpin_tab">בטל הצמדה</string>
+    <string name="pinned_tab">לשונית מוצמדת</string>
     <string name="close_pinned_tab_hint">לחץ שוב על %1$s כדי לסגור את הלשונית המוצמדת</string>
     <string name="close_other_tabs">סגור לשוניות אחרות</string>
     <!-- Reworded to "close towards the right" for consistency with RTL wording -->

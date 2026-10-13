@@ -173,6 +173,11 @@ private val TabOuterHorizontalPadding = 2.dp
 // A pinned tab showing a label grows to fit it, up to this; a longer one fades out.
 private val PinnedLabelTabMaxWidth = 80.dp
 
+// The pin marking a pinned tab, beside its icon or label.
+private val PinMarkSize = 12.dp
+private val PinMarkGap = 4.dp
+private val PinMarkWidth = PinMarkSize + PinMarkGap
+
 // Width of the fade replacing the ellipsis on a cut title (Chromium's FADE_TAIL).
 private val TitleFadeWidth = 24.dp
 
@@ -1008,14 +1013,34 @@ private fun RtlAwareTab(
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         closeIconComposable()
                     }
-                } else if (pinned && pinnedLabel != null) {
-                    // A pinned book or author tab is its label: its icon is every book's (or author's).
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        SingleLineTabContent(label = pinnedLabel, state = tabState, icon = null)
+                } else if (pinned) {
+                    // A pin, then the tab's label (a book's or author's icon is every book's) or its icon.
+                    Row(
+                        Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(PinMarkGap, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.General.Pin_tab,
+                            contentDescription = stringResource(Res.string.pinned_tab),
+                            modifier = Modifier.size(PinMarkSize),
+                        )
+                        if (pinnedLabel != null) {
+                            SingleLineTabContent(
+                                label = pinnedLabel,
+                                state = tabState,
+                                icon = null,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                        } else {
+                            CompositionLocalProvider(LocalCompactIconOnly provides true) {
+                                tabData.content(TabContentScopeContainer(), tabState)
+                            }
+                        }
                     }
                 } else {
                     val showIconOnly = isCompact || asIcon
-                    // A pinned tab is its icon, centred.
+                    // A tab shrunk to its icon shows it centred.
                     Box(Modifier.weight(1f), contentAlignment = if (asIcon) Alignment.Center else Alignment.TopStart) {
                         CompositionLocalProvider(LocalCompactIconOnly provides showIconOnly) {
                             tabData.content(TabContentScopeContainer(), tabState)
@@ -1715,7 +1740,7 @@ private fun rememberPinnedTabWidths(
             padding.calculateRightPadding(LayoutDirection.Ltr)
     return remember(tabs, textStyle, density, chrome) {
         tabs.filter { it.pinned }.associate { tab ->
-            val label = tab.pinnedLabel ?: return@associate tab.key to PinnedTabWidth
+            val label = tab.pinnedLabel ?: return@associate tab.key to PinnedTabWidth + PinMarkWidth
             val textWidth =
                 with(density) {
                     measurer
@@ -1723,7 +1748,7 @@ private fun rememberPinnedTabWidths(
                         .size.width
                         .toDp()
                 }
-            tab.key to (textWidth + chrome).coerceIn(PinnedTabWidth, PinnedLabelTabMaxWidth)
+            tab.key to (textWidth + chrome).coerceIn(PinnedTabWidth, PinnedLabelTabMaxWidth) + PinMarkWidth
         }
     }
 }

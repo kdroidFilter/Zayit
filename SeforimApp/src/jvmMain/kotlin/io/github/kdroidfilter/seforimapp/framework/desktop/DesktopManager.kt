@@ -301,8 +301,9 @@ class DesktopManager(
             val heirGroup = heir?.group()
             if (heirGroup != null) {
                 val selected = heirGroup.selectedId
-                // Same ids: their ViewModels and states move along; constrained to the end of the pinned run.
-                pinned.forEach { session.workspace.move(it, heirGroup) }
+                // Same ids: their ViewModels and states move along; constrained to the end of the pinned run,
+                // its left edge, so taken from the right to keep their order.
+                pinned.asReversed().forEach { session.workspace.move(it, heirGroup, 0) }
                 selected?.let(session.workspace::select)
             }
             // Their states go with onTabClosed, which keeps them for a reopen. With no group to take them

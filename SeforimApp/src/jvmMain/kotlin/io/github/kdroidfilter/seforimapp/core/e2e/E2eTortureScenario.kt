@@ -409,13 +409,15 @@ object E2eTortureScenario {
                 "reorder-anywhere"
             }
             else -> {
-                // A drag across the boundary: a pinned tab to the far end, another one to the start.
+                // A drag across the boundary, dropped inside the strip: a pinned tab into the window's middle (the
+                // unpinned run, or the empty strip left of it), another one to the right end, just short of the
+                // window controls.
                 val pinned = tabs.filter(session::isPinned)
                 val tab = if (pinned.isNotEmpty() && random.nextBoolean()) pinned.random(random) else tabs.randomOrNull(random)
                 val b = w.boundsOnScreen()
                 if (tab != null && b != null && tabs.size > 1) {
                     val s = scale(w)
-                    val x = if (session.isPinned(tab)) b.x + b.width - 60f else b.x + 10f
+                    val x = if (session.isPinned(tab)) b.x + b.width / 2f else b.x + b.width - STRIP_END_INSET_DP
                     drag(w, tab, Offset(x * s, (b.y + STRIP_Y_DP) * s))
                 }
                 "drag-across-pins"
@@ -591,7 +593,7 @@ object E2eTortureScenario {
             if (orphan.isNotEmpty()) problems += "group(s) without a window: $orphan"
             for (group in session.workspace.groups) {
                 val flags = group.ids.map(session::isPinned)
-                if (flags != flags.sortedDescending()) problems += "pinned tab(s) not first in ${group.id}: $flags"
+                if (flags != flags.sorted()) problems += "pinned tab(s) not last in ${group.id}: $flags"
             }
         }
         for (w in dm.windows.value) {
@@ -646,4 +648,7 @@ object E2eTortureScenario {
     }
 
     private const val STRIP_Y_DP = 20f
+
+    // From the window's right edge to inside the strip's last tab, past the window controls.
+    private const val STRIP_END_INSET_DP = 200f
 }

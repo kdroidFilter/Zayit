@@ -51,6 +51,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -65,6 +66,7 @@ import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.round
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.ui.zIndex
@@ -108,6 +110,7 @@ import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -130,6 +133,7 @@ import seforimapp.seforimapp.generated.resources.*
 import seforimapp.seforimapp.generated.resources.tab_move_to_desktop
 import sh.calvin.reorderable.ReorderableColumn
 import java.text.Bidi
+import kotlin.math.absoluteValue
 import kotlin.math.roundToInt
 import kotlin.ranges.coerceAtLeast
 import kotlin.ranges.coerceAtMost
@@ -172,6 +176,14 @@ private val TabOuterHorizontalPadding = 2.dp
 
 // A pinned tab showing a label grows to fit it, up to this; a longer one fades out.
 private val PinnedLabelTabMaxWidth = 80.dp
+
+// The pin marking a pinned tab, beside its icon or label.
+private val PinMarkSize = 12.dp
+private val PinMarkGap = 4.dp
+private val PinMarkWidth = PinMarkSize + PinMarkGap
+
+// The slide itself: a spring follows a target that keeps moving while the widths animate (LazyList's animateItem).
+private val TabSlideSpec = spring(stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold)
 
 // Width of the fade replacing the ellipsis on a cut title (Chromium's FADE_TAIL).
 private val TitleFadeWidth = 24.dp
@@ -508,6 +520,16 @@ private fun TabStripScope.RtlAwareTabStripContent(
         tabsViewModel.consumeSkipAnimation()
     }
 
+    // A reorder not made by a drag (a pin, the overflow menu, a move between windows) slides the tabs it moved
+    // rather than jump them; a drag carries its own. Adds and closes have their own enter and exit animations.
+    val stripOrder = remember { StripOrder(currentKeys) }
+    // Read by the tabs' placement only, so bumping it here recomposes nothing.
+    val slideGeneration = remember { mutableIntStateOf(0) }
+    // Only the restore that asked for no animation is spared, not the moments after it.
+    if (stripOrder.reorderedTo(currentKeys, dragging = tabDrag.held != null || tabDrag.animating != null) && !skipAnimation) {
+        slideGeneration.intValue++
+    }
+
     val scope = rememberCoroutineScope()
 
     fun closeTabWithAnimation(
@@ -645,16 +667,19 @@ private fun TabStripScope.RtlAwareTabStripContent(
                         key(landing.generation, "gap", index) { if (!isRtl) DropGhostSlot(ghost, index) }
                         val tabEntry = tabEntriesByKey[key] ?: return@forEachIndexed
                         val workspaceTab = workspace.tab(key) ?: return@forEachIndexed
-                        if (visibleKeys == null || tabEntry.key in visibleKeys) {
-                            key(key) {
+                        // Keyed outside the visible/hidden branch, so a tab moving along the strip keeps its composition.
+                        key(key) {
+                            if (visibleKeys == null || tabEntry.key in visibleKeys) {
                                 val isClosing = closingKeys.contains(tabEntry.key)
                                 val isNew = !knownKeys.contains(tabEntry.key)
+                                val slide = remember { TabSlide() }
 
                                 Box(
                                     modifier =
                                         Modifier
-                                            // Carried or sliding home, it is drawn over its neighbours.
-                                            .zIndex(if (tabDrag.animating == key) 1f else 0f)
+                                            // Carried or sliding home, it is drawn over its neighbours; sliding after a
+                                            // reorder, over those that travel less.
+                                            .zIndex(if (tabDrag.animating == key) Float.MAX_VALUE else slide.lift)
                                             .then(
                                                 // A tab closing (or just moved away) is no longer in the group.
                                                 if (!isClosing && key in groupIndex && movesWindow) {
@@ -677,7 +702,8 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                     LaunchedEffect(isClosing) {
                                         visible = !isClosing
                                     }
-                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab)) {
+                                    // The tab as drawn and clicked slides; its slot and grip stay where drops resolve.
+                                    Row(Modifier.tabStripCarry(tabDrag, workspaceTab).slideToNewPlace(slide, slideGeneration)) {
                                         AnimatedVisibility(
                                             visible = visible,
                                             exit =
@@ -727,11 +753,11 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                         }
                                     }
                                 }
+                            } else if (key in groupIndex) {
+                                // A hidden tab keeps an empty slot at its place, so drags and drops along the strip
+                                // still resolve against the whole group.
+                                Box(Modifier.tabSlot(group, groupIndex.getValue(key)))
                             }
-                        } else if (key in groupIndex) {
-                            // A hidden tab keeps an empty slot at its place, so drags and drops along the strip
-                            // still resolve against the whole group.
-                            key(key) { Box(Modifier.tabSlot(group, groupIndex.getValue(key))) }
                         }
                         key(landing.generation, "gap", index) { if (isRtl) DropGhostSlot(ghost, currentKeys.size - 1 - index) }
                     }
@@ -1008,14 +1034,34 @@ private fun RtlAwareTab(
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                         closeIconComposable()
                     }
-                } else if (pinned && pinnedLabel != null) {
-                    // A pinned book or author tab is its label: its icon is every book's (or author's).
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        SingleLineTabContent(label = pinnedLabel, state = tabState, icon = null)
+                } else if (pinned) {
+                    // A pin, then the tab's label (a book's or author's icon is every book's) or its icon.
+                    Row(
+                        Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(PinMarkGap, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            key = AllIconsKeys.General.Pin_tab,
+                            contentDescription = stringResource(Res.string.pinned_tab),
+                            modifier = Modifier.size(PinMarkSize),
+                        )
+                        if (pinnedLabel != null) {
+                            SingleLineTabContent(
+                                label = pinnedLabel,
+                                state = tabState,
+                                icon = null,
+                                modifier = Modifier.weight(1f, fill = false),
+                            )
+                        } else {
+                            CompositionLocalProvider(LocalCompactIconOnly provides true) {
+                                tabData.content(TabContentScopeContainer(), tabState)
+                            }
+                        }
                     }
                 } else {
                     val showIconOnly = isCompact || asIcon
-                    // A pinned tab is its icon, centred.
+                    // A tab shrunk to its icon shows it centred.
                     Box(Modifier.weight(1f), contentAlignment = if (asIcon) Alignment.Center else Alignment.TopStart) {
                         CompositionLocalProvider(LocalCompactIconOnly provides showIconOnly) {
                             tabData.content(TabContentScopeContainer(), tabState)
@@ -1715,7 +1761,7 @@ private fun rememberPinnedTabWidths(
             padding.calculateRightPadding(LayoutDirection.Ltr)
     return remember(tabs, textStyle, density, chrome) {
         tabs.filter { it.pinned }.associate { tab ->
-            val label = tab.pinnedLabel ?: return@associate tab.key to PinnedTabWidth
+            val label = tab.pinnedLabel ?: return@associate tab.key to PinnedTabWidth + PinMarkWidth
             val textWidth =
                 with(density) {
                     measurer
@@ -1723,8 +1769,110 @@ private fun rememberPinnedTabWidths(
                         .size.width
                         .toDp()
                 }
-            tab.key to (textWidth + chrome).coerceIn(PinnedTabWidth, PinnedLabelTabMaxWidth)
+            tab.key to (textWidth + chrome).coerceIn(PinnedTabWidth, PinnedLabelTabMaxWidth) + PinMarkWidth
         }
+    }
+}
+
+/**
+ * Slides this element from where its parent stood in the strip to the parent's new place, on the first move after
+ * [slideGeneration] changes; any other move (window resizes, drags) it follows at once.
+ */
+@Composable
+private fun Modifier.slideToNewPlace(
+    slide: TabSlide,
+    slideGeneration: IntState,
+): Modifier {
+    val scope = rememberCoroutineScope()
+    return layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            // Every placement sees the generation, so only the move right after a reorder slides.
+            val slideRequested = slide.see(slideGeneration.intValue)
+            // The parent's place as the strip has just set it, read in the same pass rather than a frame late.
+            val target = coordinates?.parentLayoutCoordinates?.positionInParent()?.round()
+            // Absolute: the place is measured from the left, whatever the strip's direction.
+            placeable.place(if (target == null) IntOffset.Zero else slide.offsetTo(target, slideRequested, scope))
+        }
+    }
+}
+
+/** A tab's slide along the strip: read and written by its placement only, but for [lift]. */
+private class TabSlide {
+    // Where the tab rests, and its animated position only while it slides.
+    private var target: IntOffset? = null
+    private var position: Animatable<IntOffset, AnimationVector2D>? = null
+    private var seenGeneration: Int? = null
+    private var job: Job? = null
+
+    /** How far the slide under way travels, 0 at rest: the farther, the higher it is drawn. */
+    var lift by mutableFloatStateOf(0f)
+        private set
+
+    /** Whether [generation] is new since the last placement. */
+    fun see(generation: Int): Boolean {
+        val new = seenGeneration != null && generation != seenGeneration
+        seenGeneration = generation
+        return new
+    }
+
+    /** Where to draw the element placed at [newTarget], relative to it. */
+    fun offsetTo(
+        newTarget: IntOffset,
+        slideRequested: Boolean,
+        @StructuredScope scope: CoroutineScope,
+    ): IntOffset {
+        val from = target
+        if (newTarget != from) {
+            target = newTarget
+            val sliding = job?.isActive == true
+            val current = position
+            if (from != null && (slideRequested || sliding)) {
+                // A slide under way follows its tab's place as the widths settle around it.
+                val animatable = current?.takeIf { sliding } ?: Animatable(from, IntOffset.VectorConverter)
+                position = animatable
+                val starts = !sliding
+                job =
+                    scope.launch {
+                        if (starts) lift = (animatable.value - newTarget).x.absoluteValue.toFloat()
+                        animatable.animateTo(newTarget, TabSlideSpec)
+                        lift = 0f
+                    }
+            } else {
+                job?.cancel()
+                job = null
+                position = null
+                lift = 0f
+            }
+        }
+        val animated = position.takeIf { job?.isActive == true } ?: return IntOffset.Zero
+        return animated.value - newTarget
+    }
+}
+
+/** The strip's order as last composed, and whether a drag has been under way since. */
+private class StripOrder(
+    private var keys: List<String>,
+) {
+    private var dragSeen = false
+
+    /**
+     * Records [newKeys]; true when they are the same tabs in another order, with no drag since the last order: a
+     * drag's own release reorders the strip once the tab is already home.
+     */
+    fun reorderedTo(
+        newKeys: List<String>,
+        dragging: Boolean,
+    ): Boolean {
+        if (dragging) dragSeen = true
+        if (newKeys == keys) {
+            if (!dragging) dragSeen = false
+            return false
+        }
+        val reordered = !dragSeen && newKeys.size == keys.size && newKeys.toSet() == keys.toSet()
+        keys = newKeys
+        if (!dragging) dragSeen = false
+        return reordered
     }
 }
 

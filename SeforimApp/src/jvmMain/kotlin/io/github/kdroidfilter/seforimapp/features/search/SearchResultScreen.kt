@@ -867,7 +867,11 @@ private fun PassagePreview(
                     val byMeaning = remember(query) { searchEngine.highlightsByMeaning(query) }
                     lines.forEach { line ->
                         val found = line.id == hit.lineId
-                        val annotated = remember(line.id, textSize) { buildAnnotatedFromHtml(line.content, textSize) }
+                        // Links and footnote markers in the books' color (the accent), not the parser's default blue
+                        val annotated =
+                            remember(line.id, textSize, accent) {
+                                buildAnnotatedFromHtml(line.content, textSize, footnoteMarkerColor = accent)
+                            }
                         // The search's own highlighting (SearchEngine.highlights): by meaning, the passage closest in
                         // meaning in the found line alone; else the query's words in every line
                         val ranges by produceState(

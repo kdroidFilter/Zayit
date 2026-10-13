@@ -71,9 +71,9 @@ gradle.extensions.extraProperties["semanticEnabled"] =
     semanticToken != null ||
     providers.gradleProperty("semantic.local").orNull == "true"
 
-// The verse quote links of the Talmud, added to the lines read until the DB carries them (open core, temporary): its
-// private package, with the siddur's token by default (quotelinks.token, SEFORIM_QUOTELINKS_TOKEN, the siddur's, or
-// gh), or from mavenLocal (-Pquotelinks.local=true after publishToMavenLocal in SeforimQuoteLinks/jvm)
+// The verse quote links of the Talmud (open core, temporary until the DB carries them), likewise with the siddur's token
+// by default: quotelinks.token, SEFORIM_QUOTELINKS_TOKEN, the siddur's token (siddur.token, SEFORIM_SIDDUR_TOKEN in CI),
+// or gh
 val quoteLinksToken: String? =
     providers.gradleProperty("quotelinks.token").orNull
         ?: providers.environmentVariable("SEFORIM_QUOTELINKS_TOKEN").orNull
@@ -127,7 +127,7 @@ dependencyResolutionManagement {
                     username = "token"
                     password = token
                 }
-                content { includeModule("io.github.kdroidfilter", "seforim-quotelinks") }
+                content { includeGroupAndSubgroups("io.github.kdroidfilter") }
             }
         }
     }
@@ -159,3 +159,5 @@ includeBuild("SeforimLibrary")
 if (providers.gradleProperty("siddur.local").orNull == "true") includeBuild("../SeforimSiddur")
 // The semantic search's sources (../SeforimEmbedding/semantic, with its models in semantic/model), to work on both at once
 if (providers.gradleProperty("semantic.local").orNull == "true") includeBuild("../SeforimEmbedding/semantic")
+// The quote links' sources and packed resources (../SeforimQuoteLinks/jvm), to work on both at once
+if (providers.gradleProperty("quotelinks.local").orNull == "true") includeBuild("../SeforimQuoteLinks/jvm")

@@ -124,7 +124,7 @@ generator embeds the corpus into the index's vectors (`:searchindex:embedCorpus`
 
 The verse quote links of the Talmud (temporary, until the DB carries them) follow the same pattern: the private
 `io.github.kdroidfilter:seforim-quotelinks` package (repo `SeforimQuoteLinks`, read with the siddur's token by default,
-or `quotelinks.token`/`SEFORIM_QUOTELINKS_TOKEN`/`gh`, or from mavenLocal with `-Pquotelinks.local=true`) and `addons/quotelinks/enabled`, which `LinesPagingSource` calls on each page it loads, in
+or `quotelinks.token`/`SEFORIM_QUOTELINKS_TOKEN`/`gh`, or `-Pquotelinks.local=true` to include `../SeforimQuoteLinks/jvm`) and `addons/quotelinks/enabled`, which `LinesPagingSource` calls on each page it loads, in
 the same trip off the UI thread; `disabled` makes `installedQuoteLinks` null. Core code reaches it only through
 `QuoteLinksFeature`/`installedQuoteLinks`; only the tractates in the package pay anything (a set lookup otherwise).
 

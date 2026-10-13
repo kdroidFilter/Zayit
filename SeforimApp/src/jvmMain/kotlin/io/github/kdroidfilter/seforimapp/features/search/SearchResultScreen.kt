@@ -2,7 +2,6 @@ package io.github.kdroidfilter.seforimapp.features.search
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -58,8 +57,8 @@ import androidx.compose.ui.zIndex
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
 import io.github.kdroidfilter.seforimapp.core.presentation.components.FindInPageBar
+import io.github.kdroidfilter.seforimapp.core.presentation.components.rememberAppTextZoom
 import io.github.kdroidfilter.seforimapp.core.presentation.components.syncFindField
-import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotated
 import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
@@ -227,21 +226,12 @@ private fun SearchResultContentMvi(
     val activeFindQuery = if (showFind) findQuery else ""
     val scope = rememberCoroutineScope()
     // Match BookContent main text font settings
-    val rawTextSize by appSettings.textSizeFlow.collectAsState()
-    val isTabSelected = LocalTabSelected.current
-    val zoomAnimSpec = if (isTabSelected) tween<Float>(durationMillis = 200) else snap()
-    val mainTextSize by animateFloatAsState(
-        targetValue = rawTextSize,
-        animationSpec = zoomAnimSpec,
-        label = "searchMainTextSizeAnim",
-    )
+    // Ctrl/Cmd + wheel, a trackpad pinch or two fingers on the preview zoom the text, as in the books
+    val zoom = rememberAppTextZoom()
+    val mainTextSize = zoom.textSize
     val bookFontCode by appSettings.bookFontCodeFlow.collectAsState()
     // Auxiliary size for small labels
-    val commentSize by animateFloatAsState(
-        targetValue = mainTextSize * 0.875f,
-        animationSpec = zoomAnimSpec,
-        label = "searchCommentTextSizeAnim",
-    )
+    val commentSize = mainTextSize * 0.875f
 
     // Persist scroll/anchor as the user scrolls (disabled while loading)
     LaunchedEffect(listState) {
@@ -611,7 +601,7 @@ private fun SearchResultContentMvi(
                                 textSize = mainTextSize,
                                 onOpen = { openResult(shown.hit, false) },
                                 onOpenLine = { lineId -> actions.onOpenBookAt(shown.hit.bookId, lineId) },
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier.weight(1f).then(zoom.modifier),
                             )
                         }
                     }

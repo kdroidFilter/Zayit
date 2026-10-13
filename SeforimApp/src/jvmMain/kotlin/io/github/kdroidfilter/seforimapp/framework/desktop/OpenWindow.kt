@@ -76,6 +76,9 @@ class OpenWindow internal constructor(
     /** The tab whose panes the docks have laid out as planned: its text may lay out (see PaneSync). */
     var panesReadyFor: String? by mutableStateOf(null)
 
+    /** The selected reader tab's book shortcuts (see WindowBody), for the window's key handler when nothing has focus. */
+    var readerShortcuts: ((androidx.compose.ui.input.key.KeyEvent) -> Boolean)? = null
+
     /** Whether the pointer is over this window's tab strip (where a click may leave the tab). */
     var pointerOnStrip: Boolean by mutableStateOf(false)
 

@@ -37,7 +37,15 @@ typealias HtmlImageContentBuilder = (element: ParsedHtmlElement, id: String) -> 
  */
 private val htmlParser = HtmlParser()
 
-private val RefLinkStyles = TextLinkStyles(style = SpanStyle(textDecoration = TextDecoration.Underline))
+/**
+ * A citation link is told by its color, underlined only under the pointer: Compose draws an underline at the font's
+ * underline position, which can't be lowered and crosses the vowels below the letters.
+ */
+private fun refLinkStyles(color: Color) =
+    TextLinkStyles(
+        style = SpanStyle(color = color),
+        hoveredStyle = SpanStyle(color = color, textDecoration = TextDecoration.Underline),
+    )
 
 /**
  * The text [buildAnnotatedFromHtml] produces with its defaults (footnote markers hidden, their
@@ -65,6 +73,7 @@ fun buildAnnotatedFromHtml(
     showFootnoteContent: Boolean = true,
     footnoteMarkerColor: Color = Color(0xFF1976D2),
     footnoteContentColor: Color = Color.Unspecified,
+    linkColor: Color = footnoteMarkerColor,
     inlineContent: MutableMap<String, InlineTextContent>? = null,
     imageContentBuilder: HtmlImageContentBuilder? = null,
 ): AnnotatedString {
@@ -82,6 +91,8 @@ fun buildAnnotatedFromHtml(
         )
     val defaultSize = baseTextSize
     val effectiveBoldScale = if (boldScale < 1f) 1f else boldScale
+
+    val linkStyles by lazy { refLinkStyles(linkColor) }
 
     return buildAnnotatedString {
         var imageIndex = 0
@@ -126,11 +137,11 @@ fun buildAnnotatedFromHtml(
             append(e.text)
             val end = length
 
-            // Citation link: underlined, opened through LocalUriHandler. The surrounding spaces stay outside the link.
+            // Citation link, opened through LocalUriHandler. The surrounding spaces stay outside the link.
             e.href?.let { href ->
                 val linkStart = start + (e.text.length - e.text.trimStart().length)
                 val linkEnd = end - (e.text.length - e.text.trimEnd().length)
-                if (linkStart < linkEnd) addLink(LinkAnnotation.Url(href, RefLinkStyles), linkStart, linkEnd)
+                if (linkStart < linkEnd) addLink(LinkAnnotation.Url(href, linkStyles), linkStart, linkEnd)
             }
 
             // Handle footnote marker styling (superscript, colored)

@@ -5,6 +5,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
 import androidx.paging.Pager
 import androidx.paging.PagingData
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.features.bookcontent.quotelinks.installedQuoteLinks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.PreviousPositions
 import io.github.kdroidfilter.seforimapp.logger.debugln
@@ -22,6 +23,7 @@ import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 class ContentUseCase(
     private val repository: LineSelectionRepository,
     private val stateManager: BookContentStateManager,
+    private val linesByIds: suspend (Collection<Long>) -> List<Line> = { ids -> ids.mapNotNull { repository.getLine(it) } },
 ) {
     /**
      * Construit un Pager pour les lignes du livre
@@ -29,13 +31,19 @@ class ContentUseCase(
     fun buildLinesPager(
         bookId: Long,
         initialLineId: Long? = null,
-    ): Flow<PagingData<Line>> =
-        Pager(
+    ): Flow<PagingData<Line>> {
+        // The verse quote links (official builds), for the books that have some only: any other book loads as without
+        val decorate: (suspend (List<Line>) -> List<Line>)? =
+            installedQuoteLinks
+                ?.takeIf { it.covers(bookId) }
+                ?.let { quoteLinks -> { lines -> quoteLinks.decorate(bookId, lines, linesByIds) } }
+        return Pager(
             config = PagingDefaults.LINES.config(placeholders = false),
             pagingSourceFactory = {
-                LinesPagingSource(repository, bookId, initialLineId)
+                LinesPagingSource(repository, bookId, initialLineId, decorate)
             },
         ).flow
+    }
 
     /**
      * Sélectionne une ligne.

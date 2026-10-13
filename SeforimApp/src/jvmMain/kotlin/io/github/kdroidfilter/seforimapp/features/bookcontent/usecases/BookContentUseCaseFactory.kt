@@ -41,7 +41,8 @@ class BookContentUseCaseFactory(
     /**
      * Creates a [ContentUseCase] for managing book content and line navigation.
      */
-    fun createContentUseCase(stateManager: BookContentStateManager): ContentUseCase = ContentUseCase(repository, stateManager)
+    fun createContentUseCase(stateManager: BookContentStateManager): ContentUseCase =
+        ContentUseCase(repository, stateManager, repository::getLinesByIds)
 
     /**
      * Creates a [NavigationUseCase] for managing category/book tree navigation.

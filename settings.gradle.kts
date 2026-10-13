@@ -71,6 +71,19 @@ gradle.extensions.extraProperties["semanticEnabled"] =
     semanticToken != null ||
     providers.gradleProperty("semantic.local").orNull == "true"
 
+// The verse quote links of the Talmud (open core, temporary until the DB carries them), likewise with the siddur's token
+// by default: quotelinks.token, SEFORIM_QUOTELINKS_TOKEN, the siddur's token (siddur.token, SEFORIM_SIDDUR_TOKEN in CI),
+// or gh
+val quoteLinksToken: String? =
+    providers.gradleProperty("quotelinks.token").orNull
+        ?: providers.environmentVariable("SEFORIM_QUOTELINKS_TOKEN").orNull
+        ?: providers.gradleProperty("siddur.token").orNull
+        ?: providers.environmentVariable("SEFORIM_SIDDUR_TOKEN").orNull
+        ?: privatePackageToken("quotelinks.token", "SEFORIM_QUOTELINKS_TOKEN", "seforim-quotelinks")
+gradle.extensions.extraProperties["quoteLinksEnabled"] =
+    quoteLinksToken != null ||
+    providers.gradleProperty("quotelinks.local").orNull == "true"
+
 dependencyResolutionManagement {
     repositories {
         mavenLocal()
@@ -107,6 +120,16 @@ dependencyResolutionManagement {
                 content { includeGroupAndSubgroups("io.github.kdroidfilter") }
             }
         }
+        // The quote links, for the official builds (open core): a private package, read with a token
+        quoteLinksToken?.let { token ->
+            maven("https://maven.pkg.github.com/kdroidFilter/SeforimQuoteLinks") {
+                credentials {
+                    username = "token"
+                    password = token
+                }
+                content { includeGroupAndSubgroups("io.github.kdroidfilter") }
+            }
+        }
     }
 }
 plugins {
@@ -136,3 +159,5 @@ includeBuild("SeforimLibrary")
 if (providers.gradleProperty("siddur.local").orNull == "true") includeBuild("../SeforimSiddur")
 // The semantic search's sources (../SeforimEmbedding/semantic, with its models in semantic/model), to work on both at once
 if (providers.gradleProperty("semantic.local").orNull == "true") includeBuild("../SeforimEmbedding/semantic")
+// The quote links' sources and packed resources (../SeforimQuoteLinks/jvm), to work on both at once
+if (providers.gradleProperty("quotelinks.local").orNull == "true") includeBuild("../SeforimQuoteLinks/jvm")

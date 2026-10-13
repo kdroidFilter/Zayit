@@ -5,11 +5,16 @@ import androidx.paging.PagingState
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.LineSelectionRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.withContext
 
 class LinesPagingSource(
     private val repository: LineSelectionRepository,
     private val bookId: Long,
     private val initialLineId: Long? = null, // For scrolling to a specific line
+    // Rewrites the lines of each page before they are shown, on the thread that loads them (null: shown as loaded)
+    private val decorate: (suspend (List<Line>) -> List<Line>)? = null,
 ) : PagingSource<Int, Line>() {
     // Keep track of loaded line indices to avoid duplicates
     private val loadedLineIndices = mutableSetOf<Int>()
@@ -81,7 +86,7 @@ class LinesPagingSource(
             debugln { "[LinesPagingSource] Loading lines from index $startIndex to $endIndex (count: $loadSize)" }
 
             // Load the lines from the repository
-            val allLines = repository.getLines(bookId, startIndex, endIndex)
+            val allLines = loadLines(startIndex, endIndex)
 
             // Filter out any lines that we've already loaded (to avoid duplicates)
             val newLines =
@@ -129,6 +134,18 @@ class LinesPagingSource(
             e.printStackTrace()
             LoadResult.Error(e)
         }
+    }
+
+    /**
+     * The lines from [startIndex] to [endIndex], decorated in the same trip off the UI thread as their loading: a second
+     * trip would wait behind the tab's first composition.
+     */
+    private suspend fun loadLines(
+        startIndex: Int,
+        endIndex: Int,
+    ): List<Line> {
+        val decorate = decorate ?: return repository.getLines(bookId, startIndex, endIndex)
+        return withContext(Dispatchers.IO) { decorate(repository.getLines(bookId, startIndex, endIndex)) }
     }
 
     override val keyReuseSupported: Boolean = true

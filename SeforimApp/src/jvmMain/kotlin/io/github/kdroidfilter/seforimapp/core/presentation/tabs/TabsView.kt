@@ -51,7 +51,6 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
@@ -111,6 +110,7 @@ import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -180,9 +180,6 @@ private val PinnedLabelTabMaxWidth = 80.dp
 private val PinMarkSize = 12.dp
 private val PinMarkGap = 4.dp
 private val PinMarkWidth = PinMarkSize + PinMarkGap
-
-// How long after a pin or unpin a tab's move is a slide (it is seen within a frame or two).
-private const val TAB_SLIDE_WINDOW_MS = 200
 
 // The slide itself: a spring follows a target that keeps moving while the widths animate (LazyList's animateItem).
 private val TabSlideSpec = spring(stiffness = Spring.StiffnessMediumLow, visibilityThreshold = IntOffset.VisibilityThreshold)
@@ -514,17 +511,14 @@ private fun TabStripScope.RtlAwareTabStripContent(
     var knownKeys by remember { mutableStateOf(tabs.map { it.key }.toSet()) }
     val currentKeys = remember(tabs) { tabs.map { it.key } }
 
-    // A pin or unpin moves tabs along the strip: they slide there for a moment rather than jump.
-    val pinnedKeys = remember(tabs) { tabs.filter { it.pinned }.map { it.key }.toSet() }
-    var lastPinnedKeys by remember { mutableStateOf(pinnedKeys) }
-    var slideMoves by remember { mutableStateOf(false) }
-    if (pinnedKeys != lastPinnedKeys) {
-        lastPinnedKeys = pinnedKeys
-        slideMoves = true
-    }
-    LaunchedEffect(lastPinnedKeys) {
-        delay(TAB_SLIDE_WINDOW_MS.toLong())
-        slideMoves = false
+    // A reorder not made by a drag (a pin, the overflow menu, a move between windows) slides the tabs it moved
+    // rather than jump them; a drag carries its own. Adds and closes have their own enter and exit animations.
+    var lastOrder by remember { mutableStateOf(currentKeys) }
+    var slideGeneration by remember { mutableIntStateOf(0) }
+    if (currentKeys != lastOrder) {
+        val reordered = currentKeys.size == lastOrder.size && currentKeys.toSet() == lastOrder.toSet()
+        if (reordered && tabDrag.held == null && tabDrag.animating == null) slideGeneration++
+        lastOrder = currentKeys
     }
 
     // When desktop switch restores tabs, treat all as already known to skip enter animation
@@ -683,7 +677,6 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                         Modifier
                                             // Carried or sliding home, it is drawn over its neighbours.
                                             .zIndex(if (tabDrag.animating == key) 1f else 0f)
-                                            .slideToNewPlace(slideMoves && !skipContainerAnimation)
                                             .then(
                                                 // A tab closing (or just moved away) is no longer in the group.
                                                 if (!isClosing && key in groupIndex && movesWindow) {
@@ -700,7 +693,8 @@ private fun TabStripScope.RtlAwareTabStripContent(
                                                 } else {
                                                     Modifier
                                                 },
-                                            ),
+                                            ) // Inside the slot and the grip, so drags and drops resolve against its place.
+                                            .slideToNewPlace(slideGeneration),
                                 ) {
                                     var visible by remember(isClosing) { mutableStateOf(!isClosing) }
                                     LaunchedEffect(isClosing) {
@@ -1778,32 +1772,56 @@ private fun rememberPinnedTabWidths(
 }
 
 /**
- * Slides this element from where it stood in its parent to its new place while [slide] is set; otherwise it follows
- * its place at once (window resizes, drags).
+ * Slides this element from where it stood in its parent to its new place on the first move after [slideGeneration]
+ * changes; any other move (window resizes, drags) it follows at once.
  */
 @Composable
-private fun Modifier.slideToNewPlace(slide: Boolean): Modifier {
+private fun Modifier.slideToNewPlace(slideGeneration: Int): Modifier {
     val scope = rememberCoroutineScope()
-    val sliding by rememberUpdatedState(slide)
-    var place by remember { mutableStateOf<IntOffset?>(null) }
-    val position = remember { mutableStateOf<Animatable<IntOffset, AnimationVector2D>?>(null) }
-    return onPlaced { place = it.positionInParent().round() }
-        // Absolute: the place is measured from the left, whatever the strip's direction.
-        .absoluteOffset {
-            val target = place ?: return@absoluteOffset IntOffset.Zero
-            val animatable = position.value ?: Animatable(target, IntOffset.VectorConverter).also { position.value = it }
-            if (animatable.targetValue != target) {
-                scope.launch {
-                    // A slide under way follows its tab's place as the widths settle around it.
-                    if (sliding || animatable.isRunning) {
-                        animatable.animateTo(target, TabSlideSpec)
-                    } else {
-                        animatable.snapTo(target)
-                    }
-                }
-            }
-            animatable.value - target
+    val generation by rememberUpdatedState(slideGeneration)
+    val slide = remember { TabSlide() }
+    return layout { measurable, constraints ->
+        val placeable = measurable.measure(constraints)
+        layout(placeable.width, placeable.height) {
+            // Its place as the parent has just set it, read in the same pass rather than a frame late.
+            val target = coordinates?.positionInParent()?.round()
+            // Absolute: the place is measured from the left, whatever the strip's direction.
+            placeable.place(if (target == null) IntOffset.Zero else slide.offsetTo(target, generation, scope))
         }
+    }
+}
+
+/** A tab's slide along the strip: read and written by its placement only, so nothing here is observed. */
+private class TabSlide {
+    private var position: Animatable<IntOffset, AnimationVector2D>? = null
+    private var target: IntOffset? = null
+    private var seenGeneration: Int? = null
+    private var job: Job? = null
+
+    /** Where to draw the element placed at [newTarget], relative to it. */
+    fun offsetTo(
+        newTarget: IntOffset,
+        generation: Int,
+        @StructuredScope scope: CoroutineScope,
+    ): IntOffset {
+        // Every placement sees the generation, so only the move right after a reorder slides.
+        val slideRequested = seenGeneration != null && generation != seenGeneration
+        seenGeneration = generation
+        val sliding = job?.isActive == true
+        val current = position
+        if (newTarget != target) {
+            target = newTarget
+            if (current != null && (slideRequested || sliding)) {
+                // A slide under way follows its tab's place as the widths settle around it.
+                job = scope.launch { current.animateTo(newTarget, TabSlideSpec) }
+            } else {
+                position = Animatable(newTarget, IntOffset.VectorConverter)
+                job = null
+            }
+        }
+        val animated = position.takeIf { job?.isActive == true } ?: return IntOffset.Zero
+        return animated.value - newTarget
+    }
 }
 
 /** Fades the last [TitleFadeWidth] of a cut title out instead of an ellipsis (Chromium's FADE_TAIL). */

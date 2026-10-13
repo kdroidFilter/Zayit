@@ -213,7 +213,7 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 ### Git & Pull Requests
 - **DCO sign-off required**: every commit needs a `Signed-off-by:` trailer (`git commit -s`); the "Check DCO sign-off" CI job blocks PRs otherwise. Fix unsigned commits with `git rebase --signoff <base>` then `git push --force-with-lease`.
 - **CLA**: contributors sign `CLA.md` once (CLA Assistant bot on their first PR); the maintainer is allowlisted.
-- **PRs target `dev`** (`gh pr create --base dev`); `master` only moves via releases.
+- **PRs target `master`** (`gh pr create --base master`); releases are tagged from `master`.
 
 ## Development Tips
 

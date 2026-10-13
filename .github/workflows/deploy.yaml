@@ -325,11 +325,11 @@ jobs:
           version: ${{ env.VERSION }}
           channel: latest
 
-      # Creates/updates the GitHub release as a draft (published manually after validation) and uploads every
-      # installer + the consolidated feeds; auto-update clients only see it once published.
+      # Creates/updates the published GitHub release and uploads every installer + the consolidated feeds;
+      # auto-update clients see it immediately.
       - name: Create release and upload installers + feeds
         uses: kdroidFilter/Nucleus/.github/actions/publish-release@712f1e520c73fd68e1e7514b17700e577643802c
         with:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}
-          release-type: draft
+          release-type: release

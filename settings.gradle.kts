@@ -71,6 +71,10 @@ gradle.extensions.extraProperties["semanticEnabled"] =
     semanticToken != null ||
     providers.gradleProperty("semantic.local").orNull == "true"
 
+// The verse quote links of the Talmud, added to the lines read until the DB carries them (open core, temporary): its
+// private package, from mavenLocal for now (-Pquotelinks.local=true after publishToMavenLocal in SeforimQuoteLinks/jvm)
+gradle.extensions.extraProperties["quoteLinksEnabled"] = providers.gradleProperty("quotelinks.local").orNull == "true"
+
 dependencyResolutionManagement {
     repositories {
         mavenLocal()

@@ -39,6 +39,7 @@ adaptiveNavigation = "1.2.0"
 kosherkotlin = "3.0.5"
 seforimSiddur = "0.2.2"
 seforimSemantic = "0.5.0"
+seforimQuoteLinks = "0.1.0"
 zstdJni = "1.5.7-10"
 metro = "1.4.5"
 lucene = "10.5.2"
@@ -142,6 +143,7 @@ sqlite-driver = { module = "app.cash.sqldelight:sqlite-driver", version.ref = "s
 kosherkotlin = { module = "io.github.kdroidfilter:kosherkotlin", version.ref = "kosherkotlin" }
 seforim-siddur = { module = "io.github.kdroidfilter:seforim-siddur", version.ref = "seforimSiddur" }
 seforim-semantic = { module = "io.github.kdroidfilter:seforim-semantic", version.ref = "seforimSemantic" }
+seforim-quotelinks = { module = "io.github.kdroidfilter:seforim-quotelinks", version.ref = "seforimQuoteLinks" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }

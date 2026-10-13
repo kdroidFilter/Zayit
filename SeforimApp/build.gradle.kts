@@ -47,6 +47,10 @@ val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
 // them, addons/semantic/disabled leaves the search lexical only
 val withSemantic = gradle.extensions.extraProperties["semanticEnabled"] == true
 
+// The verse quote links of the Talmud (open core, temporary until the DB carries them): its package, or
+// addons/quotelinks/disabled and the reader shows the lines as they are
+val withQuoteLinks = gradle.extensions.extraProperties["quoteLinksEnabled"] == true
+
 kotlin {
 
     jvm()
@@ -145,6 +149,12 @@ kotlin {
             kotlin.srcDir(if (withSemantic) "addons/semantic/enabled/kotlin" else "addons/semantic/disabled/kotlin")
             if (withSemantic) dependencies { implementation(libs.seforim.semantic) }
         }
+
+        jvmMain {
+            kotlin.srcDir(if (withQuoteLinks) "addons/quotelinks/enabled/kotlin" else "addons/quotelinks/disabled/kotlin")
+            if (withQuoteLinks) dependencies { implementation(libs.seforim.quotelinks) }
+        }
+        if (withQuoteLinks) jvmTest { kotlin.srcDir("addons/quotelinks/test/kotlin") }
 
         jvmTest.dependencies {
             implementation(libs.mockk)

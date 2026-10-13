@@ -122,6 +122,12 @@ whose jar carries the int8 model as a resource (never in the DB bundle). `addons
 code reaches it only through `SemanticSearchFeature`/`installedSemanticSearch`. With the same token, SeforimLibrary's
 generator embeds the corpus into the index's vectors (`:searchindex:embedCorpus`, GPU via CUDA, no Python).
 
+The verse quote links of the Talmud (temporary, until the DB carries them) follow the same pattern: the private
+`io.github.kdroidfilter:seforim-quotelinks` package (repo `SeforimQuoteLinks`, from mavenLocal for now:
+`-Pquotelinks.local=true`) and `addons/quotelinks/enabled`, which `LinesPagingSource` calls on each page it loads, in
+the same trip off the UI thread; `disabled` makes `installedQuoteLinks` null. Core code reaches it only through
+`QuoteLinksFeature`/`installedQuoteLinks`; only the tractates in the package pay anything (a set lookup otherwise).
+
 ### Memory-Efficient Tab System
 See `TAB_SYSTEM_README.md` for complete details. Key points:
 - Each tab owns its own `SimpleTabViewModelOwner` (ViewModel lifecycle), which stays alive while the tab exists

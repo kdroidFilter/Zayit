@@ -29,7 +29,6 @@ import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsSt
 import io.github.kdroidfilter.seforimapp.core.shnayimmikra.ShnayimMikraStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
-import io.github.kdroidfilter.seforimapp.features.search.semantic.installedSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.backup.UserDataBackup
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
@@ -41,13 +40,13 @@ import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
+import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
 import io.github.kdroidfilter.seforimapp.network.KtorConfig
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.vinceglb.filekit.FileKit
@@ -178,7 +177,7 @@ object AppCoreBindings {
 
     /**
      * The app's search engine: lexical (BM25 + MagicDictionary) over the text index, fused with dense semantic search
-     * in the official builds ([installedSemanticSearch], open core), whose vectors live in the same Lucene index.
+     * in the official builds ([withSemanticSearch], open core).
      */
     @Provides
     @SingleIn(AppScope::class)
@@ -191,20 +190,7 @@ object AppCoreBindings {
         val dictionaryPath = indexPath.resolveSibling("lexical.db")
         val snippetProvider = RepositorySnippetSourceProvider(repository)
         val lexical = LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
-        val semantic = installedSemanticSearch ?: return lexical
-        return semantic.hybrid(lexical, indexPath) { lineId, query ->
-            repository.getLine(lineId)?.let { line ->
-                LineHit(
-                    bookId = line.bookId,
-                    bookTitle = repository.getBook(line.bookId)?.title.orEmpty(),
-                    lineId = lineId,
-                    lineIndex = line.lineIndex,
-                    snippet = lexical.buildSnippet(line.content, query, 5),
-                    score = 0f,
-                    rawText = line.content,
-                )
-            }
-        }
+        return withSemanticSearch(lexical, indexPath, repository)
     }
 
     @Provides

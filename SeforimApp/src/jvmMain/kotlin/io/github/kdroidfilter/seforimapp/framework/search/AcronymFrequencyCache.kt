@@ -12,8 +12,10 @@ import java.sql.DriverManager
  * Uses the book_acronym table from seforim.db - no separate database needed!
  */
 class AcronymFrequencyCache(
-    private val databasePathProvider: DatabasePathProvider,
+    private val databasePath: () -> String,
 ) {
+    constructor(databasePathProvider: DatabasePathProvider) : this(databasePathProvider::get)
+
     private val connection: Connection by lazy {
         loadSeforimDb()
     }
@@ -62,7 +64,7 @@ class AcronymFrequencyCache(
         }
 
     private fun loadSeforimDb(): Connection {
-        val dbPath = databasePathProvider.get()
+        val dbPath = databasePath()
         infoln { "Loading acronym data from seforim.db: $dbPath" }
         return DriverManager.getConnection("jdbc:sqlite:$dbPath")
     }

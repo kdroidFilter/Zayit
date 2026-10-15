@@ -57,8 +57,14 @@ import io.github.kdroidfilter.seforimapp.framework.database.PendingDbCleanup
 import io.github.kdroidfilter.seforimapp.framework.di.AppGraph
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
+import io.github.kdroidfilter.seforimlibrary.cli.CliHost
+import io.github.kdroidfilter.seforimlibrary.cli.LookupBookOutput
+import io.github.kdroidfilter.seforimlibrary.cli.LookupOutput
 import io.github.kdroidfilter.seforimlibrary.cli.runCli
 import io.github.vinceglb.filekit.FileKit
 import io.sentry.Sentry
@@ -74,6 +80,8 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import seforimapp.seforimapp.generated.resources.*
 import java.awt.*
+import java.nio.file.Files
+import java.nio.file.Paths
 import java.util.*
 import kotlin.system.exitProcess
 import kotlin.time.Duration.Companion.seconds
@@ -139,6 +147,24 @@ private fun initializeSentry() {
     infoln { "Sentry initialized for environment '$sentryEnvironment'." }
 }
 
+/** The app's own engines for `zayit cli`: its search (hybrid semantic in the official builds) and its lookup index. */
+private fun appCliHost() =
+    CliHost(
+        searchEngine = ::withSemanticSearch,
+        lookup = { dbPath, query, limit ->
+            val indexPath = Paths.get("$dbPath.lookup.lucene")
+            require(Files.exists(indexPath)) { "Lookup index not found: $indexPath" }
+            val service = LuceneLookupSearchService(indexPath, acronymCache = AcronymFrequencyCache { dbPath.toString() })
+            LookupOutput(
+                query = query,
+                books =
+                    service.searchBooksWithScoring(query, limit).map {
+                        LookupBookOutput(it.id, it.title, it.isBaseBook, it.matchedAcronyms)
+                    },
+            )
+        },
+    )
+
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 fun main(args: Array<String>) {
     // Headless CLI mode: when the binary is launched as `zayit cli <args...>` (e.g. from the
@@ -146,7 +172,9 @@ fun main(args: Array<String>) {
     // BEFORE any Sentry/Nucleus/GUI initialization. This keeps the normal GUI launch path
     // completely untouched — the branch is only taken when "cli" is the first argument.
     if (args.firstOrNull() == "cli") {
-        exitProcess(runCli(args.copyOfRange(1, args.size)))
+        // stdout carries the results (often --json): no app logs mixed in
+        isDevEnv = false
+        exitProcess(runCli(args.copyOfRange(1, args.size), appCliHost()))
     }
 
     val loggingEnv = System.getenv("SEFORIMAPP_LOGGING")?.lowercase()

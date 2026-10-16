@@ -170,15 +170,18 @@ listOf("simulator", "device").forEach { kind ->
     }
 }
 
-// For an Android app (Lucene in a Java process, see AndroidJavaRuntime): build/androidJavaRuntime/jniLibs (the launcher,
-// among the app's native libraries), jdk (the JDK's classes and data, its java.home) and jdk-app (the search's jars),
-// both delivered into the app's files
+// For an Android app (Lucene in a Java process, see AndroidJavaRuntime): build/androidJavaRuntime/jniLibs (the launchers,
+// arm64-v8a and x86_64, among the app's native libraries), jdk/<abi> (the JDK's classes and data, its java.home: some of
+// its classes depend on the architecture) and jdk-app (the search's jars), delivered into the app's files (jdk/<abi> of
+// the device's ABI alone)
 tasks.register<Sync>("assembleAndroidJavaRuntime") {
     group = "build"
     description = "Assembles the Java runtime an Android app delivers for Lucene."
-    dependsOn(searchJarsTask, javaRuntimeTask("android"))
-    from(javaRuntime("android").resolve("jniLibs")) { into("jniLibs") }
-    from(javaRuntime("android").resolve("lib")) { into("jdk") }
+    dependsOn(searchJarsTask, javaRuntimeTask("android-aarch64"), javaRuntimeTask("android-x64"))
+    from(javaRuntime("android-aarch64").resolve("jniLibs")) { into("jniLibs") }
+    from(javaRuntime("android-x64").resolve("jniLibs")) { into("jniLibs") }
+    from(javaRuntime("android-aarch64").resolve("lib")) { into("jdk/arm64-v8a") }
+    from(javaRuntime("android-x64").resolve("lib")) { into("jdk/x86_64") }
     from(searchJars) { into("jdk-app") }
     into(layout.buildDirectory.dir("androidJavaRuntime"))
     filePermissions { user { write = true } }

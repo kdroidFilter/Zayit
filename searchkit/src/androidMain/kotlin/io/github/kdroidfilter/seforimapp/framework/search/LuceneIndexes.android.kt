@@ -11,9 +11,9 @@ import java.io.File
  * of the app's own (see SeforimLibrary's IOS_RUNTIME.md, "Android").
  *
  * Call [configure] before the first search; the app delivers the runtime (`./gradlew :searchkit:assembleAndroidJavaRuntime`):
- * the launcher in its native libraries (`lib/arm64-v8a/libjvmlauncher.so`, installed as a file: `useLegacyPackaging`),
- * the JDK's classes and data in [javaHome] and the search's jars in [classPath] (both downloaded or extracted from the
- * app's assets).
+ * the launchers in its native libraries (`lib/<abi>/libjvmlauncher.so`, arm64-v8a and x86_64, installed as files:
+ * `useLegacyPackaging`), the JDK's classes and data of the device's ABI in [javaHome] and the search's jars in
+ * [classPath] (both downloaded or extracted from the app's assets).
  */
 object AndroidJavaRuntime {
     /** The JDK's classes and data (an exploded image: `modules/`, `conf/`, `lib/`). */
@@ -27,10 +27,13 @@ object AndroidJavaRuntime {
 
     private var launcher: File? = null
 
-    /** Uses the runtime the app delivers in [context]'s files: `jdk/` and the jars of `jdk-app/`, unless set otherwise. */
+    /**
+     * Uses the runtime the app delivers in [context]'s files: `jdk/<abi>/` (the ABI of the launcher Android installed)
+     * and the jars of `jdk-app/`, unless set otherwise.
+     */
     fun configure(
         context: Context,
-        javaHome: File = File(context.filesDir, "jdk"),
+        javaHome: File = File(context.filesDir, "jdk/${launcherAbi(context)}"),
         classPath: List<File> = File(context.filesDir, "jdk-app").listFiles { file -> file.extension == "jar" }.orEmpty().sorted(),
     ) {
         launcher = File(context.applicationInfo.nativeLibraryDir, "libjvmlauncher.so")
@@ -41,6 +44,13 @@ object AndroidJavaRuntime {
         this.javaHome = javaHome
         this.classPath = classPath
     }
+
+    // The native library dir is named after the ABI Android installed the app's libraries for (lib/arm64, lib/x86_64)
+    private fun launcherAbi(context: Context): String =
+        when (val dir = File(context.applicationInfo.nativeLibraryDir).name) {
+            "arm64" -> "arm64-v8a"
+            else -> dir
+        }
 
     val transport: JavaProcessTransport by lazy {
         JavaProcessTransport(

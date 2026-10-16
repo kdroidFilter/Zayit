@@ -15,8 +15,8 @@ import java.io.File
 
 /**
  * The app's search on this device, as an app runs it: Lucene in the app's Java process. The data goes in the app's
- * files dir (adb root, push, chown to the app): `seforim/` (seforim.db, its indexes, lexical.db, `model/`), `jdk/` and
- * `jdk-app/` (searchkit's assembleAndroidJavaRuntime). Writes SearchKitDump as `searchkit.txt` there; skipped without
+ * files dir (adb root, push, chown to the app): `seforim/` (seforim.db, its indexes, lexical.db, `model/`),
+ * `jdk/<abi>/` and `jdk-app/` (searchkit's assembleAndroidJavaRuntime). Writes SearchKitDump as `searchkit.txt` there; skipped without
  * data.
  */
 @RunWith(AndroidJUnit4::class)

@@ -37,8 +37,9 @@ services.lookup    // LuceneLookupSearchService: suggestBooks, suggestAuthors, s
 ```
 
 On Android, call `AndroidJavaRuntime.configure(context)` before the first search: Lucene runs in a Java process, from
-the runtime `./gradlew :searchkit:assembleAndroidJavaRuntime` assembles: `jniLibs/` (the launcher, among the app's
-native libraries, with `packaging.jniLibs.useLegacyPackaging = true`), `jdk/` and `jdk-app/` (delivered into its files).
+the runtime `./gradlew :searchkit:assembleAndroidJavaRuntime` assembles: `jniLibs/` (the launchers, arm64-v8a and
+x86_64, among the app's native libraries, with `packaging.jniLibs.useLegacyPackaging = true`), `jdk/<abi>/` (the JDK of
+an ABI: deliver the device's alone) and `jdk-app/` (delivered into its files).
 `searchkit-check` is such an app (no UI). On a recent emulator, the process takes ~140 MB of memory with its default
 128 MB heap (plus the index pages it maps, which Android reclaims).
 

@@ -13,7 +13,7 @@ val withSemantic = gradle.extensions.extraProperties["semanticEnabled"] == true
 /**
  * Zayit's search, without its UI: the engines (lexical, hybrid with the semantic search), the lookup, the use cases and
  * the view models of the search screens, for the desktop app and the mobile ones (Android 10+, iOS). Lucene runs in
- * process on the JVM, in the Java runtime the mobile apps embed (see SeforimLibrary's IOS_RUNTIME.md).
+ * process on the JVM, in the Java runtime the mobile apps embed (see SeforimLibrary's JVM_RUNTIME.md).
  */
 kotlin {
     jvmToolchain(
@@ -26,7 +26,7 @@ kotlin {
     android {
         namespace = "io.github.kdroidfilter.seforimapp.searchkit"
         compileSdk = 37
-        // Lucene runs in a Java process of the app's own (AndroidJavaRuntime), from Android 10
+        // NJA's bridge runs from Android 10
         minSdk = 29
     }
     iosArm64()
@@ -76,56 +76,43 @@ kotlin {
 
 // --- Tests on real data: the same dump on the JVM and in the iOS simulator (SearchKitDump) ---
 
-// The Java runtimes of the mobile apps (OpenJDK's mobile port), downloaded by SeforimLibrary's search (see its
-// IOS_RUNTIME.md):
-// build/javaRuntime/<target> there
+// The Java runtime of the mobile apps comes with SeforimLibrary's search, through Nucleus JVM Access (see its
+// JVM_RUNTIME.md): Android gets it from search's library (its native libraries and assets); an iOS binary links its
+// static libraries (search/build/jdkMobile/<target>) and carries NJA's bundle (search/build/nja/ios/<target>)
 val seforimLibrary = gradle.includedBuild("SeforimLibrary")
+val searchBuild = seforimLibrary.projectDir.resolve("search/build")
 
-fun javaRuntime(target: String): File = seforimLibrary.projectDir.resolve("search/build/javaRuntime/$target")
-
-fun javaRuntimeTask(target: String) =
-    seforimLibrary.task(":search:javaRuntime${target.split("-").joinToString("") { it.replaceFirstChar(Char::uppercase) }}")
+fun searchTask(name: String) = seforimLibrary.task(":search:$name")
 
 // ONNX Runtime's xcframework, for the semantic search in the iOS tests: -Pseforim.ortXcframework=<dir>
 val ortXcframework: File? = providers.gradleProperty("seforim.ortXcframework").orNull?.let(::file)
-val jdkStaticLibs =
-    listOf(
-        "libjvm.a",
-        "libjava.a",
-        "libnio.a",
-        "libnet.a",
-        "libzip.a",
-        "libjimage.a",
-        "libverify.a",
-        "libextnet.a",
-        "libfallbackLinker.a",
-        "libsyslookup.a",
-    )
+val jdkStaticLibs = listOf("jvm", "java", "nio", "net", "zip", "jimage", "verify", "extnet", "fallbackLinker", "syslookup")
 
 // What an iOS binary links for the search: the Java runtime (force-loaded: it finds its natives by name), its libffi,
 // and ONNX Runtime for the semantic search
 fun org.jetbrains.kotlin.gradle.plugin.mpp.NativeBinary.linkJavaRuntime(
-    target: String,
+    runtime: String,
     ortSlice: File?,
 ) {
-    val static = javaRuntime(target).resolve("static")
-    linkerOpts(jdkStaticLibs.flatMap { listOf("-force_load", static.resolve(it).path) })
+    val static = searchBuild.resolve("jdkMobile/$runtime/static")
+    linkerOpts(jdkStaticLibs.flatMap { listOf("-force_load", static.resolve("lib$it.a").path) })
     linkerOpts(static.resolve("libffi.a").path, "-export_dynamic", "-lz", "-lc++")
     listOf("Foundation", "CoreFoundation", "Security", "SystemConfiguration").forEach { linkerOpts("-framework", it) }
     if (ortSlice != null) linkerOpts("-F", ortSlice.path, "-framework", "onnxruntime")
-    linkTaskProvider.configure { dependsOn(javaRuntimeTask(target)) }
+    val stage = runtime.split("-").joinToString("") { it.replaceFirstChar(Char::uppercase) }
+    linkTaskProvider.configure { dependsOn(searchTask("stageJdkMobile$stage")) }
 }
 
 kotlin {
     iosSimulatorArm64 {
         binaries.withType<org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable>().configureEach {
-            linkJavaRuntime("ios-simulator", ortXcframework?.resolve("ios-arm64_x86_64-simulator"))
+            linkJavaRuntime("ios-simulator-aarch64", ortXcframework?.resolve("ios-arm64_x86_64-simulator"))
         }
     }
     // A device build of the tests only checks that everything links (no device runs them here)
     iosArm64 {
         binaries.withType<org.jetbrains.kotlin.gradle.plugin.mpp.TestExecutable>().configureEach {
-            linkJavaRuntime("ios-device", ortXcframework?.resolve("ios-arm64"))
+            linkJavaRuntime("ios-device-aarch64", ortXcframework?.resolve("ios-arm64"))
         }
     }
 }
@@ -141,66 +128,35 @@ tasks.named<Test>("jvmTest") {
     doFirst { out.parentFile.mkdirs() }
 }
 
-// SeforimLibrary's jars for the embedded runtime (its Lucene side, see IOS_RUNTIME.md)
-val searchJars = seforimLibrary.projectDir.resolve("search/build/mobileJvmClasspath")
-val searchJarsTask = seforimLibrary.task(":search:mobileJvmClasspath")
-
-// The Java runtime an iOS app bundles as App.app/lib (its java.home): the runtime's classes, conf and data, and the
-// search's jars in lib/app (IosJavaRuntime's default class path)
-fun Sync.iosJavaRuntime(target: String) {
-    dependsOn(searchJarsTask, javaRuntimeTask(target))
-    from(javaRuntime(target).resolve("lib"))
-    from(searchJars) { into("app") }
-    // Some of the JDK's files are read-only: the next sync couldn't replace them
-    filePermissions { user { write = true } }
-}
-
-// For the Xcode project: copy build/iosJavaRuntime/<target>/lib into the app bundle, link build/iosJavaRuntime/<target>/
-// static (see IOS_RUNTIME.md)
-listOf("simulator", "device").forEach { kind ->
+// For the Xcode project: build/iosJavaRuntime/<target>: static/ (what the app links, see linkJavaRuntime) and bundle/
+// (lib/, the VM's java.home, and nja/: the façades' class path and the VM's options), copied into App.app
+listOf("simulator" to "IosSimulatorArm64", "device" to "IosArm64").forEach { (kind, konan) ->
     tasks.register<Sync>("assembleIosJavaRuntime${kind.replaceFirstChar { it.uppercase() }}") {
         group = "build"
-        description = "Assembles the Java runtime the iOS app bundles as App.app/lib, and links ($kind)."
-        dependsOn(searchJarsTask, javaRuntimeTask("ios-$kind"))
-        from(javaRuntime("ios-$kind").resolve("static")) { into("static") }
-        from(javaRuntime("ios-$kind").resolve("lib")) { into("lib") }
-        from(searchJars) { into("lib/app") }
+        description = "Assembles what the iOS app links and bundles for the search's Java runtime ($kind)."
+        dependsOn(searchTask("stageJdkMobile${if (kind == "simulator") "IosSimulatorAarch64" else "IosDeviceAarch64"}"))
+        dependsOn(searchTask("njaIosBundle$konan"))
+        from(searchBuild.resolve("jdkMobile/ios-$kind-aarch64/static")) { into("static") }
+        from(searchBuild.resolve("nja/ios/${konan.replaceFirstChar(Char::lowercase)}")) { into("bundle") }
         into(layout.buildDirectory.dir("iosJavaRuntime/$kind"))
         filePermissions { user { write = true } }
     }
 }
 
-// For an Android app (Lucene in a Java process, see AndroidJavaRuntime): build/androidJavaRuntime/jniLibs (the launchers,
-// arm64-v8a and x86_64, among the app's native libraries), jdk/<abi> (the JDK's classes and data, its java.home: some of
-// its classes depend on the architecture) and jdk-app (the search's jars), delivered into the app's files (jdk/<abi> of
-// the device's ABI alone)
-tasks.register<Sync>("assembleAndroidJavaRuntime") {
-    group = "build"
-    description = "Assembles the Java runtime an Android app delivers for Lucene."
-    dependsOn(searchJarsTask, javaRuntimeTask("android-aarch64"), javaRuntimeTask("android-x64"))
-    from(javaRuntime("android-aarch64").resolve("jniLibs")) { into("jniLibs") }
-    from(javaRuntime("android-x64").resolve("jniLibs")) { into("jniLibs") }
-    from(javaRuntime("android-aarch64").resolve("lib")) { into("jdk/arm64-v8a") }
-    from(javaRuntime("android-x64").resolve("lib")) { into("jdk/x86_64") }
-    from(searchJars) { into("jdk-app") }
-    into(layout.buildDirectory.dir("androidJavaRuntime"))
-    filePermissions { user { write = true } }
-}
-
 run {
     val testBinaryDir = layout.buildDirectory.dir("bin/iosSimulatorArm64/debugTest")
 
-    val iosTestRuntime by tasks.registering(Sync::class) {
-        iosJavaRuntime("ios-simulator")
-        into(testBinaryDir.map { it.dir("lib") })
+    // NJA's bundle next to the test binary: the VM's java.home is <executable dir>/lib
+    val iosTestRuntime by tasks.registering(Copy::class) {
+        dependsOn(searchTask("njaIosBundleIosSimulatorArm64"))
+        from(searchBuild.resolve("nja/ios/iosSimulatorArm64"))
+        into(testBinaryDir)
+        filePermissions { user { write = true } }
     }
 
     tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
         dependsOn(iosTestRuntime)
         device.set(providers.gradleProperty("seforim.iosSimulator").orElse("iPhone 17 Pro"))
-        val binaryDir = testBinaryDir.get().asFile
-        val jarsDir = searchJars
-        val jars = providers.provider { jarsDir.listFiles().orEmpty().map { binaryDir.resolve("lib/app/${it.name}").path } }
         val models = providers.gradleProperty("seforim.semanticModels")
         val db = providers.gradleProperty("seforimTestDb")
         val out =
@@ -210,7 +166,6 @@ run {
                 .asFile.path
         doFirst {
             // The simulator passes the SIMCTL_CHILD_ variables to the test process, without the prefix
-            environment("SIMCTL_CHILD_SEFORIM_JVM_CLASSPATH", jars.get().joinToString(":"))
             db.orNull?.let { environment("SIMCTL_CHILD_SEFORIM_TEST_DB", it) }
             models.orNull?.let { environment("SIMCTL_CHILD_SEFORIM_MODEL_DIR", it) }
             environment("SIMCTL_CHILD_SEFORIM_PARITY_OUT", out)

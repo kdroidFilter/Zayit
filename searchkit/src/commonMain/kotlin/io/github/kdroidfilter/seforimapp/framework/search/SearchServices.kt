@@ -9,14 +9,14 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.index.LuceneIndex
 
 /**
- * The Lucene index at [indexDir] on this platform: read in process on the JVM and Android (Lucene on ART, API 35+),
- * through the Java runtime the app embeds on iOS (see [IosJavaRuntime][io.github.kdroidfilter.seforimapp.framework.search]).
- * [cacheQueries]: cache any query seen often (the small lookup index).
+ * The Lucene index at [indexDir], read on a JVM through Nucleus JVM Access (SeforimLibrary's search-facade): the
+ * desktop's own, the one the mobile apps embed (in the app's process on Android and iOS). [cacheQueries]: cache any
+ * query seen often (the small lookup index).
  */
-expect fun openLuceneIndex(
+fun openLuceneIndex(
     indexDir: String,
     cacheQueries: Boolean = false,
-): LuceneIndex
+): LuceneIndex = LuceneIndex(indexDir, cacheQueries)
 
 /**
  * The search of the database at [databasePath] and of the indexes beside it, as the desktop and the mobile apps set it

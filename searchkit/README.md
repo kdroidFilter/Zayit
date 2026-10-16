@@ -12,15 +12,15 @@ same text on the JVM, in the iOS simulator and on Android 11 and 15 emulators (`
 
 | | Desktop (JVM) | Android 10+ | iOS |
 |---|---|---|---|
-| Lucene (full-text and vector index) | in process | in a Java process of the app's own (server VM) | in the embedded Java runtime (Zero) |
+| Lucene (full-text and vector index) | in the app's JVM | on HotSpot in the app's process (NJA) | on Zero linked into the app (NJA) |
 | Database (`SeforimRepository`) | the app's pooled JDBC driver | `openSeforimRepository(context, path)` | `openSeforimRepository(path)` |
 | Semantic model (official builds) | ONNX Runtime Java, model in the jar | ONNX Runtime Android | ONNX Runtime C API (`onnxruntime-c` 1.20.0) |
 | Model files | bundled | downloaded with the data | downloaded with the data |
 
 Lucene runs on a real JVM only: ART can't keep up with the Java versions Lucene requires (21 for Lucene 10, 25 for 11).
-The mobile runtimes are OpenJDK 27 with openjdk/mobile's port, built by the CI of
-[kdroidFilter/openjdk-mobile](https://github.com/kdroidFilter/openjdk-mobile) and downloaded by the build (see
-[IOS_RUNTIME.md](../SeforimLibrary/IOS_RUNTIME.md)).
+SeforimLibrary's search reaches it through [Nucleus JVM Access](https://github.com/NucleusFramework/NucleusJvmAccess):
+its façade (`search-facade`) runs on the JVM, its common code calls the proxies NJA generates; the mobile JVMs are
+jdk-mobile's OpenJDK 27 (see [JVM_RUNTIME.md](../SeforimLibrary/JVM_RUNTIME.md)).
 
 Everything else (query building, dictionary, ranking, snippets, highlights, RRF fusion, tokenizer, use cases, view
 models) is common code.
@@ -36,17 +36,13 @@ services.engine    // SearchEngine: openSession, computeFacets, highlights, sema
 services.lookup    // LuceneLookupSearchService: suggestBooks, suggestAuthors, searchTocPrefix
 ```
 
-On Android, call `AndroidJavaRuntime.configure(context)` before the first search: Lucene runs in a Java process, from
-the runtime `./gradlew :searchkit:assembleAndroidJavaRuntime` assembles: `jniLibs/` (the launchers, arm64-v8a and
-x86_64, among the app's native libraries, with `packaging.jniLibs.useLegacyPackaging = true`), `jdk/<abi>/` (the JDK of
-an ABI: deliver the device's alone) and `jdk-app/` (delivered into its files).
-`searchkit-check` is such an app (no UI). On a recent emulator, the process takes ~140 MB of memory with its default
-128 MB heap (plus the index pages it maps, which Android reclaims).
+On Android there is nothing to configure: the JVM (`libnja.so`, arm64-v8a and x86_64) and its runtime come with
+SeforimLibrary's search library (its native libraries and assets), and start on the first search. `searchkit-check` is
+such an app (no UI).
 
-On iOS, `IosJavaRuntime` (`classPath`, `options`) configures the embedded runtime before the first search; by default it
-runs the jars of `App.app/lib/app`. `./gradlew :searchkit:assembleIosJavaRuntimeDevice` assembles
-`static/` (what the app links, options in IOS_RUNTIME.md) and `lib/` (copy it into the bundle as `App.app/lib` in an
-Xcode build phase).
+On iOS, `./gradlew :searchkit:assembleIosJavaRuntimeDevice` assembles `static/` (what the app links: the options are in
+JVM_RUNTIME.md) and `bundle/` (copy its content into `App.app` in an Xcode build phase: the VM's `lib/` and NJA's
+`nja/`).
 
 ### The view models
 

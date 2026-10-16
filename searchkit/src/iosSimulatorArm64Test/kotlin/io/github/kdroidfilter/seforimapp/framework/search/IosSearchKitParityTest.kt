@@ -20,7 +20,6 @@ class IosSearchKitParityTest {
     fun dump() {
         val env = NSProcessInfo.processInfo.environment
         val db = env["SEFORIM_TEST_DB"] as String? ?: return
-        IosJavaRuntime.classPath = (env["SEFORIM_JVM_CLASSPATH"] as String).split(':')
         val models =
             (env["SEFORIM_MODEL_DIR"] as String?)?.let {
                 SemanticModels("$it/seforim-embed-v5-int8.onnx", "$it/tokenizer.json", "$it/seforim-embed-v5-static.i8")

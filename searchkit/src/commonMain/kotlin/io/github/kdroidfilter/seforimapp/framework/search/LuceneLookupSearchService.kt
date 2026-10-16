@@ -8,23 +8,24 @@ import io.github.kdroidfilter.seforimlibrary.search.index.IndexQuery
 import io.github.kdroidfilter.seforimlibrary.search.index.LuceneIndex
 import io.github.kdroidfilter.seforimlibrary.search.index.Occur
 import io.github.kdroidfilter.seforimlibrary.search.index.SortField
+import io.github.kdroidfilter.seforimlibrary.search.index.SortType
 
 /**
  * Book, author and table-of-contents lookup over the lookup index (seforim.db.lookup.lucene), with acronym-aware
- * ranking of the books: [index] is that index (opened with its query cache, see `LuceneIndexBackend`), read in process on
- * the JVM and Android, through the embedded Java runtime on iOS.
+ * ranking of the books: [index] is that index (opened with its query cache: [openLuceneIndex]), read on a JVM like the
+ * others.
  */
 class LuceneLookupSearchService(
     private val index: LuceneIndex,
     private val acronymCache: AcronymFrequencyCache? = null,
 ) {
-    private val authorSort = listOf(SortField("book_count", SortField.Type.LONG, reverse = true))
+    private val authorSort = listOf(SortField("book_count", SortType.LONG, reverse = true))
 
     private val bookSort =
         listOf(
-            SortField("is_base_book", SortField.Type.INT, reverse = true),
-            SortField("order_index", SortField.Type.INT),
-            SortField("book_id", SortField.Type.LONG),
+            SortField("is_base_book", SortType.INT, reverse = true),
+            SortField("order_index", SortType.INT),
+            SortField("book_id", SortType.LONG),
         )
 
     data class TocHit(

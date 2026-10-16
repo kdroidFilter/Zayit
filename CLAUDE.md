@@ -125,9 +125,11 @@ into the index's vectors (`:searchindex:embedCorpus`, GPU via CUDA, no Python).
 
 ### Search on mobile: `searchkit`
 The search without its UI (engines, lookup, use cases, `SearchResultViewModel`/`SearchHomeViewModel`) is the KMP module
-`searchkit` (JVM, Android 15+, iOS), shared by the desktop and the mobile apps; see `searchkit/README.md`. Lucene is
-reached only through SeforimLibrary's `LuceneIndex` port: in process on the JVM and Android (ART, `lucene-android`
-patches), through an embedded OpenJDK (Zero) on iOS (`SeforimLibrary/IOS_RUNTIME.md`). The view models reach the
+`searchkit` (JVM, Android 10+, iOS), shared by the desktop and the mobile apps; see `searchkit/README.md`. Lucene is
+reached only through SeforimLibrary's `LuceneIndex` port and runs on a real JVM only (ART can't keep up with Lucene's
+Java versions): in process on the desktop, in an embedded OpenJDK 27 elsewhere, behind the same bridge: in the app on
+iOS (Zero, JNI), in a process of the app's own on Android (server VM, `AndroidJavaRuntime`); see
+`SeforimLibrary/IOS_RUNTIME.md`. The view models reach the
 desktop shell only through the ports of `SearchHost.kt` (`SearchTabs`, `SearchSessionStore`, `SearchSettings`,
 `SearchHistory`); keep `java.*`, AWT and desktop types out of `searchkit/src/commonMain`.
 

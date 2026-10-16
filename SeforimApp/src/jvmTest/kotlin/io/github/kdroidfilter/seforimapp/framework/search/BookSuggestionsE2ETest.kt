@@ -5,7 +5,6 @@ import io.github.kdroidfilter.seforimapp.testAppSettings
 import io.github.vinceglb.filekit.FileKit
 import org.junit.Assume.assumeTrue
 import java.io.File
-import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -19,7 +18,10 @@ class BookSuggestionsE2ETest {
     private val lookup by lazy {
         FileKit.init("io.github.kdroidfilter.seforimapp")
         val settings = testAppSettings().apply { setDatabasePath(dbPath) }
-        LuceneLookupSearchService(Paths.get("$dbPath.lookup.lucene"), acronymCache = AcronymFrequencyCache(DatabasePathProvider(settings)))
+        LuceneLookupSearchService(
+            openLuceneIndex("$dbPath.lookup.lucene", cacheQueries = true),
+            acronymCache = AcronymFrequencyCache(DatabasePathProvider(settings)::get),
+        )
     }
 
     private fun titles(query: String): List<String> {

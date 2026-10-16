@@ -1,10 +1,9 @@
 package io.github.kdroidfilter.seforimapp.features.search
 
-import io.github.kdroidfilter.seforimapp.features.search.semantic.installedSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriver
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
+import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import io.github.kdroidfilter.seforimlibrary.search.LineHit
 import io.github.kdroidfilter.seforimlibrary.search.LuceneSearchEngine
 import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import kotlinx.coroutines.runBlocking
@@ -117,18 +116,5 @@ private fun buildEngine(
     val lexical =
         LuceneSearchEngine(indexPath, RepositorySnippetSourceProvider(repository), dictionaryPath = indexPath.resolveSibling("lexical.db"))
     if (System.getenv("BENCH_LEXICAL_ONLY") != null) return lexical
-    val semantic = installedSemanticSearch ?: return lexical
-    return semantic.hybrid(lexical, indexPath) { lineId, query ->
-        repository.getLine(lineId)?.let { line ->
-            LineHit(
-                bookId = line.bookId,
-                bookTitle = repository.getBook(line.bookId)?.title.orEmpty(),
-                lineId = lineId,
-                lineIndex = line.lineIndex,
-                snippet = lexical.buildSnippet(line.content, query, 5),
-                score = 0f,
-                rawText = line.content,
-            )
-        }
-    }
+    return withSemanticSearch(lexical, lexical.index, repository)
 }

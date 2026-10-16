@@ -8,6 +8,7 @@ import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.earthwidget.WidgetAntiAliasing
+import io.github.kdroidfilter.seforimapp.features.search.SearchSettings
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.coroutines.channels.BufferOverflow
@@ -28,10 +29,10 @@ import java.util.concurrent.ConcurrentHashMap
 @SingleIn(AppScope::class)
 class AppSettings(
     private val settings: Settings,
-) {
+) : SearchSettings {
     // StateFlow to observe text size changes
     private val _textSizeFlow = MutableStateFlow(getTextSize())
-    val textSizeFlow: StateFlow<Float> = _textSizeFlow.asStateFlow()
+    override val textSizeFlow: StateFlow<Float> = _textSizeFlow.asStateFlow()
 
     // StateFlow to observe line height changes
     private val _lineHeightFlow = MutableStateFlow(getLineHeight())
@@ -119,7 +120,7 @@ class AppSettings(
 
     fun findQueryFlow(tabId: String): StateFlow<String> = queryFlowFor(tabId).asStateFlow()
 
-    fun setFindQuery(
+    override fun setFindQuery(
         tabId: String,
         q: String,
     ) {
@@ -128,7 +129,7 @@ class AppSettings(
 
     fun findBarOpenFlow(tabId: String): StateFlow<Boolean> = findOpenFlowFor(tabId).asStateFlow()
 
-    fun openFindBar(tabId: String) {
+    override fun openFindBar(tabId: String) {
         findOpenFlowFor(tabId).value = true
     }
 
@@ -169,7 +170,7 @@ class AppSettings(
 
     fun findSmartModeFlow(tabId: String): StateFlow<Boolean> = smartModeFlowFor(tabId).asStateFlow()
 
-    fun setFindSmartMode(
+    override fun setFindSmartMode(
         tabId: String,
         enabled: Boolean,
     ) {
@@ -181,7 +182,7 @@ class AppSettings(
         flow.value = !flow.value
     }
 
-    fun getTextSize(): Float = settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
+    override fun getTextSize(): Float = settings[KEY_TEXT_SIZE, DEFAULT_TEXT_SIZE]
 
     fun setTextSize(size: Float) {
         settings[KEY_TEXT_SIZE] = size
@@ -425,13 +426,13 @@ class AppSettings(
     // User profile accessors
     // Reactive flows to observe user identity changes across the app
     private val _userFirstNameFlow = MutableStateFlow(getUserFirstName() ?: "")
-    val userFirstNameFlow: StateFlow<String> = _userFirstNameFlow.asStateFlow()
+    override val userFirstNameFlow: StateFlow<String> = _userFirstNameFlow.asStateFlow()
 
     private val _userLastNameFlow = MutableStateFlow(getUserLastName() ?: "")
-    val userLastNameFlow: StateFlow<String> = _userLastNameFlow.asStateFlow()
+    override val userLastNameFlow: StateFlow<String> = _userLastNameFlow.asStateFlow()
 
     private val _userCommunityCodeFlow = MutableStateFlow(getUserCommunityCode())
-    val userCommunityCodeFlow: StateFlow<String?> = _userCommunityCodeFlow.asStateFlow()
+    override val userCommunityCodeFlow: StateFlow<String?> = _userCommunityCodeFlow.asStateFlow()
 
     fun getUserFirstName(): String? {
         val value: String = settings[KEY_USER_FIRST_NAME, ""]
@@ -631,7 +632,7 @@ class AppSettings(
         }
 
         // Text size constants
-        const val DEFAULT_TEXT_SIZE = 16f
+        const val DEFAULT_TEXT_SIZE = SearchSettings.DEFAULT_TEXT_SIZE
         const val MIN_TEXT_SIZE = 14f
         const val MAX_TEXT_SIZE = 50f
         const val TEXT_SIZE_INCREMENT = 2f

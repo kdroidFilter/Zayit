@@ -59,6 +59,7 @@ import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.openLuceneIndex
 import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.logger.infoln
 import io.github.kdroidfilter.seforimapp.logger.isDevEnv
@@ -154,7 +155,11 @@ private fun appCliHost() =
         lookup = { dbPath, query, limit ->
             val indexPath = Paths.get("$dbPath.lookup.lucene")
             require(Files.exists(indexPath)) { "Lookup index not found: $indexPath" }
-            val service = LuceneLookupSearchService(indexPath, acronymCache = AcronymFrequencyCache { dbPath.toString() })
+            val service =
+                LuceneLookupSearchService(
+                    openLuceneIndex(indexPath.toString(), cacheQueries = true),
+                    acronymCache = AcronymFrequencyCache { dbPath.toString() },
+                )
             LookupOutput(
                 query = query,
                 books =

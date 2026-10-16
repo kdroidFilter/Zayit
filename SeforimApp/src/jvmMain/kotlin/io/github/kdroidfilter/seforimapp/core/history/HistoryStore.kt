@@ -4,6 +4,7 @@ import androidx.compose.runtime.Stable
 import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.db.Visit_history
+import io.github.kdroidfilter.seforimapp.features.search.SearchHistory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +40,7 @@ enum class VisitKind { BOOK, SEARCH }
  */
 class HistoryStore(
     database: UserSettingsDb,
-) {
+) : SearchHistory {
     private val queries = database.visitHistoryQueries
 
     private val _revision = MutableStateFlow(0L)
@@ -79,7 +80,7 @@ class HistoryStore(
      * Records an executed search with the [scope] it ran in: one history row per (query, scope, extended), titled
      * with [scopeLabel] (the scope's name) so a scoped search reads apart from the same query elsewhere.
      */
-    suspend fun recordSearchVisit(
+    override suspend fun recordSearchVisit(
         query: String,
         scope: SearchScope,
         globalExtended: Boolean,

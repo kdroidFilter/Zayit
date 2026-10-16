@@ -1,28 +1,32 @@
-package io.github.kdroidfilter.seforimapp.framework.search
+package io.github.kdroidfilter.seforimapp.searchkit.check
 
 import android.os.SystemClock
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import io.github.kdroidfilter.seforimapp.features.search.semantic.SemanticModels
+import io.github.kdroidfilter.seforimapp.framework.search.AndroidJavaRuntime
+import io.github.kdroidfilter.seforimapp.framework.search.SearchKitDump
+import io.github.kdroidfilter.seforimapp.framework.search.SearchServices
+import io.github.kdroidfilter.seforimapp.framework.search.openSeforimRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
 
 /**
- * The app's search on Android 15+, end to end: the lookup and the hybrid search, Lucene on ART, the semantic model on
- * ONNX Runtime for Android, the database on Android's SQLite. The data (seforim.db and its indexes, lexical.db, the
- * model in model/) goes in the test app's files dir under seforim/ (adb root, push, chown to the app); SearchKitDump
- * comes back as searchkit-android.txt there. Skipped without data.
+ * The app's search on this device, as an app runs it: Lucene in the app's Java process. The data goes in the app's
+ * files dir (adb root, push, chown to the app): `seforim/` (seforim.db, its indexes, lexical.db, `model/`), `jdk/` and
+ * `jdk-app/` (searchkit's assembleAndroidJavaRuntime). Writes SearchKitDump as `searchkit.txt` there; skipped without
+ * data.
  */
 @RunWith(AndroidJUnit4::class)
-class AndroidSearchKitParityTest {
+class SearchParityTest {
     @Test
     fun dump() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val dir = File(context.filesDir, "seforim")
         val db = File(dir, "seforim.db").takeIf { it.isFile } ?: return
-        InstrumentationRegistry.getArguments().getString("luceneQueryCache")?.let { System.setProperty("seforim.lucene.queryCache", it) }
+        AndroidJavaRuntime.configure(context)
         val model = File(dir, "model")
         val models =
             SemanticModels(
@@ -34,7 +38,7 @@ class AndroidSearchKitParityTest {
             val start = SystemClock.elapsedRealtime()
             val dump = runBlocking { SearchKitDump.dump(services) }
             println("SearchKit dump in ${SystemClock.elapsedRealtime() - start} ms")
-            File(context.filesDir, "searchkit-android.txt").writeText(dump)
+            File(context.filesDir, "searchkit.txt").writeText(dump)
         }
     }
 }

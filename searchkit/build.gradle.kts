@@ -12,8 +12,8 @@ val withSemantic = gradle.extensions.extraProperties["semanticEnabled"] == true
 
 /**
  * Zayit's search, without its UI: the engines (lexical, hybrid with the semantic search), the lookup, the use cases and
- * the view models of the search screens, for the desktop app and the mobile ones (Android 15+, iOS). Lucene runs in
- * process on the JVM and Android, in the Java runtime the iOS app embeds (see SeforimLibrary's IOS_RUNTIME.md).
+ * the view models of the search screens, for the desktop app and the mobile ones (Android 10+, iOS). Lucene runs in
+ * process on the JVM, in the Java runtime the mobile apps embed (see SeforimLibrary's IOS_RUNTIME.md).
  */
 kotlin {
     jvmToolchain(
@@ -26,12 +26,8 @@ kotlin {
     android {
         namespace = "io.github.kdroidfilter.seforimapp.searchkit"
         compileSdk = 37
-        // Lucene runs on ART from Android 15 only (lucene-android)
-        minSdk = 35
-        // The search on a device or an emulator (SearchKitDump on real data, see AndroidSearchKitParityTest)
-        withDeviceTestBuilder { sourceSetTreeName = "test" }.configure {
-            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        }
+        // Lucene runs in a Java process of the app's own (AndroidJavaRuntime), from Android 10
+        minSdk = 29
     }
     iosArm64()
     iosSimulatorArm64()
@@ -75,16 +71,13 @@ kotlin {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
         }
-        getByName("androidDeviceTest").dependencies {
-            implementation(libs.androidx.test.runner)
-            implementation(libs.androidx.test.junit)
-        }
     }
 }
 
 // --- Tests on real data: the same dump on the JVM and in the iOS simulator (SearchKitDump) ---
 
-// The Java runtime of iOS (OpenJDK's mobile port), downloaded by SeforimLibrary's search (see its IOS_RUNTIME.md):
+// The Java runtimes of the mobile apps (OpenJDK's mobile port), downloaded by SeforimLibrary's search (see its
+// IOS_RUNTIME.md):
 // build/javaRuntime/<target> there
 val seforimLibrary = gradle.includedBuild("SeforimLibrary")
 
@@ -149,8 +142,8 @@ tasks.named<Test>("jvmTest") {
 }
 
 // SeforimLibrary's jars for the embedded runtime (its Lucene side, see IOS_RUNTIME.md)
-val searchJars = seforimLibrary.projectDir.resolve("search/build/iosJvmClasspath")
-val searchJarsTask = seforimLibrary.task(":search:iosJvmClasspath")
+val searchJars = seforimLibrary.projectDir.resolve("search/build/mobileJvmClasspath")
+val searchJarsTask = seforimLibrary.task(":search:mobileJvmClasspath")
 
 // The Java runtime an iOS app bundles as App.app/lib (its java.home): the runtime's classes, conf and data, and the
 // search's jars in lib/app (IosJavaRuntime's default class path)
@@ -175,6 +168,20 @@ listOf("simulator", "device").forEach { kind ->
         into(layout.buildDirectory.dir("iosJavaRuntime/$kind"))
         filePermissions { user { write = true } }
     }
+}
+
+// For an Android app (Lucene in a Java process, see AndroidJavaRuntime): build/androidJavaRuntime/jniLibs (the launcher,
+// among the app's native libraries), jdk (the JDK's classes and data, its java.home) and jdk-app (the search's jars),
+// both delivered into the app's files
+tasks.register<Sync>("assembleAndroidJavaRuntime") {
+    group = "build"
+    description = "Assembles the Java runtime an Android app delivers for Lucene."
+    dependsOn(searchJarsTask, javaRuntimeTask("android"))
+    from(javaRuntime("android").resolve("jniLibs")) { into("jniLibs") }
+    from(javaRuntime("android").resolve("lib")) { into("jdk") }
+    from(searchJars) { into("jdk-app") }
+    into(layout.buildDirectory.dir("androidJavaRuntime"))
+    filePermissions { user { write = true } }
 }
 
 run {

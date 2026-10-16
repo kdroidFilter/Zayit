@@ -1,25 +1,24 @@
 # searchkit
 
-Zayit's search without its UI, for the desktop app and the mobile ones (Android 15+, iOS): the engines (lexical, fused
+Zayit's search without its UI, for the desktop app and the mobile ones (Android 10+, iOS): the engines (lexical, fused
 with the semantic search in the official builds), the lookup (books, authors, tables of contents), the search use cases
 and the view models of the search screens. The desktop app uses it as is; a mobile app only adds its screens.
 
 Verified on real data: `SearchKitDump` (lookup, hybrid search, snippets, highlights by meaning, smart find) gives the
-same text on the JVM, in the iOS simulator and on an Android emulator (`jvmTest`, `iosSimulatorArm64Test`,
-`androidDeviceTest`).
+same text on the JVM, in the iOS simulator and on Android 11 and 15 emulators (`jvmTest`, `iosSimulatorArm64Test`,
+`searchkit-check`).
 
 ## What runs where
 
-| | Desktop (JVM) | Android 15+ | iOS |
+| | Desktop (JVM) | Android 10+ | iOS |
 |---|---|---|---|
-| Lucene (full-text and vector index) | in process | in process, on ART (`lucene-android`) | in the embedded Java runtime |
+| Lucene (full-text and vector index) | in process | in a Java process of the app's own (server VM) | in the embedded Java runtime (Zero) |
 | Database (`SeforimRepository`) | the app's pooled JDBC driver | `openSeforimRepository(context, path)` | `openSeforimRepository(path)` |
 | Semantic model (official builds) | ONNX Runtime Java, model in the jar | ONNX Runtime Android | ONNX Runtime C API (`onnxruntime-c` 1.20.0) |
 | Model files | bundled | downloaded with the data | downloaded with the data |
 
-Android before 15 isn't supported: its ART lacks the Java 21 APIs Lucene 10 needs.
-
-The iOS runtime is OpenJDK's mobile port, built by the CI of
+Lucene runs on a real JVM only: ART can't keep up with the Java versions Lucene requires (21 for Lucene 10, 25 for 11).
+The mobile runtimes are OpenJDK 27 with openjdk/mobile's port, built by the CI of
 [kdroidFilter/openjdk-mobile](https://github.com/kdroidFilter/openjdk-mobile) and downloaded by the build (see
 [IOS_RUNTIME.md](../SeforimLibrary/IOS_RUNTIME.md)).
 
@@ -36,6 +35,12 @@ val services = SearchServices(dbPath, repository, SemanticModels(model, tokenize
 services.engine    // SearchEngine: openSession, computeFacets, highlights, semanticFind...
 services.lookup    // LuceneLookupSearchService: suggestBooks, suggestAuthors, searchTocPrefix
 ```
+
+On Android, call `AndroidJavaRuntime.configure(context)` before the first search: Lucene runs in a Java process, from
+the runtime `./gradlew :searchkit:assembleAndroidJavaRuntime` assembles: `jniLibs/` (the launcher, among the app's
+native libraries, with `packaging.jniLibs.useLegacyPackaging = true`), `jdk/` and `jdk-app/` (delivered into its files).
+`searchkit-check` is such an app (no UI). On a recent emulator, the process takes ~140 MB of memory with its default
+128 MB heap (plus the index pages it maps, which Android reclaims).
 
 On iOS, `IosJavaRuntime` (`classPath`, `options`) configures the embedded runtime before the first search; by default it
 runs the jars of `App.app/lib/app`. `./gradlew :searchkit:assembleIosJavaRuntimeDevice` assembles
@@ -72,8 +77,9 @@ a mobile app can call its constructor directly.
   -Pseforim.ortXcframework=<onnxruntime.xcframework> -Pseforim.semanticModels=<model dir>   # build/parity/ios.txt
 ```
 
-Use a copy of the database (an APFS clone: `cp -c`): `SeforimRepository` sets its PRAGMAs on open. On Android, push the
-data into the test app's files dir under `seforim/` and run `AndroidSearchKitParityTest` (see its KDoc).
+Use a copy of the database (an APFS clone: `cp -c`): `SeforimRepository` sets its PRAGMAs on open. On Android, install
+`searchkit-check` and its test APK, push the data and the runtime into its files dir and run its `SearchParityTest`
+(see its KDoc).
 
 ## Not here (the UI's)
 

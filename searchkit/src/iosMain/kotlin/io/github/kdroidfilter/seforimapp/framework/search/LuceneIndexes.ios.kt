@@ -14,7 +14,7 @@ import platform.Foundation.NSFileManager
  * IOS_RUNTIME.md). It starts with the first index opened; set these before.
  */
 object IosJavaRuntime {
-    /** The jars of the search (SeforimLibrary's `iosJvmClasspath`): by default those of `<app>/lib/app`. */
+    /** The jars of the search (SeforimLibrary's `mobileJvmClasspath`): by default those of `<app>/lib/app`. */
     var classPath: List<String> = bundledJars()
 
     /**

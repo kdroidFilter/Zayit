@@ -57,6 +57,7 @@ mockk = "1.14.11"
 kotlinx-coroutines-test = "1.11.0"
 sentry = "6.23.0"
 sentrySdk = "8.58.0"
+sentryKmp = "0.28.0"
 graalHotspot = "22.0.0.2"
 intellijPlatformIcons = "262.10968.63"
 jbrApi = "1.10.1"
@@ -188,6 +189,7 @@ structured-coroutines-annotations = { module = "io.github.santimattius:structure
 
 # Sentry
 sentry-core = { module = "io.sentry:sentry", version.ref = "sentrySdk" }
+sentry-kmp = { module = "io.sentry:sentry-kotlin-multiplatform", version.ref = "sentryKmp" }
 graal-hotspot-library = { module = "org.graalvm.nativeimage:graal-hotspot-library", version.ref = "graalHotspot" }
 
 # Testing
@@ -221,3 +223,4 @@ structured-coroutines = { id = "io.github.santimattius.structured-coroutines", v
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 sentryJvmGradle = { id = "io.sentry.jvm.gradle", version.ref = "sentry" }
+sentryKmpGradle = { id = "io.sentry.kotlin.multiplatform.gradle", version.ref = "sentryKmp" }

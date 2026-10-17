@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     // The view models contribute their factories to the app's graph (the desktop's AppGraph)
     alias(libs.plugins.metro)
+    // The logger (find-in-book) reports to Sentry: its Cocoa SDK, which the iOS binaries link, installed through SwiftPM
+    alias(libs.plugins.sentryKmpGradle)
 }
 
 // The semantic search is in the official builds only (open core): with its package's token or its sources beside
@@ -47,6 +49,9 @@ kotlin {
                 implementation(libs.androidx.lifecycle.viewmodel.savedstate)
                 implementation(libs.metrox.viewmodel)
                 api(project(":navigation"))
+                // The reader's find-in-book (BookFindMatches): lines as plain text, its logs
+                implementation(project(":htmlparser"))
+                implementation(project(":logger"))
                 implementation(libs.compose.runtime)
                 implementation(libs.hebrew.numerals)
                 implementation(libs.kermit)

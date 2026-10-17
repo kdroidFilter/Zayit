@@ -78,8 +78,8 @@ kotlin {
 
 // The Java runtime of the mobile apps comes with SeforimLibrary's search, through Nucleus JVM Access (see its
 // JVM_RUNTIME.md): Android gets it from search's library (its native libraries and assets); an iOS binary links its
-// static libraries (search/build/nja/jdkMobile/<target>, which NJA downloads) and carries NJA's bundle
-// (search/build/nja/ios/<target>)
+// GraalVM native image (search/build/nja/nativeImage/<target>/nja.o, which NJA builds) with graalvm-mobile's static
+// libraries (search/build/nja/graalvmMobile/<target>/lib, which NJA downloads): nothing to bundle
 val seforimLibrary = gradle.includedBuild("SeforimLibrary")
 val searchBuild = seforimLibrary.projectDir.resolve("search/build")
 
@@ -87,21 +87,23 @@ fun searchTask(name: String) = seforimLibrary.task(":search:$name")
 
 // ONNX Runtime's xcframework, for the semantic search in the iOS tests: -Pseforim.ortXcframework=<dir>
 val ortXcframework: File? = providers.gradleProperty("seforim.ortXcframework").orNull?.let(::file)
-val jdkStaticLibs = listOf("jvm", "java", "nio", "net", "zip", "jimage", "verify", "extnet", "fallbackLinker", "syslookup")
+// Substrate VM's and the JDK's natives, from graalvm-mobile's kit
+val nativeImageLibs = listOf("jvm", "libchelper", "darwin", "java", "nio", "net", "zip", "extnet", "jimage", "verify", "management_ext", "management", "prefs")
 
-// What an iOS binary links for the search: the Java runtime (force-loaded: it finds its natives by name), its libffi,
-// and ONNX Runtime for the semantic search
+fun searchStage(runtime: String) = runtime.split("-").joinToString("") { it.replaceFirstChar(Char::uppercase) }
+
+// What an iOS binary links for the search: its native image (entry points exported: NJA's client finds them at run
+// time), the kit's libraries, and ONNX Runtime for the semantic search
 fun org.jetbrains.kotlin.gradle.plugin.mpp.NativeBinary.linkJavaRuntime(
     runtime: String,
     ortSlice: File?,
 ) {
-    val static = searchBuild.resolve("nja/jdkMobile/$runtime/static")
-    linkerOpts(jdkStaticLibs.flatMap { listOf("-force_load", static.resolve("lib$it.a").path) })
-    linkerOpts(static.resolve("libffi.a").path, "-export_dynamic", "-lz", "-lc++")
-    listOf("Foundation", "CoreFoundation", "Security", "SystemConfiguration").forEach { linkerOpts("-framework", it) }
+    val lib = searchBuild.resolve("nja/graalvmMobile/$runtime/lib")
+    linkerOpts(searchBuild.resolve("nja/nativeImage/$runtime/nja.o").path)
+    linkerOpts(nativeImageLibs.map { lib.resolve("lib$it.a").path })
+    linkerOpts("-export_dynamic", "-lz", "-lc++", "-framework", "Foundation", "-framework", "CoreFoundation")
     if (ortSlice != null) linkerOpts("-F", ortSlice.path, "-framework", "onnxruntime")
-    val stage = runtime.split("-").joinToString("") { it.replaceFirstChar(Char::uppercase) }
-    linkTaskProvider.configure { dependsOn(searchTask("njaJdkMobile$stage")) }
+    linkTaskProvider.configure { dependsOn(searchTask("njaNativeImage${searchStage(runtime)}")) }
 }
 
 kotlin {
@@ -129,34 +131,26 @@ tasks.named<Test>("jvmTest") {
     doFirst { out.parentFile.mkdirs() }
 }
 
-// For the Xcode project: build/iosJavaRuntime/<target>: static/ (what the app links, see linkJavaRuntime) and bundle/
-// (lib/, the VM's java.home, and nja/: the façades' class path and the VM's options), copied into App.app
-listOf("simulator" to "IosSimulatorArm64", "device" to "IosArm64").forEach { (kind, konan) ->
+// For the Xcode project: build/iosJavaRuntime/<target>/static: what the app links (see linkJavaRuntime), the native
+// image (nja.o) and the kit's libraries; nothing to copy into App.app
+listOf("simulator", "device").forEach { kind ->
     tasks.register<Sync>("assembleIosJavaRuntime${kind.replaceFirstChar { it.uppercase() }}") {
         group = "build"
-        description = "Assembles what the iOS app links and bundles for the search's Java runtime ($kind)."
-        dependsOn(searchTask("njaJdkMobile${if (kind == "simulator") "IosSimulatorAarch64" else "IosDeviceAarch64"}"))
-        dependsOn(searchTask("njaIosBundle$konan"))
-        from(searchBuild.resolve("nja/jdkMobile/ios-$kind-aarch64/static")) { into("static") }
-        from(searchBuild.resolve("nja/ios/${konan.replaceFirstChar(Char::lowercase)}")) { into("bundle") }
+        description = "Assembles what the iOS app links for the search's native image ($kind)."
+        val runtime = "ios-$kind-aarch64"
+        dependsOn(searchTask("njaNativeImage${searchStage(runtime)}"))
+        from(searchBuild.resolve("nja/nativeImage/$runtime/nja.o")) { into("static") }
+        from(searchBuild.resolve("nja/graalvmMobile/$runtime/lib")) {
+            include(nativeImageLibs.map { "lib$it.a" })
+            into("static")
+        }
         into(layout.buildDirectory.dir("iosJavaRuntime/$kind"))
         filePermissions { user { write = true } }
     }
 }
 
 run {
-    val testBinaryDir = layout.buildDirectory.dir("bin/iosSimulatorArm64/debugTest")
-
-    // NJA's bundle next to the test binary: the VM's java.home is <executable dir>/lib
-    val iosTestRuntime by tasks.registering(Copy::class) {
-        dependsOn(searchTask("njaIosBundleIosSimulatorArm64"))
-        from(searchBuild.resolve("nja/ios/iosSimulatorArm64"))
-        into(testBinaryDir)
-        filePermissions { user { write = true } }
-    }
-
     tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
-        dependsOn(iosTestRuntime)
         device.set(providers.gradleProperty("seforim.iosSimulator").orElse("iPhone 17 Pro"))
         val models = providers.gradleProperty("seforim.semanticModels")
         val db = providers.gradleProperty("seforimTestDb")

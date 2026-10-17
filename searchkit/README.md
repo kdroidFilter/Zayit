@@ -12,15 +12,16 @@ same text on the JVM, in the iOS simulator and on Android 11 and 15 emulators (`
 
 | | Desktop (JVM) | Android 10+ | iOS |
 |---|---|---|---|
-| Lucene (full-text and vector index) | in the app's JVM | on HotSpot in the app's process (NJA) | on Zero linked into the app (NJA) |
+| Lucene (full-text and vector index) | in the app's JVM | on HotSpot in the app's process (NJA) | compiled into a GraalVM native image, linked into the app (NJA) |
 | Database (`SeforimRepository`) | the app's pooled JDBC driver | `openSeforimRepository(context, path)` | `openSeforimRepository(path)` |
 | Semantic model (official builds) | ONNX Runtime Java, model in the jar | ONNX Runtime Android | ONNX Runtime C API (`onnxruntime-c` 1.20.0) |
 | Model files | bundled | downloaded with the data | downloaded with the data |
 
-Lucene runs on a real JVM only: ART can't keep up with the Java versions Lucene requires (21 for Lucene 10, 25 for 11).
-SeforimLibrary's search reaches it through [Nucleus JVM Access](https://github.com/NucleusFramework/NucleusJvmAccess):
-its façade (`search-facade`) runs on the JVM, its common code calls the proxies NJA generates; the mobile JVMs are
-jdk-mobile's OpenJDK 27 (see [JVM_RUNTIME.md](../SeforimLibrary/JVM_RUNTIME.md)).
+Lucene runs on Java only, never on ART: ART can't keep up with the Java versions Lucene requires (21 for Lucene 10, 25
+for 11). SeforimLibrary's search reaches it through [Nucleus JVM Access](https://github.com/NucleusFramework/NucleusJvmAccess):
+its façade (`search-facade`) runs on the JVM, or compiled ahead of time on iOS, and its common code calls the proxies
+NJA generates. Android's JVM is jdk-mobile's OpenJDK 27; iOS's native image is GraalVM CE's, with graalvm-mobile's
+libraries (see [JVM_RUNTIME.md](../SeforimLibrary/JVM_RUNTIME.md)).
 
 Everything else (query building, dictionary, ranking, snippets, highlights, RRF fusion, tokenizer, use cases, view
 models) is common code.
@@ -40,9 +41,8 @@ On Android there is nothing to configure: the JVM (`libnja.so`, arm64-v8a and x8
 SeforimLibrary's search library (its native libraries and assets), and start on the first search. `searchkit-check` is
 such an app (no UI).
 
-On iOS, `./gradlew :searchkit:assembleIosJavaRuntimeDevice` assembles `static/` (what the app links: the options are in
-JVM_RUNTIME.md) and `bundle/` (copy its content into `App.app` in an Xcode build phase: the VM's `lib/` and NJA's
-`nja/`).
+On iOS, `./gradlew :searchkit:assembleIosJavaRuntimeDevice` assembles `static/`: what the app links, the search's
+native image (`nja.o`) and graalvm-mobile's libraries (the options are in JVM_RUNTIME.md). Nothing goes into `App.app`.
 
 ### The view models
 

@@ -1,8 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
 import co.touchlab.kermit.Logger
-import io.github.charlietap.cachemap.cacheMapOf
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimlibrary.cache.concurrentCache
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 
@@ -13,7 +13,7 @@ import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 class BookDetailsLoader(
     private val repository: SeforimRepository,
 ) {
-    private val cache = cacheMapOf<Long, SearchEntity.BookEntity>()
+    private val cache = concurrentCache<Long, SearchEntity.BookEntity>()
 
     /** A book with its categories, authors and main parts, once per book; null (logged) when it fails. */
     suspend fun load(bookId: Long): SearchEntity.BookEntity? =

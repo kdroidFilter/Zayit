@@ -10,6 +10,7 @@ import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforim.tabs.TabsResolver
 import io.github.kdroidfilter.seforimapp.BuildConfig
 import io.github.kdroidfilter.seforimapp.backup.BackupManager
 import io.github.kdroidfilter.seforimapp.backup.drive.DriveSyncConfig
@@ -49,6 +50,7 @@ import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourc
 import io.github.kdroidfilter.seforimapp.framework.search.openLuceneIndex
 import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import io.github.kdroidfilter.seforimapp.framework.session.SessionRestoreState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
@@ -199,6 +201,13 @@ object AppCoreBindings {
         val lexical = LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
         return withSemanticSearch(lexical, lexical.index, repository)
     }
+
+    // What the reader (appkit) asks of the desktop around it
+    @Provides
+    fun provideTabsResolver(desktopManager: DesktopManager): TabsResolver = desktopManager
+
+    @Provides
+    fun provideSessionRestoreState(sessionManager: SessionManager): SessionRestoreState = sessionManager
 
     // What the search screens (searchkit) ask of the desktop around them
     @Provides

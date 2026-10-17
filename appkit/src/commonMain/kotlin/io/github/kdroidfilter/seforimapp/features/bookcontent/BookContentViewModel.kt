@@ -29,9 +29,8 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookConte
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.altTocIdOfSearchMatch
 import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
 import io.github.kdroidfilter.seforimapp.features.search.domain.SearchEntity
-import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
-import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import io.github.kdroidfilter.seforimapp.framework.session.SessionRestoreState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
@@ -39,14 +38,14 @@ import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
-import java.util.UUID
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 /** Simplified ViewModel for the book content screen */
-@OptIn(ExperimentalSplitPaneApi::class)
 @AssistedInject
 class BookContentViewModel(
     @Assisted savedStateHandle: SavedStateHandle,
@@ -54,9 +53,9 @@ class BookContentViewModel(
     private val repository: SeforimRepository,
     private val useCaseFactory: BookContentUseCaseFactory,
     private val titleUpdateManager: TabTitleUpdateManager,
-    private val desktopManager: DesktopManager,
+    private val tabsResolver: TabsResolver,
     private val historyStore: HistoryStore,
-    sessionManager: SessionManager,
+    sessionRestore: SessionRestoreState,
     private val appSettings: AppSettings,
 ) : ViewModel() {
     @AssistedFactory
@@ -74,7 +73,7 @@ class BookContentViewModel(
 
     // True when this ViewModel was created by the boot session restore: its book was already
     // recorded when originally opened, so the first load must not re-enter the history.
-    private val createdDuringSessionRestore = sessionManager.isRestoringSession.value
+    private val createdDuringSessionRestore = sessionRestore.isRestoringSession.value
 
     // Pre-set loading before uiState is initialized to avoid a single-frame Home flash.
     private val hasBookToLoad: Boolean =
@@ -356,7 +355,7 @@ class BookContentViewModel(
                     .debounce(HISTORY_RECORD_DEBOUNCE_MS)
                     .collect { openedBookId ->
                         // Only the tab actually in front records a visit
-                        val hostTabs = desktopManager.tabsViewModelFor(tabId)?.state?.value ?: return@collect
+                        val hostTabs = tabsResolver.tabsViewModelFor(tabId)?.state?.value ?: return@collect
                         val selectedTabId =
                             hostTabs.tabs
                                 .getOrNull(hostTabs.selectedTabIndex)
@@ -372,7 +371,7 @@ class BookContentViewModel(
                         historyStore.recordBookVisit(
                             bookId = book.id,
                             title = if (tocLabel != null) "${book.title} - $tocLabel" else book.title,
-                            timestamp = System.currentTimeMillis(),
+                            timestamp = Clock.System.now().toEpochMilliseconds(),
                             tocEntryId = toc?.id,
                             lineId = toc?.lineId,
                         )
@@ -482,10 +481,10 @@ class BookContentViewModel(
 
                 is BookContentEvent.SearchInDatabase -> {
                     val newTabId =
-                        java.util.UUID
-                            .randomUUID()
+                        Uuid
+                            .random()
                             .toString()
-                    desktopManager.tabsViewModelFor(tabId)?.openTab(
+                    tabsResolver.tabsViewModelFor(tabId)?.openTab(
                         TabsDestination.Search(
                             searchQuery = event.query,
                             tabId = newTabId,
@@ -675,8 +674,8 @@ class BookContentViewModel(
                     event.lineId?.let { openCommentaryTarget(event.bookId, it) }
 
                 is BookContentEvent.OpenAuthor ->
-                    desktopManager.tabsViewModelFor(tabId)?.openTab(
-                        TabsDestination.Author(tabId = UUID.randomUUID().toString(), authorId = event.authorId),
+                    tabsResolver.tabsViewModelFor(tabId)?.openTab(
+                        TabsDestination.Author(tabId = Uuid.random().toString(), authorId = event.authorId),
                     )
 
                 // Commentaries
@@ -772,7 +771,7 @@ class BookContentViewModel(
                         repository.getLine(lineId)?.let { line ->
                             selectLine(line)
                             stateManager.updateContent {
-                                copy(scrollToLineTimestamp = System.currentTimeMillis())
+                                copy(scrollToLineTimestamp = Clock.System.now().toEpochMilliseconds())
                             }
                             // Expand TOC to the line's TOC entry so the branch is visible
                             runSuspendCatching { tocUseCase.expandPathToLine(line.id) }
@@ -1168,8 +1167,8 @@ class BookContentViewModel(
     /** Opens a book in a new tab */
     private fun openBookInNewTab(book: Book) {
         val newTabId =
-            java.util.UUID
-                .randomUUID()
+            Uuid
+                .random()
                 .toString()
 
         // Copy only lightweight navigation preferences to the new tab to keep tree context.
@@ -1214,7 +1213,7 @@ class BookContentViewModel(
         }
 
         // Navigate directly to book content in the new tab
-        desktopManager.tabsViewModelFor(tabId)?.openTab(
+        tabsResolver.tabsViewModelFor(tabId)?.openTab(
             TabsDestination.BookContent(
                 bookId = book.id,
                 tabId = newTabId,
@@ -1229,8 +1228,8 @@ class BookContentViewModel(
     ) {
         // Create a new tab and pre-initialize it to avoid initial flashing
         val newTabId =
-            java.util.UUID
-                .randomUUID()
+            Uuid
+                .random()
                 .toString()
 
         // Seed persisted state so the new tab can restore scroll/anchor deterministically.
@@ -1252,7 +1251,7 @@ class BookContentViewModel(
             )
         }
 
-        desktopManager.tabsViewModelFor(tabId)?.openTab(
+        tabsResolver.tabsViewModelFor(tabId)?.openTab(
             TabsDestination.BookContent(
                 bookId = bookId,
                 tabId = newTabId,

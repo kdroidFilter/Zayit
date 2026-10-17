@@ -44,7 +44,7 @@ class OpenWindow internal constructor(
     var groupId: String by mutableStateOf(groupId)
         private set
 
-    val tabsViewModel = TabsViewModel({ this.session }, { this.groupId })
+    val tabsViewModel = TabsViewModel(DesktopTabsHost({ this.session }, { this.groupId }))
 
     private val _desktopId = MutableStateFlow(session.desktopId)
     val desktopId: StateFlow<String> = _desktopId.asStateFlow()

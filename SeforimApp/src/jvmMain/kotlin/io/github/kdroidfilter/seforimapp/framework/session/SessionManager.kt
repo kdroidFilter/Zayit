@@ -43,12 +43,12 @@ class SessionManager(
     private val desktopManager: Lazy<DesktopManager>,
     private val tabThumbnailStore: TabThumbnailStore,
     private val appSettings: AppSettings,
-) {
+) : SessionRestoreState {
     private val proto = ProtoBuf
 
     // Guarded: outside the app (unit tests) FileKit and the settings are not initialized.
     private val _isRestoringSession = MutableStateFlow(runCatching { hasSavedSessionToRestore() }.getOrDefault(false))
-    val isRestoringSession: StateFlow<Boolean> = _isRestoringSession
+    override val isRestoringSession: StateFlow<Boolean> = _isRestoringSession
 
     private fun sessionDir(): File {
         val root = File(FileKit.databasesDir.path, "session").apply { mkdirs() }

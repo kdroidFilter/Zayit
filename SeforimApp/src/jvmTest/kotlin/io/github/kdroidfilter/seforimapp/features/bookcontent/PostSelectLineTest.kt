@@ -149,9 +149,9 @@ class PostSelectLineTest {
             repository = repository,
             useCaseFactory = useCaseFactory,
             titleUpdateManager = titleUpdateManager,
-            desktopManager = desktopManager,
+            tabsResolver = desktopManager,
             historyStore = mockk<HistoryStore>(relaxed = true),
-            sessionManager = mockk { every { isRestoringSession } returns MutableStateFlow(false) },
+            sessionRestore = mockk { every { isRestoringSession } returns MutableStateFlow(false) },
             appSettings = testAppSettings(),
         )
     }

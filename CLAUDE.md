@@ -129,7 +129,7 @@ The search without its UI (engines, lookup, use cases, `SearchResultViewModel`/`
 on a real JVM only (ART can't keep up with Lucene's Java versions), through Nucleus JVM Access: SeforimLibrary's
 `search-facade` (Kotlin/JVM) is the façade, its common code uses the `LuceneIndex`/`IndexQuery`... NJA generates; the
 desktop's own JVM, HotSpot in the app's process on Android, Zero linked into the app on iOS (jdk-mobile's OpenJDK 27);
-see `SeforimLibrary/JVM_RUNTIME.md`. Until an NJA release has what it needs, build with `-Pnja.local=<NJA checkout>`. The view models reach the
+see `SeforimLibrary/JVM_RUNTIME.md`. The view models reach the
 desktop shell only through the ports of `SearchHost.kt` (`SearchTabs`, `SearchSessionStore`, `SearchSettings`,
 `SearchHistory`); keep `java.*`, AWT and desktop types out of `searchkit/src/commonMain`.
 

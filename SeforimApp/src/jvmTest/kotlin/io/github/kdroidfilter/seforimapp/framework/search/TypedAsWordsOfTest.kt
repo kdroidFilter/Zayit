@@ -1,13 +1,12 @@
 package io.github.kdroidfilter.seforimapp.framework.search
 
-import java.nio.file.Paths
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TypedAsWordsOfTest {
     // The index is opened lazily: no lookup here
-    private val lookup = LuceneLookupSearchService(Paths.get("unused"))
+    private val lookup = LuceneLookupSearchService(openLuceneIndex("unused"))
 
     private fun matches(
         typed: String,

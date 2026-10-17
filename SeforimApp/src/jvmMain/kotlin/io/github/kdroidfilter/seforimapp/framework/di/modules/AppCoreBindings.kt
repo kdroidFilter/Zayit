@@ -28,7 +28,11 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
 import io.github.kdroidfilter.seforimapp.core.shnayimmikra.ShnayimMikraStore
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
+import io.github.kdroidfilter.seforimapp.features.search.SearchHistory
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.features.search.SearchSessionStore
+import io.github.kdroidfilter.seforimapp.features.search.SearchSettings
+import io.github.kdroidfilter.seforimapp.features.search.SearchTabs
 import io.github.kdroidfilter.seforimapp.framework.backup.UserDataBackup
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
@@ -38,8 +42,11 @@ import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatab
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
+import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
+import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchTabs
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
+import io.github.kdroidfilter.seforimapp.framework.search.openLuceneIndex
 import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
@@ -190,13 +197,28 @@ object AppCoreBindings {
         val dictionaryPath = indexPath.resolveSibling("lexical.db")
         val snippetProvider = RepositorySnippetSourceProvider(repository)
         val lexical = LuceneSearchEngine(indexPath, snippetProvider, dictionaryPath = dictionaryPath)
-        return withSemanticSearch(lexical, indexPath, repository)
+        return withSemanticSearch(lexical, lexical.index, repository)
     }
+
+    // What the search screens (searchkit) ask of the desktop around them
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideSearchTabs(desktopManager: DesktopManager): SearchTabs = DesktopSearchTabs(desktopManager)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideSearchSessionStore(store: TabPersistedStateStore): SearchSessionStore = DesktopSearchSessionStore(store)
+
+    @Provides
+    fun provideSearchSettings(appSettings: AppSettings): SearchSettings = appSettings
+
+    @Provides
+    fun provideSearchHistory(historyStore: HistoryStore): SearchHistory = historyStore
 
     @Provides
     @SingleIn(AppScope::class)
     fun provideAcronymFrequencyCache(databasePathProvider: DatabasePathProvider): AcronymFrequencyCache =
-        AcronymFrequencyCache(databasePathProvider)
+        AcronymFrequencyCache(databasePathProvider::get)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -206,7 +228,7 @@ object AppCoreBindings {
     ): LuceneLookupSearchService {
         val dbPath = databasePathProvider.get()
         val indexPath = if (dbPath.endsWith(".db")) "$dbPath.lookup.lucene" else "$dbPath.lookupindex"
-        return LuceneLookupSearchService(Paths.get(indexPath), acronymCache = acronymCache)
+        return LuceneLookupSearchService(openLuceneIndex(indexPath, cacheQueries = true), acronymCache = acronymCache)
     }
 
     @Provides
@@ -269,7 +291,7 @@ object AppCoreBindings {
             // created and disposed by DesktopManager.
             searchHomeViewModelFactory = { observeProfile ->
                 SearchHomeViewModel(
-                    persistedStore = tabPersistedStateStore,
+                    sessionStore = DesktopSearchSessionStore(tabPersistedStateStore),
                     repository = repository,
                     lookup = lookup,
                     appSettings = appSettings,

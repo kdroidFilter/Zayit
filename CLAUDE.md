@@ -117,10 +117,21 @@ through `SiddurFeature`/`installedSiddur`, never by importing `addons/siddur` co
 The semantic search (own embedding model, dense KNN fused with lexical search by RRF) follows the same pattern: the
 private `io.github.kdroidfilter:seforim-semantic` package (module `semantic/` of the private `SeforimEmbedding` repo,
 read with the siddur's token by default, or `semantic.token`/`SEFORIM_SEMANTIC_TOKEN`/`gh`, or `-Psemantic.local=true`),
-whose jar carries the int8 model as a resource (never in the DB bundle). `addons/semantic/enabled` holds the
-`HybridSearchEngine`; `disabled` makes `installedSemanticSearch` null and the app uses `LuceneSearchEngine` alone. Core
-code reaches it only through `SemanticSearchFeature`/`installedSemanticSearch`. With the same token, SeforimLibrary's
-generator embeds the corpus into the index's vectors (`:searchindex:embedCorpus`, GPU via CUDA, no Python).
+Kotlin Multiplatform since 0.6.0, whose JVM jar carries the int8 model as a resource (never in the DB bundle; mobile
+apps download it). `searchkit/addons/semantic/enabled` holds the `HybridSearchEngine`; `disabled` makes
+`installedSemanticSearch` null and the app searches lexically alone. Core code reaches it only through
+`SemanticSearchFeature`/`installedSemanticSearch`. With the same token, SeforimLibrary's generator embeds the corpus
+into the index's vectors (`:searchindex:embedCorpus`, GPU via CUDA, no Python).
+
+### Search on mobile: `searchkit`
+The search without its UI (engines, lookup, use cases, `SearchResultViewModel`/`SearchHomeViewModel`) is the KMP module
+`searchkit` (JVM, Android 10+, iOS), shared by the desktop and the mobile apps; see `searchkit/README.md`. Lucene runs
+on a real JVM only (ART can't keep up with Lucene's Java versions), through Nucleus JVM Access: SeforimLibrary's
+`search-facade` (Kotlin/JVM) is the façade, its common code uses the `LuceneIndex`/`IndexQuery`... NJA generates; the
+desktop's own JVM, HotSpot in the app's process on Android, Zero linked into the app on iOS (jdk-mobile's OpenJDK 27);
+see `SeforimLibrary/JVM_RUNTIME.md`. The view models reach the
+desktop shell only through the ports of `SearchHost.kt` (`SearchTabs`, `SearchSessionStore`, `SearchSettings`,
+`SearchHistory`); keep `java.*`, AWT and desktop types out of `searchkit/src/commonMain`.
 
 The verse quote links of the Talmud (temporary, until the DB carries them) follow the same pattern: the private
 `io.github.kdroidfilter:seforim-quotelinks` package (repo `SeforimQuoteLinks`, read with the siddur's token by default,
@@ -157,6 +168,7 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - `pagination`: Pagination support for large datasets
 - `texteffects`: Text rendering effects and styling
 - `network`: Network utilities and Ktor client setup
+- `searchkit`: the search without its UI, multiplatform (see "Search on mobile")
 - `backup`: Backup core, Android-BackupAgent/Transport style: `BackupSource` (what: the app's `UserDataBackup`, user DB + portable prefs), `BackupDestination` (where: `LocalFileDestination`, …), `BackupManager` (the only code linking both)
 - `backup-drive`: Google Drive `BackupDestination` + `GoogleDriveSync` (OAuth PKCE loopback, hidden `appDataFolder`, append-only with the 10 latest kept as IntelliJ settings sync, never restores without asking, on-quit + daily auto backup paused while a restore is pending)
 

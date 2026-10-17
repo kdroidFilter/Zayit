@@ -1,9 +1,5 @@
 package io.github.kdroidfilter.seforim.htmlparser
 
-import org.jsoup.Jsoup
-import org.jsoup.nodes.Element
-import org.jsoup.nodes.Node
-import org.jsoup.nodes.TextNode
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 
@@ -36,9 +32,8 @@ private val WHITESPACE_REGEX = Regex("\\s+")
 
 class HtmlParser {
     fun parse(html: String): List<ParsedHtmlElement> {
-        val doc = Jsoup.parse(html)
         val out = mutableListOf<ParsedHtmlElement>()
-        for (child in doc.body().childNodes()) {
+        for (child in parseHtmlBody(html)) {
             processNode(
                 node = child,
                 list = out,
@@ -62,7 +57,7 @@ class HtmlParser {
     }
 
     private fun processNode(
-        node: Node,
+        node: HtmlNode,
         list: MutableList<ParsedHtmlElement>,
         isBold: Boolean,
         isItalic: Boolean,
@@ -76,10 +71,10 @@ class HtmlParser {
         href: String?,
     ) {
         when (node) {
-            is TextNode -> {
+            is HtmlText -> {
                 appendSegment(
                     list = list,
-                    textRaw = node.text(),
+                    textRaw = node.text,
                     isBold = isBold,
                     isItalic = isItalic,
                     isSmall = isSmall,
@@ -92,8 +87,8 @@ class HtmlParser {
                     href = href,
                 )
             }
-            is Element -> {
-                val tag = node.normalName()
+            is HtmlElement -> {
+                val tag = node.tag
 
                 if (tag == "br") {
                     appendLineBreak(list)
@@ -121,10 +116,11 @@ class HtmlParser {
                 val nextFootnoteContent = isFootnoteContent || isFootnoteContentTag
                 val nextHref = if (tag == "a" && node.hasClass("ref")) node.attr("href").ifBlank { null } else href
 
-                if (node.childNodeSize() == 1 && node.childNode(0) is TextNode) {
+                val onlyText = node.children.singleOrNull() as? HtmlText
+                if (onlyText != null) {
                     appendSegment(
                         list = list,
-                        textRaw = (node.childNode(0) as TextNode).text(),
+                        textRaw = onlyText.text,
                         isBold = nextBold,
                         isItalic = nextItalic,
                         isSmall = nextSmall,
@@ -139,7 +135,7 @@ class HtmlParser {
                     return
                 }
 
-                for (child in node.childNodes()) {
+                for (child in node.children) {
                     processNode(
                         node = child,
                         list = list,
@@ -273,7 +269,7 @@ class HtmlParser {
     // Non-data URIs are ignored (no network fetch — images must be pre-embedded in the DB).
     private fun appendImage(
         list: MutableList<ParsedHtmlElement>,
-        node: Element,
+        node: HtmlElement,
     ) {
         val src = node.attr("src").takeIf { it.isNotBlank() } ?: return
         val decoded = decodeDataUri(src) ?: return

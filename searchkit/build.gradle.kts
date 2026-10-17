@@ -78,7 +78,8 @@ kotlin {
 
 // The Java runtime of the mobile apps comes with SeforimLibrary's search, through Nucleus JVM Access (see its
 // JVM_RUNTIME.md): Android gets it from search's library (its native libraries and assets); an iOS binary links its
-// static libraries (search/build/jdkMobile/<target>) and carries NJA's bundle (search/build/nja/ios/<target>)
+// static libraries (search/build/nja/jdkMobile/<target>, which NJA downloads) and carries NJA's bundle
+// (search/build/nja/ios/<target>)
 val seforimLibrary = gradle.includedBuild("SeforimLibrary")
 val searchBuild = seforimLibrary.projectDir.resolve("search/build")
 
@@ -94,13 +95,13 @@ fun org.jetbrains.kotlin.gradle.plugin.mpp.NativeBinary.linkJavaRuntime(
     runtime: String,
     ortSlice: File?,
 ) {
-    val static = searchBuild.resolve("jdkMobile/$runtime/static")
+    val static = searchBuild.resolve("nja/jdkMobile/$runtime/static")
     linkerOpts(jdkStaticLibs.flatMap { listOf("-force_load", static.resolve("lib$it.a").path) })
     linkerOpts(static.resolve("libffi.a").path, "-export_dynamic", "-lz", "-lc++")
     listOf("Foundation", "CoreFoundation", "Security", "SystemConfiguration").forEach { linkerOpts("-framework", it) }
     if (ortSlice != null) linkerOpts("-F", ortSlice.path, "-framework", "onnxruntime")
     val stage = runtime.split("-").joinToString("") { it.replaceFirstChar(Char::uppercase) }
-    linkTaskProvider.configure { dependsOn(searchTask("stageJdkMobile$stage")) }
+    linkTaskProvider.configure { dependsOn(searchTask("njaJdkMobile$stage")) }
 }
 
 kotlin {
@@ -134,9 +135,9 @@ listOf("simulator" to "IosSimulatorArm64", "device" to "IosArm64").forEach { (ki
     tasks.register<Sync>("assembleIosJavaRuntime${kind.replaceFirstChar { it.uppercase() }}") {
         group = "build"
         description = "Assembles what the iOS app links and bundles for the search's Java runtime ($kind)."
-        dependsOn(searchTask("stageJdkMobile${if (kind == "simulator") "IosSimulatorAarch64" else "IosDeviceAarch64"}"))
+        dependsOn(searchTask("njaJdkMobile${if (kind == "simulator") "IosSimulatorAarch64" else "IosDeviceAarch64"}"))
         dependsOn(searchTask("njaIosBundle$konan"))
-        from(searchBuild.resolve("jdkMobile/ios-$kind-aarch64/static")) { into("static") }
+        from(searchBuild.resolve("nja/jdkMobile/ios-$kind-aarch64/static")) { into("static") }
         from(searchBuild.resolve("nja/ios/${konan.replaceFirstChar(Char::lowercase)}")) { into("bundle") }
         into(layout.buildDirectory.dir("iosJavaRuntime/$kind"))
         filePermissions { user { write = true } }

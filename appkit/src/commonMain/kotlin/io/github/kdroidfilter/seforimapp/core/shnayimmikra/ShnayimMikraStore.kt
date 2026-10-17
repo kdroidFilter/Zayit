@@ -2,11 +2,13 @@ package io.github.kdroidfilter.seforimapp.core.shnayimmikra
 
 import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 /** The aliyos read of each parsha, by Hebrew year, in the local user DB; [revision] bumps on every write. */
 class ShnayimMikraStore(
@@ -37,7 +39,7 @@ class ShnayimMikraStore(
     ): Unit =
         withContext(Dispatchers.IO) {
             if (read) {
-                queries.markRead(year, parsha, aliya.toLong(), System.currentTimeMillis())
+                queries.markRead(year, parsha, aliya.toLong(), Clock.System.now().toEpochMilliseconds())
             } else {
                 queries.unmarkRead(year, parsha, aliya.toLong())
             }

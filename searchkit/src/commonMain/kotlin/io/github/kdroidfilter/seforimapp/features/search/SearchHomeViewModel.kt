@@ -3,7 +3,6 @@ package io.github.kdroidfilter.seforimapp.features.search
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.charlietap.cachemap.cacheMapOf
 import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
@@ -17,6 +16,7 @@ import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchServ
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService.AuthorHit
 import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
+import io.github.kdroidfilter.seforimlibrary.cache.concurrentCache
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.TocEntry
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -134,7 +134,7 @@ class SearchHomeViewModel(
     private val referenceResolver = ReferenceResolver(RepositoryReferenceSource(repository))
 
     // Author aliases by id, to tell which one a query was typed as; few authors have any
-    private val aliasesByAuthor = cacheMapOf<Long, List<String>>()
+    private val aliasesByAuthor = concurrentCache<Long, List<String>>()
 
     private suspend fun authorAliases(authorId: Long): List<String> =
         aliasesByAuthor[authorId] ?: runSuspendCatching { repository.getAuthorDetails(authorId)?.aliases.orEmpty() }

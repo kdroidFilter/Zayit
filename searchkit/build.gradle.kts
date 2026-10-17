@@ -50,7 +50,7 @@ kotlin {
                 implementation(libs.compose.runtime)
                 implementation(libs.hebrew.numerals)
                 implementation(libs.kermit)
-                implementation(libs.cachemap)
+                implementation(libs.seforimlibrary.cache)
                 implementation(libs.atomicfu)
                 if (withSemantic) implementation(libs.seforim.semantic)
             }
@@ -88,7 +88,22 @@ fun searchTask(name: String) = seforimLibrary.task(":search:$name")
 // ONNX Runtime's xcframework, for the semantic search in the iOS tests: -Pseforim.ortXcframework=<dir>
 val ortXcframework: File? = providers.gradleProperty("seforim.ortXcframework").orNull?.let(::file)
 // Substrate VM's and the JDK's natives, from graalvm-mobile's kit
-val nativeImageLibs = listOf("jvm", "libchelper", "darwin", "java", "nio", "net", "zip", "extnet", "jimage", "verify", "management_ext", "management", "prefs")
+val nativeImageLibs =
+    listOf(
+        "jvm",
+        "libchelper",
+        "darwin",
+        "java",
+        "nio",
+        "net",
+        "zip",
+        "extnet",
+        "jimage",
+        "verify",
+        "management_ext",
+        "management",
+        "prefs",
+    )
 
 fun searchStage(runtime: String) = runtime.split("-").joinToString("") { it.replaceFirstChar(Char::uppercase) }
 

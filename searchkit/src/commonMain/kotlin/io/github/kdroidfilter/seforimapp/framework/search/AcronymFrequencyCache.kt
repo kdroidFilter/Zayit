@@ -1,7 +1,7 @@
 package io.github.kdroidfilter.seforimapp.framework.search
 
 import co.touchlab.kermit.Logger
-import io.github.charlietap.cachemap.cacheMapOf
+import io.github.kdroidfilter.seforimlibrary.cache.concurrentCache
 import io.github.kdroidfilter.seforimlibrary.search.SqliteReader
 import io.github.kdroidfilter.seforimlibrary.search.openReadOnlySqlite
 
@@ -23,13 +23,13 @@ class AcronymFrequencyCache(
     }
 
     // Cache: acronym → frequency (number of books using it)
-    private val frequencyCache = cacheMapOf<String, Int>()
+    private val frequencyCache = concurrentCache<String, Int>()
 
     // Cache: acronym → list of book titles
-    private val bookTitlesCache = cacheMapOf<String, List<String>>()
+    private val bookTitlesCache = concurrentCache<String, List<String>>()
 
     // Cache: book title → list of acronyms
-    private val titleToAcronymsCache = cacheMapOf<String, List<String>>()
+    private val titleToAcronymsCache = concurrentCache<String, List<String>>()
 
     init {
         // Pre-load common acronyms into cache

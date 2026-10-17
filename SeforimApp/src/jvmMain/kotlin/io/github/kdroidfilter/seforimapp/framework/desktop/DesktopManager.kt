@@ -14,6 +14,7 @@ import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabItem
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
+import io.github.kdroidfilter.seforim.tabs.TabsResolver
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforim.tabs.withTabId
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
@@ -73,7 +74,7 @@ class DesktopManager(
     defaultDesktopName: String,
     // The saved session, restored before the first frame (an app composing no window is closed).
     bootState: DesktopsState? = null,
-) {
+) : TabsResolver {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val defaultDesktopId = UUID.randomUUID().toString()
 
@@ -158,7 +159,7 @@ class DesktopManager(
      * through this instead of a fixed window reference, so a tab dragged to another window keeps
      * opening its results in whatever window it lives in now.
      */
-    fun tabsViewModelFor(tabId: String): TabsViewModel? {
+    override fun tabsViewModelFor(tabId: String): TabsViewModel? {
         val session = sessionOf(tabId) ?: return null
         val groupId =
             session.workspace

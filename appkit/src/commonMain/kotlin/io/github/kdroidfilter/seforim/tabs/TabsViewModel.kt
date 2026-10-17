@@ -1,11 +1,7 @@
-@file:OptIn(ExperimentalNucleusApi::class)
-
 package io.github.kdroidfilter.seforim.tabs
 
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.snapshotFlow
-import dev.nucleusframework.window.ExperimentalNucleusApi
-import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSession
 import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,24 +18,21 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.util.UUID
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 
 /**
  * The tabs of one window, as the rest of the app sees them.
  *
- * The desktop's `TabWorkspace` owns which tabs this window holds, their order and the selection
- * (the stock strip drives it directly: click, ×, drag, tear-off); this class mirrors that into
- * [state] and turns the app's navigation calls into workspace operations. Every call must happen on
- * the UI thread, like every workspace call.
+ * The platform's [TabsHost] owns which tabs this window holds, their order and the selection
+ * (the desktop's stock strip drives it directly: click, ×, drag, tear-off); this class mirrors that into
+ * [state] and turns the app's navigation calls into host operations. Every call must happen on
+ * the UI thread, like every host call.
  */
 @Stable
-class TabsViewModel internal constructor(
-    private val sessionOf: () -> DesktopSession,
-    private val groupIdOf: () -> String,
+class TabsViewModel(
+    private val host: TabsHost,
 ) {
-    private val session: DesktopSession get() = sessionOf()
-    private val groupId: String get() = groupIdOf()
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     private val _state = MutableStateFlow(compute())
@@ -77,34 +70,33 @@ class TabsViewModel internal constructor(
         scope.launch { snapshotFlow { compute() }.collect { _state.value = it } }
     }
 
-    private fun ids(): List<String> = session.group(groupId)?.ids.orEmpty()
+    private fun ids(): List<String> = host.ids()
 
     private fun compute(): TabsState {
-        val group = session.group(groupId) ?: return TabsState(emptyList(), 0)
-        val ids = group.ids
+        val ids = host.ids()
         return TabsState(
-            tabs = ids.mapNotNull(session::item),
-            selectedTabIndex = ids.indexOf(group.selectedId).coerceAtLeast(0),
+            tabs = ids.mapNotNull(host::item),
+            selectedTabIndex = ids.indexOf(host.selectedId()).coerceAtLeast(0),
         )
     }
 
-    private fun currentId(): String? = session.group(groupId)?.selectedId
+    private fun currentId(): String? = host.selectedId()
 
     fun onEvent(event: TabsEvents) {
         val ids = ids()
         when (event) {
-            is TabsEvents.OnClose -> ids.getOrNull(event.index)?.let(session.workspace::close)
-            is TabsEvents.OnSelect -> ids.getOrNull(event.index)?.let(session.workspace::select)
-            TabsEvents.OnAdd -> session.addTab(freshHome(), groupId, index = 0)
-            is TabsEvents.OnReorder -> ids.getOrNull(event.fromIndex)?.let { session.workspace.reorder(it, event.toIndex) }
+            is TabsEvents.OnClose -> ids.getOrNull(event.index)?.let(host::close)
+            is TabsEvents.OnSelect -> ids.getOrNull(event.index)?.let(host::select)
+            TabsEvents.OnAdd -> host.add(freshHome(), index = 0)
+            is TabsEvents.OnReorder -> ids.getOrNull(event.fromIndex)?.let { host.reorder(it, event.toIndex) }
             // Pinned tabs stay. Chrome-like: with none, the window keeps one fresh Home tab, which
             // replaces the others once it is in.
             TabsEvents.CloseAll -> {
-                if (ids.any(session::isPinned)) {
-                    ids.filterNot(session::isPinned).forEach(session.workspace::close)
+                if (ids.any(host::isPinned)) {
+                    ids.filterNot(host::isPinned).forEach(host::close)
                 } else {
                     val home = freshHome()
-                    session.addTab(home, groupId, index = 0)
+                    host.add(home, index = 0)
                     closeWhenDeclared(home.tabId, ids)
                 }
             }
@@ -115,13 +107,13 @@ class TabsViewModel internal constructor(
     }
 
     // Chromium's GetTabsClosedByCommand: the bulk closes skip pinned tabs.
-    private fun List<String>.closeUnpinned() = filterNot(session::isPinned).forEach(session.workspace::close)
+    private fun List<String>.closeUnpinned() = filterNot(host::isPinned).forEach(host::close)
 
     fun setPinned(
         index: Int,
         pinned: Boolean,
     ) {
-        ids().getOrNull(index)?.let { session.setPinned(it, pinned) }
+        ids().getOrNull(index)?.let { host.setPinned(it, pinned) }
     }
 
     /**
@@ -131,13 +123,13 @@ class TabsViewModel internal constructor(
      */
     fun closeSelectedTab(repeat: Boolean = false) {
         val tabId = currentId() ?: return
-        if (session.isPinned(tabId)) {
+        if (host.isPinned(tabId)) {
             val hinted = _closePinnedHint.value && hintedTabId == tabId
             if (!hinted) showClosePinnedHint(tabId)
             if (!hinted || repeat) return
         }
         hideClosePinnedHint()
-        session.workspace.close(tabId)
+        host.close(tabId)
     }
 
     private fun showClosePinnedHint(
@@ -165,20 +157,20 @@ class TabsViewModel internal constructor(
         @StructuredScope scope: CoroutineScope = this.scope,
     ) {
         scope.launch {
-            snapshotFlow { session.workspace.tab(tabId) != null }.first { it }
-            others.forEach(session.workspace::close)
+            snapshotFlow { host.isDeclared(tabId) }.first { it }
+            others.forEach(host::close)
         }
     }
 
     /** A tab opened from another one lands next to it, on the + side of the strip (the current one moves over). */
     fun openTab(destination: TabsDestination) {
-        session.addTab(destination, groupId, index = ids().indexOf(currentId()).coerceAtLeast(0))
+        host.add(destination, index = ids().indexOf(currentId()).coerceAtLeast(0))
     }
 
     /** Navigates the selected tab to [destination], keeping the tab (and its ViewModels). */
     fun replaceCurrentTabDestination(destination: TabsDestination) {
         val tabId = currentId() ?: return
-        session.updateDestination(tabId, destination.withTabId(tabId))
+        host.updateDestination(tabId, destination.withTabId(tabId))
     }
 
     /** Swaps the selected tab for a new one (fresh ViewModels) at the same place. */
@@ -186,12 +178,11 @@ class TabsViewModel internal constructor(
         val tabId = currentId() ?: return
         val index = ids().indexOf(tabId).coerceAtLeast(0)
         // The pin goes with the tab, as through any navigation (Chrome).
-        session.addTab(
-            destination.withTabId(UUID.randomUUID().toString()),
-            groupId,
+        host.add(
+            destination.withTabId(Uuid.random().toString()),
             index = index,
             replacing = tabId,
-            pinned = session.isPinned(tabId),
+            pinned = host.isPinned(tabId),
         )
     }
 
@@ -199,16 +190,16 @@ class TabsViewModel internal constructor(
         scope.cancel()
     }
 
-    private fun freshHome(): TabsDestination = TabsDestination.BookContent(bookId = -1, tabId = UUID.randomUUID().toString())
+    private fun freshHome(): TabsDestination = TabsDestination.BookContent(bookId = -1, tabId = Uuid.random().toString())
 
     private companion object {
         const val CLOSE_PINNED_HINT_MS = 3000L
     }
 }
 
-internal fun TabsDestination.withTabId(tabId: String): TabsDestination =
+fun TabsDestination.withTabId(tabId: String): TabsDestination =
     when (this) {
-        is TabsDestination.Home -> TabsDestination.Home(tabId = tabId, version = System.currentTimeMillis())
+        is TabsDestination.Home -> TabsDestination.Home(tabId = tabId, version = Clock.System.now().toEpochMilliseconds())
         is TabsDestination.Search -> copy(tabId = tabId)
         is TabsDestination.BookContent -> copy(tabId = tabId)
         is TabsDestination.History -> copy(tabId = tabId)

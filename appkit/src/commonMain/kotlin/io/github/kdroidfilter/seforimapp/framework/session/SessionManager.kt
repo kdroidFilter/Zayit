@@ -7,9 +7,7 @@ import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforim.desktop.VirtualDesktop
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.logger.debugln
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
@@ -17,6 +15,7 @@ import io.github.vinceglb.filekit.FileKit
 import io.github.vinceglb.filekit.databasesDir
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
@@ -25,9 +24,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kotlinx.io.buffered
+import kotlinx.io.files.Path
+import kotlinx.io.files.SystemFileSystem
+import kotlinx.io.readByteArray
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.protobuf.ProtoBuf
-import java.io.File
 
 /**
  * Persists and restores the navigation session (open tabs + per-tab persisted UI state) when enabled.
@@ -35,13 +37,13 @@ import java.io.File
  * Now supports multiple virtual desktops via [DesktopsState].
  * Migrates transparently from the legacy single-desktop [SavedSessionV2] format.
  *
- * [desktopManager] is lazy: [DesktopManager] itself is built from [loadBootState].
+ * [shell] gives the desktops to save; it must not need them before [saveIfEnabled] (the desktop's are built from
+ * [loadBootState]).
  */
 @Inject
 @SingleIn(AppScope::class)
 class SessionManager(
-    private val desktopManager: Lazy<DesktopManager>,
-    private val tabThumbnailStore: TabThumbnailStore,
+    private val shell: SessionShell,
     private val appSettings: AppSettings,
 ) : SessionRestoreState {
     private val proto = ProtoBuf
@@ -50,14 +52,19 @@ class SessionManager(
     private val _isRestoringSession = MutableStateFlow(runCatching { hasSavedSessionToRestore() }.getOrDefault(false))
     override val isRestoringSession: StateFlow<Boolean> = _isRestoringSession
 
-    private fun sessionDir(): File {
-        val root = File(FileKit.databasesDir.path, "session").apply { mkdirs() }
-        return root
-    }
+    private fun sessionDir(): Path = Path(FileKit.databasesDir.path, "session").also { SystemFileSystem.createDirectories(it) }
 
-    private fun legacySessionFile(): File = File(sessionDir(), "session_v2.pb")
+    private fun legacySessionFile(): Path = Path(sessionDir(), "session_v2.pb")
 
-    private fun desktopsFile(): File = File(sessionDir(), "desktops_v1.pb")
+    private fun desktopsFile(): Path = Path(sessionDir(), "desktops_v1.pb")
+
+    private fun Path.exists(): Boolean = SystemFileSystem.exists(this)
+
+    private fun Path.readBytes(): ByteArray = SystemFileSystem.source(this).buffered().use { it.readByteArray() }
+
+    private fun Path.writeBytes(bytes: ByteArray) = SystemFileSystem.sink(this).buffered().use { it.write(bytes) }
+
+    private fun Path.delete() = SystemFileSystem.delete(this, mustExist = false)
 
     private fun hasSavedSessionToRestore(): Boolean =
         appSettings.isPersistSessionEnabled() && (desktopsFile().exists() || legacySessionFile().exists())
@@ -65,11 +72,11 @@ class SessionManager(
     /** Saves the current session snapshot if the user enabled persistence in settings. */
     fun saveIfEnabled() {
         // The end-to-end harness must never overwrite the user's session.
-        if (E2e.enabled || !appSettings.isPersistSessionEnabled()) return
+        if (shell.isSessionDisabled || !appSettings.isPersistSessionEnabled()) return
 
-        val desktopsState = desktopManager.value.buildDesktopsState()
+        val desktopsState = shell.buildDesktopsState()
         // The hover-card pictures of tabs no desktop holds any more.
-        tabThumbnailStore.prune(
+        shell.forgetTabsExcept(
             desktopsState.snapshots.values
                 .flatMap { snapshot -> snapshot.effectiveWindows().flatMap { it.destinations } }
                 .mapTo(HashSet()) { it.tabId },
@@ -99,7 +106,7 @@ class SessionManager(
      * an application composing no window at all is closed at once. Null when disabled or absent.
      */
     fun loadBootState(repository: SeforimRepository): DesktopsState? {
-        if (E2e.enabled || !appSettings.isPersistSessionEnabled()) return null
+        if (shell.isSessionDisabled || !appSettings.isPersistSessionEnabled()) return null
         val state = loadDesktopsState()?.takeIf { it.desktops.isNotEmpty() } ?: return null
         // Tabs saved without a title (book names come from the DB) are named before they are shown.
         return runCatching { runBlocking { enrichMissingTabTitles(state, repository) } }.getOrDefault(state)

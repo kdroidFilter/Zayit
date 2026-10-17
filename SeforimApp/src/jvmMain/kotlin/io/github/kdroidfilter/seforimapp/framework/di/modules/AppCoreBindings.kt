@@ -41,6 +41,7 @@ import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriv
 import io.github.kdroidfilter.seforimapp.framework.database.USER_SETTINGS_DRIVER
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSessionShell
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
 import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
@@ -51,6 +52,7 @@ import io.github.kdroidfilter.seforimapp.framework.search.openLuceneIndex
 import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
 import io.github.kdroidfilter.seforimapp.framework.session.SessionRestoreState
+import io.github.kdroidfilter.seforimapp.framework.session.SessionShell
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
@@ -208,6 +210,14 @@ object AppCoreBindings {
 
     @Provides
     fun provideSessionRestoreState(sessionManager: SessionManager): SessionRestoreState = sessionManager
+
+    // DesktopManager is built from the saved session: the shell only reaches it when saving
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideSessionShell(
+        desktopManager: Lazy<DesktopManager>,
+        thumbnails: TabThumbnailStore,
+    ): SessionShell = DesktopSessionShell(desktopManager, thumbnails)
 
     // What the search screens (searchkit) ask of the desktop around them
     @Provides

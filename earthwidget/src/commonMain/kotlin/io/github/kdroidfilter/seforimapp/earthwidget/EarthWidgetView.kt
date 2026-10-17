@@ -47,6 +47,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import kotlin.time.Clock
 
 // ============================================================================
 // SHARED ANIMATION SPECS
@@ -159,7 +160,7 @@ fun EarthWidgetScene(
     val animatedViewYaw by animateFloatAsState(viewYawDegrees, viewSpec, label = "viewYaw")
     val animatedViewPitch by animateFloatAsState(viewPitchDegrees, viewSpec, label = "viewPitch")
     val animatedViewZoom by animateFloatAsState(viewZoom, viewSpec, label = "viewZoom")
-    val skyJulianDay = julianDay ?: (System.currentTimeMillis() / 86_400_000.0 + 2_440_587.5)
+    val skyJulianDay = julianDay ?: (Clock.System.now().toEpochMilliseconds() / 86_400_000.0 + 2_440_587.5)
     val animatedSidereal =
         rememberSmoothAnimatedAngle(
             targetValue = (greenwichMeanSiderealTimeRad(skyJulianDay) * 180.0 / PI).toFloat(),

@@ -1,0 +1,255 @@
+
+package io.github.kdroidfilter.seforimapp.features.bookcontent.usecases
+
+import io.github.kdroidfilter.seforimapp.core.coroutines.runSuspendCatching
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookFilterResult
+import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
+import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
+import io.github.kdroidfilter.seforimapp.framework.search.MIN_BOOK_QUERY_LENGTH
+import io.github.kdroidfilter.seforimapp.logger.debugln
+import io.github.kdroidfilter.seforimapp.logger.errorln
+import io.github.kdroidfilter.seforimlibrary.core.models.Book
+import io.github.kdroidfilter.seforimlibrary.core.models.Category
+import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.IO
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+
+private const val BOOK_SEARCH_LIMIT = 120
+
+/**
+ * Use case to manage navigation in the categories and books tree
+ */
+class NavigationUseCase(
+    private val repository: SeforimRepository,
+    private val stateManager: BookContentStateManager,
+    private val catalogCache: CatalogCache,
+    private val lookup: LuceneLookupSearchService,
+) {
+    private val searchRunner =
+        PaneSearchRunner<BookFilterResult> { transform ->
+            stateManager.updateNavigation(save = false) { copy(search = search?.let(transform)) }
+        }
+
+    /**
+     * Load the root categories and the full tree from the precomputed catalog.
+     * The catalog MUST be available, otherwise nothing is loaded.
+     * Data is retrieved from CatalogCache which caches the extracted structures in memory.
+     */
+    suspend fun loadRootCategories() {
+        val rootCategories = catalogCache.getRootCategories()
+        val categoryChildren = catalogCache.getCategoryChildren()
+        val categoriesById = catalogCache.getCategoriesById().orEmpty()
+        val booksWithFlags = catalogCache.getAllBooksWithAltFlags(repository)
+
+        if (rootCategories == null || categoryChildren == null || booksWithFlags == null) {
+            errorln { "ERROR: Precomputed catalog not available!" }
+            return
+        }
+
+        debugln { "✓ Using precomputed catalog for navigation tree" }
+        // Catalog data is derived and reloaded every app start; do not persist it.
+        // Persisting here can overwrite restored selection/book IDs before models are loaded.
+        stateManager.updateNavigation(save = false) {
+            copy(
+                rootCategories = rootCategories,
+                categoryChildren = categoryChildren,
+                categoriesById = categoriesById,
+                booksInCategory = booksWithFlags,
+            )
+        }
+    }
+
+    /**
+     * Select a category
+     */
+    suspend fun selectCategory(category: Category) {
+        stateManager.updateNavigation {
+            copy(selectedCategory = category)
+        }
+        expandCategory(category)
+    }
+
+    /**
+     * Expand/collapse a category.
+     * With the precomputed catalog, all data is already loaded,
+     * so we simply toggle the expanded state.
+     */
+    suspend fun expandCategory(category: Category) {
+        val currentState = stateManager.state.first().navigation
+        val isExpanded = currentState.expandedCategories.contains(category.id)
+
+        stateManager.updateNavigation {
+            copy(
+                expandedCategories =
+                    if (isExpanded) {
+                        expandedCategories - category.id
+                    } else {
+                        expandedCategories + category.id
+                    },
+            )
+        }
+    }
+
+    /**
+     * Update the search text
+     */
+    fun updateSearchText(text: String) {
+        stateManager.updateNavigation {
+            copy(searchText = text)
+        }
+    }
+
+    /** Shows or hides the search bar. */
+    fun toggleSearch() {
+        stateManager.updateNavigation(save = false) { copy(search = search.toggled()) }
+    }
+
+    fun closeSearch() {
+        stateManager.updateNavigation(save = false) { copy(search = null) }
+    }
+
+    /** Narrows the tree to the books suggested for [query], as the home search bar does. */
+    suspend fun search(query: String) {
+        // A query flushed by a closing field, or arriving after Escape
+        if (stateManager.state.value.navigation.search == null) return
+        searchRunner.run(query) {
+            if (query.trim().length < MIN_BOOK_QUERY_LENGTH) return@run null
+            val hits =
+                withContext(Dispatchers.IO) {
+                    runSuspendCatching { lookup.suggestBooks(query, BOOK_SEARCH_LIMIT) }.getOrElse { emptyList() }
+                }
+            val navigation = stateManager.state.value.navigation
+            withContext(Dispatchers.Default) {
+                buildBookFilter(
+                    hitIds = hits.map { it.id },
+                    rootCategories = navigation.rootCategories,
+                    categoryChildren = navigation.categoryChildren,
+                    books = navigation.booksInCategory,
+                )
+            }
+        }
+    }
+
+    /** Hides the search bar and returns the catalog book [bookId], to open. */
+    fun selectSearchBook(bookId: Long): Book? {
+        // Already closed: a repeated Enter or click must not open twice
+        if (stateManager.state.value.navigation.search == null) return null
+        stateManager.updateNavigation(save = false) { copy(search = null) }
+        return stateManager.state.value.navigation.booksInCategory
+            .firstOrNull { it.id == bookId }
+    }
+
+    /**
+     * Toggle the visibility of the navigation tree
+     */
+    fun toggleBookTree(): Float {
+        val currentState = stateManager.state.value
+        val isVisible = currentState.navigation.isVisible
+        val newPosition: Float
+
+        if (isVisible) {
+            // Hide - save the current position
+            val prev = currentState.layout.mainSplitState.positionPercentage
+            stateManager.updateLayout {
+                copy(
+                    previousPositions =
+                        previousPositions.copy(
+                            main = prev,
+                        ),
+                )
+            }
+            newPosition = 0f
+            currentState.layout.mainSplitState.positionPercentage = newPosition
+        } else {
+            // Show - restore the previous position
+            newPosition = currentState.layout.previousPositions.main
+            currentState.layout.mainSplitState.positionPercentage = newPosition
+        }
+
+        stateManager.updateNavigation {
+            copy(isVisible = !isVisible)
+        }
+
+        return newPosition
+    }
+
+    /**
+     * Update the tree scroll position
+     */
+    fun updateBookTreeScrollPosition(
+        index: Int,
+        offset: Int,
+    ) {
+        stateManager.updateNavigation {
+            copy(
+                scrollIndex = index,
+                scrollOffset = offset,
+            )
+        }
+    }
+
+    /**
+     * Select a book
+     */
+    fun selectBook(
+        book: Book,
+        save: Boolean = true,
+    ) {
+        stateManager.updateNavigation(save = save) {
+            copy(selectedBook = book)
+        }
+    }
+
+    /**
+     * Expand the categories along the path to the given book so that the
+     * tree shows the selected book in its category branch. Loads children
+     * lists for each ancestor, and ensures the leaf category's books are
+     * present so the book row can render.
+     */
+    suspend fun expandPathToBookId(
+        bookId: Long,
+        save: Boolean = true,
+    ) {
+        val book = runSuspendCatching { repository.getBookCore(bookId) }.getOrNull() ?: return
+        expandPathToBook(book, save = save)
+    }
+
+    suspend fun expandPathToBook(
+        book: Book,
+        save: Boolean = true,
+    ) = expandPathToCategory(book.categoryId, save)
+
+    /** Selects [category] and expands it with its ancestors, without collapsing anything; shows the tree if hidden. */
+    suspend fun revealCategory(category: Category) {
+        if (!stateManager.state.value.navigation.isVisible) toggleBookTree()
+        // The real tree, not the search results, shows the category
+        closeSearch()
+        expandPathToCategory(category.id, save = true)
+        stateManager.updateNavigation(save = false) { copy(categoryReveal = category.id) }
+    }
+
+    fun clearCategoryReveal() {
+        stateManager.updateNavigation(save = false) { copy(categoryReveal = null) }
+    }
+
+    private suspend fun expandPathToCategory(
+        leafCatId: Long,
+        save: Boolean,
+    ) {
+        // Build the path using the data already loaded from the catalog
+        val navState = stateManager.state.first().navigation
+        val orderedPath = categoryAncestry(leafCatId, navState.categoriesById)
+        if (orderedPath.isEmpty()) return
+        val expandIds = orderedPath.map { it.id }.toSet()
+
+        stateManager.updateNavigation(save = save) {
+            copy(
+                expandedCategories = expandedCategories + expandIds,
+                selectedCategory = orderedPath.lastOrNull(),
+            )
+        }
+    }
+}

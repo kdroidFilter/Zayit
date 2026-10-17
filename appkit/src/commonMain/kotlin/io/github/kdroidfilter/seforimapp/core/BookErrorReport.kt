@@ -1,10 +1,9 @@
 package io.github.kdroidfilter.seforimapp.core
 
+import io.github.kdroidfilter.seforim.htmlparser.htmlToText
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
-import org.jsoup.Jsoup
-import java.net.URLEncoder
 
 private const val SEFARIA_SOURCE = "Sefaria"
 private const val SEFARIA_CORRECTIONS_EMAIL = "corrections@sefaria.org"
@@ -32,7 +31,7 @@ suspend fun bookErrorReportMailto(
     if (repository.getSourceById(book.sourceId)?.name != SEFARIA_SOURCE) {
         return mailto(OTZARIA_CORRECTIONS_EMAIL, "טעות ב$reference", body = null)
     }
-    val quoted = selectedText.trim().ifEmpty { lines?.first?.let { Jsoup.parse(it.content).text() }.orEmpty() }
+    val quoted = selectedText.trim().ifEmpty { lines?.first?.let { htmlToText(it.content) }.orEmpty() }
     val versions =
         repository
             .getBookEditions(book.id)
@@ -76,5 +75,18 @@ private fun mailto(
     return "mailto:$email?" + query.joinToString("&") { (key, value) -> "$key=${encode(value)}" }
 }
 
-// URLEncoder writes spaces as '+', which mail clients keep verbatim in a mailto
-private fun encode(value: String): String = URLEncoder.encode(value, Charsets.UTF_8).replace("+", "%20")
+// As java.net.URLEncoder (UTF-8), but a space is %20: mail clients keep URLEncoder's '+' verbatim in a mailto
+private fun encode(value: String): String =
+    buildString {
+        for (byte in value.encodeToByteArray()) {
+            val code = byte.toInt() and 0xFF
+            val char = code.toChar()
+            if (char in 'a'..'z' || char in 'A'..'Z' || char in '0'..'9' || char in ".-*_") {
+                append(char)
+            } else {
+                append('%').append(HEX_DIGITS[code shr 4]).append(HEX_DIGITS[code and 0x0F])
+            }
+        }
+    }
+
+private const val HEX_DIGITS = "0123456789ABCDEF"

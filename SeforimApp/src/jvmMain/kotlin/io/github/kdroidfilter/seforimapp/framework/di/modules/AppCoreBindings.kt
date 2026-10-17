@@ -25,10 +25,10 @@ import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSessionShell
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
-import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchTabs
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
+import io.github.kdroidfilter.seforimapp.framework.search.TabSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.search.openLuceneIndex
 import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
@@ -126,7 +126,7 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSearchSessionStore(store: TabPersistedStateStore): SearchSessionStore = DesktopSearchSessionStore(store)
+    fun provideSearchSessionStore(store: TabPersistedStateStore): SearchSessionStore = TabSearchSessionStore(store)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -204,7 +204,7 @@ object AppCoreBindings {
             // created and disposed by DesktopManager.
             searchHomeViewModelFactory = { observeProfile ->
                 SearchHomeViewModel(
-                    sessionStore = DesktopSearchSessionStore(tabPersistedStateStore),
+                    sessionStore = TabSearchSessionStore(tabPersistedStateStore),
                     repository = repository,
                     lookup = lookup,
                     appSettings = appSettings,

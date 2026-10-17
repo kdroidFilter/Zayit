@@ -9,8 +9,8 @@ import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
 import io.github.kdroidfilter.seforimapp.features.search.SearchResultViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
-import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchTabs
+import io.github.kdroidfilter.seforimapp.framework.search.TabSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.session.SearchPersistedState
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.testAppSettings
@@ -53,7 +53,7 @@ class AuthorScopeSearchTest : SearchIntegrationTestBase() {
         every { desktopManager.tabExistsFlow(any()) } returns flowOf(true)
         return SearchResultViewModel(
             savedStateHandle = SavedStateHandle(mapOf(StateKeys.TAB_ID to tabId)),
-            sessionStore = DesktopSearchSessionStore(store),
+            sessionStore = TabSearchSessionStore(store),
             repository = requireRepository(),
             lucene = requireSearchEngine(),
             titleUpdateManager = TabTitleUpdateManager(),

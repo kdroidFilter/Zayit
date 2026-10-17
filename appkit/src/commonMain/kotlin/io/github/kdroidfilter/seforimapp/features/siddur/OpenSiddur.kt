@@ -3,7 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.siddur
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforim.tabs.TabsEvents
 import io.github.kdroidfilter.seforim.tabs.TabsViewModel
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 /** Brings the window's siddur tab forward, or opens one on the tefila of the hour. */
 fun openSiddurTab(tabsViewModel: TabsViewModel) {
@@ -13,6 +13,6 @@ fun openSiddurTab(tabsViewModel: TabsViewModel) {
     if (existing >= 0) {
         tabsViewModel.onEvent(TabsEvents.OnSelect(existing))
     } else {
-        tabsViewModel.openTab(TabsDestination.Siddur(tabId = UUID.randomUUID().toString()))
+        tabsViewModel.openTab(TabsDestination.Siddur(tabId = Uuid.random().toString()))
     }
 }

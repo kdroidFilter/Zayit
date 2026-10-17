@@ -2,6 +2,7 @@ import org.jetbrains.compose.reload.gradle.ComposeHotRun
 
 plugins {
     alias(libs.plugins.multiplatform)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
     alias(libs.plugins.kotlinx.serialization)
@@ -15,6 +16,14 @@ kotlin {
     )
 
     jvm()
+    // The reader's paging sources, shared with the mobile apps (appkit)
+    android {
+        namespace = "io.github.kdroidfilter.seforimapp.pagination"
+        compileSdk = 37
+        minSdk = 29
+    }
+    iosArm64()
+    iosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {

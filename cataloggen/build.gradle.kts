@@ -27,7 +27,7 @@ val defaultDbPath =
         .absolutePath
 val defaultOutputDir =
     rootProject.layout.projectDirectory
-        .dir("SeforimApp/src/commonMain/kotlin")
+        .dir("appkit/src/commonMain/kotlin")
         .asFile
         .absolutePath
 

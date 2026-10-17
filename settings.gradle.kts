@@ -139,6 +139,7 @@ plugins {
 
 include(":SeforimApp")
 include(":searchkit")
+include(":appkit")
 include(":searchkit-check")
 include(":cataloggen")
 include(":widgetprocessor")

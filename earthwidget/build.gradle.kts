@@ -2,6 +2,7 @@ import io.github.kdroidfilter.buildsrc.Versioning
 
 plugins {
     alias(libs.plugins.multiplatform)
+    alias(libs.plugins.android.kmp.library)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.compose)
 }
@@ -16,6 +17,15 @@ kotlin {
     )
 
     jvm()
+    // Filament KMP renders on Android and iOS too: the 3D widgets of the mobile apps
+    android {
+        namespace = "io.github.kdroidfilter.seforimapp.earthwidget"
+        compileSdk = 37
+        minSdk = 29
+        androidResources { enable = true }
+    }
+    iosArm64()
+    iosSimulatorArm64()
 
     sourceSets {
         commonMain.dependencies {
@@ -24,6 +34,8 @@ kotlin {
             implementation(libs.compose.foundation)
             implementation(libs.compose.components.resources)
             implementation(libs.filament.compose)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.kosherkotlin)
         }
 
         jvmMain.dependencies {
@@ -32,7 +44,6 @@ kotlin {
             implementation(compose.desktop.currentOs) {
                 exclude(group = "org.jetbrains.compose.material")
             }
-            implementation(libs.kosherkotlin)
         }
 
         jvmTest.dependencies {

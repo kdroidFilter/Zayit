@@ -1,8 +1,8 @@
 package io.github.kdroidfilter.seforimapp.earthwidget
 
-import java.util.Calendar
-import java.util.Date
-import java.util.TimeZone
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import kotlin.math.acos
 import kotlin.math.asin
 import kotlin.math.atan2
@@ -10,6 +10,7 @@ import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
 import kotlin.math.tan
+import kotlin.time.Instant
 
 /**
  * Solar azimuth/elevation at a specific location.
@@ -30,7 +31,7 @@ internal data class SolarPosition(
  * - `sunElevationDegrees`: elevation above the XZ plane (positive = +Y).
  */
 internal fun computeSunLightDirectionForEarth(
-    referenceTime: Date,
+    referenceTime: Instant,
     latitude: Double,
     longitude: Double,
     earthRotationDegrees: Float,
@@ -58,7 +59,7 @@ internal fun computeSunLightDirectionForEarth(
  * This avoids discontinuities caused by mixing local calendar fields with an algorithm that expects UTC.
  */
 internal fun computeSolarPositionNoaaUtc(
-    referenceTime: Date,
+    referenceTime: Instant,
     latitude: Double,
     longitude: Double,
 ): SolarPosition {
@@ -77,7 +78,7 @@ internal fun computeSolarPositionNoaaUtc(
         0.016708634 -
             julianCenturies * (0.000042037 + 0.0000001267 * julianCenturies)
 
-    val meanAnomalyRad = Math.toRadians(meanAnomaly)
+    val meanAnomalyRad = toRadians(meanAnomaly)
     val sinM = sin(meanAnomalyRad)
     val sin2M = sin(2.0 * meanAnomalyRad)
     val sin3M = sin(3.0 * meanAnomalyRad)
@@ -89,7 +90,7 @@ internal fun computeSolarPositionNoaaUtc(
 
     val trueLongitude = meanLongitude + equationOfCenter
     val omega = 125.04 - 1934.136 * julianCenturies
-    val apparentLongitude = trueLongitude - 0.00569 - 0.00478 * sin(Math.toRadians(omega))
+    val apparentLongitude = trueLongitude - 0.00569 - 0.00478 * sin(toRadians(omega))
 
     val meanObliquity =
         23.0 + (
@@ -97,10 +98,10 @@ internal fun computeSolarPositionNoaaUtc(
                 (21.448 - julianCenturies * (46.815 + julianCenturies * (0.00059 - julianCenturies * 0.001813))) / 60.0
             )
         ) / 60.0
-    val obliquityCorrection = meanObliquity + 0.00256 * cos(Math.toRadians(omega))
+    val obliquityCorrection = meanObliquity + 0.00256 * cos(toRadians(omega))
 
-    val obliquityRad = Math.toRadians(obliquityCorrection)
-    val apparentLongitudeRad = Math.toRadians(apparentLongitude)
+    val obliquityRad = toRadians(obliquityCorrection)
+    val apparentLongitudeRad = toRadians(apparentLongitude)
 
     val sinDeclination = (sin(obliquityRad) * sin(apparentLongitudeRad)).coerceIn(-1.0, 1.0)
     val declinationRad = asin(sinDeclination)
@@ -108,11 +109,11 @@ internal fun computeSolarPositionNoaaUtc(
 
     val y = tan(obliquityRad / 2.0)
     val y2 = y * y
-    val meanLongitudeRad = Math.toRadians(meanLongitude)
+    val meanLongitudeRad = toRadians(meanLongitude)
 
     val equationOfTimeMinutes =
         4.0 *
-            Math.toDegrees(
+            toDegrees(
                 y2 * sin(2.0 * meanLongitudeRad) -
                     2.0 * earthOrbitEccentricity * sinM +
                     4.0 * earthOrbitEccentricity * y2 * sinM * cos(2.0 * meanLongitudeRad) -
@@ -126,21 +127,21 @@ internal fun computeSolarPositionNoaaUtc(
     var hourAngleDegrees = trueSolarTimeMinutes / 4.0 - 180.0
     if (hourAngleDegrees < -180.0) hourAngleDegrees += 360.0
 
-    val hourAngleRad = Math.toRadians(hourAngleDegrees)
-    val latRad = Math.toRadians(latitude)
+    val hourAngleRad = toRadians(hourAngleDegrees)
+    val latRad = toRadians(latitude)
     val sinLat = sin(latRad)
     val cosLat = cos(latRad)
 
     val cosZenith = (sinLat * sinDeclination + cosLat * cosDeclination * cos(hourAngleRad)).coerceIn(-1.0, 1.0)
     val zenithRad = acos(cosZenith)
-    val elevationDegrees = 90.0 - Math.toDegrees(zenithRad)
+    val elevationDegrees = 90.0 - toDegrees(zenithRad)
 
     val azimuthRad =
         atan2(
             sin(hourAngleRad),
             cos(hourAngleRad) * sinLat - tan(declinationRad) * cosLat,
         )
-    val azimuthDegreesFromNorth = normalizeDegrees360(Math.toDegrees(azimuthRad) + 180.0)
+    val azimuthDegreesFromNorth = normalizeDegrees360(toDegrees(azimuthRad) + 180.0)
 
     return SolarPosition(
         azimuthDegreesFromNorth = azimuthDegreesFromNorth,
@@ -149,17 +150,17 @@ internal fun computeSolarPositionNoaaUtc(
 }
 
 /**
- * Converts a [Date] instant to Julian Day number (UTC), including fractional day.
+ * Converts an instant to Julian Day number (UTC), including fractional day.
  */
-internal fun computeJulianDayUtc(date: Date): Double {
-    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { time = date }
-    var year = cal.get(Calendar.YEAR)
-    var month = cal.get(Calendar.MONTH) + 1
-    val day = cal.get(Calendar.DAY_OF_MONTH)
-    val hour = cal.get(Calendar.HOUR_OF_DAY)
-    val minute = cal.get(Calendar.MINUTE)
-    val second = cal.get(Calendar.SECOND)
-    val millisecond = cal.get(Calendar.MILLISECOND)
+internal fun computeJulianDayUtc(instant: Instant): Double {
+    val utc = instant.utc()
+    var year = utc.year
+    var month = utc.month.ordinal + 1
+    val day = utc.day
+    val hour = utc.hour
+    val minute = utc.minute
+    val second = utc.second
+    val millisecond = utc.nanosecond / 1_000_000
 
     if (month <= 2) {
         year -= 1
@@ -185,14 +186,12 @@ internal fun computeJulianDayUtc(date: Date): Double {
         1524.5
 }
 
-private fun utcMinutesOfDay(date: Date): Double {
-    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply { time = date }
-    val hour = cal.get(Calendar.HOUR_OF_DAY)
-    val minute = cal.get(Calendar.MINUTE)
-    val second = cal.get(Calendar.SECOND)
-    val millisecond = cal.get(Calendar.MILLISECOND)
-    return hour * 60.0 + minute + second / 60.0 + millisecond / 60_000.0
+private fun utcMinutesOfDay(instant: Instant): Double {
+    val utc = instant.utc()
+    return utc.hour * 60.0 + utc.minute + utc.second / 60.0 + (utc.nanosecond / 1_000_000) / 60_000.0
 }
+
+private fun Instant.utc(): LocalDateTime = toLocalDateTime(TimeZone.UTC)
 
 private fun normalizeDegrees360(degrees: Double): Double {
     val mod = degrees % 360.0
@@ -215,10 +214,10 @@ private fun computeSunDirectionWorld(
     earthRotationDegrees: Float,
     earthTiltDegrees: Float,
 ): LightDirection {
-    val latRad = Math.toRadians(latitude)
-    val lonRad = Math.toRadians(longitude)
-    val azRad = Math.toRadians(azimuthDegrees)
-    val elRad = Math.toRadians(elevationDegrees.toDouble())
+    val latRad = toRadians(latitude)
+    val lonRad = toRadians(longitude)
+    val azRad = toRadians(azimuthDegrees)
+    val elRad = toRadians(elevationDegrees.toDouble())
 
     val sinLat = sin(latRad)
     val cosLat = cos(latRad)
@@ -259,8 +258,8 @@ private fun computeSunDirectionWorld(
     val worldDir = earthToWorld(earthDir, earthRotationDegrees, earthTiltDegrees).normalized()
 
     return LightDirection(
-        lightDegrees = Math.toDegrees(atan2(worldDir.x, worldDir.z)).toFloat(),
-        sunElevationDegrees = Math.toDegrees(asin(worldDir.y.coerceIn(-1.0, 1.0))).toFloat(),
+        lightDegrees = toDegrees(atan2(worldDir.x, worldDir.z)).toFloat(),
+        sunElevationDegrees = toDegrees(asin(worldDir.y.coerceIn(-1.0, 1.0))).toFloat(),
     )
 }
 
@@ -273,14 +272,14 @@ private fun earthToWorld(
     earthRotationDegrees: Float,
     earthTiltDegrees: Float,
 ): Vec3d {
-    val yawRad = Math.toRadians(-earthRotationDegrees.toDouble())
+    val yawRad = toRadians(-earthRotationDegrees.toDouble())
     val cosYaw = cos(yawRad)
     val sinYaw = sin(yawRad)
     val x1 = earthDir.x * cosYaw + earthDir.z * sinYaw
     val z1 = -earthDir.x * sinYaw + earthDir.z * cosYaw
     val y1 = earthDir.y
 
-    val tiltRad = Math.toRadians(-earthTiltDegrees.toDouble())
+    val tiltRad = toRadians(-earthTiltDegrees.toDouble())
     val cosTilt = cos(tiltRad)
     val sinTilt = sin(tiltRad)
     val x2 = x1 * cosTilt - y1 * sinTilt

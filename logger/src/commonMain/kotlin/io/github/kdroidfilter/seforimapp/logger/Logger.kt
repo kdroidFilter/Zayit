@@ -1,9 +1,15 @@
 package io.github.kdroidfilter.seforimapp.logger
 
-import io.sentry.Sentry
-import io.sentry.SentryLevel
-import java.text.SimpleDateFormat
-import java.util.Date
+import io.sentry.kotlin.multiplatform.Sentry
+import io.sentry.kotlin.multiplatform.SentryLevel
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format.char
+import kotlinx.datetime.toLocalDateTime
+import kotlin.concurrent.Volatile
+import kotlin.jvm.JvmField
+import kotlin.time.Clock
 
 var isDevEnv: Boolean = true
 var loggingLevel: LoggingLevel = LoggingLevel.VERBOSE
@@ -40,9 +46,24 @@ class LoggingLevel(
 
 @PublishedApi internal const val COLOR_RESET = "\u001b[0m"
 
-@PublishedApi internal val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+// yyyy-MM-dd HH:mm:ss.SSS
+@PublishedApi internal val dateFormat =
+    LocalDateTime.Format {
+        date(LocalDate.Formats.ISO)
+        char(' ')
+        hour()
+        char(':')
+        minute()
+        char(':')
+        second()
+        char('.')
+        secondFraction(3)
+    }
 
-@PublishedApi internal fun getCurrentTimestamp(): String = dateFormat.format(Date())
+@PublishedApi internal fun getCurrentTimestamp(): String =
+    dateFormat.format(
+        Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()),
+    )
 
 @PublishedApi internal fun shouldLogToConsole(minLevel: LoggingLevel): Boolean = isDevEnv && loggingLevel.priority <= minLevel.priority
 
@@ -79,14 +100,13 @@ class LoggingLevel(
     if (sendToSentry) {
         runCatching {
             val sentryLevel = toSentryLevel(minLevel)
-            Sentry.withScope { scope ->
-                scope.level = sentryLevel
-                if (throwable != null) {
+            if (throwable != null) {
+                Sentry.captureException(throwable) { scope ->
+                    scope.level = sentryLevel
                     scope.setExtra("logger.message", renderedMessage)
-                    Sentry.captureException(throwable)
-                } else {
-                    Sentry.captureMessage(renderedMessage, sentryLevel)
                 }
+            } else {
+                Sentry.captureMessage(renderedMessage) { scope -> scope.level = sentryLevel }
             }
         }
     }

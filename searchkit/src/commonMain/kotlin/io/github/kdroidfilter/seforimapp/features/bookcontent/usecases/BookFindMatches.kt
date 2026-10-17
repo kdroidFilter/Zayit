@@ -10,7 +10,7 @@ import io.github.kdroidfilter.seforimlibrary.search.SearchEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import java.io.IOException
+import kotlinx.io.IOException
 
 /**
  * The matches of the find-in-page query in a book, in reading order. Only each matching line's
@@ -41,7 +41,7 @@ class BookFindMatches internal constructor(
         current: Match,
         forward: Boolean,
     ): Match? {
-        val i = lineIndices.binarySearch(current.lineIndex)
+        val i = lineIndices.asList().binarySearch(current.lineIndex)
         if (i < 0) return nextAfterLine(current.lineIndex, forward)
         val ordinal = current.ordinal + if (forward) 1 else -1
         return when {
@@ -60,7 +60,7 @@ class BookFindMatches internal constructor(
         forward: Boolean,
     ): Match? {
         if (lineIndices.isEmpty()) return null
-        val pos = lineIndices.binarySearch(fromLineIndex)
+        val pos = lineIndices.asList().binarySearch(fromLineIndex)
         return if (forward) {
             matchAt((if (pos >= 0) pos + 1 else -pos - 1).takeIf { it < lineIndices.size } ?: 0, 0)
         } else {
@@ -71,7 +71,7 @@ class BookFindMatches internal constructor(
 
     /** Whether [match] is one of these matches: a match kept from older results may no longer be. */
     operator fun contains(match: Match): Boolean {
-        val i = lineIndices.binarySearch(match.lineIndex)
+        val i = lineIndices.asList().binarySearch(match.lineIndex)
         return i >= 0 &&
             lineIds[i] == match.lineId &&
             match.ordinal in 0 until countIn(i) &&

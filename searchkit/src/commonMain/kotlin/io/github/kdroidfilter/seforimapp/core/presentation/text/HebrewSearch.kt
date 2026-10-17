@@ -55,7 +55,7 @@ fun stripNikudTeamimWithMap(
     return out.toString() to arr
 }
 
-internal fun replaceFinalsWithBase(text: String): String =
+fun replaceFinalsWithBase(text: String): String =
     text
         .replace('\u05DA', '\u05DB') // ך -> כ
         .replace('\u05DD', '\u05DE') // ם -> מ
@@ -63,7 +63,7 @@ internal fun replaceFinalsWithBase(text: String): String =
         .replace('\u05E3', '\u05E4') // ף -> פ
         .replace('\u05E5', '\u05E6') // ץ -> צ
 
-internal fun normalizeQueryForHebrew(raw: String): String {
+fun normalizeQueryForHebrew(raw: String): String {
     if (raw.isBlank()) return ""
     var s = raw.trim()
     // Remove biblical cantillation marks (teamim) U+0591–U+05AF
@@ -80,7 +80,7 @@ internal fun normalizeQueryForHebrew(raw: String): String {
     return s
 }
 
-internal fun mapToOrigIndex(
+fun mapToOrigIndex(
     mapToOrig: IntArray,
     plainIndex: Int,
 ): Int {
@@ -132,13 +132,13 @@ fun mapOriginalToStripped(
  * Find all diacritic-insensitive matches of [query] in [text], returning original
  * character index ranges [start, end) suitable for highlighting.
  */
-internal fun findAllMatchesOriginal(
+fun findAllMatchesOriginal(
     text: String,
     query: String,
 ): List<IntRange> = findAllMatchesNormalized(text, normalizeQueryForHebrew(query))
 
 /** [findAllMatchesOriginal] for a query already through [normalizeQueryForHebrew]: scanning many lines normalizes it once. */
-internal fun findAllMatchesNormalized(
+fun findAllMatchesNormalized(
     text: String,
     q: String,
 ): List<IntRange> {

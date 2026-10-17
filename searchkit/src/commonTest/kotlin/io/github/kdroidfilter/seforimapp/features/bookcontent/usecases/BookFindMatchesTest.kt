@@ -107,7 +107,7 @@ class BookFindMatchesTest {
         }
 
     @Test
-    fun `confirms candidates literally, nikud ignored, in reading order`() =
+    fun `confirms candidates literally - nikud ignored - in reading order`() =
         runTest {
             val matches = find("ברא")
             // Twice in line 0 (inside בראשית, then ברא), twice in line 2
@@ -117,14 +117,14 @@ class BookFindMatchesTest {
         }
 
     @Test
-    fun `matches against the displayed text, not the html`() =
+    fun `matches against the displayed text - not the html`() =
         runTest {
             assertEquals(0, find("<b>").occurrences)
             assertEquals(1, find("והארץ").occurrences)
         }
 
     @Test
-    fun `steps through every match, line after line, wrapping both ways`() =
+    fun `steps through every match - line after line - wrapping both ways`() =
         runTest {
             val matches = find("ברא")
             val first = matches.nextAfterLine(-1, forward = true)!!
@@ -137,7 +137,7 @@ class BookFindMatchesTest {
         }
 
     @Test
-    fun `whole-line matches, one occurrence each`() {
+    fun `whole-line matches - one occurrence each`() {
         val matches = BookFindMatches.ofLines(lines.reversed())
         assertEquals(3, matches.occurrences)
         assertEquals(BookFindMatches.Match(1, 11, ordinal = 0, position = 2), matches.nextAfterLine(0, forward = true))

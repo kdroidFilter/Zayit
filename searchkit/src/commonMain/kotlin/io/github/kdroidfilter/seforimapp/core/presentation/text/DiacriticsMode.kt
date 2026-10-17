@@ -35,7 +35,7 @@ private const val METEG = '\u05BD'
 private fun isTeamim(c: Char): Boolean = c.code in 0x0591..0x05AF
 
 /** True for nikud (vowel points, meteg included) and ta'amim (cantillation) characters. */
-internal fun isNikudOrTeamim(c: Char): Boolean =
+fun isNikudOrTeamim(c: Char): Boolean =
     isTeamim(c) ||
         (c.code in 0x05B0..0x05BD) ||
         (c == '\u05C1') ||

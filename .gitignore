@@ -16,3 +16,6 @@ Pods/
 *.gpg
 *yarn.lock
 .claude/
+
+# Kotlin SwiftPM import (Sentry Cocoa for the iOS binaries)
+.swiftpm-locks/

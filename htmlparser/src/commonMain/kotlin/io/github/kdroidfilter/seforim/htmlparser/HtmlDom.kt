@@ -26,3 +26,6 @@ internal class HtmlElement(
 
 /** The nodes of [html]'s body, parsed as a browser would. */
 internal expect fun parseHtmlBody(html: String): List<HtmlNode>
+
+/** All the text of [html], whitespace normalized as a browser shows it (jsoup's Document.text()). */
+expect fun htmlToText(html: String): String

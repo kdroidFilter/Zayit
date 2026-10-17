@@ -9,11 +9,11 @@ import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
+import io.github.kdroidfilter.seforim.htmlparser.htmlToText
 import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimlibrary.core.models.Book
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.core.text.HebrewTextUtils
-import org.jsoup.Jsoup
 
 private val WHITESPACE_REGEX = Regex("\\s+")
 private const val MIN_EDGE_OVERLAP = 8
@@ -33,7 +33,7 @@ private fun normalizeForMatch(text: String): String =
         .replace(WHITESPACE_REGEX, " ")
         .trim()
 
-private fun stripHtmlToPlainText(html: String): String = normalizeForMatch(Jsoup.parse(html).text())
+private fun stripHtmlToPlainText(html: String): String = normalizeForMatch(htmlToText(html))
 
 /**
  * Best-effort matching of a free-form text selection against a list of currently loaded lines.

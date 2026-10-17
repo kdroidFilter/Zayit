@@ -25,3 +25,5 @@ private fun toHtmlNode(node: Node): HtmlNode? =
             )
         else -> null
     }
+
+actual fun htmlToText(html: String): String = Ksoup.parse(html).text()

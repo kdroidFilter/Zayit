@@ -63,6 +63,7 @@ kotlin {
             implementation(libs.kotlinx.serialization.protobuf)
             implementation(libs.structured.coroutines.annotations)
             implementation(libs.kotlinx.collections.immutable)
+            implementation(libs.kotlinx.io.core)
             implementation(libs.multiplatformSettings)
             implementation(libs.filekit.core)
             implementation(libs.hebrew.numerals)

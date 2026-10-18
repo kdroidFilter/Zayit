@@ -69,6 +69,9 @@ kotlin {
             implementation(libs.structured.coroutines.annotations)
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.kotlinx.io.core)
+            // The database bundle's extraction: zstd (native on every platform) and SHA-256 over Okio
+            implementation(libs.okio)
+            implementation(libs.zstd.kmp.okio)
             implementation(libs.multiplatformSettings)
             implementation(libs.filekit.core)
             implementation(libs.hebrew.numerals)
@@ -90,9 +93,16 @@ kotlin {
         commonTest.dependencies {
             implementation(kotlin("test"))
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.okio.fakefilesystem)
+            implementation(libs.multiplatformSettings.test)
         }
 
-        jvmTest.dependencies { implementation(libs.mockk) }
+        jvmTest.dependencies {
+            implementation(libs.mockk)
+            // The archives the database bundle's packager writes, to read them back
+            implementation(libs.commons.compress)
+            implementation(libs.zstd.jni)
+        }
     }
 }
 

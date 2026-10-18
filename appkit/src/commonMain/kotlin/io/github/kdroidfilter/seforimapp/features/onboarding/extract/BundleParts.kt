@@ -1,6 +1,8 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
-import java.io.File
+import okio.FileSystem
+import okio.Path
+import okio.SYSTEM
 
 /**
  * Naming of the split database bundle: `<base>.tar.zst.partNN`, numbered from 01, described by
@@ -53,7 +55,7 @@ object BundleParts {
 
     /** Parts of a bundle in concatenation order, with the bundle's sha256 when its manifest is known. */
     class Resolved(
-        val parts: List<File>,
+        val parts: List<Path>,
         val sha256: String?,
     )
 
@@ -65,19 +67,22 @@ object BundleParts {
      * unknown format, or left over from another release) parts are discovered by name and checked
      * with [requireComplete].
      */
-    fun resolve(anyPart: File): Resolved {
+    fun resolve(
+        anyPart: Path,
+        fileSystem: FileSystem = FileSystem.SYSTEM,
+    ): Resolved {
         val bundleName = bundleNameOf(anyPart.name) ?: error("Not a bundle part: ${anyPart.name}")
-        val dir = anyPart.absoluteFile.parentFile ?: error("Invalid part path: $anyPart")
+        val dir = fileSystem.canonicalize(anyPart).parent ?: error("Invalid part path: $anyPart")
         val manifest =
-            File(dir, manifestNameFor(bundleName))
-                .takeIf { it.isFile }
-                ?.let { BundleManifest.parseOrNull(it.readText()) }
-        val manifestParts = manifest?.parts?.map { File(dir, it.file) }
-        if (manifestParts != null && manifestParts.zip(manifest.parts).all { (file, part) -> file.length() == part.size }) {
+            (dir / manifestNameFor(bundleName))
+                .takeIf { fileSystem.metadataOrNull(it)?.isRegularFile == true }
+                ?.let { path -> BundleManifest.parseOrNull(fileSystem.read(path) { readUtf8() }) }
+        val manifestParts = manifest?.parts?.map { dir / it.file }
+        if (manifestParts != null && manifestParts.zip(manifest.parts).all { (file, part) -> fileSystem.sizeOf(file) == part.size }) {
             return Resolved(manifestParts, manifest.sha256)
         }
-        val parts = legacyPartNames(dir.list().orEmpty().toList(), bundleName).map { File(dir, it) }
-        requireComplete(parts.map { it.length() })
+        val parts = legacyPartNames(fileSystem.list(dir).map { it.name }, bundleName).map { dir / it }
+        requireComplete(parts.map(fileSystem::sizeOf))
         return Resolved(parts, sha256 = null)
     }
 
@@ -94,11 +99,14 @@ object BundleParts {
     }
 
     /** Files belonging to the bundle [anyPart] is part of (parts and manifest), for cleanup. */
-    fun bundleFiles(anyPart: File): List<File> {
+    fun bundleFiles(
+        anyPart: Path,
+        fileSystem: FileSystem = FileSystem.SYSTEM,
+    ): List<Path> {
         val bundleName = bundleNameOf(anyPart.name) ?: return emptyList()
-        val dir = anyPart.absoluteFile.parentFile ?: return emptyList()
-        return dir
-            .listFiles()
+        val dir = runCatching { fileSystem.canonicalize(anyPart).parent }.getOrNull() ?: return emptyList()
+        return fileSystem
+            .listOrNull(dir)
             .orEmpty()
             .filter { file ->
                 file.name.equals(manifestNameFor(bundleName), ignoreCase = true) ||
@@ -111,7 +119,10 @@ object BundleParts {
         require(numbers.isNotEmpty()) { "No bundle part found" }
         val sorted = numbers.sorted()
         val missing = (1..sorted.last()).firstOrNull { it !in numbers }
-        require(missing == null) { "Missing bundle part %02d".format(missing) }
+        require(missing == null) { "Missing bundle part ${missing.toString().padStart(2, '0')}" }
         return sorted
     }
 }
+
+/** The size of the file at [path] (0 when unknown, as java.io.File's length). */
+internal fun FileSystem.sizeOf(path: Path): Long = metadataOrNull(path)?.size ?: 0L

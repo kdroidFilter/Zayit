@@ -34,6 +34,8 @@ kotlin {
         compileSdk = 37
         // As searchkit, whose search runs from Android 10
         minSdk = 29
+        // The Compose resources (composeResources) packed in the library
+        androidResources { enable = true }
     }
     iosArm64()
     iosSimulatorArm64()
@@ -52,10 +54,13 @@ kotlin {
 
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
+            // The app's strings, fonts and pictures (composeResources), shared with the mobile apps
+            api(libs.compose.components.resources)
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.viewmodel.savedstate)
             implementation(libs.metrox.viewmodel)
             implementation(libs.androidx.paging.common)
+            implementation(libs.navigation.compose)
 
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
@@ -89,6 +94,12 @@ kotlin {
 
         jvmTest.dependencies { implementation(libs.mockk) }
     }
+}
+
+// The app's resources keep the Res class they had in SeforimApp, public for the apps' screens
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "seforimapp.seforimapp.generated.resources"
 }
 
 sqldelight {

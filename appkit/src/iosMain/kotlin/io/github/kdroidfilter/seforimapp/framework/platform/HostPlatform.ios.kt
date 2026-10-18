@@ -6,5 +6,7 @@ import platform.posix.getenv
 
 actual val isLinuxDesktop: Boolean = false
 
+actual val isMacOsDesktop: Boolean = false
+
 @OptIn(ExperimentalForeignApi::class)
 actual fun environmentVariable(name: String): String? = getenv(name)?.toKString()

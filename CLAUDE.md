@@ -134,9 +134,21 @@ see `SeforimLibrary/JVM_RUNTIME.md`. The view models reach the
 desktop shell only through the ports of `SearchHost.kt` (`SearchTabs`, `SearchSessionStore`, `SearchSettings`,
 `SearchHistory`); keep `java.*`, AWT and desktop types out of `searchkit/src/commonMain`.
 
+### The app without its shell: `appkit`
+Everything else that doesn't need the desktop is the KMP module `appkit` (JVM, Android 10+, iOS), packages unchanged:
+the reader (`BookContentViewModel`, its state, use cases, paging), `TabsViewModel`, the session (`SessionManager`), the
+user's data (stores, `UserSettingsDb` schema), the settings and onboarding view models, the catalog, the Compose
+resources (`appkit/src/commonMain/composeResources`, `Res` still in `seforimapp.seforimapp.generated.resources`) and
+`FontCatalog`. `earthwidget` and `pagination` are multiplatform too. It reaches the desktop shell only through ports,
+which `SeforimApp` implements: `TabsHost` (`DesktopTabsHost`), `TabsResolver` (`DesktopManager`), `SessionRestoreState`
+/`SessionShell` (`SessionManager`, `DesktopSessionShell`). `AppKitBindings` (contributed to `AppScope`) provides the
+common bindings; each app's graph provides `AppDatabases` (its SQLite connections, `expect`/`actual`) and its ports.
+`DesktopManager`, the windows and the Jewel screens stay in `SeforimApp`. Keep `java.*`, AWT, Jewel and Nucleus out of
+`appkit/src/commonMain`.
+
 The verse quote links of the Talmud (temporary, until the DB carries them) follow the same pattern: the private
 `io.github.kdroidfilter:seforim-quotelinks` package (repo `SeforimQuoteLinks`, read with the siddur's token by default,
-or `quotelinks.token`/`SEFORIM_QUOTELINKS_TOKEN`/`gh`, or `-Pquotelinks.local=true` to include `../SeforimQuoteLinks/jvm`) and `addons/quotelinks/enabled`, which `LinesPagingSource` calls on each page it loads, in
+or `quotelinks.token`/`SEFORIM_QUOTELINKS_TOKEN`/`gh`, or `-Pquotelinks.local=true` to include `../SeforimQuoteLinks/jvm`) and `appkit/addons/quotelinks/enabled` (appkit's `jvmMain`; null on mobile), which `LinesPagingSource` calls on each page it loads, in
 the same trip off the UI thread; `disabled` makes `installedQuoteLinks` null. Core code reaches it only through
 `QuoteLinksFeature`/`installedQuoteLinks`; only the tractates in the package pay anything (a set lookup otherwise).
 
@@ -170,6 +182,7 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 - `texteffects`: Text rendering effects and styling
 - `network`: Network utilities and Ktor client setup
 - `searchkit`: the search without its UI, multiplatform (see "Search on mobile")
+- `appkit`: the app without its desktop shell, multiplatform (see "The app without its shell")
 - `backup`: Backup core, Android-BackupAgent/Transport style: `BackupSource` (what: the app's `UserDataBackup`, user DB + portable prefs), `BackupDestination` (where: `LocalFileDestination`, …), `BackupManager` (the only code linking both)
 - `backup-drive`: Google Drive `BackupDestination` + `GoogleDriveSync` (OAuth PKCE loopback, hidden `appDataFolder`, append-only with the 10 latest kept as IntelliJ settings sync, never restores without asking, on-quit + daily auto backup paused while a restore is pending)
 
@@ -281,7 +294,7 @@ class MyViewModel(
 
 - **Main Entry**: `SeforimApp/src/jvmMain/kotlin/main.kt`
 - **Features**: `SeforimApp/src/jvmMain/kotlin/io/github/kdroidfilter/seforimapp/features/`
-- **Resources**: `SeforimApp/src/commonMain/composeResources/`
+- **Resources**: `appkit/src/commonMain/composeResources/`
 - **Desktop Assets**: `SeforimApp/src/jvmMain/assets/`
 - **Tab System**: See `TAB_SYSTEM_README.md`
 - **Version Catalog**: `gradle/libs.versions.toml`

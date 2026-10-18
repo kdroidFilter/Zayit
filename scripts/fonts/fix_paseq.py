@@ -20,7 +20,7 @@ from fontTools.pens.t2CharStringPen import T2CharStringPen
 from fontTools.pens.ttGlyphPen import TTGlyphPen
 from fontTools.ttLib import TTFont
 
-FONT_DIR = Path(__file__).resolve().parents[2] / "SeforimApp/src/commonMain/composeResources/font"
+FONT_DIR = Path(__file__).resolve().parents[2] / "appkit/src/commonMain/composeResources/font"
 
 
 @dataclass(frozen=True)

@@ -24,7 +24,7 @@
 - DI uses Metro (`AppGraph`, `@Provides`); access via `LocalAppGraph` (avoid singletons).
 
 ## Localization & Resources
-- Never hardcode user-visible text; add keys to `SeforimApp/src/commonMain/composeResources/strings.xml`.
+- Never hardcode user-visible text; add keys to `appkit/src/commonMain/composeResources/strings.xml`.
 - The required locale for user-facing text is Hebrew (`he`); provide Hebrew strings for all new keys.
 
 ## Testing Guidelines

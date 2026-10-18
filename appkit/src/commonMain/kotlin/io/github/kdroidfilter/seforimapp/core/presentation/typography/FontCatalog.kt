@@ -5,7 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
+import io.github.kdroidfilter.seforimapp.framework.platform.isMacOsDesktop
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import org.jetbrains.compose.resources.Font
@@ -168,7 +168,7 @@ object FontCatalog {
 
     /** On macOS some Hebrew fonts have no bold face: their bold text is scaled up a little to stay visible. */
     fun boldScaleFor(code: String): Float =
-        if (PlatformInfo.isMacOS && code in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")) 1.08f else 1.0f
+        if (isMacOsDesktop && code in setOf("notoserifhebrew", "notorashihebrew", "frankruhllibre")) 1.08f else 1.0f
 
     @Composable
     fun familyFor(code: String): FontFamily =

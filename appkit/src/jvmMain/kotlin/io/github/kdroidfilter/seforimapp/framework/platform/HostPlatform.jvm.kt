@@ -1,5 +1,9 @@
 package io.github.kdroidfilter.seforimapp.framework.platform
 
-actual val isLinuxDesktop: Boolean = System.getProperty("os.name").orEmpty().startsWith("Linux", ignoreCase = true)
+private val osName = System.getProperty("os.name").orEmpty()
+
+actual val isLinuxDesktop: Boolean = osName.startsWith("Linux", ignoreCase = true)
+
+actual val isMacOsDesktop: Boolean = osName.startsWith("Mac", ignoreCase = true)
 
 actual fun environmentVariable(name: String): String? = System.getenv(name)

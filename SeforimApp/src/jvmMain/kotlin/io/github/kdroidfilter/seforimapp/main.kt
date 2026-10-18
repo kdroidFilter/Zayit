@@ -19,6 +19,7 @@ import dev.zacsweers.metrox.viewmodel.metroViewModel
 import io.github.kdroidfilter.seforimapp.core.deeplink.ContentDeepLinkHandler
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eAuthorScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eExtractScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eFilamentScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eMemoryScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eNotesScenario
@@ -465,6 +466,7 @@ fun main(args: Array<String>) {
                                         E2eReaderPerfScenario.run(it)
                                         E2eShiftSelectScenario.run(it)
                                         E2eQuoteLinksScenario.run(it)
+                                        E2eExtractScenario.run(it)
                                         installedSiddur?.runE2e(it)
                                     }) { exitApplication() }
                                 }

@@ -120,3 +120,16 @@ sqldelight {
         }
     }
 }
+
+// A real database bundle extracted in the iOS simulator (IosExtractBundleTest): -PseforimTestBundle=<.tar.zst or .part01>
+// and -PseforimTestBundleSha256=<the extracted database's>; the simulator sees the host's files
+tasks.withType<org.jetbrains.kotlin.gradle.targets.native.tasks.KotlinNativeSimulatorTest>().configureEach {
+    device.set(providers.gradleProperty("seforim.iosSimulator").orElse("iPhone 17 Pro"))
+    val bundle = providers.gradleProperty("seforimTestBundle")
+    val sha256 = providers.gradleProperty("seforimTestBundleSha256")
+    doFirst {
+        // The simulator passes the SIMCTL_CHILD_ variables to the test process, without the prefix
+        bundle.orNull?.let { environment("SIMCTL_CHILD_SEFORIM_TEST_BUNDLE", it) }
+        sha256.orNull?.let { environment("SIMCTL_CHILD_SEFORIM_TEST_BUNDLE_SHA256", it) }
+    }
+}

@@ -13,8 +13,8 @@ import androidx.compose.ui.semantics.SemanticsNode
 import dev.nucleusframework.window.ExperimentalNucleusApi
 import dev.nucleusframework.window.tao.TaoRootsForTest
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
-import io.github.kdroidfilter.seforimapp.features.bookcontent.quotelinks.installedQuoteLinks
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
+import io.github.kdroidfilter.seforimapp.features.bookcontent.quotelinks.installedQuoteLinks
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.UUID

@@ -19,6 +19,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.playMillisHere
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.home.widgets.shownDateHere
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.timeZone
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.worldPlaces
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import org.jetbrains.jewel.foundation.theme.JewelTheme

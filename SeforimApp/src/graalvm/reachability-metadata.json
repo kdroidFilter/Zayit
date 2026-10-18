@@ -1343,6 +1343,34 @@
         },
         {
             "type": "sun.util.resources.cldr.CalendarData"
+        },
+        {
+            "type": "com.squareup.zstd.ZstdCompressor",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "outputBytesProcessed",
+                    "jniAccessible": true
+                },
+                {
+                    "name": "inputBytesProcessed",
+                    "jniAccessible": true
+                }
+            ]
+        },
+        {
+            "type": "com.squareup.zstd.ZstdDecompressor",
+            "jniAccessible": true,
+            "fields": [
+                {
+                    "name": "outputBytesProcessed",
+                    "jniAccessible": true
+                },
+                {
+                    "name": "inputBytesProcessed",
+                    "jniAccessible": true
+                }
+            ]
         }
     ],
     "foreign": {
@@ -2934,6 +2962,9 @@
         },
         {
             "glob": "io/github/kdroidfilter/seforim/quotelinks/**"
+        },
+        {
+            "glob": "jni/*/*zstd-kmp*"
         }
     ]
 }

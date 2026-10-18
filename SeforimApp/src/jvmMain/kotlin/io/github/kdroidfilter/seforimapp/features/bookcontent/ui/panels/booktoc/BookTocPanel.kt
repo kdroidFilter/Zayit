@@ -76,7 +76,7 @@ fun BookTocPanel(
                     val search = uiState.toc.search
                     // While searching, the matches of both trees replace them
                     val searching = search != null && search.query.isNotBlank()
-                    val showAlt = uiState.navigation.selectedBook.hasAltStructures && !searching
+                    val showAlt = uiState.navigation.selectedBook?.hasAltStructures == true && !searching
                     Column(modifier = Modifier.fillMaxHeight()) {
                         PaneSearchLayout(
                             search = search,

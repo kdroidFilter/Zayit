@@ -1,54 +1,39 @@
 package io.github.kdroidfilter.seforimapp.framework.di.modules
 
-import app.cash.sqldelight.db.SqlDriver
-import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
-import com.russhwolf.settings.Settings
 import dev.nucleusframework.core.runtime.AppRestarter.restartApplication
 import dev.zacsweers.metro.BindingContainer
 import dev.zacsweers.metro.ContributesTo
-import dev.zacsweers.metro.Named
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
+import io.github.kdroidfilter.seforim.tabs.TabsResolver
 import io.github.kdroidfilter.seforimapp.BuildConfig
 import io.github.kdroidfilter.seforimapp.backup.BackupManager
 import io.github.kdroidfilter.seforimapp.backup.drive.DriveSyncConfig
 import io.github.kdroidfilter.seforimapp.backup.drive.GoogleDriveSync
-import io.github.kdroidfilter.seforimapp.core.MainAppState
-import io.github.kdroidfilter.seforimapp.core.annotations.HighlightStore
-import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
-import io.github.kdroidfilter.seforimapp.core.catalog.CatalogAccess
 import io.github.kdroidfilter.seforimapp.core.e2e.E2e
-import io.github.kdroidfilter.seforimapp.core.favorites.FavoritesStore
-import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
-import io.github.kdroidfilter.seforimapp.core.selection.DefaultSelectionContext
-import io.github.kdroidfilter.seforimapp.core.selection.SelectionContext
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.core.settings.CategoryDisplaySettingsStore
-import io.github.kdroidfilter.seforimapp.core.shnayimmikra.ShnayimMikraStore
-import io.github.kdroidfilter.seforimapp.db.UserSettingsDb
-import io.github.kdroidfilter.seforimapp.features.search.SearchHistory
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.features.search.SearchSessionStore
-import io.github.kdroidfilter.seforimapp.features.search.SearchSettings
 import io.github.kdroidfilter.seforimapp.features.search.SearchTabs
 import io.github.kdroidfilter.seforimapp.framework.backup.UserDataBackup
-import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
+import io.github.kdroidfilter.seforimapp.framework.database.AppDatabases
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
-import io.github.kdroidfilter.seforimapp.framework.database.PersistentSqliteDriver
-import io.github.kdroidfilter.seforimapp.framework.database.USER_SETTINGS_DRIVER
 import io.github.kdroidfilter.seforimapp.framework.database.getUserSettingsDatabasePath
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopSessionShell
 import io.github.kdroidfilter.seforimapp.framework.di.AppScope
 import io.github.kdroidfilter.seforimapp.framework.search.AcronymFrequencyCache
-import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchTabs
 import io.github.kdroidfilter.seforimapp.framework.search.LuceneLookupSearchService
 import io.github.kdroidfilter.seforimapp.framework.search.RepositorySnippetSourceProvider
+import io.github.kdroidfilter.seforimapp.framework.search.TabSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.search.openLuceneIndex
 import io.github.kdroidfilter.seforimapp.framework.search.withSemanticSearch
 import io.github.kdroidfilter.seforimapp.framework.session.SessionManager
+import io.github.kdroidfilter.seforimapp.framework.session.SessionRestoreState
+import io.github.kdroidfilter.seforimapp.framework.session.SessionShell
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.framework.update.AppUpdateService
@@ -62,7 +47,6 @@ import io.github.vinceglb.filekit.path
 import io.ktor.client.HttpClient
 import java.io.File
 import java.nio.file.Paths
-import java.util.Properties
 
 @ContributesTo(AppScope::class)
 @BindingContainer
@@ -72,48 +56,10 @@ object AppCoreBindings {
     @SingleIn(AppScope::class)
     fun provideHttpClient(): HttpClient = KtorConfig.createHttpClient()
 
+    /** The desktop's SQLite connections (the common bindings open the repository and the user database on them). */
     @Provides
     @SingleIn(AppScope::class)
-    fun provideMainAppState(appSettings: AppSettings): MainAppState = MainAppState(appSettings)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideCatalogAccess(catalogCache: CatalogCache): CatalogAccess = CatalogAccess { catalogCache.getCatalog() }
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideSelectionContext(): SelectionContext = DefaultSelectionContext()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideTabPersistedStateStore(): TabPersistedStateStore = TabPersistedStateStore()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideTabTitleUpdateManager(): TabTitleUpdateManager = TabTitleUpdateManager()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideSettings(): Settings = Settings()
-
-    @Provides
-    @SingleIn(AppScope::class)
-    @Named(USER_SETTINGS_DRIVER)
-    fun provideUserSettingsDriver(): SqlDriver {
-        // Single shared connection to the local user database (separate from the
-        // read-only books DB). All user stores inject this instance instead of
-        // opening their own driver. New tables are added transparently for
-        // existing users via CREATE TABLE IF NOT EXISTS in Schema.create().
-        // Wait for a concurrent writer instead of failing: the backup snapshot (VACUUM INTO) runs
-        // on its own thread, hence its own connection, while the stores keep writing.
-        val driver =
-            JdbcSqliteDriver(
-                "jdbc:sqlite:${getUserSettingsDatabasePath()}",
-                Properties().apply { setProperty("busy_timeout", USER_DB_BUSY_TIMEOUT_MS.toString()) },
-            )
-        UserSettingsDb.Schema.create(driver)
-        return driver
-    }
+    fun provideAppDatabases(): AppDatabases = AppDatabases(getUserSettingsDatabasePath())
 
     @Provides
     @SingleIn(AppScope::class)
@@ -140,48 +86,6 @@ object AppCoreBindings {
                 ),
         )
 
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideUserSettingsDb(
-        @Named(USER_SETTINGS_DRIVER) driver: SqlDriver,
-    ): UserSettingsDb = UserSettingsDb(driver)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideCategoryDisplaySettingsStore(database: UserSettingsDb): CategoryDisplaySettingsStore = CategoryDisplaySettingsStore(database)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideHighlightStore(database: UserSettingsDb): HighlightStore = HighlightStore(database)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideNoteStore(database: UserSettingsDb): NoteStore = NoteStore(database)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideHistoryStore(database: UserSettingsDb): HistoryStore = HistoryStore(database)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideFavoritesStore(database: UserSettingsDb): FavoritesStore = FavoritesStore(database)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideShnayimMikraStore(database: UserSettingsDb): ShnayimMikraStore = ShnayimMikraStore(database)
-
-    @Provides
-    @SingleIn(AppScope::class)
-    fun provideRepository(databasePathProvider: DatabasePathProvider): SeforimRepository {
-        val dbPath = databasePathProvider.get()
-        // Persistent single-connection driver with prepared-statement cache +
-        // read-tuning PRAGMAs. Replaces `JdbcSqliteDriver` whose ThreadedConnectionManager
-        // closes the SQLite connection after every non-transactional query (confirmed by
-        // JFR 2026-04-23: ~70 `NativeDB.prepare_utf8` + `NativeDB._close()` pairs / 20 s).
-        val driver = PersistentSqliteDriver("jdbc:sqlite:$dbPath")
-        return SeforimRepository(dbPath, driver)
-    }
-
     /**
      * The app's search engine: lexical (BM25 + MagicDictionary) over the text index, fused with dense semantic search
      * in the official builds ([withSemanticSearch], open core).
@@ -200,6 +104,21 @@ object AppCoreBindings {
         return withSemanticSearch(lexical, lexical.index, repository)
     }
 
+    // What the reader (appkit) asks of the desktop around it
+    @Provides
+    fun provideTabsResolver(desktopManager: DesktopManager): TabsResolver = desktopManager
+
+    @Provides
+    fun provideSessionRestoreState(sessionManager: SessionManager): SessionRestoreState = sessionManager
+
+    // DesktopManager is built from the saved session: the shell only reaches it when saving
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideSessionShell(
+        desktopManager: Lazy<DesktopManager>,
+        thumbnails: TabThumbnailStore,
+    ): SessionShell = DesktopSessionShell(desktopManager, thumbnails)
+
     // What the search screens (searchkit) ask of the desktop around them
     @Provides
     @SingleIn(AppScope::class)
@@ -207,13 +126,7 @@ object AppCoreBindings {
 
     @Provides
     @SingleIn(AppScope::class)
-    fun provideSearchSessionStore(store: TabPersistedStateStore): SearchSessionStore = DesktopSearchSessionStore(store)
-
-    @Provides
-    fun provideSearchSettings(appSettings: AppSettings): SearchSettings = appSettings
-
-    @Provides
-    fun provideSearchHistory(historyStore: HistoryStore): SearchHistory = historyStore
+    fun provideSearchSessionStore(store: TabPersistedStateStore): SearchSessionStore = TabSearchSessionStore(store)
 
     @Provides
     @SingleIn(AppScope::class)
@@ -291,7 +204,7 @@ object AppCoreBindings {
             // created and disposed by DesktopManager.
             searchHomeViewModelFactory = { observeProfile ->
                 SearchHomeViewModel(
-                    sessionStore = DesktopSearchSessionStore(tabPersistedStateStore),
+                    sessionStore = TabSearchSessionStore(tabPersistedStateStore),
                     repository = repository,
                     lookup = lookup,
                     appSettings = appSettings,
@@ -302,8 +215,6 @@ object AppCoreBindings {
             defaultDesktopName = "\u05DE\u05E8\u05D7\u05D1 \u05D0׳",
         )
 }
-
-private const val USER_DB_BUSY_TIMEOUT_MS = 5_000
 
 /** The page the browser shows once the Google sign-in returns to the app. */
 private fun driveSignInPage(success: Boolean): String {

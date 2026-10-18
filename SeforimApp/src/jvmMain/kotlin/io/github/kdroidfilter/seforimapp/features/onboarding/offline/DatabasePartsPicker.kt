@@ -7,7 +7,7 @@ import io.github.vinceglb.filekit.dialogs.openFilePicker
 import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.File
+import okio.Path.Companion.toPath
 
 /**
  * Prompts for the split database bundle (`.tar.zst.part01` … `.partNN`).
@@ -38,5 +38,5 @@ suspend fun pickDatabaseParts(onPart01Picked: (String?) -> Unit = {}): String? {
  */
 suspend fun isCompleteBundle(part01Path: String): Boolean =
     withContext(Dispatchers.IO) {
-        runCatching { BundleParts.resolve(File(part01Path)) }.isSuccess
+        runCatching { BundleParts.resolve(part01Path.toPath()) }.isSuccess
     }

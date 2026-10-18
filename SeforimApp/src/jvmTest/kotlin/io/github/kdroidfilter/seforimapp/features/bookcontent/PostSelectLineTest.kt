@@ -16,7 +16,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NotesUseC
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
-import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
+import io.github.kdroidfilter.seforimapp.framework.search.TabSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.testAppSettings
@@ -89,7 +89,7 @@ class PostSelectLineTest {
                 titleUpdateManager = titleUpdateManager,
                 searchHomeViewModelFactory = {
                     SearchHomeViewModel(
-                        DesktopSearchSessionStore(TabPersistedStateStore()),
+                        TabSearchSessionStore(TabPersistedStateStore()),
                         mockk(relaxed = true),
                         mockk(relaxed = true),
                         testAppSettings(),
@@ -149,9 +149,9 @@ class PostSelectLineTest {
             repository = repository,
             useCaseFactory = useCaseFactory,
             titleUpdateManager = titleUpdateManager,
-            desktopManager = desktopManager,
+            tabsResolver = desktopManager,
             historyStore = mockk<HistoryStore>(relaxed = true),
-            sessionManager = mockk { every { isRestoringSession } returns MutableStateFlow(false) },
+            sessionRestore = mockk { every { isRestoringSession } returns MutableStateFlow(false) },
             appSettings = testAppSettings(),
         )
     }

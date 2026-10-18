@@ -127,8 +127,8 @@ internal fun computeMoonHorizontalPosition(
         )
 
     return HorizontalPosition(
-        azimuthFromNorthDeg = normalizeAngleDeg(Math.toDegrees(azimuthRad)),
-        elevationDeg = Math.toDegrees(elevationRad),
+        azimuthFromNorthDeg = normalizeAngleDeg(toDegrees(azimuthRad)),
+        elevationDeg = toDegrees(elevationRad),
     )
 }
 
@@ -187,7 +187,7 @@ internal fun computeMoonLightFromPhaseInternal(
     val viewDir = Vec3f(viewDirX, viewDirY, viewDirZ).normalized()
     val normalizedPhase = ((phaseAngleDegrees % 360f) + 360f) % 360f
     val thetaDegrees = 180f - normalizedPhase
-    val thetaRad = Math.toRadians(thetaDegrees.toDouble())
+    val thetaRad = toRadians(thetaDegrees.toDouble())
 
     var right = cross(Vec3f.WORLD_UP, viewDir)
     if (right.length() <= EPSILON) {
@@ -202,8 +202,8 @@ internal fun computeMoonLightFromPhaseInternal(
     val sunDir = rotateTowards(viewDir, up, cosT, sinT)
 
     return LightDirection(
-        lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
-        sunElevationDegrees = Math.toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat(),
+        lightDegrees = toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
+        sunElevationDegrees = toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat(),
     )
 }
 
@@ -226,7 +226,7 @@ internal fun computeMoonLightFromPhaseWithObserverUp(
 
     val normalizedPhase = ((phaseAngleDegrees % 360f) + 360f) % 360f
     val thetaDegrees = 180f - normalizedPhase
-    val thetaRad = Math.toRadians(thetaDegrees.toDouble())
+    val thetaRad = toRadians(thetaDegrees.toDouble())
 
     val baseUp =
         projectOntoViewPlane(viewDir, observerUp)
@@ -266,7 +266,7 @@ internal fun computeMoonLightFromPhaseWithObserverUp(
     val sunDir = rotateTowards(viewDir, planeUp, cosT, sinT)
 
     return LightDirection(
-        lightDegrees = Math.toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
-        sunElevationDegrees = Math.toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat(),
+        lightDegrees = toDegrees(atan2(sunDir.x.toDouble(), sunDir.z.toDouble())).toFloat(),
+        sunElevationDegrees = toDegrees(asin(sunDir.y.toDouble().coerceIn(-1.0, 1.0))).toFloat(),
     )
 }

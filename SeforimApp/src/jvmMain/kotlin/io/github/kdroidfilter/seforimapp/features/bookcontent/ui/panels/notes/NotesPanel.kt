@@ -84,20 +84,6 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * A pending (not-yet-persisted) note anchored to a resolved character range. Created from the
- * "add note" context-menu action, or implicitly as a blank whole-line note when the selected line
- * carries none yet.
- *
- * @property quote The anchored passage, shown as a greyed preview above the editor.
- */
-data class NoteDraftAnchor(
-    val lineId: Long,
-    val startOffset: Int,
-    val endOffset: Int,
-    val quote: String,
-)
-
 /** Compact "dd.MM.yy · HH:mm" stamp shown in each note's footer. Locale-neutral on purpose. */
 private val NOTE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yy · HH:mm")
 

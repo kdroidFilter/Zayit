@@ -15,7 +15,7 @@ from fontTools.pens.boundsPen import BoundsPen
 from fontTools.ttLib import TTFont
 from fontTools.ttLib.tables import otTables
 
-FONT_DIR = Path(__file__).resolve().parents[2] / "SeforimApp/src/commonMain/composeResources/font"
+FONT_DIR = Path(__file__).resolve().parents[2] / "appkit/src/commonMain/composeResources/font"
 FONTS = ["notoserifhebrew.ttf", "notorashihebrew.ttf"]
 
 METEG = "uni05BD"

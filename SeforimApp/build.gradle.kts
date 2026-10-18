@@ -176,7 +176,7 @@ kotlin {
             implementation(libs.slf4j.simple)
             implementation(libs.split.pane.desktop)
             implementation(libs.sqlite.driver)
-            implementation(libs.zstd.jni)
+            implementation(libs.okio)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.lucene.core)
             implementation(libs.reorderable)

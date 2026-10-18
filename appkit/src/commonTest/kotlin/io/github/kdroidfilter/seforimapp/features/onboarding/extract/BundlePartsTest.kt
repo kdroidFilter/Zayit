@@ -1,8 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.onboarding.extract
 
-import java.io.File
-import java.nio.file.Files
-import kotlin.test.AfterTest
+import okio.Path.Companion.toPath
+import okio.fakefilesystem.FakeFileSystem
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -10,18 +9,19 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class BundlePartsTest {
-    private val dir = Files.createTempDirectory("bundle-parts").toFile()
+    private val fileSystem = FakeFileSystem()
+    private val dir = "/bundle-parts".toPath().also { fileSystem.createDirectories(it) }
 
-    @AfterTest
-    fun cleanup() {
-        dir.deleteRecursively()
-    }
+    private fun partName(
+        number: Int,
+        base: String = BundleParts.BUNDLE_NAME,
+    ) = "$base.part${number.toString().padStart(2, '0')}"
 
     private fun part(
         number: Int,
         size: Int,
         base: String = BundleParts.BUNDLE_NAME,
-    ) = File(dir, "$base.part%02d".format(number)).apply { writeBytes(ByteArray(size)) }
+    ) = fileSystem.write(dir / partName(number, base)) { write(ByteArray(size)) }
 
     private fun manifest(
         vararg sizes: Long,
@@ -29,15 +29,17 @@ class BundlePartsTest {
     ) {
         val parts =
             sizes.mapIndexed { i, size ->
-                """{ "file": "${BundleParts.BUNDLE_NAME}.part%02d", "size": $size, "sha256": "x" }""".format(i + 1)
+                """{ "file": "${partName(i + 1)}", "size": $size, "sha256": "x" }"""
             }
-        File(dir, BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)).writeText(
-            """{ "formatVersion": $formatVersion, "file": "${BundleParts.BUNDLE_NAME}", "size": ${sizes.sum()}, "sha256": "bundle-sha",
+        fileSystem.write(dir / BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME)) {
+            writeUtf8(
+                """{ "formatVersion": $formatVersion, "file": "${BundleParts.BUNDLE_NAME}", "size": ${sizes.sum()}, "sha256": "bundle-sha",
                "parts": [${parts.joinToString()}], "futureField": true }""",
-        )
+            )
+        }
     }
 
-    private fun resolve() = BundleParts.resolve(File(dir, "${BundleParts.BUNDLE_NAME}.part01"))
+    private fun resolve() = BundleParts.resolve(dir / partName(1), fileSystem)
 
     private fun resolveNames() = resolve().parts.map { it.name.substringAfterLast('.') }
 
@@ -51,7 +53,7 @@ class BundlePartsTest {
     }
 
     @Test
-    fun `legacy part names keep only the bundle, in order`() {
+    fun `legacy part names keep only the bundle in order`() {
         val names =
             BundleParts.legacyPartNames(
                 listOf("seforim_bundle.tar.zst.part02", "lucene.tar.zst.part01", "seforim_bundle.tar.zst.part01", "catalog.pb"),
@@ -70,12 +72,12 @@ class BundlePartsTest {
     }
 
     @Test
-    fun `without manifest rejects a gap, a lone part and a missing last part`() {
+    fun `without manifest rejects a gap a lone part and a missing last part`() {
         part(1, 4)
         assertFailsWith<IllegalArgumentException> { resolveNames() }
         part(3, 2)
         assertFailsWith<IllegalArgumentException> { resolveNames() }
-        File(dir, "${BundleParts.BUNDLE_NAME}.part03").delete()
+        fileSystem.delete(dir / partName(3))
         part(2, 4)
         assertFailsWith<IllegalArgumentException> { resolveNames() }
     }
@@ -119,9 +121,9 @@ class BundlePartsTest {
         part(1, 4)
         part(2, 1)
         manifest(4, 1)
-        File(dir, "catalog.pb").writeText("x")
+        fileSystem.write(dir / "catalog.pb") { writeUtf8("x") }
 
-        val names = BundleParts.bundleFiles(File(dir, "${BundleParts.BUNDLE_NAME}.part01")).map { it.name }.toSet()
+        val names = BundleParts.bundleFiles(dir / partName(1), fileSystem).map { it.name }.toSet()
 
         assertEquals(3, names.size)
         assertTrue(BundleParts.manifestNameFor(BundleParts.BUNDLE_NAME) in names)

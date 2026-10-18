@@ -47,6 +47,8 @@ atomicfu = "0.33.0"
 kotlinx-io = "0.9.1"
 seforimQuoteLinks = "0.1.0"
 zstdJni = "1.5.7-10"
+zstdKmp = "0.4.0"
+okio = "3.16.0"
 metro = "1.4.5"
 lucene = "10.5.2"
 ktlint = "14.2.0"
@@ -120,6 +122,7 @@ navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-co
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 
 multiplatformSettings = { module = "com.russhwolf:multiplatform-settings-no-arg", version.ref = "multiplatformSettings" }
+multiplatformSettings-test = { module = "com.russhwolf:multiplatform-settings-test", version.ref = "multiplatformSettings" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
 materialKolor = { module = "com.materialkolor:material-kolor", version.ref = "materialKolor" }
 foundation-desktop = { module = "org.jetbrains.compose.foundation:foundation-desktop", version.ref = "compose" }
@@ -163,6 +166,9 @@ androidx-lifecycle-viewmodel-savedstate = { module = "org.jetbrains.androidx.lif
 metrox-viewmodel = { module = "dev.zacsweers.metro:metrox-viewmodel", version.ref = "metro" }
 seforim-quotelinks = { module = "io.github.kdroidfilter:seforim-quotelinks", version.ref = "seforimQuoteLinks" }
 zstd-jni = { module = "com.github.luben:zstd-jni", version.ref = "zstdJni" }
+zstd-kmp-okio = { module = "com.squareup.zstd:zstd-kmp-okio", version.ref = "zstdKmp" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
+okio-fakefilesystem = { module = "com.squareup.okio:okio-fakefilesystem", version.ref = "okio" }
 lucene-core = { module = "org.apache.lucene:lucene-core", version.ref = "lucene" }
 lucene-analysis-common = { module = "org.apache.lucene:lucene-analysis-common", version.ref = "lucene" }
 lucene-queryparser = { module = "org.apache.lucene:lucene-queryparser", version.ref = "lucene" }

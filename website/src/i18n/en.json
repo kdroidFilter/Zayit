@@ -8,7 +8,7 @@
     "title": "Zayit - Jewish Study Library | Free Torah & Talmud Reader",
     "description": "Zayit is a free desktop library of Jewish texts: Tanakh, Talmud, Midrash, Halacha and commentaries, with fast search and linked sources. Windows, macOS, Linux.",
     "downloadTitle": "Download Zayit for Windows, macOS & Linux | Free",
-    "downloadDescription": "Download Zayit, the free Jewish study library, for Windows, macOS or Linux. Torah, Talmud and commentaries in one fast, searchable app. Free and open source.",
+    "downloadDescription": "Download Zayit, the free Jewish study library, for Windows, macOS or Linux. Torah, Talmud and commentaries in one fast, searchable app. Free, with an open source core.",
     "imageAlt": "Zayit - Jewish Study Library"
   },
   "nav": {
@@ -128,7 +128,7 @@
   },
   "download": {
     "title": "Download Zayit",
-    "description": "Available for macOS, Windows, and Linux. Free and open source.",
+    "description": "Available for macOS, Windows, and Linux. Free, with an open source core.",
     "downloads": "downloads",
     "cta": "Go to Downloads",
     "platforms": "Available on all major platforms"
@@ -138,7 +138,8 @@
     "createdByName": "Elie Gambache",
     "sourceCode": "Source Code",
     "support": "Support the Project",
-    "license": "Free and open source under AGPL v3"
+    "license": "Zayit's core is open source under AGPL v3. The smart siddur and the semantic search are Zayit's own work, included free in the official builds.",
+    "openCore": "How the open core works"
   },
   "comparison": {
     "light": "Light",
@@ -147,7 +148,7 @@
   },
   "dl": {
     "title": "Download Zayit",
-    "subtitle": "The whole library on your computer. Free and open source.",
+    "subtitle": "The whole library on your computer. Free, with an open source core.",
     "version": "Version {{version}}",
     "released": "Released {{date}}",
     "downloads": "{{total}} downloads",

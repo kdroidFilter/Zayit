@@ -55,7 +55,6 @@ export function pageMeta(lang: Lang, page: Page, t: (key: string) => string): Pa
       operatingSystem: 'Windows, macOS, Linux',
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
       isAccessibleForFree: true,
-      license: 'https://www.gnu.org/licenses/agpl-3.0.html',
       image: OG_IMAGE,
       screenshot: `${SITE_URL}/art/HOME-DARK.jpg`,
       inLanguage: lang,

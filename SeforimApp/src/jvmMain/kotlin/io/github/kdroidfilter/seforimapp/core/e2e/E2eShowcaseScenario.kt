@@ -14,6 +14,7 @@ import java.util.UUID
 object E2eShowcaseScenario {
     private const val LOAD_MS = 7000L
     private const val TEXT_SIZE = 22f
+    private const val DESKTOP_NAME = "מרחב א"
 
     suspend fun run(sc: E2eScenario) {
         if (E2e.scenario != "showcase") return
@@ -58,6 +59,10 @@ object E2eShowcaseScenario {
         fun book(event: BookContentEvent) {
             E2e.bookViewModel(currentTabId())?.onEvent(event) ?: sc.note("no book ViewModel for ${currentTabId()}")
         }
+
+        // The workspace as a user's first one is named, not the harness' "A"
+        graph.desktopManager.desktops.value
+            .forEach { graph.desktopManager.renameDesktop(it.id, DESKTOP_NAME) }
 
         // The run restores the user's text size at its end
         graph.appSettings.setTextSize(TEXT_SIZE)

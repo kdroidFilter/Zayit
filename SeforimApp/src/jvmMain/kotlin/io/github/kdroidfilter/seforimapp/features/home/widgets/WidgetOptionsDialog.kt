@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.rememberDialogState
@@ -56,7 +55,7 @@ internal fun WidgetOptionsDialog(
             JewelDecoratedDialog(
                 onCloseRequest = onClose,
                 title = title,
-                state = rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = DpSize(460.dp, 560.dp)),
+                state = rememberDialogState(position = WindowPosition.Aligned(Alignment.Center), size = widget.optionsSize),
                 visible = true,
                 resizable = true,
             ) {

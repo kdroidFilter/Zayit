@@ -5,6 +5,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.dp
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.earth.EarthWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.sky.SkyWidget
@@ -56,6 +57,9 @@ interface HomeWidget {
 
     /** How small the user can make its tool window; its [toolWindowSize] by default, so its content is never cut. */
     val toolWindowMinSize: DpSize? get() = toolWindowSize
+
+    /** Its options window's size. */
+    val optionsSize: DpSize get() = DpSize(460.dp, 560.dp)
 
     /** Its icon in the macOS Tools menu: an SF Symbol's name. */
     val toolSymbol: String? get() = null

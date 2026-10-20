@@ -48,6 +48,32 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
+import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
+import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.Source
+import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.SourceLink
+import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.rememberOpenSource
+import io.github.kdroidfilter.seforimapp.core.settings.SettingCodec
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.unit.DpSize
+import org.jetbrains.jewel.ui.component.InlineInformationBanner
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
+import org.jetbrains.jewel.ui.component.RadioButtonRow
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
+import seforimapp.seforimapp.generated.resources.home_widgets_options
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -72,13 +98,12 @@ import seforimapp.seforimapp.generated.resources.home_widget_name_temple
 import kotlin.time.Clock
 
 @Immutable
-private data class TempleCountdownData(
+internal data class TempleCountdownData(
     val years: Int,
     val months: Int,
     val days: Int,
 )
 
-private const val DESTRUCTION_YEAR = 3830
 private const val DESTRUCTION_DAY = 9
 private val DESTRUCTION_MONTH = HebrewMonth.AV
 
@@ -97,7 +122,7 @@ private val JERUSALEM =
         TimeZone.of("Asia/Jerusalem"),
     )
 
-private fun computeTempleCountdown(): TempleCountdownData {
+private fun computeTempleCountdown(count: TempleCount): TempleCountdownData {
     // After sunset in Jerusalem the Hebrew day rolls over — advance the Gregorian date by one day
     // so JewishDate resolves to the new Hebrew day instead of yesterday's.
     val calendar = ComplexZmanimCalendar(JERUSALEM)
@@ -106,12 +131,17 @@ private fun computeTempleCountdown(): TempleCountdownData {
     if (sunset != null && sunset <= Clock.System.now()) {
         date = date.plus(1, DateTimeUnit.DAY)
     }
-    val today = JewishDate(date)
+    return templeCountdownAt(JewishDate(date), count)
+}
 
+internal fun templeCountdownAt(
+    today: JewishDate,
+    count: TempleCount,
+): TempleCountdownData {
     // Most recent Av-9 anniversary that is strictly before today. Using `>=` (rather than `>`)
     // means the anniversary day itself is reported as "almost a full year" instead of "X years
     // and 0 days", keeping the display free of 0-day artifacts.
-    var years = (today.jewishYear - DESTRUCTION_YEAR).toInt()
+    var years = (today.jewishYear - count.destructionYear).toInt()
     var anniversary = JewishDate(today.jewishYear, DESTRUCTION_MONTH, DESTRUCTION_DAY)
     if (anniversary >= today) {
         years -= 1
@@ -237,19 +267,110 @@ internal object TempleCountdownWidget : HomeWidget {
     override val minSpan = CellSpan(4, 3)
     override val maxSpan = CellSpan(12, 6)
 
+    override val settings get() = TempleSettings
+
+    // As measured with its text, so the window opens at its size and never leaves a gap
+    override val optionsSize = DpSize(520.dp, 386.dp)
+
+    @Composable
+    override fun menuItems(state: HomeWidgetsState) =
+        listOf(
+            WidgetMenuItem(stringResource(Res.string.home_widgets_options), icon = AllIconsKeys.General.Settings) {
+                state.optionsOpen = this
+            },
+        )
+
+    @Composable
+    override fun Options(state: HomeWidgetsState) = TempleOptions(state)
+
     @Composable
     override fun Content(
         state: HomeWidgetsState,
         modifier: Modifier,
-    ) = TempleDestructionCountdownCard(modifier)
+    ) = TempleDestructionCountdownCard(state, modifier)
+}
+
+/**
+ * How the years since the destruction are counted (מראה מקומות on סי' תקנט). Both agree the Temple fell on ט' באב
+ * ג'תתכ"ט of our count (Rav Mazuz, בינה לעתים): Rashi counts that very year as the first, the Rambam starts after it.
+ */
+internal enum class TempleCount(
+    val label: String,
+    val destructionYear: Int,
+    val source: Source,
+) {
+    // "נטפי חדא שתא ... לוספה לשנת חורבן על מנין שני דבתר חורבן": the year minus 68, Chazon Ovadia
+    RASHI("רש״י, חזון עובדיה", 3828, Source("רש״י ע״ז ט:", "רש\"י על עבודה זרה", 333)),
+
+    // "שתחלתה מתשרי שאחר החרבן": the year minus 69, the Gra (חו״מ סז, ח) and Rav Mazuz
+    RAMBAM("רמב״ם, גר״א", 3829, Source("רמב״ם שמיטה ויובל י, ד", "משנה תורה, הלכות שמיטה ויובל", 202)),
+}
+
+internal object TempleSettings : WidgetSettings(TempleCountdownWidget.id) {
+    val count by setting(TempleCount.RASHI, SettingCodec({ it.name }, { name -> TempleCount.entries.find { it.name == name } }))
+}
+
+// In our own words, after the מראי מקומות credited in its last paragraph (its text is theirs, all rights reserved)
+private const val TEMPLE_COUNT_TEXT = "files/temple_count.txt"
+
+/** The two counts explained, one picked, each with its source opening in a new tab. */
+@Composable
+private fun TempleOptions(state: HomeWidgetsState) {
+    val picked = state[TempleSettings.count]
+    val open = rememberOpenSource(state)
+    val text by produceState("") { value = Res.readBytes(TEMPLE_COUNT_TEXT).decodeToString().trim() }
+    val link = TextLinkStyles(SpanStyle(color = JewelTheme.globalColors.text.info, textDecoration = TextDecoration.Underline))
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        InlineInformationBanner(modifier = Modifier.fillMaxWidth()) {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(withSourceLinks(text.substringBeforeLast("\n\n"), link, open), fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Justify)
+                Text(text.substringAfterLast("\n\n", ""), fontSize = 11.sp, color = JewelTheme.globalColors.text.info)
+            }
+        }
+        TempleCount.entries.forEach { count ->
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                RadioButtonRow(
+                    text = "${count.label} · ${templeCountdownAt(JewishDate(), count).years}",
+                    selected = count == picked,
+                    onClick = { state[TempleSettings.count] = count },
+                    modifier = Modifier.weight(1f).testTag("temple-option-${count.name}"),
+                )
+                SourceLink(count.source, open)
+            }
+        }
+    }
+}
+
+// [shown](book title#line index): a link to that line of the library
+private val SOURCE_LINK = Regex("""\[([^\]]+)]\(([^#)]+)#(\d+)\)""")
+
+/** [text] with each [shown](book#line) as a link opening that line, the rest as is. */
+internal fun withSourceLinks(
+    text: String,
+    style: TextLinkStyles? = null,
+    open: (Source) -> Unit = {},
+) = buildAnnotatedString {
+    var at = 0
+    SOURCE_LINK.findAll(text).forEach { match ->
+        append(text.substring(at, match.range.first))
+        val (shown, book, line) = match.destructured
+        withLink(LinkAnnotation.Clickable(shown, style) { open(Source(shown, book, line.toInt())) }) { append(shown) }
+        at = match.range.last + 1
+    }
+    append(text.substring(at))
 }
 
 @Composable
-private fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
-    val countdownData by produceState(initialValue = computeTempleCountdown()) {
+private fun TempleDestructionCountdownCard(
+    state: HomeWidgetsState,
+    modifier: Modifier = Modifier,
+) {
+    val count = state[TempleSettings.count]
+    val countdownData by produceState(initialValue = computeTempleCountdown(count), count) {
+        value = computeTempleCountdown(count)
         while (true) {
             delay(millisUntilNextJerusalemSunset(System.currentTimeMillis()))
-            value = computeTempleCountdown()
+            value = computeTempleCountdown(count)
         }
     }
 
@@ -312,7 +433,12 @@ private fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(horizontal = 20.dp),
+                )
+                // Its options at hand, as in its menu; lit in white over the fire, not Jewel's hover
+                SettingsButton(
+                    onClick = { state.optionsOpen = TempleCountdownWidget },
+                    modifier = Modifier.align(Alignment.CenterEnd),
                 )
             }
 
@@ -352,6 +478,32 @@ private fun TempleDestructionCountdownCard(modifier: Modifier = Modifier) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+    }
+}
+
+@Composable
+private fun SettingsButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hover = remember { MutableInteractionSource() }
+    val hovered by hover.collectIsHoveredAsState()
+    Box(
+        modifier
+            .size(22.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = if (hovered) 0.18f else 0f))
+            .hoverable(hover)
+            .pointerHoverIcon(PointerIcon.Hand)
+            .clickable(interactionSource = hover, indication = null, onClick = onClick)
+            .testTag("temple-settings"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            key = AllIconsKeys.General.Settings,
+            contentDescription = stringResource(Res.string.home_widgets_options),
+            tint = Color.White.copy(alpha = if (hovered) 1f else 0.7f),
+        )
     }
 }
 

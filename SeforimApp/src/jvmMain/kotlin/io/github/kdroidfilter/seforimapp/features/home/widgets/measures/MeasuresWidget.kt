@@ -315,7 +315,7 @@ private fun OpinionRow(
 
 /** [source]'s reference, opening it in a new tab. */
 @Composable
-private fun SourceLink(
+internal fun SourceLink(
     source: Source,
     open: (Source) -> Unit,
     modifier: Modifier = Modifier,
@@ -354,7 +354,7 @@ internal fun conversionSources(
 
 /** Opens [Source] in a new tab, on its line. */
 @Composable
-private fun rememberOpenSource(state: HomeWidgetsState): (Source) -> Unit {
+internal fun rememberOpenSource(state: HomeWidgetsState): (Source) -> Unit {
     val graph = LocalAppGraph.current
     val scope = rememberCoroutineScope()
     return remember(graph, state, scope) {

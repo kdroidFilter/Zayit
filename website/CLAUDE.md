@@ -37,8 +37,11 @@ This is the **landing page website** for Zayit (זית), a Jewish religious text
 ### Source Structure
 ```
 src/
-├── App.tsx              # Main landing page component (single-page app)
-├── main.tsx             # React entry point with ThemeProvider
+├── App.tsx              # Main landing page component
+├── main.tsx             # Browser entry: legacy URL redirects, BrowserRouter
+├── entry-server.tsx     # Prerender entry (StaticRouter)
+├── Root.tsx             # Shared tree: theme, routes (landing + download dialog), language sync
+├── seo.ts               # Pages, URLs, head tags and JSON-LD
 ├── index.css            # Tailwind + CSS custom properties for theming
 ├── components/
 │   ├── Navigation.tsx   # Responsive nav with mobile menu, theme toggle, language selector
@@ -46,9 +49,9 @@ src/
 ├── contexts/
 │   └── ThemeContext.tsx # Theme state (light/dark/system) with localStorage persistence
 ├── hooks/
-│   └── useTheme.ts      # Theme hook (re-exports from context)
+│   └── useSEO.ts        # Keeps the head in step with in-app navigation
 └── i18n/
-    ├── index.ts         # i18next configuration with browser detection
+    ├── index.ts         # i18next configuration (language from the path)
     ├── en.json          # English translations
     └── he.json          # Hebrew translations
 ```
@@ -57,7 +60,11 @@ src/
 
 **Theming**: Uses CSS custom properties defined in `index.css` that change based on `.dark` class on `<html>`. The `ThemeContext` manages the theme state and applies the class.
 
-**Internationalization**: i18next with automatic browser language detection. Hebrew (`he`) triggers RTL mode via `document.documentElement.dir = 'rtl'`. Language preference persists to localStorage under key `language`.
+**Pages & URLs**: four pages, one per language and page: `/`, `/he/`, `/download/`, `/he/download/` (trailing slash, as GitHub Pages serves directories). `src/seo.ts` is the single source for paths (`pagePath`, `parseRoute`), titles, descriptions, canonical, hreflang and JSON-LD. The download page is the `DownloadModal` over the landing page.
+
+**Internationalization**: the path sets the language (`/he/…` is Hebrew, RTL); `Root.tsx` keeps i18next in step with it. Language switches are links to the other path, which save the choice to localStorage (`language`). On load, `main.tsx` moves old URLs (`?lang=he`, `#/download`) to their paths and sends a reader whose preferred language is Hebrew from `/` to `/he/`.
+
+**Prerender (SEO)**: `npm run build` also builds `src/entry-server.tsx` for SSR and runs `scripts/prerender.mjs`, which writes each page's static HTML (markup + head from `seo.ts`), `sitemap.xml`, and a WebP copy of every screenshot in `art/` (the components load the WebP in production). The client renders afresh over the prerendered markup (`createRoot`, not hydration). SEO strings live under `seo` in `en.json`/`he.json`. Images in `public/art` are referenced with absolute paths (`/art/...`).
 
 **Image Comparison Component**: A reusable slider that shows light/dark mode screenshots with drag-to-compare functionality. Automatically positions based on current theme.
 

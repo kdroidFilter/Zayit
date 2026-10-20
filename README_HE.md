@@ -16,7 +16,7 @@
 
 <h2 align="center">להורדה לחצו למטה</h2>
 <p align="center">
-  <a href="https://zayitapp.com/download">
+  <a href="https://zayitapp.com/he/download/">
     <img src="art/button-download.png" alt="הורדה" height="80">
   </a>
 </p>

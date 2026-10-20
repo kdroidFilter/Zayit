@@ -16,7 +16,7 @@ Free. Clear. Efficient.
 
 <h2 align="center">To download, click below</h2>
 <p align="center">
-  <a href="https://zayitapp.com/download">
+  <a href="https://zayitapp.com/download/">
     <img src="art/button-download.png" alt="Download" height="80">
   </a>
 </p>

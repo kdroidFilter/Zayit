@@ -1,25 +1,28 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { press, settle } from '../motion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Menu, X, Download, Github, Coffee } from 'lucide-react';
 import { LANGUAGE_STORAGE_KEY } from '../i18n';
+import { pagePath, parseRoute, type Lang } from '../seo';
+
+const MotionLink = motion.create(Link);
 
 export function Navigation() {
   const { t, i18n } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
 
-  const currentLang = i18n.language;
+  const { page } = parseRoute(useLocation().pathname);
+  const currentLang = i18n.language as Lang;
   const isRTL = currentLang === 'he';
 
-  const toggleLanguage = (lang: string) => {
-    i18n.changeLanguage(lang);
+  // Links rather than buttons: each language has its own URL, which crawlers follow; the path sets the language
+  const chooseLanguage = (lang: Lang) => {
     localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
-    document.documentElement.dir = lang === 'he' ? 'rtl' : 'ltr';
-    document.documentElement.lang = lang;
     setIsLangOpen(false);
+    setIsMenuOpen(false);
   };
 
   const navItems = [
@@ -47,8 +50,8 @@ export function Navigation() {
         <div className="flex items-center justify-between">
           {/* Logo and Links */}
           <div className="flex items-center gap-4">
-            <motion.a
-              href="#"
+            <MotionLink
+              to={pagePath(currentLang, 'home')}
               className="flex items-center gap-3 text-xl font-bold"
               style={{ color: 'var(--text-main)' }}
               whileHover={{ scale: 1.02 }}
@@ -60,7 +63,7 @@ export function Navigation() {
                 style={{ border: '1px solid rgba(230, 210, 140, 0.2)' }}
               />
               <span>{isRTL ? 'זית' : 'Zayit'}</span>
-            </motion.a>
+            </MotionLink>
 
             {/* Source Code & Support - Desktop only */}
             <div className="hidden md:flex items-center gap-2">
@@ -152,8 +155,11 @@ export function Navigation() {
                       minWidth: '140px',
                     }}
                   >
-                    <button
-                      onClick={() => toggleLanguage('en')}
+                    <Link
+                      to={pagePath('en', page)}
+                      hrefLang="en"
+                      lang="en"
+                      onClick={() => chooseLanguage('en')}
                       className="w-full px-4 py-3 text-sm text-left transition-colors flex items-center justify-between"
                       style={{
                         color: currentLang === 'en' ? 'var(--gold)' : 'var(--text-muted)',
@@ -163,9 +169,12 @@ export function Navigation() {
                     >
                       <span>English</span>
                       {currentLang === 'en' && <span>&#10003;</span>}
-                    </button>
-                    <button
-                      onClick={() => toggleLanguage('he')}
+                    </Link>
+                    <Link
+                      to={pagePath('he', page)}
+                      hrefLang="he"
+                      lang="he"
+                      onClick={() => chooseLanguage('he')}
                       className="w-full px-4 py-3 text-sm text-left transition-colors flex items-center justify-between"
                       style={{
                         color: currentLang === 'he' ? 'var(--gold)' : 'var(--text-muted)',
@@ -175,14 +184,14 @@ export function Navigation() {
                     >
                       <span>עברית</span>
                       {currentLang === 'he' && <span>&#10003;</span>}
-                    </button>
+                    </Link>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
 
             {/* CTA Button */}
-            <Link to="/download">
+            <Link to={pagePath(currentLang, 'download')}>
               <motion.span
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
                 style={{
@@ -235,8 +244,11 @@ export function Navigation() {
                 ))}
 
                 <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => toggleLanguage('en')}
+                  <Link
+                    to={pagePath('en', page)}
+                    hrefLang="en"
+                    lang="en"
+                    onClick={() => chooseLanguage('en')}
                     className="px-4 py-2 rounded-full text-sm font-medium"
                     style={{
                       color: 'var(--gold-soft)',
@@ -245,9 +257,12 @@ export function Navigation() {
                     }}
                   >
                     English
-                  </button>
-                  <button
-                    onClick={() => toggleLanguage('he')}
+                  </Link>
+                  <Link
+                    to={pagePath('he', page)}
+                    hrefLang="he"
+                    lang="he"
+                    onClick={() => chooseLanguage('he')}
                     className="px-4 py-2 rounded-full text-sm font-medium"
                     style={{
                       color: 'var(--gold-soft)',
@@ -256,11 +271,11 @@ export function Navigation() {
                     }}
                   >
                     עברית
-                  </button>
+                  </Link>
                 </div>
 
                 <Link
-                  to="/download"
+                  to={pagePath(currentLang, 'download')}
                   className="flex items-center justify-center gap-2 px-5 py-3 rounded-full text-sm font-semibold text-white"
                   style={{
                     background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',

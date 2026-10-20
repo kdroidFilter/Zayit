@@ -1,7 +1,7 @@
 {
   "name": "Zayit - Jewish Study Library",
   "short_name": "Zayit",
-  "description": "The study library that goes straight to the text. A free app to read, search, and explore Jewish study texts.",
+  "description": "A free desktop library of Jewish texts: Torah, Talmud, Midrash, Halacha and commentaries.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -10,22 +10,26 @@
   "orientation": "any",
   "lang": "en",
   "dir": "auto",
-  "categories": ["education", "books", "reference"],
+  "categories": [
+    "education",
+    "books",
+    "reference"
+  ],
   "icons": [
     {
-      "src": "favicon-96x96.png",
+      "src": "/favicon-96x96.png",
       "sizes": "96x96",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "apple-touch-icon.png",
+      "src": "/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "icon.png",
+      "src": "/icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
@@ -33,29 +37,18 @@
   ],
   "screenshots": [
     {
-      "src": "art/HOME-DARK.png",
-      "sizes": "1280x720",
-      "type": "image/png",
+      "src": "/art/HOME-DARK.jpg",
+      "sizes": "1600x1000",
+      "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Home screen - Dark theme"
     },
     {
-      "src": "art/HOME-LIGHT.png",
-      "sizes": "1280x720",
-      "type": "image/png",
+      "src": "/art/HOME-LIGHT.jpg",
+      "sizes": "1600x1000",
+      "type": "image/jpeg",
       "form_factor": "wide",
       "label": "Home screen - Light theme"
     }
-  ],
-  "related_applications": [
-    {
-      "platform": "windows",
-      "url": "https://www.zayitapp.com/#download"
-    },
-    {
-      "platform": "macos",
-      "url": "https://www.zayitapp.com/#download"
-    }
-  ],
-  "prefer_related_applications": true
+  ]
 }

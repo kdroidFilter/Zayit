@@ -1,16 +1,4 @@
-# Robots.txt for Zayit - Jewish Study Library
-# https://www.zayitapp.com/
-
 User-agent: *
 Allow: /
 
-# Sitemap location
-Sitemap: https://www.zayitapp.com/sitemap.xml
-
-# Crawl delay (optional, be polite to search engines)
-Crawl-delay: 1
-
-# Block common non-content paths (adjust as needed)
-Disallow: /assets/
-Disallow: /*.js$
-Disallow: /*.css$
+Sitemap: https://zayitapp.com/sitemap.xml

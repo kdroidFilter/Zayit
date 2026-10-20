@@ -7,7 +7,16 @@ interface ImageComparisonProps {
   lightImage: string;
   darkImage: string;
   alt: string;
+  /** Above the fold: fetched first instead of lazily. */
+  priority?: boolean;
 }
+
+// The screenshots' size, reserved before they load so nothing shifts
+const IMAGE_WIDTH = 1600;
+const IMAGE_HEIGHT = 1000;
+
+// The build writes a WebP copy of every screenshot (scripts/prerender.mjs); the dev server has only the originals
+const webp = (src: string) => (import.meta.env.PROD ? src.replace(/\.(png|jpe?g)$/i, '.webp') : src);
 
 const clamp = (value: number) => Math.min(Math.max(value, 0), 100);
 
@@ -16,7 +25,7 @@ const clamp = (value: number) => Math.min(Math.max(value, 0), 100);
  * follows the pointer 1:1 from where it was grabbed, and can be caught mid-glide; it is drawn by the compositor
  * (clip-path and translation), with no React render per move.
  */
-export function ImageComparison({ lightImage, darkImage, alt }: ImageComparisonProps) {
+export function ImageComparison({ lightImage, darkImage, alt, priority = false }: ImageComparisonProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   // Percent of the width showing the light image
@@ -105,18 +114,26 @@ export function ImageComparison({ lightImage, darkImage, alt }: ImageComparisonP
         onPointerCancel={release}
       >
         <img
-          src={darkImage}
+          src={webp(darkImage)}
           alt={`${alt} - ${t('comparison.dark')}`}
+          width={IMAGE_WIDTH}
+          height={IMAGE_HEIGHT}
           className="w-full h-auto block"
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
           draggable={false}
         />
         <motion.img
-          src={lightImage}
+          src={webp(lightImage)}
           alt={`${alt} - ${t('comparison.light')}`}
+          width={IMAGE_WIDTH}
+          height={IMAGE_HEIGHT}
           className="absolute inset-0 w-full h-full block"
           style={{ clipPath: lightClip }}
-          loading="lazy"
+          loading={priority ? 'eager' : 'lazy'}
+          fetchPriority={priority ? 'high' : 'auto'}
+          decoding="async"
           draggable={false}
         />
 

@@ -22,6 +22,8 @@ import {
   Package,
   Info,
 } from 'lucide-react';
+import { LANGUAGE_STORAGE_KEY } from '../i18n';
+import { pagePath, type Lang } from '../seo';
 
 const GITHUB_OWNER = 'kdroidFilter';
 const GITHUB_REPO = 'Zayit';
@@ -311,7 +313,7 @@ export function DownloadModal() {
   }, []);
 
   const handleClose = () => {
-    navigate('/');
+    navigate(pagePath(i18n.language as Lang, 'home'));
   };
 
   const osLabel = (p: Platform) => t(`dl.platform.${p.os}`);
@@ -355,12 +357,20 @@ export function DownloadModal() {
   const rpmAssets = assets.filter((a) => /\.rpm$/i.test(a.name));
 
   const renderContent = () => {
+    // Also what the prerendered page shows (no platform nor release yet): its heading and what it offers
     if (loading) {
       return (
-        <div className="text-center py-12">
-          <div className="download-spinner mx-auto mb-4" />
-          <p style={{ color: 'var(--gold-soft)' }}>{t('dl.common.loading')}</p>
-        </div>
+        <>
+          <div className="text-center mb-7">
+            <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
+            <h1 className="download-title">{t('download.title')}</h1>
+            <p className="download-subtitle">{t('download.description')}</p>
+          </div>
+          <div className="text-center py-6">
+            <div className="download-spinner mx-auto mb-4" />
+            <p style={{ color: 'var(--gold-soft)' }}>{t('dl.common.loading')}</p>
+          </div>
+        </>
       );
     }
 
@@ -664,7 +674,12 @@ export function DownloadModal() {
                 currentLang={i18n.language}
                 isOpen={langMenuOpen}
                 onToggle={() => setLangMenuOpen(!langMenuOpen)}
-                onSelect={(lang) => { i18n.changeLanguage(lang); setLangMenuOpen(false); }}
+                onSelect={(lang) => {
+                  // The path sets the language
+                  localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+                  setLangMenuOpen(false);
+                  navigate(pagePath(lang as Lang, 'download'));
+                }}
               />
             </motion.div>
 

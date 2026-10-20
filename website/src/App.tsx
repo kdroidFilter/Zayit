@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { animate, motion, useInView, useMotionValue, useReducedMotion, useScroll, useTransform } from 'framer-motion';
@@ -28,9 +28,9 @@ import {
 import { Navigation } from './components/Navigation';
 import { ImageComparison } from './components/ImageComparison';
 import { CrystalParticlesGL } from './components/CrystalParticlesGL';
-import { useSEO } from './hooks/useSEO';
+import { pagePath, type Lang } from './seo';
 import { reveal, settle, press, RISE } from './motion';
-import './i18n';
+import { LANGUAGE_STORAGE_KEY } from './i18n';
 
 interface Slide {
   titleKey: string;
@@ -41,19 +41,31 @@ interface Slide {
 
 // Modular panels of the reader
 const panelsSlides: Slide[] = [
-  { titleKey: 'panels.commentaries', descKey: 'panels.commentariesDesc', lightImage: 'art/PIRUSHIM-LIGHT.png', darkImage: 'art/PIRUSHIM-DARK.png' },
-  { titleKey: 'panels.translations', descKey: 'panels.translationsDesc', lightImage: 'art/PIRUSHIM-TARGUMIM-LIGHT.png', darkImage: 'art/PIRUSHIM-TARGUMIM-DARK.png' },
-  { titleKey: 'panels.talmud', descKey: 'panels.talmudDesc', lightImage: 'art/TALMUD-LIGHT.png', darkImage: 'art/TALMUD-DARK.png' },
-  { titleKey: 'panels.sources', descKey: 'panels.sourcesDesc', lightImage: 'art/MEKOR-LIGHT.png', darkImage: 'art/MEKOR-DARK.png' },
-  { titleKey: 'panels.details', descKey: 'panels.detailsDesc', lightImage: 'art/BOOK-DETAILS-LIGHT.png', darkImage: 'art/BOOK-DETAILS-DARK.png' },
+  { titleKey: 'panels.commentaries', descKey: 'panels.commentariesDesc', lightImage: '/art/PIRUSHIM-LIGHT.png', darkImage: '/art/PIRUSHIM-DARK.png' },
+  { titleKey: 'panels.translations', descKey: 'panels.translationsDesc', lightImage: '/art/PIRUSHIM-TARGUMIM-LIGHT.png', darkImage: '/art/PIRUSHIM-TARGUMIM-DARK.png' },
+  { titleKey: 'panels.talmud', descKey: 'panels.talmudDesc', lightImage: '/art/TALMUD-LIGHT.png', darkImage: '/art/TALMUD-DARK.png' },
+  { titleKey: 'panels.sources', descKey: 'panels.sourcesDesc', lightImage: '/art/MEKOR-LIGHT.png', darkImage: '/art/MEKOR-DARK.png' },
+  { titleKey: 'panels.details', descKey: 'panels.detailsDesc', lightImage: '/art/BOOK-DETAILS-LIGHT.png', darkImage: '/art/BOOK-DETAILS-DARK.png' },
 ];
 
 // Study companions beyond the books
 const companionsSlides: Slide[] = [
-  { titleKey: 'companions.siddur', descKey: 'companions.siddurDesc', lightImage: 'art/SIDDUR-LIGHT.png', darkImage: 'art/SIDDUR-DARK.png' },
-  { titleKey: 'companions.shnayim', descKey: 'companions.shnayimDesc', lightImage: 'art/SHNAYIM-MIKRA-LIGHT.png', darkImage: 'art/SHNAYIM-MIKRA-DARK.png' },
-  { titleKey: 'companions.author', descKey: 'companions.authorDesc', lightImage: 'art/AUTHOR-LIGHT.png', darkImage: 'art/AUTHOR-DARK.png' },
+  { titleKey: 'companions.siddur', descKey: 'companions.siddurDesc', lightImage: '/art/SIDDUR-LIGHT.png', darkImage: '/art/SIDDUR-DARK.png' },
+  { titleKey: 'companions.shnayim', descKey: 'companions.shnayimDesc', lightImage: '/art/SHNAYIM-MIKRA-LIGHT.png', darkImage: '/art/SHNAYIM-MIKRA-DARK.png' },
+  { titleKey: 'companions.author', descKey: 'companions.authorDesc', lightImage: '/art/AUTHOR-LIGHT.png', darkImage: '/art/AUTHOR-DARK.png' },
 ];
+
+// Floating particles of the hero, drawn once per page load (reduced for performance)
+const heroParticles = [...Array(20)].map((_, i) => ({
+  id: i,
+  size: Math.random() * 4 + 2,
+  x: Math.random() * 100,
+  y: 60 + Math.random() * 40,
+  opacity: Math.random() * 0.4 + 0.2,
+  duration: Math.random() * 15 + 10,
+  delay: Math.random() * 8,
+  yMove: -150 - Math.random() * 200,
+}));
 
 const SLIDE_DURATION = 10000; // 10 seconds
 
@@ -231,14 +243,13 @@ function ShowcaseSlider({
   );
 }
 
-function App() {
+function App({ isHome = true }: { isHome?: boolean }) {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'he';
+  // The download page has its own H1, in the dialog
+  const HeroHeading = isHome ? 'h1' : 'div';
   // Reduced motion: no ambient particles (their loops would run for nothing)
   const reduceMotion = useReducedMotion();
-
-  // Update SEO meta tags based on current language
-  useSEO();
 
   // Scroll-based animation for hero image
   const heroRef = useRef<HTMLDivElement>(null);
@@ -286,19 +297,6 @@ function App() {
   ];
 
 
-  // Memoized particles for cinematic effect (reduced for performance)
-  const particles = useMemo(() =>
-    [...Array(20)].map((_, i) => ({
-      id: i,
-      size: Math.random() * 4 + 2,
-      x: Math.random() * 100,
-      y: 60 + Math.random() * 40,
-      opacity: Math.random() * 0.4 + 0.2,
-      duration: Math.random() * 15 + 10,
-      delay: Math.random() * 8,
-      yMove: -150 - Math.random() * 200,
-    }))
-  , []);
 
 
   return (
@@ -319,7 +317,7 @@ function App() {
 
         {/* Floating Particles (lightweight) */}
         <div className="ambient-motion absolute inset-0 overflow-hidden pointer-events-none">
-          {particles.map((p) => (
+          {heroParticles.map((p) => (
             <motion.div
               key={p.id}
               className="absolute rounded-full"
@@ -369,55 +367,58 @@ function App() {
             },
           }}
         >
-          {/* Title */}
-          <motion.h1
-            className="text-6xl md:text-[12rem] font-bold mb-1 md:mb-2"
-            style={{
-              color: 'var(--gold)',
-              textShadow: '0 0 60px rgba(230, 210, 140, 0.5), 0 0 120px rgba(230, 210, 140, 0.3)',
-            }}
-            variants={{
-              hidden: { opacity: 0, scale: 1.04 },
-              visible: {
-                opacity: 1,
-                scale: 1,
-                transition: settle,
-              },
-            }}
-          >
-            {t('hero.title')}
-          </motion.h1>
+          {/* Brand and subtitle form one heading: what Zayit is, for readers and search engines alike */}
+          <HeroHeading className="flex flex-col items-center">
+            <motion.span
+              className="block text-6xl md:text-[12rem] font-bold mb-1 md:mb-2"
+              style={{
+                color: 'var(--gold)',
+                textShadow: '0 0 60px rgba(230, 210, 140, 0.5), 0 0 120px rgba(230, 210, 140, 0.3)',
+              }}
+              variants={{
+                hidden: { opacity: 0, scale: 1.04 },
+                visible: {
+                  opacity: 1,
+                  scale: 1,
+                  transition: settle,
+                },
+              }}
+            >
+              {t('hero.title')}
+            </motion.span>{' '}
 
-          {/* Decorative line */}
-          <motion.div
-            className="h-[2px] w-[200px] mb-4 md:mb-8"
-            style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)` }}
-            variants={{
-              // scaleX rather than width: the compositor draws it, no layout per frame
-              hidden: { scaleX: 0, opacity: 0 },
-              visible: {
-                scaleX: 1,
-                opacity: 1,
-                transition: settle,
-              },
-            }}
-          />
+            {/* Decorative line */}
+            <motion.span
+              aria-hidden
+              className="block h-[2px] w-[200px] mb-4 md:mb-8"
+              style={{ background: `linear-gradient(90deg, transparent, var(--gold), transparent)` }}
+              variants={{
+                // scaleX rather than width: the compositor draws it, no layout per frame
+                hidden: { scaleX: 0, opacity: 0 },
+                visible: {
+                  scaleX: 1,
+                  opacity: 1,
+                  transition: settle,
+                },
+              }}
+            />
 
-          {/* Subtitle */}
-          <motion.p
-            className="text-lg md:text-3xl font-light mb-2 md:mb-4 max-w-3xl px-2"
-            style={{ color: 'var(--text-main)' }}
-            variants={{
-              hidden: { opacity: 0, y: RISE },
-              visible: {
-                opacity: 1,
-                y: 0,
-                transition: settle,
-              },
-            }}
-          >
-            {t('hero.subtitle')}
-          </motion.p>
+            {/* Subtitle */}
+            <motion.span
+              className="block text-lg md:text-3xl font-light mb-2 md:mb-4 max-w-3xl px-2"
+              style={{ color: 'var(--text-main)' }}
+              variants={{
+                hidden: { opacity: 0, y: RISE },
+                visible: {
+                  opacity: 1,
+                  y: 0,
+                  transition: settle,
+                },
+              }}
+            >
+              {t('hero.subtitle')}
+            </motion.span>
+          </HeroHeading>
 
           {/* Tagline */}
           <motion.p
@@ -448,9 +449,10 @@ function App() {
           }}
         >
           <ImageComparison
-            lightImage="art/HOME-LIGHT.jpg"
-            darkImage="art/HOME-DARK.jpg"
-            alt=""
+            lightImage="/art/HOME-LIGHT.jpg"
+            darkImage="/art/HOME-DARK.jpg"
+            alt={t('seo.imageAlt')}
+            priority
           />
         </motion.div>
       </section>
@@ -585,8 +587,8 @@ function App() {
               </p>
             </div>
             <ImageComparison
-              lightImage="art/TOC-LIGHT.png"
-              darkImage="art/TOC-DARK.png"
+              lightImage="/art/TOC-LIGHT.png"
+              darkImage="/art/TOC-DARK.png"
               alt={t('interface.navTitle')}
             />
           </motion.div>
@@ -706,8 +708,8 @@ function App() {
               </p>
             </div>
             <ImageComparison
-              lightImage="art/SEARCH-LIGHT.png"
-              darkImage="art/SEARCH-DARK.png"
+              lightImage="/art/SEARCH-LIGHT.png"
+              darkImage="/art/SEARCH-DARK.png"
               alt={t('search.resultsTitle')}
             />
           </motion.div>
@@ -767,8 +769,8 @@ function App() {
             transition={reveal()}
           >
             <ImageComparison
-              lightImage="art/WIDGETS-LIGHT.jpg"
-              darkImage="art/WIDGETS-DARK.jpg"
+              lightImage="/art/WIDGETS-LIGHT.jpg"
+              darkImage="/art/WIDGETS-DARK.jpg"
               alt={t('widgets.title')}
             />
           </motion.div>
@@ -1024,7 +1026,7 @@ function App() {
             viewport={{ once: true }}
             transition={reveal(0.09)}
           >
-            <Link to="/download">
+            <Link to={pagePath(i18n.language as Lang, 'download')}>
               <motion.span
                 className="inline-flex items-center gap-3 px-8 md:px-10 py-4 md:py-5 rounded-full text-lg md:text-xl font-semibold text-white"
                 style={{
@@ -1074,6 +1076,15 @@ function App() {
           <p className="text-xs" style={{ color: 'var(--gold-muted)' }}>
             {t('footer.license')}
           </p>
+          {/* Every page links its other language, so crawlers find both */}
+          <nav className="mt-4 flex justify-center gap-4 text-xs" aria-label="Language">
+            <Link to={pagePath('en', isHome ? 'home' : 'download')} hrefLang="en" lang="en" onClick={() => localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')} style={{ color: 'var(--gold-muted)' }}>
+              English
+            </Link>
+            <Link to={pagePath('he', isHome ? 'home' : 'download')} hrefLang="he" lang="he" onClick={() => localStorage.setItem(LANGUAGE_STORAGE_KEY, 'he')} style={{ color: 'var(--gold-muted)' }}>
+              עברית
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>

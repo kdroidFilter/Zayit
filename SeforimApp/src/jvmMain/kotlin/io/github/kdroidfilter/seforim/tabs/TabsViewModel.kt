@@ -36,6 +36,8 @@ import java.util.UUID
 class TabsViewModel internal constructor(
     private val sessionOf: () -> DesktopSession,
     private val groupIdOf: () -> String,
+    // Whether this window is the app's last one, which emptied would quit the app.
+    private val isLastWindow: () -> Boolean,
 ) {
     private val session: DesktopSession get() = sessionOf()
     private val groupId: String get() = groupIdOf()
@@ -93,7 +95,7 @@ class TabsViewModel internal constructor(
     fun onEvent(event: TabsEvents) {
         val ids = ids()
         when (event) {
-            is TabsEvents.OnClose -> ids.getOrNull(event.index)?.let(session.workspace::close)
+            is TabsEvents.OnClose -> ids.getOrNull(event.index)?.let(::closeTab)
             is TabsEvents.OnSelect -> ids.getOrNull(event.index)?.let(session.workspace::select)
             TabsEvents.OnAdd -> session.addTab(freshHome(), groupId, index = 0)
             is TabsEvents.OnReorder -> ids.getOrNull(event.fromIndex)?.let { session.workspace.reorder(it, event.toIndex) }
@@ -137,7 +139,22 @@ class TabsViewModel internal constructor(
             if (!hinted || repeat) return
         }
         hideClosePinnedHint()
-        session.workspace.close(tabId)
+        closeTab(tabId)
+    }
+
+    /**
+     * Closes [tabId]. The last tab of the app's last window gives way to a fresh Home tab rather than
+     * quit the app; the last one of any other window closes it.
+     */
+    fun closeTab(tabId: String) {
+        val ids = ids()
+        if (ids == listOf(tabId) && isLastWindow()) {
+            val home = freshHome()
+            session.addTab(home, groupId, index = 0)
+            closeWhenDeclared(home.tabId, ids)
+        } else {
+            session.workspace.close(tabId)
+        }
     }
 
     private fun showClosePinnedHint(

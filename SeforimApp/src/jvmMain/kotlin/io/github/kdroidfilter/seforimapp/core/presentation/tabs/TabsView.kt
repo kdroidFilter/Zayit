@@ -526,7 +526,8 @@ private fun TabStripScope.RtlAwareTabStripContent(
     // Read by the tabs' placement only, so bumping it here recomposes nothing.
     val slideGeneration = remember { mutableIntStateOf(0) }
     // Only the restore that asked for no animation is spared, not the moments after it.
-    if (stripOrder.reorderedTo(currentKeys, dragging = tabDrag.held != null || tabDrag.animating != null) && !skipAnimation) {
+    val dragging = tabDrag.held != null || tabDrag.animating != null
+    if (stripOrder.reorderedTo(currentKeys, dragging, entering = currentKeys.filterNot(knownKeys::contains)) && !skipAnimation) {
         slideGeneration.intValue++
     }
 
@@ -1858,18 +1859,24 @@ private class StripOrder(
 
     /**
      * Records [newKeys]; true when they are the same tabs in another order, with no drag since the last order: a
-     * drag's own release reorders the strip once the tab is already home.
+     * drag's own release reorders the strip once the tab is already home. A tab still [entering] taking its place
+     * (declared at the end, then moved next to the one it was opened from) is no reorder: it just grows there.
      */
     fun reorderedTo(
         newKeys: List<String>,
         dragging: Boolean,
+        entering: List<String>,
     ): Boolean {
         if (dragging) dragSeen = true
         if (newKeys == keys) {
             if (!dragging) dragSeen = false
             return false
         }
-        val reordered = !dragSeen && newKeys.size == keys.size && newKeys.toSet() == keys.toSet()
+        val reordered =
+            !dragSeen &&
+                newKeys.size == keys.size &&
+                newKeys.toSet() == keys.toSet() &&
+                newKeys - entering.toSet() != keys - entering.toSet()
         keys = newKeys
         if (!dragging) dragSeen = false
         return reordered

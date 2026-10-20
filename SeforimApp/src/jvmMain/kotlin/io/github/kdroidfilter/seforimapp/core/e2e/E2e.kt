@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.skia.EncodedImageFormat
 import org.jetbrains.skia.Image
+import org.jetbrains.skia.Surface
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.CoroutineContext
@@ -147,6 +148,31 @@ object E2e {
             withContext(captured.composition.minusKey(Job)) { captured.layer.toImageBitmapOn(captured.gpu) }
                 ?: return false
         val data = Image.makeFromBitmap(bitmap.asSkiaBitmap()).encodeToData(EncodedImageFormat.PNG) ?: return false
+        dir.mkdirs()
+        File(dir, "$name.png").writeBytes(data.bytes)
+        return true
+    }
+
+    /** Writes [windowId]'s title bar over its content, as one image, to `<out>/<name>.png`. */
+    suspend fun captureWithTitleBar(
+        windowId: String,
+        name: String,
+    ): Boolean {
+        val dir = outDir ?: return false
+        val images =
+            listOf(windowId + TITLE_BAR, windowId).mapNotNull { id ->
+                val captured = layers[id] ?: return@mapNotNull null
+                withContext(captured.composition.minusKey(Job)) { captured.layer.toImageBitmapOn(captured.gpu) }
+                    ?.let { Image.makeFromBitmap(it.asSkiaBitmap()) }
+            }
+        if (images.isEmpty()) return false
+        val surface = Surface.makeRasterN32Premul(images.maxOf { it.width }, images.sumOf { it.height })
+        var top = 0f
+        images.forEach { image ->
+            surface.canvas.drawImage(image, 0f, top)
+            top += image.height
+        }
+        val data = surface.makeImageSnapshot().encodeToData(EncodedImageFormat.PNG) ?: return false
         dir.mkdirs()
         File(dir, "$name.png").writeBytes(data.bytes)
         return true

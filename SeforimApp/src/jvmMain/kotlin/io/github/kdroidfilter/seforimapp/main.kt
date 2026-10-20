@@ -29,6 +29,7 @@ import io.github.kdroidfilter.seforimapp.core.e2e.E2eRestoreScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eScrollbarScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eShiftSelectScenario
+import io.github.kdroidfilter.seforimapp.core.e2e.E2eShowcaseScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eSolarPerfScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTabOpenScenario
 import io.github.kdroidfilter.seforimapp.core.e2e.E2eTortureScenario
@@ -456,6 +457,7 @@ fun main(args: Array<String>) {
                                         E2eMemoryScenario.run(it)
                                         E2eNotesScenario.run(it)
                                         E2eAuthorScenario.run(it)
+                                        E2eShowcaseScenario.run(it)
                                         E2ePinScenario.run(it)
                                         E2eRestoreScenario.run(it)
                                         E2eScrollbarScenario.run(it)

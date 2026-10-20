@@ -58,6 +58,10 @@ object E2eScenario {
     /** Whether the run opens on Bereshit rather than the Home (`ZAYIT_E2E_START_BOOK=1`), for [E2eMemoryScenario]. */
     val startsOnBook: Boolean = System.getenv("ZAYIT_E2E_START_BOOK") == "1"
 
+    /** A floating window of this size (`ZAYIT_E2E_SIZE=1600x1000`) instead of a maximized one. */
+    private val windowSize: Pair<Int, Int>? =
+        System.getenv("ZAYIT_E2E_SIZE")?.split("x")?.let { (w, h) -> w.toInt() to h.toInt() }
+
     /** Thread-safe: the torture's watchdog notes from its own thread. */
     fun note(line: String) {
         synchronized(log) { log.appendLine(line) }
@@ -124,7 +128,9 @@ object E2eScenario {
                                                     ),
                                                 ),
                                             geometry =
-                                                SavedGeometry(
+                                                windowSize?.let { (w, h) ->
+                                                    SavedGeometry(x = 40, y = 40, width = w, height = h, placement = "Floating")
+                                                } ?: SavedGeometry(
                                                     x = 80,
                                                     y = 60,
                                                     width = 1400,

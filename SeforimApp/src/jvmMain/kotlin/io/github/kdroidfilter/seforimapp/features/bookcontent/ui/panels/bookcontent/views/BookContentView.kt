@@ -1209,6 +1209,7 @@ fun BookContentView(
                     focusRequest = findFocusRequest,
                     matchCount = results?.matches?.occurrences,
                     matchPosition = liveMatch?.position,
+                    showCounter = true,
                     smartModeEnabled = smartModeEnabled,
                     // Also while on without the addon (set by opening a search result), so it can be turned off
                     onToggleSmartMode =

@@ -3,6 +3,10 @@ package io.github.kdroidfilter.seforimapp.features.home.widgets.temple
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -33,10 +37,20 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asComposeImageBitmap
+import androidx.compose.ui.input.pointer.PointerIcon
+import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.kosherkotlin.ComplexZmanimCalendar
@@ -44,6 +58,7 @@ import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.HebrewMonth
 import io.github.kdroidfilter.kosherkotlin.hebrewcalendar.JewishDate
 import io.github.kdroidfilter.kosherkotlin.util.GeoLocation
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
+import io.github.kdroidfilter.seforimapp.core.settings.SettingCodec
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidgetsState
@@ -51,29 +66,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetCard
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetMenuItem
 import io.github.kdroidfilter.seforimapp.features.home.widgets.WidgetSettings
 import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.Source
-import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.SourceLink
 import io.github.kdroidfilter.seforimapp.features.home.widgets.measures.rememberOpenSource
-import io.github.kdroidfilter.seforimapp.core.settings.SettingCodec
-import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
-import androidx.compose.ui.unit.DpSize
-import org.jetbrains.jewel.ui.component.InlineInformationBanner
-import org.jetbrains.jewel.foundation.theme.JewelTheme
-import org.jetbrains.jewel.ui.component.Icon
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsHoveredAsState
-import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.pointerHoverIcon
-import org.jetbrains.jewel.ui.component.RadioButtonRow
-import org.jetbrains.jewel.ui.icons.AllIconsKeys
-import seforimapp.seforimapp.generated.resources.home_widgets_options
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -84,7 +77,13 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.daysUntil
 import kotlinx.datetime.plus
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.Icon
+import org.jetbrains.jewel.ui.component.InlineInformationBanner
+import org.jetbrains.jewel.ui.component.RadioButtonRow
 import org.jetbrains.jewel.ui.component.Text
+import org.jetbrains.jewel.ui.component.VerticallyScrollableContainer
+import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
@@ -95,6 +94,7 @@ import seforimapp.seforimapp.generated.resources.home_temple_subtitle
 import seforimapp.seforimapp.generated.resources.home_temple_title
 import seforimapp.seforimapp.generated.resources.home_temple_years
 import seforimapp.seforimapp.generated.resources.home_widget_name_temple
+import seforimapp.seforimapp.generated.resources.home_widgets_options
 import kotlin.time.Clock
 
 @Immutable
@@ -270,7 +270,7 @@ internal object TempleCountdownWidget : HomeWidget {
     override val settings get() = TempleSettings
 
     // As measured with its text, so the window opens at its size and never leaves a gap
-    override val optionsSize = DpSize(520.dp, 386.dp)
+    override val optionsSize = DpSize(520.dp, 541.dp)
 
     @Composable
     override fun menuItems(state: HomeWidgetsState) =
@@ -291,54 +291,86 @@ internal object TempleCountdownWidget : HomeWidget {
 }
 
 /**
- * How the years since the destruction are counted (מראה מקומות on סי' תקנט). Both agree the Temple fell on ט' באב
- * ג'תתכ"ט of our count (Rav Mazuz, בינה לעתים): Rashi counts that very year as the first, the Rambam starts after it.
+ * How the years since the destruction are counted (מראה מקומות on סי' תקנט). Rashi and the Rambam agree the Temple fell
+ * on ט' באב ג'תתכ"ט of our count (Rav Mazuz, בינה לעתים): Rashi counts that very year as the first, the Rambam starts
+ * after it. Tosafot have it a year later, in ג'תת"ל.
  */
 internal enum class TempleCount(
     val label: String,
     val destructionYear: Int,
-    val source: Source,
 ) {
     // "נטפי חדא שתא ... לוספה לשנת חורבן על מנין שני דבתר חורבן": the year minus 68, Chazon Ovadia
-    RASHI("רש״י, חזון עובדיה", 3828, Source("רש״י ע״ז ט:", "רש\"י על עבודה זרה", 333)),
+    RASHI("שיטת רש״י", 3828),
 
     // "שתחלתה מתשרי שאחר החרבן": the year minus 69, the Gra (חו״מ סז, ח) and Rav Mazuz
-    RAMBAM("רמב״ם, גר״א", 3829, Source("רמב״ם שמיטה ויובל י, ד", "משנה תורה, הלכות שמיטה ויובל", 202)),
+    RAMBAM("שיטת הרמב״ם", 3829),
+
+    // "אין זה כי אם תכ״א": 420 full years, so ג'תת"ל, the year minus 70; the Ritva and Rashi on ערכין too
+    TOSAFOT("שיטת התוספות", 3830),
 }
 
 internal object TempleSettings : WidgetSettings(TempleCountdownWidget.id) {
     val count by setting(TempleCount.RASHI, SettingCodec({ it.name }, { name -> TempleCount.entries.find { it.name == name } }))
 }
 
-// In our own words, after the מראי מקומות credited in its last paragraph (its text is theirs, all rights reserved)
+private const val COUNT_TITLE = "שיטת החשבון"
+
+// In our own words, after the מראי מקומות credited in its last paragraph (its text is theirs, all rights reserved).
+// Its paragraphs: what the counts turn on, then one per [TempleCount] in their order, then the credit.
 private const val TEMPLE_COUNT_TEXT = "files/temple_count.txt"
 
-/** The two counts explained, one picked, each with its source opening in a new tab. */
+/** Each count picked by its own explanation, its sources linked to their lines in a new tab. */
 @Composable
 private fun TempleOptions(state: HomeWidgetsState) {
     val picked = state[TempleSettings.count]
     val open = rememberOpenSource(state)
-    val text by produceState("") { value = Res.readBytes(TEMPLE_COUNT_TEXT).decodeToString().trim() }
+    val paragraphs by produceState(emptyList<String>()) {
+        value =
+            Res
+                .readBytes(TEMPLE_COUNT_TEXT)
+                .decodeToString()
+                .trim()
+                .split("\n\n")
+    }
+    if (paragraphs.size < TempleCount.entries.size + 2) return
     val link = TextLinkStyles(SpanStyle(color = JewelTheme.globalColors.text.info, textDecoration = TextDecoration.Underline))
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        InlineInformationBanner(modifier = Modifier.fillMaxWidth()) {
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(withSourceLinks(text.substringBeforeLast("\n\n"), link, open), fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Justify)
-                Text(text.substringAfterLast("\n\n", ""), fontSize = 11.sp, color = JewelTheme.globalColors.text.info)
+    VerticallyScrollableContainer(Modifier.fillMaxSize()) {
+        // Longer than the window: scrolled, its bar beside the text
+        Column(Modifier.fillMaxWidth().padding(end = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            OptionsTitle(COUNT_TITLE)
+            InlineInformationBanner(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(paragraphs.first(), fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Justify)
+                    Text(paragraphs.last(), fontSize = 11.sp, color = JewelTheme.globalColors.text.info)
+                }
             }
-        }
-        TempleCount.entries.forEach { count ->
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                RadioButtonRow(
-                    text = "${count.label} · ${templeCountdownAt(JewishDate(), count).years}",
-                    selected = count == picked,
-                    onClick = { state[TempleSettings.count] = count },
-                    modifier = Modifier.weight(1f).testTag("temple-option-${count.name}"),
-                )
-                SourceLink(count.source, open)
+            TempleCount.entries.forEach { count ->
+                val now = templeCountdownAt(JewishDate(), count)
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    RadioButtonRow(
+                        text = "${count.label} · ${now.years}",
+                        selected = count == picked,
+                        onClick = { state[TempleSettings.count] = count },
+                        modifier = Modifier.testTag("temple-option-${count.name}"),
+                    )
+                    // Its explanation under its label, past the radio button
+                    Text(
+                        withSourceLinks(paragraphs[count.ordinal + 1], link, open),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        textAlign = TextAlign.Justify,
+                        color = JewelTheme.globalColors.text.info,
+                        modifier = Modifier.padding(start = 28.dp),
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+private fun OptionsTitle(text: String) {
+    Text(text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
 }
 
 // [shown](book title#line index): a link to that line of the library

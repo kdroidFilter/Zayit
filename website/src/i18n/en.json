@@ -18,7 +18,9 @@
     "features": "Features",
     "search": "Search",
     "download": "Download",
-    "support": "Support"
+    "support": "Support",
+    "widgets": "Home",
+    "companions": "Siddur"
   },
   "hero": {
     "title": "Zayit",
@@ -40,41 +42,77 @@
     "title": "A pro and natural interface",
     "description": "Built on JetBrains technologies, including Compose Desktop and Jewel. Inspired by Google Chrome and IntelliJ IDEA, it offers a professional interface that is fluid and natural, respects study, and does not strain the eyes.",
     "noLearning": "You already know how to use it. No learning curve.",
-    "bookSearch": "Book Search",
-    "bookSearchDesc": "Use book acronyms to find any sefer instantly"
+    "navTitle": "Find your way in the library",
+    "navDesc": "Library tree, table of contents with its own search, and a clickable book path, like IntelliJ's navigation bar"
   },
   "panels": {
     "title": "Modular panels",
     "description": "The layout adapts instantly: organize the screen the way you want. Show, hide, compare, and tailor reading to your study style.",
     "commentaries": "Commentaries",
-    "commentariesDesc": "Display multiple commentaries alongside the main text",
+    "commentariesDesc": "Pick your commentators and read them side by side, page after page",
     "translations": "Commentaries & Translations",
-    "translationsDesc": "Compare translations and commentaries side by side",
+    "translationsDesc": "Targumim and commentaries together, around the text",
+    "talmud": "Talmud",
+    "talmudDesc": "Rashi and Tosafot beside the daf, and every verse quoted in the Gemara one click away",
     "sources": "Sources",
-    "sourcesDesc": "Instantly access source references and citations"
+    "sourcesDesc": "The sources of a passage open beside it, and their book in one click",
+    "details": "Book details",
+    "detailsDesc": "Author, era, edition and license of every book, at a glance"
   },
   "search": {
     "title": "An exceptional search engine",
-    "description": "A powerful engine designed to understand texts, not just find them. The database was rebuilt to make search and navigation precise.",
-    "feature1": "Find a passage even from a partial word or approximate spelling",
-    "feature2": "Even without vocalization or cantillation marks, search stays clear and reliable",
-    "feature3": "A partial phrase is often enough to reach the right place",
-    "feature4": "Clean, readable, immediate results, useful for review and lesson prep",
-    "simple": "Simple to go fast",
-    "simpleTitle": "Database Search",
-    "simpleDesc": "Simple mode for core texts, advanced mode for the entire library.",
-    "advanced": "Advanced to go far",
-    "powered": "Powered by Lucene and enhanced by AI for precision"
+    "description": "One smart bar for everything: books, authors, references and text. Type and go straight to the right place.",
+    "feature1": "Type a reference like \"חולין יב\" or \"בראשית א ג\" and land on it",
+    "feature2": "Books by name or acronym, authors with their page, all from the same bar",
+    "feature3": "Semantic search: find a passage by its meaning, not only its words",
+    "feature4": "Even without vocalization, from a partial word or an approximate spelling",
+    "feature5": "Clean results by category, each with its passage read in context",
+    "feature6": "Find in the whole book, like Ctrl+F, in an instant",
+    "byWords": "By its words",
+    "byMeaning": "By its meaning",
+    "resultsTitle": "Results you can read",
+    "resultsDesc": "The passage in its context beside the list. A click opens the book right there.",
+    "powered": "Powered by Lucene and by Zayit's own embedding model"
+  },
+  "widgets": {
+    "badge": "A living home page",
+    "title": "Your day, at a glance",
+    "description": "Arrange your home page with widgets, the way you arrange your phone: drag them, resize them, pick them from a gallery.",
+    "zmanim": "Zmanim",
+    "luach": "Hebrew calendar",
+    "limud": "Daily study cycles",
+    "molad": "Molad & Kiddush Levana",
+    "temple": "Since the Temple's destruction",
+    "solar": "3D Earth & solar system",
+    "shnayim": "Shnayim Mikra",
+    "dictionary": "Dictionary",
+    "measures": "Halachic measures",
+    "history": "History, favorites & notes"
+  },
+  "companions": {
+    "title": "More than a library",
+    "description": "Zayit walks with you through the day: in prayer, in the weekly parasha, and in the lives of the sages.",
+    "siddur": "Smart siddur",
+    "siddurDesc": "Every day's tefilot, complete, after your nusach and your place",
+    "shnayim": "Shnayim Mikra",
+    "shnayimDesc": "Each verse twice, then its targum: the weekly parasha, ready to read",
+    "author": "Author pages",
+    "authorDesc": "An encyclopedia-style page for each author, with their era, names and all their books"
   },
   "features": {
     "title": "What Zayit lets you do",
-    "find": "Find a passage in seconds with simple or advanced search",
+    "find": "Find a passage in seconds, by its words or its meaning",
     "explore": "Explore a library by book and table of contents",
     "inbook": "Search inside a book to prepare a lesson or review",
     "compare": "Show commentaries and translations side by side",
-    "sources": "Access sources for a passage quickly",
-    "copy": "Copy a clean excerpt to share in a lesson or with a study partner",
-    "themes": "Switch instantly between light and dark themes"
+    "tabs": "Tabs, windows and virtual desktops, like Chrome: drag a tab out, pin it, find it again",
+    "bookmarks": "Bookmarks in folders and a full visit history",
+    "notes": "Highlight words and add your notes, right on the text",
+    "copy": "Copy a clean excerpt with its source, or share the exact place",
+    "backup": "Back up your notes and settings to Google Drive",
+    "updates": "Automatic updates, the library included",
+    "keyboard": "Made for the keyboard: Ctrl+F, Ctrl+Shift+T, Alt+Home and more",
+    "themes": "Light and dark themes, your accent color, the fonts you like"
   },
   "promise": {
     "title": "Our Promise",
@@ -82,7 +120,7 @@
     "speedDesc": "Exceptionally fast, even on old computers. Zayit is optimized to run smoothly on any machine, so you can focus on study, not on waiting.",
     "free": "Free forever",
     "freeDesc": "Zayit is free and will remain free. Always. This is a commitment, not a marketing promise.",
-    "library": "6,800+ books",
+    "library": "7,800+ books",
     "libraryDesc": "A vast library of Jewish texts at your fingertips. Torah, Talmud, Halacha, Midrash, commentaries, and much more.",
     "offline": "100% Offline",
     "offlineDesc": "No internet required. Once installed, Zayit works completely offline. Your study is never interrupted."

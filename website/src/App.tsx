@@ -11,6 +11,13 @@ import {
   Heart,
   Download,
   Sparkles,
+  AppWindow,
+  Star,
+  Highlighter,
+  CloudUpload,
+  RefreshCw,
+  Keyboard,
+  LayoutGrid,
   Shield,
   BookMarked,
   Languages,
@@ -24,42 +31,47 @@ import { CrystalParticlesGL } from './components/CrystalParticlesGL';
 import { useSEO } from './hooks/useSEO';
 import './i18n';
 
-// Panels data for the slider
-const panelsData = [
-  {
-    titleKey: 'panels.commentaries',
-    descKey: 'panels.commentariesDesc',
-    lightImage: 'art/PIRUSHIM-LIGHT.png',
-    darkImage: 'art/PIRUSHIM-DARK.png',
-    altHe: 'פירושים',
-    altEn: 'Commentaries',
-  },
-  {
-    titleKey: 'panels.translations',
-    descKey: 'panels.translationsDesc',
-    lightImage: 'art/PIRUSHIM-TARGUMIM-LIGHT.png',
-    darkImage: 'art/PIRUSHIM-TARGUMIM-DARK.png',
-    altHe: 'פירושים ותרגומים',
-    altEn: 'Commentaries and Translations',
-  },
-  {
-    titleKey: 'panels.sources',
-    descKey: 'panels.sourcesDesc',
-    lightImage: 'art/MEKOR-LIGHT.png',
-    darkImage: 'art/MEKOR-DARK.png',
-    altHe: 'מקורות',
-    altEn: 'Sources',
-  },
+interface Slide {
+  titleKey: string;
+  descKey: string;
+  lightImage: string;
+  darkImage: string;
+}
+
+// Modular panels of the reader
+const panelsSlides: Slide[] = [
+  { titleKey: 'panels.commentaries', descKey: 'panels.commentariesDesc', lightImage: 'art/PIRUSHIM-LIGHT.png', darkImage: 'art/PIRUSHIM-DARK.png' },
+  { titleKey: 'panels.translations', descKey: 'panels.translationsDesc', lightImage: 'art/PIRUSHIM-TARGUMIM-LIGHT.png', darkImage: 'art/PIRUSHIM-TARGUMIM-DARK.png' },
+  { titleKey: 'panels.talmud', descKey: 'panels.talmudDesc', lightImage: 'art/TALMUD-LIGHT.png', darkImage: 'art/TALMUD-DARK.png' },
+  { titleKey: 'panels.sources', descKey: 'panels.sourcesDesc', lightImage: 'art/MEKOR-LIGHT.png', darkImage: 'art/MEKOR-DARK.png' },
+  { titleKey: 'panels.details', descKey: 'panels.detailsDesc', lightImage: 'art/BOOK-DETAILS-LIGHT.png', darkImage: 'art/BOOK-DETAILS-DARK.png' },
+];
+
+// Study companions beyond the books
+const companionsSlides: Slide[] = [
+  { titleKey: 'companions.siddur', descKey: 'companions.siddurDesc', lightImage: 'art/SIDDUR-LIGHT.png', darkImage: 'art/SIDDUR-DARK.png' },
+  { titleKey: 'companions.shnayim', descKey: 'companions.shnayimDesc', lightImage: 'art/SHNAYIM-MIKRA-LIGHT.png', darkImage: 'art/SHNAYIM-MIKRA-DARK.png' },
+  { titleKey: 'companions.author', descKey: 'companions.authorDesc', lightImage: 'art/AUTHOR-LIGHT.png', darkImage: 'art/AUTHOR-DARK.png' },
 ];
 
 const SLIDE_DURATION = 10000; // 10 seconds
 
-// Apple-style Panels Slider Component
-function PanelsSlider({
+// Apple-style showcase slider: chips to pick a slide, auto-advance with a progress dot
+function ShowcaseSlider({
+  id,
+  titleKey,
+  descriptionKey,
+  slides,
+  alternate = false,
   t,
   isRTL,
   cinematicEase
 }: {
+  id?: string;
+  titleKey: string;
+  descriptionKey: string;
+  slides: Slide[];
+  alternate?: boolean;
   t: (key: string) => string;
   isRTL: boolean;
   cinematicEase: readonly [number, number, number, number];
@@ -86,7 +98,7 @@ function PanelsSlider({
       } else {
         // Double-check session is still valid before advancing
         if (sessionRef.current === sessionId) {
-          setCurrentIndex((prev) => (prev + 1) % panelsData.length);
+          setCurrentIndex((prev) => (prev + 1) % slides.length);
         }
       }
     };
@@ -95,7 +107,7 @@ function PanelsSlider({
     return () => {
       cancelAnimationFrame(frameId);
     };
-  }, [currentIndex]);
+  }, [currentIndex, slides.length]);
 
   const goToSlide = useCallback((index: number) => {
     sessionRef.current++; // Invalidate current session
@@ -105,8 +117,9 @@ function PanelsSlider({
 
   return (
     <section
+      id={id}
       className="py-12 md:py-20 px-4 md:px-6 overflow-hidden"
-      style={{ background: 'var(--section-alt-bg)' }}
+      style={alternate ? { background: 'var(--section-alt-bg)' } : undefined}
     >
       <div className="max-w-6xl mx-auto">
         {/* Section Header */}
@@ -121,7 +134,7 @@ function PanelsSlider({
             className="text-3xl md:text-4xl font-bold mb-4"
             style={{ color: 'var(--text-main)' }}
           >
-            {t('panels.title')}
+            {t(titleKey)}
           </h2>
           <motion.p
             className="text-lg max-w-2xl mx-auto"
@@ -131,9 +144,32 @@ function PanelsSlider({
             viewport={{ once: true }}
             transition={{ duration: 1.5, delay: 1.2 }}
           >
-            {t('panels.description')}
+            {t(descriptionKey)}
           </motion.p>
         </motion.div>
+
+        {/* Chips: one per slide */}
+        <div className="flex justify-center flex-wrap gap-2 mb-6 md:mb-8">
+          {slides.map((slide, index) => {
+            const isActive = index === currentIndex;
+            return (
+              <motion.button
+                key={slide.titleKey}
+                onClick={() => goToSlide(index)}
+                className="px-4 py-1.5 rounded-full text-sm md:text-base font-medium cursor-pointer transition-colors"
+                style={{
+                  background: isActive ? 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)' : 'rgba(230, 210, 140, 0.08)',
+                  color: isActive ? '#1a1608' : 'var(--text-muted)',
+                  border: `1px solid ${isActive ? 'transparent' : 'rgba(230, 210, 140, 0.2)'}`,
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                {t(slide.titleKey)}
+              </motion.button>
+            );
+          })}
+        </div>
 
         {/* Slider Container - All slides in a row, translate to show current */}
         <div className="overflow-hidden" dir="ltr">
@@ -142,26 +178,18 @@ function PanelsSlider({
             animate={{ x: `${-currentIndex * 100}%` }}
             transition={{ duration: 0.7, ease: [0.32, 0.72, 0, 1] }}
           >
-            {panelsData.map((panel, index) => (
-              <div key={index} className="w-full flex-shrink-0">
-                <div className="text-center mb-4">
-                  <h3
-                    className="text-lg md:text-xl font-medium mb-1"
-                    style={{ color: 'var(--gold)' }}
-                  >
-                    {t(panel.titleKey)}
-                  </h3>
-                  <p
-                    className="text-sm md:text-base"
-                    style={{ color: 'var(--text-muted)' }}
-                  >
-                    {t(panel.descKey)}
-                  </p>
-                </div>
+            {slides.map((slide, index) => (
+              <div key={index} className="w-full flex-shrink-0 px-1" dir={isRTL ? 'rtl' : 'ltr'}>
+                <p
+                  className="text-center text-sm md:text-base mb-4 max-w-2xl mx-auto"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  {t(slide.descKey)}
+                </p>
                 <ImageComparison
-                  lightImage={panel.lightImage}
-                  darkImage={panel.darkImage}
-                  alt={isRTL ? panel.altHe : panel.altEn}
+                  lightImage={slide.lightImage}
+                  darkImage={slide.darkImage}
+                  alt={t(slide.titleKey)}
                 />
               </div>
             ))}
@@ -170,7 +198,7 @@ function PanelsSlider({
 
         {/* Apple-style Dot Indicators with Progress */}
         <div className="flex justify-center items-center gap-3 mt-8">
-          {panelsData.map((_, index) => {
+          {slides.map((_, index) => {
             const isActive = index === currentIndex;
             return (
               <button
@@ -247,16 +275,25 @@ function App() {
     { icon: BookOpen, key: 'explore' },
     { icon: BookMarked, key: 'inbook' },
     { icon: Languages, key: 'compare' },
-    { icon: Zap, key: 'sources' },
+    { icon: AppWindow, key: 'tabs' },
+    { icon: Star, key: 'bookmarks' },
+    { icon: Highlighter, key: 'notes' },
     { icon: Copy, key: 'copy' },
+    { icon: CloudUpload, key: 'backup' },
+    { icon: RefreshCw, key: 'updates' },
+    { icon: Keyboard, key: 'keyboard' },
     { icon: Sun, key: 'themes' },
   ];
+
+  const widgets = ['zmanim', 'luach', 'limud', 'molad', 'temple', 'solar', 'shnayim', 'dictionary', 'measures', 'history'];
 
   const searchFeatures = [
     t('search.feature1'),
     t('search.feature2'),
     t('search.feature3'),
     t('search.feature4'),
+    t('search.feature5'),
+    t('search.feature6'),
   ];
 
   // Cinematic easing curve
@@ -424,8 +461,8 @@ function App() {
           }}
         >
           <ImageComparison
-            lightImage="art/HOME-LIGHT.png"
-            darkImage="art/HOME-DARK.png"
+            lightImage="art/HOME-LIGHT.jpg"
+            darkImage="art/HOME-DARK.jpg"
             alt=""
           />
         </motion.div>
@@ -551,16 +588,16 @@ function App() {
           >
             <div className="text-center mb-4">
               <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
-                {t('interface.bookSearch')}
+                {t('interface.navTitle')}
               </h3>
               <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
-                {t('interface.bookSearchDesc')}
+                {t('interface.navDesc')}
               </p>
             </div>
             <ImageComparison
-              lightImage="art/BOOK-SEARCH-LIGHT.png"
-              darkImage="art/BOOK-SEARCH-DARK.png"
-              alt={isRTL ? 'חיפוש ספרים' : 'Book Search'}
+              lightImage="art/TOC-LIGHT.png"
+              darkImage="art/TOC-DARK.png"
+              alt={t('interface.navTitle')}
             />
           </motion.div>
         </div>
@@ -568,7 +605,15 @@ function App() {
 
 
       {/* Modular Panels Section - Apple-style horizontal slider */}
-      <PanelsSlider t={t} isRTL={isRTL} cinematicEase={cinematicEase} />
+      <ShowcaseSlider
+        titleKey="panels.title"
+        descriptionKey="panels.description"
+        slides={panelsSlides}
+        alternate
+        t={t}
+        isRTL={isRTL}
+        cinematicEase={cinematicEase}
+      />
 
 
       {/* Search Section - Slow dramatic reveal with suspense */}
@@ -648,11 +693,11 @@ function App() {
             transition={{ duration: 1.5 }}
           >
             <span className="text-lg font-medium" style={{ color: 'var(--gold)' }}>
-              {t('search.simple')}
+              {t('search.byWords')}
             </span>
             <span style={{ color: 'var(--text-muted)' }}>|</span>
             <span className="text-lg font-medium" style={{ color: 'var(--gold)' }}>
-              {t('search.advanced')}
+              {t('search.byMeaning')}
             </span>
           </motion.div>
 
@@ -665,20 +710,93 @@ function App() {
           >
             <div className="text-center mb-4">
               <h3 className="text-lg md:text-xl font-medium mb-1" style={{ color: 'var(--gold)' }}>
-                {t('search.simpleTitle')}
+                {t('search.resultsTitle')}
               </h3>
               <p className="text-sm md:text-base" style={{ color: 'var(--text-muted)' }}>
-                {t('search.simpleDesc')}
+                {t('search.resultsDesc')}
               </p>
             </div>
             <ImageComparison
-              lightImage="art/DB-SEARCH-SIMPLE-LIGHT.png"
-              darkImage="art/DB-SEARCH-SIMPLE-DARK.png"
-              alt={isRTL ? 'חיפוש בבסיס הנתונים' : 'Database Search'}
+              lightImage="art/SEARCH-LIGHT.png"
+              darkImage="art/SEARCH-DARK.png"
+              alt={t('search.resultsTitle')}
             />
           </motion.div>
         </div>
       </section>
+
+
+      {/* Home Widgets Section */}
+      <section id="widgets" className="py-12 md:py-20 px-4 md:px-6 overflow-hidden" style={{ background: 'var(--section-alt-bg)' }}>
+        <div className="max-w-6xl mx-auto">
+          <motion.div
+            className="text-center mb-10"
+            initial={{ opacity: 0, y: 60, filter: 'blur(15px)' }}
+            whileInView={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+            viewport={{ once: true, amount: 0.4 }}
+            transition={{ duration: 1.6, ease: cinematicEase }}
+          >
+            <motion.div
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
+              style={{ background: 'rgba(230, 210, 140, 0.1)', color: 'var(--gold)' }}
+            >
+              <LayoutGrid size={16} />
+              {t('widgets.badge')}
+            </motion.div>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4" style={{ color: 'var(--text-main)' }}>
+              {t('widgets.title')}
+            </h2>
+            <p className="text-lg max-w-2xl mx-auto" style={{ color: 'var(--text-muted)' }}>
+              {t('widgets.description')}
+            </p>
+          </motion.div>
+
+          <div className="flex justify-center flex-wrap gap-2 mb-10 max-w-4xl mx-auto">
+            {widgets.map((key, index) => (
+              <motion.span
+                key={key}
+                className="px-4 py-1.5 rounded-full text-sm md:text-base"
+                style={{
+                  background: 'rgba(230, 210, 140, 0.08)',
+                  border: '1px solid rgba(230, 210, 140, 0.2)',
+                  color: 'var(--text-muted)',
+                }}
+                initial={{ opacity: 0, y: 20, scale: 0.8 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.06, ease: cinematicEase }}
+              >
+                {t(`widgets.${key}`)}
+              </motion.span>
+            ))}
+          </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 80, scale: 0.92 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ duration: 2, ease: cinematicEase }}
+          >
+            <ImageComparison
+              lightImage="art/WIDGETS-LIGHT.jpg"
+              darkImage="art/WIDGETS-DARK.jpg"
+              alt={t('widgets.title')}
+            />
+          </motion.div>
+        </div>
+      </section>
+
+
+      {/* Study Companions - siddur, Shnayim Mikra, authors */}
+      <ShowcaseSlider
+        id="companions"
+        titleKey="companions.title"
+        descriptionKey="companions.description"
+        slides={companionsSlides}
+        t={t}
+        isRTL={isRTL}
+        cinematicEase={cinematicEase}
+      />
 
 
       {/* Features Section - Slow dramatic card reveal */}

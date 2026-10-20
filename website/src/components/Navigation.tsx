@@ -22,8 +22,10 @@ export function Navigation() {
   };
 
   const navItems = [
-    { key: 'features', href: '#features' },
     { key: 'search', href: '#search' },
+    { key: 'widgets', href: '#widgets' },
+    { key: 'companions', href: '#companions' },
+    { key: 'features', href: '#features' },
   ];
 
   return (

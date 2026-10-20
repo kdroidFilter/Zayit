@@ -16,7 +16,7 @@ Free. Clear. Efficient.
 
 <h2 align="center">To download, click below</h2>
 <p align="center">
-  <a href="https://kdroidfilter.github.io/Zayit/download">
+  <a href="https://zayitapp.com/download">
     <img src="art/button-download.png" alt="Download" height="80">
   </a>
 </p>
@@ -43,97 +43,56 @@ Zayit is built on JetBrains technologies, including Compose Desktop and Jewel.
 Inspired by Google Chrome and IntelliJ IDEA, it offers a professional interface
 that is fluid and natural, respects study, and does not strain the eyes.
 Zayit is easy to use: you already know how, no learning curve.
-Everything feels natural, intuitive, and within reach.
-
-## Modular panels
-The layout adapts instantly: organize the screen the way you want.
-Show, hide, compare, and tailor reading to your study style.
+Tabs, windows and virtual desktops work the way Chrome does: drag a tab out into its own window, pin it, reopen the last one closed.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/HOME-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/HOME-LIGHT.png">
-  <img src="art/HOME-LIGHT.png" alt="Home screen" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="art/HOME-DARK.jpg">
+  <source media="(prefers-color-scheme: light)" srcset="art/HOME-LIGHT.jpg">
+  <img src="art/HOME-LIGHT.jpg" alt="Home screen" width="100%">
+</picture>
+
+## A living home page
+Arrange your home page with widgets, the way you arrange your phone: drag them, resize them, pick them from a gallery.
+Zmanim, the Hebrew calendar, daily study cycles, the molad and Kiddush Levana, the years since the Temple's destruction,
+a 3D Earth and solar system, Shnayim Mikra, a dictionary, halachic measures, your history, favorites and notes.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/WIDGETS-DARK.jpg">
+  <source media="(prefers-color-scheme: light)" srcset="art/WIDGETS-LIGHT.jpg">
+  <img src="art/WIDGETS-LIGHT.jpg" alt="Home widgets" width="100%">
 </picture>
 
 ## An exceptional search engine
-A powerful engine designed to understand texts, not just find them.
-The database was rebuilt to make search and navigation precise.
-Every result helps you move forward on the topic, without wasting time.
-Powered by Lucene and enhanced by AI for precision.
-It is likely the most powerful engine ever built for this kind of study.
-It finds words, forms, and variants with remarkable reliability.
-Search is fast, stable, and guides you straight to the right source.
+One smart bar for everything: books, authors, references and text. Type and go straight to the right place.
+Powered by Lucene and by Zayit's own embedding model, it finds passages by their words and by their meaning.
 
-- Find a passage even from a partial word or approximate spelling.
-- Even without vocalization or cantillation marks, search stays clear and reliable.
-- A partial phrase is often enough to reach the right place.
-- Clean, readable, immediate results, useful for review and lesson prep.
-
-Simple to go fast, advanced to go far.
-
-Simple search.
+- Type a reference like `חולין יב` or `בראשית א ג` and land on it.
+- Books by name or acronym, authors with their own page, all from the same bar.
+- Semantic search: find a passage by its meaning, not only its words.
+- Even without vocalization, from a partial word or an approximate spelling.
+- Clean results by category, each passage read in its context beside the list; a click opens the book right there.
+- Find in the whole book, like Ctrl+F.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/DB-SEARCH-SIMPLE-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/DB-SEARCH-SIMPLE-LIGHT.png">
-  <img src="art/DB-SEARCH-SIMPLE-LIGHT.png" alt="Search (simple)" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="art/SEARCH-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/SEARCH-LIGHT.png">
+  <img src="art/SEARCH-LIGHT.png" alt="Search" width="100%">
 </picture>
 
-Advanced search.
+## Find your way in the library
+Library tree, table of contents with its own search, and a clickable book path, like IntelliJ's navigation bar.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/DB-SEARCH-ADVANCED-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/DB-SEARCH-ADVANCED-LIGHT.png">
-  <img src="art/DB-SEARCH-ADVANCED-LIGHT.png" alt="Search (advanced)" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="art/TOC-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/TOC-LIGHT.png">
+  <img src="art/TOC-LIGHT.png" alt="Library and table of contents" width="100%">
 </picture>
 
-## Crafted with care
-Zayit aims for quality and consistency: no gimmicks, no noise.
-Like a digital study desk, everything is there to move forward.
-Every detail is designed for natural, respectful study.
-Built to be fast, light, almost magical, it runs even on low-powered machines.
+## Modular panels
+The layout adapts instantly: organize the screen the way you want.
+Show, hide, float or dock the panes, and tailor reading to your study style.
 
-## What Zayit lets you do
-- Find a passage in seconds with simple or advanced search.
-- Explore a library by book and table of contents without losing the thread.
-- Search inside a book to prepare a lesson or review.
-- Show commentaries and translations side by side.
-- Access sources for a passage quickly.
-- Copy a clean excerpt to share in a lesson or with a study partner.
-- Switch instantly between light and dark themes.
-
-## Book navigation
-Find a book, jump straight to a chapter, and continue your reading.
-
-Book search.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/BOOK-SEARCH-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/BOOK-SEARCH-LIGHT.png">
-  <img src="art/BOOK-SEARCH-LIGHT.png" alt="Book search" width="100%">
-</picture>
-
-Table of contents.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/TOC-BOOK-SEARCH-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/TOC-BOOK-SEARCH-LIGHT.png">
-  <img src="art/TOC-BOOK-SEARCH-LIGHT.png" alt="Table of contents" width="100%">
-</picture>
-
-## Search within a book
-Like Ctrl+F: you already know how to use it.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/INBOOK-SEARCH-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/INBOOK-SEARCH-LIGHT.png">
-  <img src="art/INBOOK-SEARCH-LIGHT.png" alt="Search within a book" width="100%">
-</picture>
-
-## Commentaries and translations
-Choose your commentaries and translations, compare, and move forward in the text.
-
-Commentaries.
+Commentaries: pick your commentators and read them side by side.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="art/PIRUSHIM-DARK.png">
@@ -141,7 +100,7 @@ Commentaries.
   <img src="art/PIRUSHIM-LIGHT.png" alt="Commentaries" width="100%">
 </picture>
 
-Commentaries and translations.
+Commentaries and targumim together, around the text.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="art/PIRUSHIM-TARGUMIM-DARK.png">
@@ -149,8 +108,15 @@ Commentaries and translations.
   <img src="art/PIRUSHIM-TARGUMIM-LIGHT.png" alt="Commentaries and translations" width="100%">
 </picture>
 
-## Sources
-Find the origin of a passage at a glance.
+Talmud: Rashi and Tosafot beside the daf, and every verse quoted in the Gemara one click away.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/TALMUD-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/TALMUD-LIGHT.png">
+  <img src="art/TALMUD-LIGHT.png" alt="Talmud with Rashi and Tosafot" width="100%">
+</picture>
+
+Sources: the origin of a passage opens beside it, and its book in one click.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="art/MEKOR-DARK.png">
@@ -158,12 +124,60 @@ Find the origin of a passage at a glance.
   <img src="art/MEKOR-LIGHT.png" alt="Sources" width="100%">
 </picture>
 
-## Copy to clipboard
+Book details: author, era, edition and license of every book.
+
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="art/CLIPBOARD-DEMO-DARK.png">
-  <source media="(prefers-color-scheme: light)" srcset="art/CLIPBOARD-DEMO-LIGHT.png">
-  <img src="art/CLIPBOARD-DEMO-LIGHT.png" alt="Copy to clipboard" width="100%">
+  <source media="(prefers-color-scheme: dark)" srcset="art/BOOK-DETAILS-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/BOOK-DETAILS-LIGHT.png">
+  <img src="art/BOOK-DETAILS-LIGHT.png" alt="Book details" width="100%">
 </picture>
+
+## More than a library
+Zayit walks with you through the day: in prayer, in the weekly parasha, and in the lives of the sages.
+
+The smart siddur: every day's tefilot, complete, after your nusach and your place (official builds).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/SIDDUR-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/SIDDUR-LIGHT.png">
+  <img src="art/SIDDUR-LIGHT.png" alt="Smart siddur" width="100%">
+</picture>
+
+Shnayim Mikra: each verse twice, then its targum.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/SHNAYIM-MIKRA-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/SHNAYIM-MIKRA-LIGHT.png">
+  <img src="art/SHNAYIM-MIKRA-LIGHT.png" alt="Shnayim Mikra" width="100%">
+</picture>
+
+Author pages: an encyclopedia-style page for each author, with their era, names and all their books.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="art/AUTHOR-DARK.png">
+  <source media="(prefers-color-scheme: light)" srcset="art/AUTHOR-LIGHT.png">
+  <img src="art/AUTHOR-LIGHT.png" alt="Author page" width="100%">
+</picture>
+
+## What Zayit lets you do
+- Find a passage in seconds, by its words or its meaning.
+- Explore the library by book and table of contents without losing the thread.
+- Search inside a book to prepare a lesson or review.
+- Show commentaries, targumim and sources side by side.
+- Work in tabs, windows and virtual desktops, like Chrome.
+- Keep bookmarks in folders and a full visit history.
+- Highlight words and add your notes, right on the text.
+- Copy a clean excerpt with its source, or share the exact place.
+- Back up your notes and settings to Google Drive.
+- Get automatic updates, the library included.
+- Work from the keyboard: Ctrl+F, Ctrl+Shift+T, Alt+Home and more.
+- Choose light or dark, your accent color and your fonts.
+
+## Crafted with care
+Zayit aims for quality and consistency: no gimmicks, no noise.
+Like a digital study desk, everything is there to move forward.
+Every detail is designed for natural, respectful study.
+Built to be fast, light, almost magical, it runs even on low-powered machines, fully offline.
 
 ## Contributing
 
@@ -213,12 +227,7 @@ For detailed documentation, see `CLAUDE.md` and `TAB_SYSTEM_README.md`.
 
 ### Roadmap 0.5.0
 
-- Navigation history
-- Personal notes on text (Google Docs-like annotations)
 - Fix P0 and P1 issues
-- New home page widgets (time since destruction of Beit HaMikdash, history)
-- Chrome-like bookmarks bar
-- Automatic updates (Chrome-like): silent download + installation on app close
 
 ### Before submitting a PR
 

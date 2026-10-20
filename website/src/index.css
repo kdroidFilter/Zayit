@@ -74,71 +74,66 @@ body {
   border-radius: 999px;
 }
 
-/* Image comparison slider */
-.comparison-container {
-  position: relative;
-  overflow: hidden;
-  border-radius: 16px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.comparison-image {
-  display: block;
-  width: 100%;
-  height: auto;
-}
-
-.comparison-overlay {
+/* Image comparison: theme labels on a translucent material */
+.comparison-label {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 50%;
-  height: 100%;
-  overflow: hidden;
+  top: 0.75rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: rgba(10, 10, 14, 0.45);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  pointer-events: none;
 }
 
-.comparison-overlay img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 200%;
-  height: 100%;
-  object-fit: cover;
+/* Type: tracking and leading follow the size (tight display, comfortable body) */
+h1, h2 {
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  text-wrap: balance;
 }
 
-.comparison-slider {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-soft) 100%);
-  cursor: ew-resize;
-  z-index: 10;
+p {
+  text-wrap: pretty;
 }
 
-.comparison-slider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 48px;
-  height: 48px;
-  background: var(--gold);
-  border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+/* The anchors land below the fixed navigation */
+section[id] {
+  scroll-margin-top: 5rem;
 }
 
-.comparison-slider::after {
-  content: '◀ ▶';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 12px;
-  letter-spacing: 4px;
-  white-space: nowrap;
+/* Reduced motion: no smooth scroll nor drifting particles (framer-motion itself follows the setting) */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .ambient-motion {
+    display: none;
+  }
+}
+
+/* Reduced transparency: solid materials */
+@media (prefers-reduced-transparency: reduce) {
+  .comparison-label,
+  .nav-material {
+    background: rgb(10, 10, 14) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
+
+/* More contrast: near-solid surfaces with a defined edge */
+@media (prefers-contrast: more) {
+  .nav-material {
+    background: rgb(5, 5, 9) !important;
+    border-bottom-color: rgba(230, 210, 140, 0.6) !important;
+  }
 }
 
 /* ========================= */

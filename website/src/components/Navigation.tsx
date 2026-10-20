@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { press, settle } from '../motion';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Globe, Menu, X, Download, Github, Coffee } from 'lucide-react';
 import { LANGUAGE_STORAGE_KEY } from '../i18n';
@@ -32,10 +33,13 @@ export function Navigation() {
     <motion.nav
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl"
+      transition={settle}
+      className="nav-material fixed top-0 left-0 right-0 z-50"
       style={{
-        background: 'rgba(5, 5, 9, 0.85)',
+        // A translucent material the page scrolls under
+        background: 'rgba(5, 5, 9, 0.62)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
         borderBottom: '1px solid rgba(230, 210, 140, 0.1)',
       }}
     >
@@ -134,11 +138,14 @@ export function Navigation() {
               <AnimatePresence>
                 {isLangOpen && (
                   <motion.div
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
+                    // Grows from its button and goes back into it, the same way
+                    initial={{ opacity: 0, scale: 0.96, y: -4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96, y: -4 }}
+                    transition={press}
                     className="absolute top-full mt-2 rounded-xl overflow-hidden shadow-xl"
                     style={{
+                      transformOrigin: isRTL ? 'top left' : 'top right',
                       background: 'rgba(16, 16, 24, 0.98)',
                       border: '1px solid rgba(230, 210, 140, 0.2)',
                       [isRTL ? 'left' : 'right']: 0,
@@ -211,6 +218,7 @@ export function Navigation() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
+              transition={settle}
               className="md:hidden overflow-hidden"
             >
               <div className="py-4 space-y-4">

@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HashRouter, useLocation } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
+import { AnimatePresence, MotionConfig } from 'framer-motion'
 import './index.css'
 import App from './App.tsx'
 import { DownloadModal } from './pages/DownloadPage.tsx'
@@ -23,10 +23,13 @@ function AppWithModal() {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider>
-      <HashRouter>
-        <AppWithModal />
-      </HashRouter>
-    </ThemeProvider>
+    {/* Reduced motion: transforms are dropped, fades stay */}
+    <MotionConfig reducedMotion="user">
+      <ThemeProvider>
+        <HashRouter>
+          <AppWithModal />
+        </HashRouter>
+      </ThemeProvider>
+    </MotionConfig>
   </StrictMode>,
 )

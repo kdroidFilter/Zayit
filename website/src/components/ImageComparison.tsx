@@ -1,186 +1,168 @@
-import { useRef, useState, useCallback, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { useRef, type KeyboardEvent, type PointerEvent } from 'react';
+import { animate, motion, useMotionValue, useMotionValueEvent, useTransform, type AnimationPlaybackControls } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
+import { press, reveal, settle, RISE } from '../motion';
 
 interface ImageComparisonProps {
   lightImage: string;
   darkImage: string;
   alt: string;
-  fullscreen?: boolean;
 }
 
-export function ImageComparison({ lightImage, darkImage, alt, fullscreen = false }: ImageComparisonProps) {
+const clamp = (value: number) => Math.min(Math.max(value, 0), 100);
+
+/**
+ * The light screenshot over the dark one, split by a divider the reader drags. The divider answers on pointer-down,
+ * follows the pointer 1:1 from where it was grabbed, and can be caught mid-glide; it is drawn by the compositor
+ * (clip-path and translation), with no React render per move.
+ */
+export function ImageComparison({ lightImage, darkImage, alt }: ImageComparisonProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [sliderPosition, setSliderPosition] = useState(99); // Default to 99% showing light image
-  const [isDragging, setIsDragging] = useState(false);
+  // Percent of the width showing the light image
+  const position = useMotionValue(99);
+  const glide = useRef<AnimationPlaybackControls | null>(null);
+  // Offset between the pointer and the divider when grabbed, in percent: the divider never jumps under the pointer
+  const grabOffset = useRef<number | null>(null);
+  const dividerRef = useRef<HTMLDivElement>(null);
+  // Screen readers hear the split's value without a render per move
+  useMotionValueEvent(position, 'change', (p) => dividerRef.current?.setAttribute('aria-valuenow', String(Math.round(p))));
 
-  const handleMove = useCallback(
-    (clientX: number) => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const x = clientX - rect.left;
-      const percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100);
-      setSliderPosition(percentage);
-    },
-    []
-  );
+  const lightClip = useTransform(position, (p) => `inset(0 ${100 - p}% 0 0)`);
+  const dividerX = useTransform(position, (p) => `${p - 100}%`);
+  const lightLabelOpacity = useTransform(position, [8, 20], [0, 1]);
+  const darkLabelOpacity = useTransform(position, [80, 92], [1, 0]);
 
-  const handleMouseDown = () => setIsDragging(true);
-  const handleMouseUp = () => setIsDragging(false);
+  const percentAt = (clientX: number) => {
+    const rect = containerRef.current!.getBoundingClientRect();
+    return ((clientX - rect.left) / rect.width) * 100;
+  };
 
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isDragging) return;
-      handleMove(e.clientX);
-    },
-    [isDragging, handleMove]
-  );
+  const glideTo = (target: number) => {
+    glide.current?.stop();
+    glide.current = animate(position, clamp(target), settle);
+  };
 
-  const handleTouchMove = useCallback(
-    (e: TouchEvent) => {
-      if (!isDragging) return;
-      handleMove(e.touches[0].clientX);
-    },
-    [isDragging, handleMove]
-  );
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const pointer = percentAt(e.clientX);
+    const onDivider = (e.target as HTMLElement).closest('[data-divider]') !== null;
+    if (onDivider) {
+      // Caught where it is, even mid-glide
+      glide.current?.stop();
+      grabOffset.current = pointer - position.get();
+    } else {
+      // A press elsewhere sends the divider there, then the drag carries on from it
+      glideTo(pointer);
+      grabOffset.current = 0;
+    }
+  };
 
-  useEffect(() => {
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('touchmove', handleTouchMove);
-    document.addEventListener('touchend', handleMouseUp);
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (grabOffset.current === null) return;
+    glide.current?.stop();
+    position.set(clamp(percentAt(e.clientX) - grabOffset.current));
+  };
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('touchmove', handleTouchMove);
-      document.removeEventListener('touchend', handleMouseUp);
+  const release = () => {
+    grabOffset.current = null;
+  };
+
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 20 : 5;
+    const targets: Record<string, number> = {
+      ArrowLeft: position.get() - step,
+      ArrowRight: position.get() + step,
+      Home: 0,
+      End: 100,
     };
-  }, [handleMouseMove, handleTouchMove]);
+    if (!(e.key in targets)) return;
+    e.preventDefault();
+    glideTo(targets[e.key]);
+  };
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: fullscreen ? 0 : 40 }}
+      initial={{ opacity: 0, y: RISE }}
       whileInView={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.8, ease: 'easeOut' }}
+      transition={reveal()}
       viewport={{ once: true }}
-      className={fullscreen ? "relative w-full h-full" : "relative w-full max-w-5xl mx-auto"}
+      className="relative w-full max-w-5xl mx-auto"
     >
-
-      {/* Comparison Container - use dir="ltr" to prevent RTL interference on this visual component */}
+      {/* dir="ltr": the split is visual, it must not flip in Hebrew */}
       <div
         ref={containerRef}
         dir="ltr"
-        className={`relative overflow-hidden cursor-ew-resize select-none ${fullscreen ? 'w-full h-full flex items-center justify-center' : 'rounded-2xl shadow-2xl'}`}
-        style={fullscreen ? {} : {
-          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.35)',
+        className="relative overflow-hidden rounded-2xl select-none cursor-ew-resize"
+        style={{
+          touchAction: 'pan-y',
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(230, 210, 140, 0.12)',
         }}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleMouseDown}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={release}
+        onPointerCancel={release}
       >
-        {fullscreen ? (
-          <>
-            {/* Fullscreen mode - image takes max space without crop */}
-            <img
-              src={darkImage}
-              alt={`${alt} - Dark mode`}
-              className="max-w-full max-h-full w-auto h-auto"
-              style={{ objectFit: 'contain' }}
-              draggable={false}
-            />
-            {/* Light Image Overlay */}
-            <div
-              className="absolute top-0 left-0 bottom-0 overflow-hidden"
-              style={{
-                width: `${sliderPosition}%`,
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <img
-                src={lightImage}
-                alt={`${alt} - Light mode`}
-                className="max-h-full w-auto h-auto"
-                style={{
-                  objectFit: 'contain',
-                  objectPosition: 'left center',
-                  width: `${100 / (sliderPosition / 100)}%`,
-                  maxWidth: 'none',
-                }}
-                draggable={false}
-              />
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Normal mode */}
-            <img
-              src={darkImage}
-              alt={`${alt} - Dark mode`}
-              className="w-full h-auto block"
-              draggable={false}
-            />
-            <div
-              className="absolute top-0 left-0 h-full overflow-hidden"
-              style={{ width: `${sliderPosition}%` }}
-            >
-              <img
-                src={lightImage}
-                alt={`${alt} - Light mode`}
-                className="h-full object-cover"
-                style={{
-                  width: `${100 / (sliderPosition / 100)}%`,
-                  maxWidth: 'none',
-                  objectPosition: 'left'
-                }}
-                draggable={false}
-              />
-            </div>
-          </>
-        )}
+        <img
+          src={darkImage}
+          alt={`${alt} - ${t('comparison.dark')}`}
+          className="w-full h-auto block"
+          loading="lazy"
+          draggable={false}
+        />
+        <motion.img
+          src={lightImage}
+          alt={`${alt} - ${t('comparison.light')}`}
+          className="absolute inset-0 w-full h-full block"
+          style={{ clipPath: lightClip }}
+          loading="lazy"
+          draggable={false}
+        />
 
-        {/* Slider */}
-        <div
-          className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
-          style={{
-            left: `${sliderPosition}%`,
-            transform: 'translateX(-50%)'
-          }}
-        >
-          {/* Vertical Line */}
+        {/* Theme labels on a translucent material, fading as their side closes */}
+        <motion.span className="comparison-label left-3" style={{ opacity: lightLabelOpacity }}>
+          {t('comparison.light')}
+        </motion.span>
+        <motion.span className="comparison-label right-3" style={{ opacity: darkLabelOpacity }}>
+          {t('comparison.dark')}
+        </motion.span>
+
+        {/* Divider: a full-width layer translated so that its right edge is the split */}
+        <motion.div className="absolute inset-0 pointer-events-none" style={{ x: dividerX }}>
           <div
-            className="absolute top-0 bottom-0 w-1"
+            className="absolute top-0 bottom-0 right-0 w-[3px] translate-x-1/2"
             style={{
               background: 'linear-gradient(180deg, var(--gold) 0%, var(--gold-soft) 50%, var(--gold) 100%)',
               boxShadow: '0 0 10px rgba(139, 115, 85, 0.5)',
             }}
           />
-
-          {/* Handle */}
           <motion.div
-            className={`relative z-20 rounded-full flex items-center justify-center cursor-ew-resize ${fullscreen ? 'w-16 h-16' : 'w-12 h-12'}`}
+            ref={dividerRef}
+            data-divider
+            role="slider"
+            tabIndex={0}
+            aria-label={t('comparison.drag')}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={99}
+            onKeyDown={onKeyDown}
+            className="absolute top-1/2 right-0 w-12 h-12 -mt-6 -mr-6 rounded-full flex items-center justify-center pointer-events-auto cursor-ew-resize focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
             style={{
               background: 'linear-gradient(135deg, var(--gold) 0%, var(--gold-soft) 100%)',
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+              outlineColor: 'var(--gold)',
             }}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.08, transition: press }}
+            whileTap={{ scale: 0.94, transition: press }}
           >
-            <div className={`flex items-center gap-1 text-white font-bold ${fullscreen ? 'text-sm' : 'text-xs'}`}>
+            <div className="flex items-center gap-1 text-white text-xs font-bold">
               <span>◀</span>
               <span>▶</span>
             </div>
           </motion.div>
-        </div>
-
-        {/* Gradient overlay on edges */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background: 'linear-gradient(90deg, rgba(0,0,0,0.03) 0%, transparent 5%, transparent 95%, rgba(0,0,0,0.03) 100%)',
-          }}
-        />
+        </motion.div>
       </div>
-
     </motion.div>
   );
 }

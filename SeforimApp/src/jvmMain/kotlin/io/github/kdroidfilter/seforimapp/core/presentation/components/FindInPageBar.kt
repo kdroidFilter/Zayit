@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.runtime.Composable
@@ -28,6 +29,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforimapp.icons.MaterialSymbolsMagicButton
@@ -67,9 +69,11 @@ fun FindInPageBar(
     autoFocus: Boolean = true,
     // Bumped to focus the field again with its text selected (Ctrl/Cmd+F while shown)
     focusRequest: Int = 0,
-    // Matches of the query, and the rank of the current one from 1; a null count hides the counter
+    // Matches of the query, and the rank of the current one from 1; a null count leaves the counter blank
     matchCount: Int? = null,
     matchPosition: Int? = null,
+    // Keeps the counter's slot even while blank, so the bar keeps its width as the user types
+    showCounter: Boolean = false,
     // Meaning-based find; null hides its toggle where it isn't available
     smartModeEnabled: Boolean = false,
     onToggleSmartMode: (() -> Unit)? = null,
@@ -135,13 +139,17 @@ fun FindInPageBar(
             placeholder = { Text(stringResource(Res.string.search_in_page)) },
             textStyle = JewelTheme.defaultTextStyle.copy(fontSize = 13.sp),
         )
-        if (matchCount != null) {
+        if (showCounter || matchCount != null) {
             Spacer(Modifier.width(8.dp))
-            // "3/861" once a match is current, like a browser's find bar; red when nothing matches
+            // "3/861" once a match is current, like a browser's find bar; red when nothing matches.
+            // Minimum width so the bar, anchored by its end, doesn't jitter as the count changes.
             Text(
-                text = matchPosition?.let { "$it/$matchCount" } ?: matchCount.toString(),
+                text = matchCount?.let { count -> matchPosition?.let { "$it/$count" } ?: count.toString() }.orEmpty(),
                 color = if (matchCount == 0) JewelTheme.globalColors.text.error else JewelTheme.globalColors.text.info,
                 fontSize = 12.sp,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                modifier = Modifier.widthIn(min = COUNTER_MIN_WIDTH),
             )
         }
         Divider(
@@ -196,6 +204,9 @@ fun FindInPageBar(
         }
     }
 }
+
+// Fits "999/9999" at 12sp; larger counts still widen the slot
+private val COUNTER_MIN_WIDTH = 56.dp
 
 @Composable
 private fun FindActionButton(

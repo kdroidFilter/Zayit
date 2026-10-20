@@ -1,0 +1,6 @@
+<!-- Eraser in the Jewel new-UI style (16px grid, 1px stroke): clears a highlight. -->
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M4.5 14.5L1.8 11.8C1.13 11.13 1.13 10.13 1.8 9.53L8.2 3.13C8.87 2.47 9.87 2.47 10.47 3.13L14.2 6.87C14.87 7.53 14.87 8.53 14.2 9.13L8.83 14.5" stroke="#CED0D6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M4.5 14.5H14.5" stroke="#CED0D6" stroke-linecap="round"/>
+<path d="M3.5 8L9.5 14" stroke="#CED0D6" stroke-linecap="round"/>
+</svg>

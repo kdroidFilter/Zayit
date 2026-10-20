@@ -40,7 +40,7 @@ src/
 ├── App.tsx              # Main landing page component
 ├── main.tsx             # Browser entry: legacy URL redirects, BrowserRouter
 ├── entry-server.tsx     # Prerender entry (StaticRouter)
-├── Root.tsx             # Shared tree: theme, routes (landing + download dialog), language sync
+├── Root.tsx             # Shared tree: theme, routes (landing or download page), language sync
 ├── seo.ts               # Pages, URLs, head tags and JSON-LD
 ├── index.css            # Tailwind + CSS custom properties for theming
 ├── components/
@@ -60,7 +60,7 @@ src/
 
 **Theming**: Uses CSS custom properties defined in `index.css` that change based on `.dark` class on `<html>`. The `ThemeContext` manages the theme state and applies the class.
 
-**Pages & URLs**: four pages, one per language and page: `/`, `/he/`, `/download/`, `/he/download/` (trailing slash, as GitHub Pages serves directories). `src/seo.ts` is the single source for paths (`pagePath`, `parseRoute`), titles, descriptions, canonical, hreflang and JSON-LD. The download page is the `DownloadModal` over the landing page.
+**Pages & URLs**: four pages, one per language and page: `/`, `/he/`, `/download/`, `/he/download/` (trailing slash, as GitHub Pages serves directories). `src/seo.ts` is the single source for paths (`pagePath`, `parseRoute`), titles, descriptions, canonical, hreflang and JSON-LD. The download page is its own page (`pages/DownloadPage.tsx`), with the shared `Navigation` and `SiteFooter`.
 
 **Internationalization**: the path sets the language (`/he/…` is Hebrew, RTL); `Root.tsx` keeps i18next in step with it. Language switches are links to the other path, which save the choice to localStorage (`language`). On load, `main.tsx` moves old URLs (`?lang=he`, `#/download`) to their paths and sends a reader whose preferred language is Hebrew from `/` to `/he/`.
 

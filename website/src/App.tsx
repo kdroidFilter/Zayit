@@ -26,11 +26,12 @@ import {
   WifiOff,
 } from 'lucide-react';
 import { Navigation } from './components/Navigation';
+import { SiteFooter } from './components/SiteFooter';
+import { useDownloadCount } from './hooks/useDownloadCount';
 import { ImageComparison } from './components/ImageComparison';
 import { CrystalParticlesGL } from './components/CrystalParticlesGL';
 import { pagePath, type Lang } from './seo';
 import { reveal, settle, press, RISE } from './motion';
-import { LANGUAGE_STORAGE_KEY } from './i18n';
 
 interface Slide {
   titleKey: string;
@@ -243,11 +244,9 @@ function ShowcaseSlider({
   );
 }
 
-function App({ isHome = true }: { isHome?: boolean }) {
+function App() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'he';
-  // The download page has its own H1, in the dialog
-  const HeroHeading = isHome ? 'h1' : 'div';
   // Reduced motion: no ambient particles (their loops would run for nothing)
   const reduceMotion = useReducedMotion();
 
@@ -261,14 +260,7 @@ function App({ isHome = true }: { isHome?: boolean }) {
   const imageScale = useTransform(scrollYProgress, [0, 1], [1.15, 1]);
   const imageY = useTransform(scrollYProgress, [0, 1], [0, 50]);
 
-  // Fetch download count
-  const [downloadCount, setDownloadCount] = useState<number | null>(null);
-  useEffect(() => {
-    fetch('/download-count.json')
-      .then(res => res.json())
-      .then(data => setDownloadCount(data.count))
-      .catch(() => setDownloadCount(null));
-  }, []);
+  const downloadCount = useDownloadCount();
 
   const features = [
     { icon: Search, key: 'find' },
@@ -368,7 +360,7 @@ function App({ isHome = true }: { isHome?: boolean }) {
           }}
         >
           {/* Brand and subtitle form one heading: what Zayit is, for readers and search engines alike */}
-          <HeroHeading className="flex flex-col items-center">
+          <h1 className="flex flex-col items-center">
             <motion.span
               className="block text-6xl md:text-[12rem] font-bold mb-1 md:mb-2"
               style={{
@@ -418,7 +410,7 @@ function App({ isHome = true }: { isHome?: boolean }) {
             >
               {t('hero.subtitle')}
             </motion.span>
-          </HeroHeading>
+          </h1>
 
           {/* Tagline */}
           <motion.p
@@ -1016,7 +1008,7 @@ function App({ isHome = true }: { isHome?: boolean }) {
               viewport={{ once: true }}
               transition={reveal(0.07)}
             >
-              +{downloadCount.toLocaleString()} {t('download.downloads')}
+              +{downloadCount.toLocaleString(i18n.language)} {t('download.downloads')}
             </motion.p>
           )}
 
@@ -1056,37 +1048,7 @@ function App({ isHome = true }: { isHome?: boolean }) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 px-6" style={{ borderTop: '1px solid var(--card-border)' }}>
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
-            {t('footer.createdByPrefix')}{' '}
-            <a
-              href="https://eliegambache.kdroidfilter.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ color: 'var(--gold)', textDecoration: 'none' }}
-              onMouseOver={e => (e.currentTarget.style.textDecoration = 'underline')}
-              onMouseOut={e => (e.currentTarget.style.textDecoration = 'none')}
-            >
-              {t('footer.createdByName')}
-            </a>{' '}
-            &#10084;
-          </p>
-          <p className="text-xs" style={{ color: 'var(--gold-muted)' }}>
-            {t('footer.license')}
-          </p>
-          {/* Every page links its other language, so crawlers find both */}
-          <nav className="mt-4 flex justify-center gap-4 text-xs" aria-label="Language">
-            <Link to={pagePath('en', isHome ? 'home' : 'download')} hrefLang="en" lang="en" onClick={() => localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en')} style={{ color: 'var(--gold-muted)' }}>
-              English
-            </Link>
-            <Link to={pagePath('he', isHome ? 'home' : 'download')} hrefLang="he" lang="he" onClick={() => localStorage.setItem(LANGUAGE_STORAGE_KEY, 'he')} style={{ color: 'var(--gold-muted)' }}>
-              עברית
-            </Link>
-          </nav>
-        </div>
-      </footer>
+      <SiteFooter page="home" />
     </div>
   );
 }

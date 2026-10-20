@@ -146,107 +146,60 @@
     "drag": "גררו להשוואה"
   },
   "dl": {
-    "common": {
-      "loading": "טוען את הנתונים…",
-      "download": "הורדה",
-      "downloadNow": "הורד עכשיו",
-      "show": "הצג",
-      "hide": "הסתר",
-      "size": "גודל",
-      "version": "גרסה",
-      "error": "שגיאה",
-      "sourceCode": "קוד מקור",
-      "support": "תמיכה",
-      "createdBy": "נוצר על ידי אליהו גמבש"
-    },
-    "header": {
-      "title": "זית",
-      "downloadTitle": "זית — הורדה מהירה",
-      "detected": "זוהה"
-    },
-    "platform": {
-      "windows": "ווינדוס",
+    "title": "הורדת זית",
+    "subtitle": "כל הספרייה במחשב שלכם. חינם וקוד פתוח.",
+    "version": "גרסה {{version}}",
+    "released": "פורסמה ב-{{date}}",
+    "downloads": "{{total}} הורדות",
+    "detected": "מומלץ עבור ה{{os}} שלכם",
+    "choose": "בחרו את המערכת שלכם",
+    "os": {
       "mac": "מק",
-      "linux": "לינוקס",
-      "ios": "iOS",
-      "android": "Android",
-      "mobile": "מכשיר נייד",
-      "unknown": "לא מזוהה"
+      "windows": "ווינדוס",
+      "linux": "לינוקס"
     },
     "arch": {
       "x64": "Intel/AMD 64-bit",
-      "x86": "Intel/AMD 32-bit",
       "arm64": "ARM64",
       "appleSilicon": "Apple Silicon",
-      "arm": "ARM",
-      "mobile": "נייד",
-      "unknown": "לא מזוהה"
+      "intel": "Intel"
     },
-    "mobile": {
-      "notSupported": "לא נתמך במכשירים ניידים",
-      "desktopOnly": "זית הוא יישום שולחני בלבד.",
-      "useDesktop": "אנא גש מהמחשב שלך כדי להוריד את התוכנה."
+    "format": {
+      "exe": "קובץ התקנה",
+      "msi": "חבילת MSI",
+      "dmg": "קובץ DMG",
+      "deb": "Debian, Ubuntu, Mint",
+      "rpm": "Fedora, RHEL, openSUSE",
+      "pacman": "Arch Linux"
     },
-    "unknownOS": {
-      "title": "מערכת הפעלה לא מזוהה",
-      "description": "לא הצלחנו לזהות את מערכת ההפעלה שלך.",
-      "selectManually": "בחר ידנית את הקובץ המתאים:",
-      "noFilesFound": "לא נמצאו קבצים זמינים"
-    },
-    "errors": {
-      "connectionIssue": "אם הבעיה נמשכת, בדוק את חיבור האינטרנט או נסה מאוחר יותר.",
-      "githubError": "GitHub API - שגיאה {{status}}. נסה שוב בעוד כמה דקות."
-    },
-    "install": {
-      "autoInstallMac": "התקנה אוטומטית עבור מק",
-      "autoInstallLinux": "התקנה אוטומטית עבור לינוקס",
-      "copyAndRun": "העתק והרץ את הפקודה הבאה בטרמינל:",
-      "scriptInfo": "הסקריפט יוריד ויתקין את הגרסה המתאימה למחשב שלך אוטומטית",
-      "scriptInfoLinux": "הסקריפט יזהה אוטומטית את ההפצה (DEB/RPM) והארכיטקטורה שלך",
-      "manualDownload": "הורדה ידנית",
-      "showManualOptions": "אפשרויות הורדה ידנית",
-      "hideManualOptions": "אפשרויות הורדה ידנית"
-    },
+    "mobile": "זית פועל במחשבים. פתחו את הדף הזה במחשב ווינדוס, מק או לינוקס כדי להתקין אותו.",
     "windows": {
-      "downloadSoftware": "הורדת התוכנה",
-      "recommendedFile": "קובץ מומלץ בשבילך",
-      "showMoreOptions": "אפשרויות נוספות",
-      "hideMoreOptions": "אפשרויות נוספות",
-      "alternativeFormat": "פורמט חלופי (MSI):",
-      "otherArchitectures": "ארכיטקטורות אחרות:",
-      "selectArchitecture": "בחר את הארכיטקטורה שלך",
-      "archNotDetected": "לא הצלחנו לזהות את הארכיטקטורה. בחר את האפשרות המתאימה:",
-      "mostModern": "רוב המחשבים המודרניים",
-      "surfaceAndSimilar": "מחשבי Surface וכדומה"
+      "cta": "הורדה לווינדוס",
+      "hint": "הריצו את קובץ ההתקנה: זית מתקין את עצמו ומתעדכן לבד."
     },
-    "crossPlatform": {
-      "title": "הורדה למערכות הפעלה אחרות",
-      "showOther": "מערכות אחרות",
-      "hideOther": "מערכות אחרות",
-      "orDownloadManually": "או הורד ידנית:"
+    "terminal": {
+      "macHint": "הדביקו את הפקודה בטרמינל. היא מורידה את הגרסה המתאימה למק שלכם ומתקינה אותה בתיקיית היישומים.",
+      "linuxHint": "הדביקו את הפקודה בטרמינל. היא מזהה את ההפצה ואת המעבד, ומתקינה את זית.",
+      "copy": "העתקה",
+      "copied": "הועתק"
     },
-    "database": {
-      "title": "קבצי מסד נתונים",
-      "loading": "טוען קבצי מסד נתונים…",
-      "showFiles": "הצג קבצי מסד נתונים",
-      "hideFiles": "הסתר קבצי מסד נתונים",
-      "offlineInfo": "אם אתה מתכנן להתקין את זית ללא חיבור לאינטרנט, הורד גם את קבצי מסד הנתונים (הורדה נפרדת).",
-      "totalSize": "גודל כולל של קבצי מסד הנתונים",
-      "noFilesAvailable": "לא נמצאו קבצי מסד נתונים זמינים."
+    "files": {
+      "title": "כל הקבצים",
+      "macNote": "קובץ ה-DMG עדיין לא אומת על ידי אפל, ולכן macOS עלול לחסום אותו בהפעלה הראשונה. הפקודה שלמעלה עוקפת זאת."
     },
-    "fileSize": {
-      "mb": "מ״ב",
-      "lessThan1mb": "< 1 מ״ב"
+    "offline": {
+      "title": "התקנה במחשב ללא אינטרנט",
+      "body": "זית מוריד את הספרייה בהפעלה הראשונה. בלי חיבור, הביאו את הספרייה איתכם.",
+      "step1": "הורידו את כל הקבצים שלמטה לאותה תיקייה.",
+      "step2": "התקינו את זית ובחרו ב״התקנה לא-מקוונת״.",
+      "step3": "בחרו את קובץ ה-‎.part01: זית מרכיב את השאר.",
+      "total": "סה״כ"
     },
-    "language": {
-      "select": "שפה"
+    "error": {
+      "title": "לא הצלחנו להתחבר ל-GitHub",
+      "body": "הקבצים זמינים גם בדף הגרסאות.",
+      "cta": "לדף הגרסאות"
     },
-    "theme": {
-      "light": "מצב בהיר",
-      "dark": "מצב כהה"
-    },
-    "nav": {
-      "backToSite": "חזרה לאתר"
-    }
+    "notes": "מה חדש"
   }
 }

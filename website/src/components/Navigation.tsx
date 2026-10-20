@@ -25,12 +25,9 @@ export function Navigation() {
     setIsMenuOpen(false);
   };
 
-  const navItems = [
-    { key: 'search', href: '#search' },
-    { key: 'widgets', href: '#widgets' },
-    { key: 'companions', href: '#companions' },
-    { key: 'features', href: '#features' },
-  ];
+  // The sections are on the landing page: from another page, the links go back to it
+  const sectionPrefix = page === 'home' ? '' : pagePath(currentLang, 'home');
+  const navItems = ['search', 'widgets', 'companions', 'features'].map((key) => ({ key, href: `${sectionPrefix}#${key}` }));
 
   return (
     <motion.nav
@@ -191,7 +188,7 @@ export function Navigation() {
             </div>
 
             {/* CTA Button */}
-            <Link to={pagePath(currentLang, 'download')}>
+            <Link to={pagePath(currentLang, 'download')} aria-current={page === 'download' ? 'page' : undefined}>
               <motion.span
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold text-white"
                 style={{

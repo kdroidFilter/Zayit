@@ -1,1441 +1,474 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import {
-  X,
-  Download,
-  Terminal,
-  Monitor,
-  Laptop,
-  Cpu,
-  Database,
-  Smartphone,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  Copy,
-  Check,
-  Github,
-  Heart,
-  Globe,
-  Package,
-  Info,
-} from 'lucide-react';
-import { LANGUAGE_STORAGE_KEY } from '../i18n';
-import { pagePath, type Lang } from '../seo';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertCircle, Check, Copy, Download, ExternalLink, HardDrive, Smartphone, Sparkles } from 'lucide-react';
+import { Navigation } from '../components/Navigation';
+import { SiteFooter } from '../components/SiteFooter';
+import { useDownloadCount } from '../hooks/useDownloadCount';
+import { press, reveal, RISE, settle } from '../motion';
 
-const GITHUB_OWNER = 'kdroidFilter';
-const GITHUB_REPO = 'Zayit';
-const DB_OWNER = 'kdroidFilter';
-const DB_REPO = 'SeforimLibrary';
+const APP_REPO = 'kdroidFilter/Zayit';
+const DB_REPO = 'kdroidFilter/SeforimLibrary';
+const RELEASES_URL = `https://github.com/${APP_REPO}/releases/latest`;
+
+type Os = 'mac' | 'windows' | 'linux';
+type Arch = 'x64' | 'arm64';
+type Format = 'exe' | 'msi' | 'dmg' | 'deb' | 'rpm' | 'pacman';
+
+const OSES: Os[] = ['mac', 'windows', 'linux'];
 
 interface Asset {
-  id: number;
   name: string;
   url: string;
-  size: string;
-  rawSize: number;
-  sha256?: string;
+  size: number;
+}
+
+interface Package extends Asset {
+  os: Os;
+  format: Format;
+  arch: Arch;
 }
 
 interface Release {
-  tag_name: string;
-  name: string;
-  body: string;
-  assets: Asset[];
-  created_at: string;
+  version: string;
+  date: string;
+  url: string;
+  packages: Package[];
 }
 
-interface Platform {
-  os: 'windows' | 'mac' | 'linux' | 'ios' | 'android' | 'mobile' | 'unknown';
-  arch: 'x64' | 'arm64' | 'x86' | 'arm' | 'mobile' | 'unknown' | null;
-  distro?: 'deb' | 'rpm' | 'both';
-  isMobile: boolean;
+interface Detected {
+  os: Os | null;
+  arch: Arch | null;
+  mobile: boolean;
 }
 
-interface ArchGroups {
-  x64: Asset[];
-  arm64: Asset[];
-  unknown: Asset[];
+const FORMAT_OS: Record<Format, Os> = { exe: 'windows', msi: 'windows', dmg: 'mac', deb: 'linux', rpm: 'linux', pacman: 'linux' };
+
+/** What a release file is, or null for the files users don't install (updater feeds, signatures, the updater's NSIS, mac zips). */
+function toPackage(asset: Asset): Package | null {
+  const ext = asset.name.match(/\.(exe|msi|dmg|deb|rpm|pacman)$/i)?.[1].toLowerCase() as Format | undefined;
+  if (!ext || /-nsis\.exe$/i.test(asset.name)) return null;
+  const arch: Arch = /arm64|aarch64/i.test(asset.name) ? 'arm64' : 'x64';
+  return { ...asset, os: FORMAT_OS[ext], format: ext, arch };
 }
 
-function formatFileSize(bytes: number): string {
-  if (!bytes) return '?';
-  const mb = Math.round(bytes / 1024 / 1024);
-  if (mb > 0) return `${mb} MB`;
-  return '< 1 MB';
+function formatSize(bytes: number): string {
+  const mb = bytes / 1024 / 1024;
+  return mb >= 1024 ? `${(mb / 1024).toFixed(1)} GB` : `${Math.max(1, Math.round(mb))} MB`;
 }
 
-async function detectPlatform(): Promise<Platform> {
-  if (typeof navigator === 'undefined') {
-    return { os: 'unknown', arch: 'unknown', isMobile: false };
-  }
-
-  const ua = navigator.userAgent || '';
-  const uaData = (navigator as Navigator & { userAgentData?: { platform?: string; getHighEntropyValues?: (hints: string[]) => Promise<{ architecture?: string; bitness?: string }> } }).userAgentData || {};
-  const platform = (uaData.platform || navigator.platform || '').toLowerCase();
-
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
-  if (isMobile) {
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
-    const isAndroid = /Android/i.test(ua);
-    return {
-      os: isIOS ? 'ios' : isAndroid ? 'android' : 'mobile',
-      arch: 'mobile',
-      isMobile: true,
-    };
-  }
-
-  let arch: Platform['arch'] = 'unknown';
-  if (uaData.getHighEntropyValues) {
-    try {
-      const highEntropy = await uaData.getHighEntropyValues(['architecture', 'bitness']);
-      if (highEntropy.architecture) {
-        const archMap: Record<string, Platform['arch']> = {
-          arm: 'arm64',
-          x86: highEntropy.bitness === '64' ? 'x64' : 'x86',
-        };
-        arch = archMap[highEntropy.architecture] || (highEntropy.architecture as Platform['arch']);
-      }
-    } catch {
-      // Ignore
-    }
-  }
-
-  if (arch === 'unknown') {
-    const archHint = (ua).toLowerCase();
-    if (/arm64|aarch64/.test(archHint)) {
-      arch = 'arm64';
-    } else if (/arm/.test(archHint)) {
-      arch = 'arm';
-    } else if (/x64|x86_64|amd64|win64/.test(archHint) || /WOW64|Win64/.test(ua)) {
-      arch = 'x64';
-    } else if (/i[3-6]86|x86/.test(archHint)) {
-      arch = 'x86';
-    }
-  }
-
-  if (/win/i.test(platform) || /windows/i.test(ua)) {
-    return { os: 'windows', arch: arch === 'unknown' ? null : arch, isMobile: false };
-  }
-
-  if (/mac/i.test(platform) || /macintosh|mac os x/i.test(ua)) {
-    if (arch === 'unknown') {
-      if (/Apple/.test(navigator.vendor) && navigator.maxTouchPoints > 0) {
-        arch = 'arm64';
-      } else {
-        arch = null;
-      }
-    }
-    return { os: 'mac', arch, isMobile: false };
-  }
-
-  if (/linux/i.test(platform) || /linux/i.test(ua)) {
-    const distro: Platform['distro'] = /ubuntu|debian/i.test(ua)
-      ? 'deb'
-      : /fedora|centos|redhat|rhel|opensuse|suse/i.test(ua)
-        ? 'rpm'
-        : 'both';
-    return {
-      os: 'linux',
-      distro,
-      arch: arch === 'unknown' ? null : arch,
-      isMobile: false,
-    };
-  }
-
-  return { os: 'unknown', arch: 'unknown', isMobile: false };
+async function fetchLatest(repo: string) {
+  const resp = await fetch(`https://api.github.com/repos/${repo}/releases/latest`);
+  if (!resp.ok) throw new Error(`GitHub ${resp.status}`);
+  return resp.json();
 }
 
-function filterAssetsByPlatform(assets: Asset[], platform: Platform): Asset[] {
-  if (!assets || assets.length === 0) return [];
+type GithubAsset = { name: string; browser_download_url: string; size: number };
+const toAsset = (a: GithubAsset): Asset => ({ name: a.name, url: a.browser_download_url, size: a.size });
 
-  if (platform.os === 'windows') {
-    return assets
-      // The -nsis.exe is the silent installer used by the auto-updater only; users get the Rust wrapper.
-      .filter((a) => /\.(msi|exe)$/i.test(a.name) && !/-nsis\.exe$/i.test(a.name))
-      .sort((a, b) => {
-        if (a.name.toLowerCase().endsWith('.exe') && !b.name.toLowerCase().endsWith('.exe')) return -1;
-        if (!a.name.toLowerCase().endsWith('.exe') && b.name.toLowerCase().endsWith('.exe')) return 1;
-        return 0;
-      });
+async function detect(): Promise<Detected> {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod|Android/i.test(ua)) return { os: null, arch: null, mobile: true };
+
+  type UAData = { platform?: string; getHighEntropyValues?: (hints: string[]) => Promise<{ architecture?: string }> };
+  const uaData = (navigator as Navigator & { userAgentData?: UAData }).userAgentData;
+  const platform = (uaData?.platform || navigator.platform || '').toLowerCase();
+
+  let arch: Arch | null = null;
+  try {
+    const hints = await uaData?.getHighEntropyValues?.(['architecture']);
+    if (hints?.architecture) arch = hints.architecture === 'arm' ? 'arm64' : 'x64';
+  } catch {
+    // The hint is optional
   }
+  if (!arch && /arm64|aarch64/i.test(ua)) arch = 'arm64';
 
-  if (platform.os === 'linux') {
-    if (platform.distro === 'deb') {
-      return assets.filter((a) => /\.deb$/i.test(a.name));
-    } else if (platform.distro === 'rpm') {
-      return assets.filter((a) => /\.rpm$/i.test(a.name));
-    } else {
-      return assets
-        .filter((a) => /\.(deb|rpm)$/i.test(a.name))
-        .sort((a, b) => {
-          if (a.name.toLowerCase().endsWith('.deb') && !b.name.toLowerCase().endsWith('.deb')) return -1;
-          if (!a.name.toLowerCase().endsWith('.deb') && b.name.toLowerCase().endsWith('.deb')) return 1;
-          return 0;
-        });
-    }
-  }
-
-  if (platform.os === 'mac') {
-    return assets.filter((a) => /\.dmg$/i.test(a.name));
-  }
-
-  return [];
+  if (/win/.test(platform) || /windows/i.test(ua)) return { os: 'windows', arch: arch ?? 'x64', mobile: false };
+  // Safari doesn't tell Apple Silicon from Intel; since 2020 most Macs are Apple Silicon
+  if (/mac/.test(platform) || /mac os x/i.test(ua)) return { os: 'mac', arch: arch ?? 'arm64', mobile: false };
+  if (/linux/.test(platform) || /linux/i.test(ua)) return { os: 'linux', arch: arch ?? 'x64', mobile: false };
+  return { os: null, arch: null, mobile: false };
 }
 
-function groupAssetsByArch(assets: Asset[]): ArchGroups {
-  const groups: ArchGroups = { x64: [], arm64: [], unknown: [] };
-
-  assets.forEach((asset) => {
-    const name = asset.name.toLowerCase();
-    if (/arm64|aarch64/.test(name)) {
-      groups.arm64.push(asset);
-    } else if (/x64|x86_64|amd64/.test(name) || (name.includes('64') && !name.includes('arm'))) {
-      groups.x64.push(asset);
-    } else if (/arm/.test(name)) {
-      groups.arm64.push(asset);
-    } else {
-      groups.unknown.push(asset);
-    }
-  });
-
-  return groups;
-}
-
-function getLaunchCommand(kind: 'mac' | 'linux'): string {
-  const file = kind === 'mac' ? 'launch.mac' : 'launch.linux';
-  const base = window.location.origin + '/download/';
-  return `curl -L ${base}${file} | bash`;
-}
-
-export function DownloadModal() {
+export function DownloadPage() {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'he';
-  const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [detected, setDetected] = useState<Detected | null>(null);
+  const [selected, setSelected] = useState<Os | null>(null);
   const [release, setRelease] = useState<Release | null>(null);
-  const [dbLoading, setDbLoading] = useState(true);
-  const [dbError, setDbError] = useState<string | null>(null);
-  const [dbAssets, setDbAssets] = useState<Asset[]>([]);
-  const [showAllAssets, setShowAllAssets] = useState(false);
-  const [includeDb, setIncludeDb] = useState(false);
-  const [platform, setPlatform] = useState<Platform | null>(null);
-  const [showCrossPlatform, setShowCrossPlatform] = useState(false);
-  const [selectedOS, setSelectedOS] = useState<'windows' | 'mac' | 'linux'>('windows');
-  const [copiedCommand, setCopiedCommand] = useState<string | null>(null);
-  const [langMenuOpen, setLangMenuOpen] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-
-  // Disable body scroll when modal is open (only on mount)
-  useEffect(() => {
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, []);
-
-  const handleCloseWithAnimation = () => {
-    if (isClosing) return;
-    // First restore the scrollbar
-    document.body.style.overflow = '';
-    // Then trigger closing animation
-    setIsClosing(true);
-    // Wait for animation to complete then navigate
-    setTimeout(() => {
-      handleClose();
-    }, 350);
-  };
+  const [releaseError, setReleaseError] = useState(false);
+  const [libraryParts, setLibraryParts] = useState<Asset[] | null>(null);
+  const downloadCount = useDownloadCount();
 
   useEffect(() => {
-    async function init() {
-      const detectedPlatform = await detectPlatform();
-      setPlatform(detectedPlatform);
-
-      try {
-        const resp = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`);
-        if (!resp.ok) throw new Error(t('dl.errors.githubError', { status: resp.status }));
-        const data = await resp.json();
-        const assets: Asset[] = (data.assets || []).map((a: { id: number; name: string; browser_download_url: string; size: number }) => ({
-          id: a.id,
-          name: a.name,
-          url: a.browser_download_url,
-          size: formatFileSize(a.size),
-          rawSize: a.size,
-        }));
-        setRelease({
-          tag_name: data.tag_name,
-          name: data.name || data.tag_name,
-          body: data.body || '',
-          assets,
-          created_at: data.created_at,
-        });
-        setLoading(false);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setLoading(false);
-      }
-
-      try {
-        const dbResp = await fetch(`https://api.github.com/repos/${DB_OWNER}/${DB_REPO}/releases/latest`);
-        if (!dbResp.ok) throw new Error(t('dl.errors.githubError', { status: dbResp.status }));
-        const dbData = await dbResp.json();
-        const parts = (dbData.assets || [])
-          .filter((a: { name: string }) => /seforim_bundle|part0?1|part0?2|\.part/i.test(a.name))
-          .map((a: { id: number; name: string; browser_download_url: string; size: number; label?: string }) => ({
-            id: a.id,
-            name: a.name,
-            url: a.browser_download_url,
-            size: formatFileSize(a.size),
-            rawSize: a.size,
-            sha256: a.label || '',
-          }))
-          .sort((x: Asset, y: Asset) => x.name.localeCompare(y.name, undefined, { numeric: true }));
-        setDbAssets(parts);
-        setDbLoading(false);
-      } catch (e) {
-        setDbError(e instanceof Error ? e.message : String(e));
-        setDbLoading(false);
-      }
-    }
-
-    init();
-  }, [t]);
-
-  const copyCommand = useCallback((command: string) => {
-    navigator.clipboard.writeText(command).then(() => {
-      setCopiedCommand(command);
-      setTimeout(() => setCopiedCommand(null), 2000);
+    detect().then((d) => {
+      setDetected(d);
+      setSelected(d.os ?? 'windows');
     });
+
+    fetchLatest(APP_REPO)
+      .then((data) =>
+        setRelease({
+          version: String(data.tag_name).replace(/^v/, ''),
+          date: data.published_at,
+          url: data.html_url,
+          packages: (data.assets as GithubAsset[]).map(toAsset).map(toPackage).filter((p): p is Package => p !== null),
+        }),
+      )
+      .catch(() => setReleaseError(true));
+
+    // The library comes in parts the app assembles
+    fetchLatest(DB_REPO)
+      .then((data) =>
+        setLibraryParts(
+          (data.assets as GithubAsset[])
+            .filter((a) => /\.part\d+$/i.test(a.name))
+            .map(toAsset)
+            .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true })),
+        ),
+      )
+      .catch(() => setLibraryParts([]));
   }, []);
 
-  const handleClose = () => {
-    navigate(pagePath(i18n.language as Lang, 'home'));
+  // The panel slides the way the picker moved (mirrored in Hebrew)
+  const [direction, setDirection] = useState(0);
+  const select = (os: Os) => {
+    if (selected) setDirection(Math.sign(OSES.indexOf(os) - OSES.indexOf(selected)) * (isRTL ? -1 : 1));
+    setSelected(os);
   };
 
-  const osLabel = (p: Platform) => t(`dl.platform.${p.os}`);
+  const packages = release?.packages.filter((p) => p.os === selected) ?? [];
+  const isDetected = !!detected?.os && selected === detected.os;
+  const releaseDate = release ? new Intl.DateTimeFormat(i18n.language, { dateStyle: 'long' }).format(new Date(release.date)) : null;
 
-  const archLabel = (arch: string | null, osContext?: string): string => {
-    if (!arch) return t('dl.arch.unknown');
-    if (arch === 'arm64') {
-      if (osContext === 'mac') return t('dl.arch.appleSilicon');
-      return t('dl.arch.arm64');
-    }
-    return t(`dl.arch.${arch}`) || arch;
-  };
+  return (
+    <div
+      className="min-h-screen relative"
+      style={{ background: 'radial-gradient(ellipse at top, var(--bg-gradient-top) 0%, var(--bg-main) 60%)', color: 'var(--text-main)' }}
+    >
+      <Navigation />
 
-  const getOSIcon = (os: string) => {
-    const icons: Record<string, React.ReactNode> = {
-      windows: <Monitor size={20} />,
-      mac: <Laptop size={20} />,
-      linux: <Monitor size={20} />,
-      ios: <Smartphone size={20} />,
-      android: <Smartphone size={20} />,
-      mobile: <Smartphone size={20} />,
-      unknown: <HelpCircle size={20} />,
-    };
-    return icons[os] || <Monitor size={20} />;
-  };
-
-  const getArchIcon = (arch: string) => {
-    if (arch === 'arm64' || arch === 'arm') return <Cpu size={16} />;
-    return <Cpu size={16} />;
-  };
-
-  const assets = release?.assets || [];
-
-  // Cinematic animation config
-  const cinematicEase: [number, number, number, number] = [0.16, 1, 0.3, 1];
-  const dramaticEase: [number, number, number, number] = [0.34, 1.56, 0.64, 1];
-
-  const windowsAssets = assets.filter((a) => /\.(msi|exe)$/i.test(a.name));
-  const macAssets = assets.filter((a) => /\.dmg$/i.test(a.name));
-  const debAssets = assets.filter((a) => /\.deb$/i.test(a.name));
-  const rpmAssets = assets.filter((a) => /\.rpm$/i.test(a.name));
-
-  const renderContent = () => {
-    // Also what the prerendered page shows (no platform nor release yet): its heading and what it offers
-    if (loading) {
-      return (
-        <>
-          <div className="text-center mb-7">
-            <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
-            <h1 className="download-title">{t('download.title')}</h1>
-            <p className="download-subtitle">{t('download.description')}</p>
-          </div>
-          <div className="text-center py-6">
-            <div className="download-spinner mx-auto mb-4" />
-            <p style={{ color: 'var(--gold-soft)' }}>{t('dl.common.loading')}</p>
-          </div>
-        </>
-      );
-    }
-
-    if (!platform) return null;
-
-    // Mobile device
-    if (platform.isMobile) {
-      return (
-        <>
-          <div className="text-center mb-7">
-            <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
-            <h1 className="download-title">{t('dl.header.title')}</h1>
-            <p className="download-subtitle flex items-center justify-center gap-2">
-              {getOSIcon(platform.os)}
-              {osLabel(platform)}
-            </p>
-          </div>
-
-          <div className="download-section text-center">
-            <Smartphone size={48} className="mx-auto mb-4" style={{ color: 'var(--gold-muted)' }} />
-            <h2 style={{ color: 'var(--text-main)', margin: '0 0 0.5rem' }}>{t('dl.mobile.notSupported')}</h2>
-            <p style={{ color: 'var(--gold-soft)', margin: 0, fontSize: '0.95rem' }}>
-              {t('dl.mobile.desktopOnly')}<br />
-              {t('dl.mobile.useDesktop')}
-            </p>
-          </div>
-        </>
-      );
-    }
-
-    // Unknown OS
-    if (platform.os === 'unknown') {
-      return (
-        <>
-          <div className="text-center mb-7">
-            <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
-            <h1 className="download-title">{t('dl.header.title')} — {t('dl.common.download')}</h1>
-          </div>
-
-          <div className="download-section text-center">
-            <HelpCircle size={48} className="mx-auto mb-4" style={{ color: 'var(--gold-muted)' }} />
-            <h2 style={{ color: 'var(--text-main)', margin: '0 0 0.5rem' }}>{t('dl.unknownOS.title')}</h2>
-            <p style={{ color: 'var(--gold-soft)', margin: '0 0 1.5rem', fontSize: '0.95rem' }}>
-              {t('dl.unknownOS.description')}<br />
-              {t('dl.unknownOS.selectManually')}
-            </p>
-            <ManualDownloadLinks assets={assets} t={t} />
-          </div>
-        </>
-      );
-    }
-
-    // Normal content
-    return (
-      <>
-        {/* Header */}
-        <div className="text-center mb-7">
-          <img src="/icon.png" alt="Zayit" className="download-logo mx-auto" />
-          <h1 className="download-title">{t('dl.header.downloadTitle')}</h1>
-          <p className="download-subtitle flex items-center justify-center gap-2 flex-wrap">
-            {getOSIcon(platform.os)}
-            {t('dl.header.detected')}: <strong>{osLabel(platform)}</strong>
-            {platform.arch && platform.arch !== 'unknown' && (
+      <main className="px-4 md:px-6 pt-28 md:pt-36 pb-20">
+        {/* Hero */}
+        <motion.header
+          className="max-w-2xl mx-auto text-center"
+          initial={{ opacity: 0, y: RISE }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reveal()}
+        >
+          <img
+            src="/icon.png"
+            alt=""
+            width={96}
+            height={96}
+            className="mx-auto mb-6 rounded-[22px]"
+            style={{ boxShadow: '0 20px 50px rgba(230, 210, 140, 0.18)', border: '1px solid rgba(230, 210, 140, 0.25)' }}
+          />
+          <h1 className="dl-display">{t('dl.title')}</h1>
+          <p className="mt-4 text-lg md:text-xl" style={{ color: 'var(--text-muted)' }}>
+            {t('dl.subtitle')}
+          </p>
+          <p className="mt-3 text-sm min-h-5 flex items-center justify-center gap-x-2 flex-wrap" style={{ color: 'var(--gold-muted)' }}>
+            {release && (
               <>
-                <span>&bull;</span>
-                {getArchIcon(platform.arch)}
-                <strong>{archLabel(platform.arch, platform.os)}</strong>
+                <span>{t('dl.version', { version: release.version })}</span>
+                <span aria-hidden>·</span>
+                <span>{t('dl.released', { date: releaseDate })}</span>
               </>
             )}
+            {release && downloadCount !== null && <span aria-hidden>·</span>}
+            {downloadCount !== null && <span>{t('dl.downloads', { total: downloadCount.toLocaleString(i18n.language) })}</span>}
           </p>
-          {release && <p className="download-version">{t('dl.common.version')} {release.tag_name}</p>}
-        </div>
+        </motion.header>
 
-        {/* Error */}
-        {error && (
-          <div className="download-error">
-            <p className="download-error-text"><strong>{t('dl.common.error')}:</strong> {error}</p>
-            <p className="download-error-help">{t('dl.errors.connectionIssue')}</p>
-          </div>
-        )}
-
-        {/* Main Download Section */}
-        {platform.os === 'mac' && (
-          <MacDownloadSection
-            assets={filterAssetsByPlatform(assets, platform)}
-            showAllAssets={showAllAssets}
-            setShowAllAssets={setShowAllAssets}
-            copiedCommand={copiedCommand}
-            copyCommand={copyCommand}
-            archLabel={archLabel}
-            t={t}
-          />
-        )}
-
-        {platform.os === 'windows' && (
-          <WindowsDownloadSection
-            assets={filterAssetsByPlatform(assets, platform)}
-            platform={platform}
-            showAllAssets={showAllAssets}
-            setShowAllAssets={setShowAllAssets}
-            archLabel={archLabel}
-            getArchIcon={getArchIcon}
-            t={t}
-          />
-        )}
-
-        {platform.os === 'linux' && (
-          <LinuxDownloadSection
-            assets={filterAssetsByPlatform(assets, platform)}
-            showAllAssets={showAllAssets}
-            setShowAllAssets={setShowAllAssets}
-            copiedCommand={copiedCommand}
-            copyCommand={copyCommand}
-            archLabel={archLabel}
-            getArchIcon={getArchIcon}
-            t={t}
-          />
-        )}
-
-        {/* Cross-Platform Section */}
-        {(windowsAssets.length > 0 || macAssets.length > 0 || debAssets.length > 0 || rpmAssets.length > 0) && (
-          <CrossPlatformSection
-            windowsAssets={windowsAssets}
-            macAssets={macAssets}
-            debAssets={debAssets}
-            rpmAssets={rpmAssets}
-            showCrossPlatform={showCrossPlatform}
-            setShowCrossPlatform={setShowCrossPlatform}
-            selectedOS={selectedOS}
-            setSelectedOS={setSelectedOS}
-            copiedCommand={copiedCommand}
-            copyCommand={copyCommand}
-            archLabel={archLabel}
-            t={t}
-          />
-        )}
-
-        {/* Database Section */}
-        <DatabaseSection
-          dbLoading={dbLoading}
-          dbError={dbError}
-          dbAssets={dbAssets}
-          includeDb={includeDb}
-          setIncludeDb={setIncludeDb}
-          t={t}
-        />
-      </>
-    );
-  };
-
-  return (
-    <motion.div
-      className="fixed inset-0 z-50"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: isClosing ? 0 : 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Background */}
-      <motion.div
-        className="absolute inset-0"
-        style={{ background: '#000' }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isClosing ? 0 : 1 }}
-        transition={{ duration: 0.3 }}
-        onClick={handleCloseWithAnimation}
-      />
-
-      {/* Radial gradient glow */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse 80% 50% at 50% 50%, rgba(230, 210, 140, 0.15) 0%, transparent 60%)',
-        }}
-        initial={{ opacity: 0, scale: 0.5 }}
-        animate={isClosing ? { opacity: 0 } : { opacity: 1, scale: 1 }}
-        transition={{ duration: isClosing ? 0.3 : 1.2, ease: cinematicEase }}
-      />
-
-      {/* Animated light rays */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isClosing ? 0 : 1 }}
-        transition={{ duration: isClosing ? 0.3 : 0.8 }}
-      >
-        {[...Array(8)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute top-1/2 left-1/2"
-            style={{
-              width: '2px',
-              height: '200vh',
-              background: 'linear-gradient(to bottom, transparent, rgba(230, 210, 140, 0.15), transparent)',
-              transformOrigin: 'center center',
-            }}
-            initial={{ opacity: 0, scale: 0, rotate: i * 22.5 }}
-            animate={isClosing ? { opacity: 0 } : { opacity: 1, scale: 1, rotate: i * 22.5 }}
-            transition={{
-              duration: isClosing ? 0.3 : 1,
-              ease: cinematicEase,
-              delay: isClosing ? 0 : 0.3 + i * 0.05
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Particle dots */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isClosing ? 0 : 1 }}
-        transition={{ duration: 0.3 }}
-      >
-        {[...Array(30)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: Math.random() * 4 + 2 + 'px',
-              height: Math.random() * 4 + 2 + 'px',
-              background: 'rgba(230, 210, 140, 0.8)',
-              left: '50%',
-              top: '50%',
-              boxShadow: '0 0 15px rgba(230, 210, 140, 0.6)',
-            }}
-            initial={{ opacity: 0, scale: 0, x: 0, y: 0 }}
-            animate={isClosing
-              ? { opacity: 0 }
-              : {
-                  opacity: [0, 1, 0.6],
-                  scale: [0, 1.5, 1],
-                  x: (Math.random() - 0.5) * 400,
-                  y: (Math.random() - 0.5) * 400,
-                }
-            }
-            transition={{
-              duration: isClosing ? 0.3 : 2,
-              ease: 'easeInOut',
-              delay: isClosing ? 0 : 0.4 + i * 0.05,
-              repeat: isClosing ? 0 : Infinity,
-              repeatDelay: isClosing ? 0 : Math.random() * 3,
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Vignette effect */}
-      <motion.div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.8) 100%)',
-        }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: isClosing ? 0 : 1 }}
-        transition={{ duration: isClosing ? 0.3 : 0.8 }}
-      />
-
-      {/* Modal container - scrollable */}
-      <div className="relative w-full h-full overflow-y-auto py-8 px-4 flex items-start justify-center">
-        <motion.div
-          className="download-card relative mx-auto"
-          initial={{ opacity: 0, scale: 0.8, y: 100 }}
-          animate={isClosing ? { opacity: 0 } : { opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: isClosing ? 0.3 : 1, ease: dramaticEase, delay: isClosing ? 0 : 0.3 }}
-          onClick={(e) => e.stopPropagation()}
+        <motion.section
+          className="max-w-3xl mx-auto mt-12"
+          initial={{ opacity: 0, y: RISE }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reveal(0.08)}
+          aria-label={t('dl.choose')}
         >
-          {/* Card glow effect */}
-          <motion.div
-            className="absolute -inset-1 rounded-3xl pointer-events-none"
-            style={{
-              background: 'linear-gradient(135deg, rgba(230, 210, 140, 0.3), transparent, rgba(230, 210, 140, 0.1))',
-              filter: 'blur(20px)',
-            }}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: isClosing ? 0 : 1 }}
-            transition={{ duration: isClosing ? 0.3 : 1.2, delay: isClosing ? 0 : 0.5 }}
-          />
+          {detected?.mobile && (
+            <p className="dl-notice mb-6">
+              <Smartphone size={18} className="shrink-0" />
+              <span>{t('dl.mobile')}</span>
+            </p>
+          )}
 
-          <div className="download-card-inner relative">
-            {/* Close button */}
-            <motion.button
-              onClick={handleCloseWithAnimation}
-              className="download-close-button"
-              style={{ transform: isRTL ? 'scaleX(-1)' : undefined }}
-              initial={{ opacity: 0, scale: 0 }}
-              animate={isClosing ? { opacity: 0 } : { opacity: 1, scale: 1 }}
-              transition={{ duration: isClosing ? 0.2 : 0.5, delay: isClosing ? 0 : 0.8, ease: dramaticEase }}
-              whileHover={{ scale: 1.1, rotate: 90 }}
-              whileTap={{ scale: 0.9 }}
-            >
-              <X size={20} />
-            </motion.button>
+          <OsPicker selected={selected} detectedOs={detected?.os ?? null} onSelect={select} />
 
-            {/* Language selector */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={isClosing ? { opacity: 0 } : { opacity: 1, x: 0 }}
-              transition={{ duration: isClosing ? 0.2 : 0.5, delay: isClosing ? 0 : 0.9 }}
-            >
-              <LanguageSelector
-                currentLang={i18n.language}
-                isOpen={langMenuOpen}
-                onToggle={() => setLangMenuOpen(!langMenuOpen)}
-                onSelect={(lang) => {
-                  // The path sets the language
-                  localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
-                  setLangMenuOpen(false);
-                  navigate(pagePath(lang as Lang, 'download'));
-                }}
-              />
-            </motion.div>
-
-            {/* Content */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              animate={isClosing ? { opacity: 0 } : { opacity: 1, y: 0 }}
-              transition={{ duration: isClosing ? 0.2 : 0.8, delay: isClosing ? 0 : 0.6, ease: cinematicEase }}
-            >
-              {renderContent()}
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isClosing ? 0 : 1 }}
-              transition={{ duration: isClosing ? 0.2 : 0.5, delay: isClosing ? 0 : 1.2 }}
-            >
-              <Footer />
-            </motion.div>
+          <div className="dl-card mt-6">
+            {releaseError ? (
+              <ReleaseError />
+            ) : !selected || !release ? (
+              <PanelSkeleton />
+            ) : (
+              <AnimatePresence mode="popLayout" initial={false} custom={direction}>
+                <motion.div
+                  key={selected}
+                  custom={direction}
+                  variants={{
+                    enter: (d: number) => ({ opacity: 0, x: d * 24 }),
+                    center: { opacity: 1, x: 0 },
+                    exit: (d: number) => ({ opacity: 0, x: d * -24 }),
+                  }}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={settle}
+                >
+                  {isDetected && (
+                    <p className="dl-eyebrow">
+                      <Sparkles size={14} />
+                      {t('dl.detected', { os: t(`dl.os.${selected}`) })}
+                      {detected?.arch && ` · ${archLabel(t, selected, detected.arch)}`}
+                    </p>
+                  )}
+                  {selected === 'windows' ? (
+                    <WindowsAction packages={packages} arch={detected?.os === 'windows' ? detected.arch : null} />
+                  ) : (
+                    <TerminalAction os={selected} />
+                  )}
+                  <FileList os={selected} packages={packages} />
+                </motion.div>
+              </AnimatePresence>
+            )}
           </div>
-        </motion.div>
-      </div>
-    </motion.div>
+
+          {release && (
+            <p className="mt-4 text-center text-sm">
+              <a href={release.url} target="_blank" rel="noopener noreferrer" className="dl-link">
+                {t('dl.notes')}
+                <ExternalLink size={13} />
+              </a>
+            </p>
+          )}
+        </motion.section>
+
+        <OfflineSection parts={libraryParts} />
+      </main>
+
+      <SiteFooter page="download" />
+    </div>
   );
 }
 
-// Sub-components
+type T = (key: string, options?: Record<string, unknown>) => string;
 
-function LanguageSelector({
-  currentLang,
-  isOpen,
-  onToggle,
-  onSelect,
-}: {
-  currentLang: string;
-  isOpen: boolean;
-  onToggle: () => void;
-  onSelect: (lang: string) => void;
-}) {
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'he', name: 'עברית' },
-  ];
+function archLabel(t: T, os: Os, arch: Arch): string {
+  if (os === 'mac') return t(arch === 'arm64' ? 'dl.arch.appleSilicon' : 'dl.arch.intel');
+  return t(`dl.arch.${arch}`);
+}
+
+function OsPicker({ selected, detectedOs, onSelect }: { selected: Os | null; detectedOs: Os | null; onSelect: (os: Os) => void }) {
+  const { t } = useTranslation();
 
   return (
-    <div className="download-header-controls">
-      <div className="download-language-selector">
-        <button className="download-lang-btn" onClick={onToggle}>
-          <Globe size={18} />
-          <span className="download-lang-name">{languages.find((l) => l.code === currentLang)?.name}</span>
-          <ChevronDown size={16} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+    <div role="tablist" className="dl-segmented">
+      {OSES.map((os) => (
+        <button
+          key={os}
+          role="tab"
+          aria-selected={selected === os}
+          onClick={() => onSelect(os)}
+          className="dl-segment"
+          data-selected={selected === os || undefined}
+        >
+          {selected === os && <motion.span layoutId="dl-segment-pill" className="dl-segment-pill" transition={settle} />}
+          <span className="relative flex items-center gap-2">
+            {t(`dl.os.${os}`)}
+            {os === detectedOs && <span className="dl-dot" aria-hidden />}
+          </span>
         </button>
-        {isOpen && (
-          <div className="download-lang-menu">
-            {languages.map((lang) => (
-              <button
-                key={lang.code}
-                className={`download-lang-option ${lang.code === currentLang ? 'active' : ''}`}
-                onClick={() => onSelect(lang.code)}
-              >
-                <span>{lang.name}</span>
-                {lang.code === currentLang && <Check size={16} />}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-function Footer() {
-  return (
-    <div className="download-footer">
-      <div className="download-footer-links">
-        <a
-          href="https://github.com/kdroidFilter/Zayit"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="download-footer-link"
-        >
-          <Github size={20} />
-        </a>
-        <a
-          href="https://ko-fi.com/lomityaesh"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="download-footer-link download-footer-link-donate"
-        >
-          <Heart size={20} />
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function ManualDownloadLinks({ assets, t }: { assets: Asset[]; t: (key: string) => string }) {
-  if (!assets || assets.length === 0) {
-    return <p style={{ color: 'var(--gold-soft)' }}>{t('dl.unknownOS.noFilesFound')}</p>;
-  }
-
-  return (
-    <div className="download-assets-list compact">
-      {assets.map((asset) => (
-        <div key={asset.id} className="download-asset-item compact">
-          <div className="download-asset-line">
-            <div className="download-asset-meta">
-              <p className="download-asset-name">{asset.name}</p>
-              <p className="download-asset-size">{t('dl.common.size')}: {asset.size}</p>
-            </div>
-            <a href={asset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary">
-              <Download size={18} />
-              <span>{t('dl.common.download')}</span>
-            </a>
-          </div>
-        </div>
       ))}
     </div>
   );
 }
 
-function MacDownloadSection({
-  assets,
-  showAllAssets,
-  setShowAllAssets,
-  copiedCommand,
-  copyCommand,
-  archLabel,
-  t,
-}: {
-  assets: Asset[];
-  showAllAssets: boolean;
-  setShowAllAssets: (v: boolean) => void;
-  copiedCommand: string | null;
-  copyCommand: (cmd: string) => void;
-  archLabel: (arch: string | null, os?: string) => string;
-  t: (key: string) => string;
-}) {
-  const command = getLaunchCommand('mac');
+function WindowsAction({ packages, arch }: { packages: Package[]; arch: Arch | null }) {
+  const { t } = useTranslation();
+  const installers = packages.filter((p) => p.format === 'exe');
+  const recommended = installers.find((p) => p.arch === (arch ?? 'x64')) ?? installers[0] ?? packages[0];
+  if (!recommended) return null;
 
   return (
-    <>
-      <div className="download-section">
-        <h2 className="download-section-title">
-          <Terminal size={20} />
-          <span>{t('dl.install.autoInstallMac')}</span>
-        </h2>
-        <p style={{ color: 'var(--gold-soft)', margin: '0 0 1rem', fontSize: '0.95rem' }}>
-          {t('dl.install.copyAndRun')}
-        </p>
-        <div className="download-command-box">
-          <code>{command}</code>
-          <button className="download-copy-btn" onClick={() => copyCommand(command)}>
-            {copiedCommand === command ? <Check size={18} /> : <Copy size={18} />}
-          </button>
-        </div>
-        <p style={{ color: 'var(--gold-muted)', margin: '1rem 0 0', fontSize: '0.85rem' }} className="flex items-center gap-1">
-          <Info size={14} />
-          {t('dl.install.scriptInfo')}
-        </p>
-      </div>
-
-      {assets.length > 0 && (
-        <div className="download-section">
-          <h2 className="download-section-title">
-            <Download size={20} />
-            <span>{t('dl.install.manualDownload')}</span>
-          </h2>
-          <button className="download-toggle-button" onClick={() => setShowAllAssets(!showAllAssets)}>
-            {showAllAssets ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            <span>{showAllAssets ? t('dl.common.hide') : t('dl.common.show')} {t('dl.install.showManualOptions')}</span>
-          </button>
-          {showAllAssets && <PlatformAssets assets={assets} osContext="mac" archLabel={archLabel} />}
-        </div>
-      )}
-    </>
-  );
-}
-
-function WindowsDownloadSection({
-  assets,
-  platform,
-  showAllAssets,
-  setShowAllAssets,
-  archLabel,
-  getArchIcon,
-  t,
-}: {
-  assets: Asset[];
-  platform: Platform;
-  showAllAssets: boolean;
-  setShowAllAssets: (v: boolean) => void;
-  archLabel: (arch: string | null, os?: string) => string;
-  getArchIcon: (arch: string) => React.ReactNode;
-  t: (key: string) => string;
-}) {
-  const archGroups = groupAssetsByArch(assets);
-
-  if (platform.arch && archGroups[platform.arch as keyof ArchGroups]?.length > 0) {
-    const archAssets = archGroups[platform.arch as keyof ArchGroups];
-    const exeAsset = archAssets.find((a) => a.name.toLowerCase().endsWith('.exe'));
-    const msiAsset = archAssets.find((a) => a.name.toLowerCase().endsWith('.msi'));
-    const recommended = exeAsset || archAssets[0];
-    const otherArch = platform.arch === 'x64' ? 'arm64' : 'x64';
-    const hasOtherArch = archGroups[otherArch]?.length > 0;
-    const hasSupplementary = msiAsset || hasOtherArch;
-
-    return (
-      <div className="download-section">
-        <h2 className="download-section-title">
-          <Download size={20} />
-          <span>{t('dl.windows.downloadSoftware')}</span>
-        </h2>
-        <p style={{ color: 'var(--gold-soft)', margin: '0 0 1rem', fontSize: '0.95rem' }}>
-          {t('dl.windows.recommendedFile')}: <strong>{recommended.name}</strong> ({recommended.size})
-        </p>
-        <div className="download-btn-row">
-          <a href={recommended.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-primary">
-            <Download size={20} />
-            <span>{t('dl.common.downloadNow')}</span>
-          </a>
-        </div>
-        {hasSupplementary && (
-          <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-            <button className="download-toggle-button" onClick={() => setShowAllAssets(!showAllAssets)}>
-              {showAllAssets ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              <span>{showAllAssets ? t('dl.common.hide') : t('dl.common.show')} {t('dl.windows.showMoreOptions')}</span>
-            </button>
-          </div>
-        )}
-        {showAllAssets && hasSupplementary && (
-          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,215,0,0.1)' }}>
-            {msiAsset && (
-              <>
-                <p style={{ color: 'var(--gold-soft)', fontSize: '0.9rem', margin: '0 0 0.75rem' }}>
-                  {t('dl.windows.alternativeFormat')}
-                </p>
-                <a href={msiAsset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary w-full mb-2">
-                  <Download size={18} />
-                  <span>{msiAsset.name} ({msiAsset.size})</span>
-                </a>
-              </>
-            )}
-            {hasOtherArch && (
-              <>
-                <p style={{ color: 'var(--gold-soft)', fontSize: '0.9rem', margin: `${msiAsset ? '1rem' : '0'} 0 0.75rem` }}>
-                  {t('dl.windows.otherArchitectures')}
-                </p>
-                {archGroups[otherArch].map((asset) => (
-                  <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary w-full mb-2">
-                    {getArchIcon(otherArch)}
-                    <span>{asset.name} ({asset.size})</span>
-                  </a>
-                ))}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Architecture not detected
-  return (
-    <div className="download-section">
-      <h2 className="download-section-title">
+    <div className="text-center">
+      <motion.a href={recommended.url} className="dl-primary" whileTap={{ scale: 0.97 }} transition={press}>
         <Download size={20} />
-        <span>{t('dl.windows.selectArchitecture')}</span>
-      </h2>
-      <p style={{ color: 'var(--gold-soft)', margin: '0 0 1.5rem', fontSize: '0.9rem' }}>
-        {t('dl.windows.archNotDetected')}
+        {t('dl.windows.cta')}
+      </motion.a>
+      <p className="mt-3 text-sm" style={{ color: 'var(--gold-muted)' }}>
+        {archLabel(t, 'windows', recommended.arch)} · {formatSize(recommended.size)}
       </p>
-      <div className="download-arch-options">
-        {archGroups.x64.length > 0 && (
-          <ArchOption
-            assets={archGroups.x64}
-            archKey="x64"
-            archDesc={t('dl.windows.mostModern')}
-            archLabel={archLabel}
-            getArchIcon={getArchIcon}
-          />
-        )}
-        {archGroups.arm64.length > 0 && (
-          <ArchOption
-            assets={archGroups.arm64}
-            archKey="arm64"
-            archDesc={t('dl.windows.surfaceAndSimilar')}
-            archLabel={archLabel}
-            getArchIcon={getArchIcon}
-          />
-        )}
-      </div>
+      <p className="mt-5 text-sm" style={{ color: 'var(--text-muted)' }}>
+        {t('dl.windows.hint')}
+      </p>
     </div>
   );
 }
 
-function ArchOption({
-  assets,
-  archKey,
-  archDesc,
-  archLabel,
-  getArchIcon,
-}: {
-  assets: Asset[];
-  archKey: string;
-  archDesc: string;
-  archLabel: (arch: string | null, os?: string) => string;
-  getArchIcon: (arch: string) => React.ReactNode;
-}) {
-  const exeAsset = assets.find((a) => a.name.toLowerCase().endsWith('.exe'));
-  const msiAsset = assets.find((a) => a.name.toLowerCase().endsWith('.msi'));
-  const primary = exeAsset || assets[0];
+function TerminalAction({ os }: { os: 'mac' | 'linux' }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+  const command = `curl -L ${window.location.origin}/download/launch.${os} | bash`;
+
+  useEffect(() => {
+    if (!copied) return;
+    const id = setTimeout(() => setCopied(false), 1800);
+    return () => clearTimeout(id);
+  }, [copied]);
 
   return (
-    <div className="download-arch-option">
-      <div className="download-arch-header">
-        <span style={{ color: 'var(--gold)', fontSize: '1.5rem' }}>{getArchIcon(archKey)}</span>
-        <h3>{archLabel(archKey, 'windows')}</h3>
-      </div>
-      <p className="download-arch-desc">{archDesc}</p>
-      <a href={primary.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-primary w-full mt-2">
-        <Download size={18} />
-        <span>{primary.name} ({primary.size})</span>
-      </a>
-      {msiAsset && exeAsset && (
-        <a href={msiAsset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary w-full mt-2">
-          <Download size={18} />
-          <span>{msiAsset.name} ({msiAsset.size})</span>
-        </a>
-      )}
-    </div>
-  );
-}
-
-function LinuxDownloadSection({
-  assets,
-  showAllAssets,
-  setShowAllAssets,
-  copiedCommand,
-  copyCommand,
-  archLabel,
-  getArchIcon,
-  t,
-}: {
-  assets: Asset[];
-  showAllAssets: boolean;
-  setShowAllAssets: (v: boolean) => void;
-  copiedCommand: string | null;
-  copyCommand: (cmd: string) => void;
-  archLabel: (arch: string | null, os?: string) => string;
-  getArchIcon: (arch: string) => React.ReactNode;
-  t: (key: string) => string;
-}) {
-  const command = getLaunchCommand('linux');
-  const debAssets = assets.filter((a) => a.name.toLowerCase().endsWith('.deb'));
-  const rpmAssets = assets.filter((a) => a.name.toLowerCase().endsWith('.rpm'));
-
-  return (
-    <>
-      <div className="download-section">
-        <h2 className="download-section-title">
-          <Terminal size={20} />
-          <span>{t('dl.install.autoInstallLinux')}</span>
-        </h2>
-        <p style={{ color: 'var(--gold-soft)', margin: '0 0 1rem', fontSize: '0.95rem' }}>
-          {t('dl.install.copyAndRun')}
-        </p>
-        <div className="download-command-box">
-          <code>{command}</code>
-          <button className="download-copy-btn" onClick={() => copyCommand(command)}>
-            {copiedCommand === command ? <Check size={18} /> : <Copy size={18} />}
-          </button>
-        </div>
-        <p style={{ color: 'var(--gold-muted)', margin: '1rem 0 0', fontSize: '0.85rem' }} className="flex items-center gap-1">
-          <Info size={14} />
-          {t('dl.install.scriptInfoLinux')}
-        </p>
-      </div>
-
-      {(debAssets.length > 0 || rpmAssets.length > 0) && (
-        <div className="download-section">
-          <h2 className="download-section-title">
-            <Download size={20} />
-            <span>{t('dl.install.manualDownload')}</span>
-          </h2>
-          <button className="download-toggle-button" onClick={() => setShowAllAssets(!showAllAssets)}>
-            {showAllAssets ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-            <span>{showAllAssets ? t('dl.common.hide') : t('dl.common.show')} {t('dl.install.showManualOptions')}</span>
-          </button>
-          {showAllAssets && (
-            <>
-              {debAssets.length > 0 && (
-                <div className="download-linux-distro-section">
-                  <h3 className="flex items-center gap-2" style={{ color: 'var(--text-main)', fontSize: '1rem', margin: '0 0 0.75rem' }}>
-                    <Package size={18} />
-                    Debian/Ubuntu (.deb)
-                  </h3>
-                  <LinuxArchOptions assets={debAssets} archLabel={archLabel} getArchIcon={getArchIcon} />
-                </div>
-              )}
-              {rpmAssets.length > 0 && (
-                <div className="download-linux-distro-section" style={{ marginTop: '1.5rem' }}>
-                  <h3 className="flex items-center gap-2" style={{ color: 'var(--text-main)', fontSize: '1rem', margin: '0 0 0.75rem' }}>
-                    <Package size={18} />
-                    Fedora/RHEL/openSUSE (.rpm)
-                  </h3>
-                  <LinuxArchOptions assets={rpmAssets} archLabel={archLabel} getArchIcon={getArchIcon} />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </>
-  );
-}
-
-function LinuxArchOptions({
-  assets,
-  archLabel,
-  getArchIcon,
-}: {
-  assets: Asset[];
-  archLabel: (arch: string | null, os?: string) => string;
-  getArchIcon: (arch: string) => React.ReactNode;
-}) {
-  const archGroups = groupAssetsByArch(assets);
-
-  return (
-    <div className="download-arch-options compact">
-      {archGroups.x64.length > 0 && (
-        <div className="download-item">
-          <div className="flex items-center gap-2 mb-2">
-            <span style={{ color: 'var(--gold-soft)' }}>{getArchIcon('x64')}</span>
-            <span style={{ color: 'var(--gold-soft)', fontSize: '0.9rem' }}>{archLabel('x64', 'linux')}</span>
-          </div>
-          {archGroups.x64.map((asset) => (
-            <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary w-full mb-2">
-              <Download size={18} />
-              <span>{asset.name} ({asset.size})</span>
-            </a>
-          ))}
-        </div>
-      )}
-      {archGroups.arm64.length > 0 && (
-        <div className="download-item">
-          <div className="flex items-center gap-2 mb-2">
-            <span style={{ color: 'var(--gold-soft)' }}>{getArchIcon('arm64')}</span>
-            <span style={{ color: 'var(--gold-soft)', fontSize: '0.9rem' }}>{archLabel('arm64', 'linux')}</span>
-          </div>
-          {archGroups.arm64.map((asset) => (
-            <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary w-full mb-2">
-              <Download size={18} />
-              <span>{asset.name} ({asset.size})</span>
-            </a>
-          ))}
-        </div>
-      )}
-      {archGroups.unknown.length > 0 && (
-        <div className="download-item">
-          {archGroups.unknown.map((asset) => (
-            <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary w-full mb-2">
-              <Download size={18} />
-              <span>{asset.name} ({asset.size})</span>
-            </a>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CrossPlatformSection({
-  windowsAssets,
-  macAssets,
-  debAssets,
-  rpmAssets,
-  showCrossPlatform,
-  setShowCrossPlatform,
-  selectedOS,
-  setSelectedOS,
-  copiedCommand,
-  copyCommand,
-  archLabel,
-  t,
-}: {
-  windowsAssets: Asset[];
-  macAssets: Asset[];
-  debAssets: Asset[];
-  rpmAssets: Asset[];
-  showCrossPlatform: boolean;
-  setShowCrossPlatform: (v: boolean) => void;
-  selectedOS: 'windows' | 'mac' | 'linux';
-  setSelectedOS: (v: 'windows' | 'mac' | 'linux') => void;
-  copiedCommand: string | null;
-  copyCommand: (cmd: string) => void;
-  archLabel: (arch: string | null, os?: string) => string;
-  t: (key: string) => string;
-}) {
-  return (
-    <div className="download-section download-section-cross-platform">
-      <div className="download-section-header">
-        <h2 className="download-section-title">
-          <Monitor size={20} />
-          <span>{t('dl.crossPlatform.title')}</span>
-        </h2>
-        <button className="download-toggle-button inline" onClick={() => setShowCrossPlatform(!showCrossPlatform)}>
-          {showCrossPlatform ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          <span>{showCrossPlatform ? t('dl.common.hide') : t('dl.common.show')} {t('dl.crossPlatform.showOther')}</span>
+    <div>
+      <div className="dl-command" dir="ltr">
+        <span className="dl-prompt" aria-hidden>$</span>
+        <code className="flex-1 min-w-0 overflow-x-auto whitespace-nowrap">{command}</code>
+        <button
+          className="dl-copy"
+          onClick={() => navigator.clipboard.writeText(command).then(() => setCopied(true))}
+          aria-live="polite"
+        >
+          {copied ? <Check size={16} /> : <Copy size={16} />}
+          <span>{copied ? t('dl.terminal.copied') : t('dl.terminal.copy')}</span>
         </button>
       </div>
-
-      {showCrossPlatform && (
-        <div className="download-os-tabs">
-          <div className="download-tab-buttons">
-            {windowsAssets.length > 0 && (
-              <button
-                className={`download-tab-button ${selectedOS === 'windows' ? 'active' : ''}`}
-                onClick={() => setSelectedOS('windows')}
-              >
-                <Monitor size={20} />
-                <span>{t('dl.platform.windows')}</span>
-              </button>
-            )}
-            {macAssets.length > 0 && (
-              <button
-                className={`download-tab-button ${selectedOS === 'mac' ? 'active' : ''}`}
-                onClick={() => setSelectedOS('mac')}
-              >
-                <Laptop size={20} />
-                <span>{t('dl.platform.mac')}</span>
-              </button>
-            )}
-            {(debAssets.length > 0 || rpmAssets.length > 0) && (
-              <button
-                className={`download-tab-button ${selectedOS === 'linux' ? 'active' : ''}`}
-                onClick={() => setSelectedOS('linux')}
-              >
-                <Monitor size={20} />
-                <span>{t('dl.platform.linux')}</span>
-              </button>
-            )}
-          </div>
-
-          <div className="download-tab-content">
-            {selectedOS === 'windows' && windowsAssets.length > 0 && (
-              <div className="download-platform-downloads">
-                <h3 className="download-platform-title">
-                  <Monitor size={20} />
-                  {t('dl.platform.windows')}
-                </h3>
-                <PlatformAssets assets={windowsAssets} osContext="windows" archLabel={archLabel} />
-              </div>
-            )}
-
-            {selectedOS === 'mac' && macAssets.length > 0 && (
-              <div className="download-platform-downloads">
-                <h3 className="download-platform-title">
-                  <Laptop size={20} />
-                  {t('dl.platform.mac')}
-                </h3>
-                <div className="download-command-box mb-4">
-                  <code>{getLaunchCommand('mac')}</code>
-                  <button className="download-copy-btn" onClick={() => copyCommand(getLaunchCommand('mac'))}>
-                    {copiedCommand === getLaunchCommand('mac') ? <Check size={18} /> : <Copy size={18} />}
-                  </button>
-                </div>
-                <p style={{ color: 'var(--gold-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                  {t('dl.crossPlatform.orDownloadManually')}
-                </p>
-                <PlatformAssets assets={macAssets} osContext="mac" archLabel={archLabel} />
-              </div>
-            )}
-
-            {selectedOS === 'linux' && (debAssets.length > 0 || rpmAssets.length > 0) && (
-              <div className="download-platform-downloads">
-                <h3 className="download-platform-title">
-                  <Monitor size={20} />
-                  {t('dl.platform.linux')}
-                </h3>
-                <div className="download-command-box mb-4">
-                  <code>{getLaunchCommand('linux')}</code>
-                  <button className="download-copy-btn" onClick={() => copyCommand(getLaunchCommand('linux'))}>
-                    {copiedCommand === getLaunchCommand('linux') ? <Check size={18} /> : <Copy size={18} />}
-                  </button>
-                </div>
-                <p style={{ color: 'var(--gold-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                  {t('dl.crossPlatform.orDownloadManually')}
-                </p>
-                {debAssets.length > 0 && (
-                  <div className="download-distro-group">
-                    <h4 className="download-distro-title">
-                      <Package size={16} />
-                      Debian/Ubuntu (.deb)
-                    </h4>
-                    <PlatformAssets assets={debAssets} osContext="linux" archLabel={archLabel} />
-                  </div>
-                )}
-                {rpmAssets.length > 0 && (
-                  <div className="download-distro-group">
-                    <h4 className="download-distro-title">
-                      <Package size={16} />
-                      Fedora/RHEL (.rpm)
-                    </h4>
-                    <PlatformAssets assets={rpmAssets} osContext="linux" archLabel={archLabel} />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <p className="mt-4 text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
+        {t(os === 'mac' ? 'dl.terminal.macHint' : 'dl.terminal.linuxHint')}
+      </p>
     </div>
   );
 }
 
-function PlatformAssets({
-  assets,
-  osContext,
-  archLabel,
-}: {
-  assets: Asset[];
-  osContext: string;
-  archLabel: (arch: string | null, os?: string) => string;
-}) {
-  const archGroups = groupAssetsByArch(assets);
+const FORMAT_ORDER: Format[] = ['exe', 'msi', 'dmg', 'deb', 'rpm', 'pacman'];
 
-  return (
-    <div className="download-platform-assets">
-      {archGroups.x64.length > 0 && (
-        <div className="download-arch-group">
-          <div className="download-arch-label">
-            <Cpu size={16} />
-            <span>{archLabel('x64', osContext)}</span>
-          </div>
-          <div className="download-arch-downloads">
-            {archGroups.x64.map((asset) => (
-              <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-chip" title={asset.size}>
-                <Download size={16} />
-                <span>{asset.name}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-      {archGroups.arm64.length > 0 && (
-        <div className="download-arch-group">
-          <div className="download-arch-label">
-            <Cpu size={16} />
-            <span>{archLabel('arm64', osContext)}</span>
-          </div>
-          <div className="download-arch-downloads">
-            {archGroups.arm64.map((asset) => (
-              <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-chip" title={asset.size}>
-                <Download size={16} />
-                <span>{asset.name}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-      {archGroups.unknown.length > 0 && (
-        <div className="download-arch-group">
-          <div className="download-arch-downloads">
-            {archGroups.unknown.map((asset) => (
-              <a key={asset.id} href={asset.url} target="_blank" rel="noopener noreferrer" className="download-chip" title={asset.size}>
-                <Download size={16} />
-                <span>{asset.name}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+function FileList({ os, packages }: { os: Os; packages: Package[] }) {
+  const { t } = useTranslation();
+  if (packages.length === 0) return null;
+  const sorted = [...packages].sort(
+    (a, b) => FORMAT_ORDER.indexOf(a.format) - FORMAT_ORDER.indexOf(b.format) || b.arch.localeCompare(a.arch),
   );
-}
-
-function DatabaseSection({
-  dbLoading,
-  dbError,
-  dbAssets,
-  includeDb,
-  setIncludeDb,
-  t,
-}: {
-  dbLoading: boolean;
-  dbError: string | null;
-  dbAssets: Asset[];
-  includeDb: boolean;
-  setIncludeDb: (v: boolean) => void;
-  t: (key: string) => string;
-}) {
-  const totalDbSize = dbAssets.reduce((acc, a) => acc + (a.rawSize || 0), 0);
 
   return (
-    <div className="download-section download-section-db">
-      <div className="download-section-header">
-        <h2 className="download-section-title">
-          <Database size={20} />
-          <span>{t('dl.database.title')}</span>
-        </h2>
-      </div>
-
-      {dbLoading ? (
-        <p style={{ color: 'var(--gold-soft)', fontSize: '0.9rem' }}>{t('dl.database.loading')}</p>
-      ) : dbError ? (
-        <div className="download-error" style={{ margin: 0 }}>
-          <p className="download-error-text" style={{ margin: 0 }}>{dbError}</p>
-        </div>
-      ) : dbAssets.length > 0 ? (
-        <>
-          <div className="download-info-banner">
-            <p style={{ margin: 0, color: 'var(--text-main)', fontSize: '0.9rem' }}>
-              {t('dl.database.offlineInfo')}
-            </p>
-          </div>
-          <div className="download-toggle-row">
-            <button className="download-toggle-button inline" onClick={() => setIncludeDb(!includeDb)}>
-              {includeDb ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-              <span>{includeDb ? t('dl.database.hideFiles') : t('dl.database.showFiles')}</span>
-            </button>
-          </div>
-          {includeDb && (
-            <>
-              <p style={{ color: 'var(--gold-muted)', fontSize: '0.83rem', margin: '0 0 0.5rem' }}>
-                {t('dl.database.totalSize')}: {formatFileSize(totalDbSize)}
-              </p>
-              <div className="download-assets-list compact">
-                {dbAssets.map((asset) => (
-                  <div key={asset.id} className="download-db-item">
-                    <div className="download-asset-line">
-                      <div className="download-asset-meta">
-                        <p className="download-asset-name">{asset.name}</p>
-                        <p className="download-asset-size">{t('dl.common.size')}: {asset.size}</p>
-                        {asset.sha256 && (
-                          <p className="download-small-text" style={{ marginTop: '0.2rem' }}>SHA-256: {asset.sha256}</p>
-                        )}
-                      </div>
-                      <a href={asset.url} target="_blank" rel="noopener noreferrer" className="download-btn download-btn-secondary">
-                        <Download size={18} />
-                        <span>{t('dl.common.download')}</span>
-                      </a>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      ) : (
-        <p style={{ color: 'var(--gold-soft)', textAlign: 'center', margin: 0, fontSize: '0.85rem' }}>
-          {t('dl.database.noFilesAvailable')}
+    <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--card-border)' }}>
+      <h2 className="dl-label">{t('dl.files.title')}</h2>
+      <ul className="mt-2">
+        {sorted.map((p) => (
+          <li key={p.name}>
+            <a href={p.url} className="dl-row">
+              <span className="min-w-0">
+                <span className="block font-medium" style={{ color: 'var(--text-main)' }}>
+                  {t(`dl.format.${p.format}`)}
+                  <span style={{ color: 'var(--gold-muted)' }}> · {archLabel(t, os, p.arch)}</span>
+                </span>
+                <span className="block text-xs truncate" dir="ltr" style={{ color: 'var(--gold-muted)' }}>
+                  {p.name}
+                </span>
+              </span>
+              <span className="dl-row-size">{formatSize(p.size)}</span>
+              <Download size={18} className="dl-row-icon" />
+            </a>
+          </li>
+        ))}
+      </ul>
+      {os === 'mac' && (
+        <p className="mt-3 text-xs leading-relaxed" style={{ color: 'var(--gold-muted)' }}>
+          {t('dl.files.macNote')}
         </p>
       )}
     </div>
   );
 }
 
-export default DownloadModal;
+function OfflineSection({ parts }: { parts: Asset[] | null }) {
+  const { t } = useTranslation();
+  if (parts?.length === 0) return null;
+  const total = parts?.reduce((sum, p) => sum + p.size, 0) ?? 0;
+
+  return (
+    <motion.section
+      className="max-w-3xl mx-auto mt-20"
+      initial={{ opacity: 0, y: RISE }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.3 }}
+      transition={reveal()}
+    >
+      <div className="grid md:grid-cols-[1fr_1.1fr] gap-8 md:gap-10 items-start">
+        <div>
+          <HardDrive size={28} style={{ color: 'var(--gold)' }} />
+          <h2 className="mt-4 text-2xl md:text-3xl font-semibold">{t('dl.offline.title')}</h2>
+          <p className="mt-3" style={{ color: 'var(--text-muted)' }}>
+            {t('dl.offline.body')}
+          </p>
+          <ol className="mt-6 space-y-3">
+            {['step1', 'step2', 'step3'].map((step, i) => (
+              <li key={step} className="flex gap-3 text-sm" style={{ color: 'var(--text-main)' }}>
+                <span className="dl-step">{i + 1}</span>
+                <span className="pt-0.5">{t(`dl.offline.${step}`)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div className="dl-card !p-3">
+          {parts === null ? (
+            <div className="p-3 space-y-3">
+              {[0, 1, 2].map((i) => <div key={i} className="dl-skeleton h-10" />)}
+            </div>
+          ) : (
+            <>
+              <ul>
+                {parts.map((p) => (
+                  <li key={p.name}>
+                    <a href={p.url} className="dl-row">
+                      <span className="min-w-0 truncate text-sm font-medium" dir="ltr" style={{ color: 'var(--text-main)' }}>
+                        {p.name}
+                      </span>
+                      <span className="dl-row-size">{formatSize(p.size)}</span>
+                      <Download size={18} className="dl-row-icon" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+              <p className="px-3 pt-3 pb-1 flex justify-between text-sm" style={{ borderTop: '1px solid var(--card-border)', color: 'var(--gold-muted)' }}>
+                <span>{t('dl.offline.total')}</span>
+                <span className="tabular-nums">{formatSize(total)}</span>
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </motion.section>
+  );
+}
+
+function PanelSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="dl-skeleton h-14 max-w-sm mx-auto rounded-full" />
+      <div className="dl-skeleton h-4 max-w-48 mx-auto mt-4" />
+      <div className="mt-8 pt-6 space-y-3" style={{ borderTop: '1px solid var(--card-border)' }}>
+        {[0, 1].map((i) => <div key={i} className="dl-skeleton h-12" />)}
+      </div>
+    </div>
+  );
+}
+
+function ReleaseError() {
+  const { t } = useTranslation();
+  return (
+    <div className="text-center py-4">
+      <AlertCircle size={32} className="mx-auto" style={{ color: 'var(--gold)' }} />
+      <h2 className="mt-3 text-lg font-semibold">{t('dl.error.title')}</h2>
+      <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>
+        {t('dl.error.body')}
+      </p>
+      <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer" className="dl-primary mt-6">
+        <ExternalLink size={18} />
+        {t('dl.error.cta')}
+      </a>
+    </div>
+  );
+}
+
+export default DownloadPage;

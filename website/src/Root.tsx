@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence, MotionConfig } from 'framer-motion';
+import { MotionConfig } from 'framer-motion';
 import App from './App';
-import { DownloadModal } from './pages/DownloadPage';
+import { DownloadPage } from './pages/DownloadPage';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { useSEO } from './hooks/useSEO';
 import { parseRoute } from './seo';
@@ -18,14 +18,14 @@ function Pages() {
     if (i18n.language !== lang) i18n.changeLanguage(lang);
   }, [i18n, lang]);
 
+  // A new page opens at its top
+  useEffect(() => {
+    if (!window.location.hash) window.scrollTo(0, 0);
+  }, [page]);
+
   useSEO(lang, page);
 
-  return (
-    <>
-      <App isHome={page === 'home'} />
-      <AnimatePresence>{page === 'download' && <DownloadModal />}</AnimatePresence>
-    </>
-  );
+  return page === 'download' ? <DownloadPage /> : <App />;
 }
 
 /** The whole site, under the router its entry provides (browser or static). */

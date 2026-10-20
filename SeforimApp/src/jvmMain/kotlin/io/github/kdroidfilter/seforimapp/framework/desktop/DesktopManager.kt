@@ -723,6 +723,7 @@ class DesktopManager(
                 groupId = groupId,
                 searchHomeViewModel = searchHomeViewModelFactory(true),
                 windowState = state,
+                isLastWindow = { _windows.value.size <= 1 },
             )
         _windows.update { it.adding(w) }
         if (window(_focusedWindowId.value) == null) _focusedWindowId.value = w.id

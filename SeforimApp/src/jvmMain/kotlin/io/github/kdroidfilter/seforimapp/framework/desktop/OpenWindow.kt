@@ -35,6 +35,7 @@ class OpenWindow internal constructor(
     groupId: String,
     val searchHomeViewModel: SearchHomeViewModel,
     val windowState: WindowState,
+    isLastWindow: () -> Boolean,
 ) {
     /** The desktop this window shows. */
     var session: DesktopSession by mutableStateOf(session)
@@ -44,7 +45,7 @@ class OpenWindow internal constructor(
     var groupId: String by mutableStateOf(groupId)
         private set
 
-    val tabsViewModel = TabsViewModel({ this.session }, { this.groupId })
+    val tabsViewModel = TabsViewModel({ this.session }, { this.groupId }, isLastWindow)
 
     private val _desktopId = MutableStateFlow(session.desktopId)
     val desktopId: StateFlow<String> = _desktopId.asStateFlow()

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { press, settle } from '../motion';
@@ -13,6 +13,7 @@ export function Navigation() {
   const { t, i18n } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
+  const pendingSection = useRef<string | null>(null);
 
   const { page } = parseRoute(useLocation().pathname);
   const currentLang = i18n.language as Lang;
@@ -218,7 +219,15 @@ export function Navigation() {
         </div>
 
         {/* Mobile Menu */}
-        <AnimatePresence>
+        <AnimatePresence
+          onExitComplete={() => {
+            const id = pendingSection.current;
+            pendingSection.current = null;
+            if (!id) return;
+            history.pushState(null, '', `#${id}`);
+            document.getElementById(id)?.scrollIntoView();
+          }}
+        >
           {isMenuOpen && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
@@ -234,7 +243,14 @@ export function Navigation() {
                     href={item.href}
                     className="block text-base font-medium py-2"
                     style={{ color: 'var(--text-muted)' }}
-                    onClick={() => setIsMenuOpen(false)}
+                    onClick={(e) => {
+                      // The menu's collapse cancels the anchor's smooth scroll: scroll once it has closed
+                      if (!sectionPrefix) {
+                        e.preventDefault();
+                        pendingSection.current = item.key;
+                      }
+                      setIsMenuOpen(false);
+                    }}
                   >
                     {t(`nav.${item.key}`)}
                   </a>

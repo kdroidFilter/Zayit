@@ -330,7 +330,8 @@ private fun TempleOptions(state: HomeWidgetsState) {
                 .readBytes(TEMPLE_COUNT_TEXT)
                 .decodeToString()
                 .trim()
-                .split("\n\n")
+                // A Windows checkout (autocrlf) ships it with \r\n
+                .split(Regex("""\r?\n\r?\n"""))
     }
     if (paragraphs.size < TempleCount.entries.size + 2) return
     val link = TextLinkStyles(SpanStyle(color = JewelTheme.globalColors.text.info, textDecoration = TextDecoration.Underline))

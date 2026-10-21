@@ -21,6 +21,13 @@ Free. Clear. Efficient.
   </a>
 </p>
 
+<h3 align="center">Zayit in 75 seconds</h3>
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=e8ch0H9dlHs">
+    <img src="art/VIDEO-EN.jpg" alt="Watch the Zayit video on YouTube" width="80%">
+  </a>
+</p>
+
 <p align="center">
   <a href="https://ko-fi.com/lomityaesh">
     <img src="art/button-koffe.png" alt="Support on Ko-fi" height="56">

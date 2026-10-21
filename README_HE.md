@@ -21,6 +21,13 @@
   </a>
 </p>
 
+<h3 align="center">זית ב-75 שניות</h3>
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=T7VU3K7EL5w">
+    <img src="art/VIDEO-HE.jpg" alt="לצפייה בסרטון של זית ב-YouTube" width="80%">
+  </a>
+</p>
+
 <p align="center">
   <a href="https://ko-fi.com/lomityaesh">
     <img src="art/button-koffe.png" alt="תמיכה ב-Ko-fi" height="56">

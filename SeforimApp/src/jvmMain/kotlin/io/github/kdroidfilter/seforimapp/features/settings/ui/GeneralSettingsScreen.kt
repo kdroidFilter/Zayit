@@ -42,10 +42,10 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.jewel.foundation.theme.JewelTheme
+import org.jetbrains.jewel.ui.component.CircularProgressIndicator
 import org.jetbrains.jewel.ui.component.Icon
 import org.jetbrains.jewel.ui.component.IconButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
-import org.jetbrains.jewel.ui.component.InlineSuccessBanner
 import org.jetbrains.jewel.ui.component.InlineWarningBanner
 import org.jetbrains.jewel.ui.component.Link
 import org.jetbrains.jewel.ui.component.Text
@@ -162,7 +162,7 @@ private fun AppHeader(
                 .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        // Update status banner, reflecting the full check/download state.
+        // Banner only for states that call for an action; quiet states sit under the version.
         UpdateStatusBanner(
             updateState = updateState,
             onDownloadUpdate = onDownloadUpdate,
@@ -196,6 +196,7 @@ private fun AppHeader(
                     fontSize = 13.sp,
                     color = JewelTheme.globalColors.text.info,
                 )
+                UpdateStatusLine(updateState = updateState, onCheckForUpdate = onCheckForUpdate)
                 Link(
                     text = stringResource(Res.string.settings_info_created_by),
                     onClick = { UrlOpener.open("https://eliegambache.kdroidfilter.com/") },
@@ -240,17 +241,63 @@ private fun AppHeader(
 }
 
 @Composable
+private fun UpdateStatusLine(
+    updateState: UpdateUiState,
+    onCheckForUpdate: () -> Unit,
+) {
+    when (updateState) {
+        UpdateUiState.UpToDate ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Icon(
+                    key = AllIconsKeys.General.GreenCheckmark,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = stringResource(Res.string.update_up_to_date),
+                    fontSize = 13.sp,
+                    color = JewelTheme.globalColors.text.info,
+                )
+                Link(
+                    text = stringResource(Res.string.update_check_action),
+                    onClick = onCheckForUpdate,
+                )
+            }
+
+        UpdateUiState.Idle, UpdateUiState.Checking ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(14.dp))
+                Text(
+                    text = stringResource(Res.string.update_checking),
+                    fontSize = 13.sp,
+                    color = JewelTheme.globalColors.text.info,
+                )
+            }
+
+        else -> Unit
+    }
+}
+
+@Composable
 private fun UpdateStatusBanner(
     updateState: UpdateUiState,
     onDownloadUpdate: () -> Unit,
     onInstallUpdate: () -> Unit,
     onCheckForUpdate: () -> Unit,
 ) {
+    val modifier = Modifier.fillMaxWidth()
     when (updateState) {
         is UpdateUiState.Available -> {
             val downloadLabel = stringResource(Res.string.update_download_action)
             InlineInformationBanner(
                 text = stringResource(Res.string.update_available_banner, updateState.version),
+                modifier = modifier,
                 linkActions = {
                     action(downloadLabel, onClick = onDownloadUpdate)
                 },
@@ -258,9 +305,10 @@ private fun UpdateStatusBanner(
         }
 
         is UpdateUiState.Downloading -> {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 InlineInformationBanner(
                     text = "${stringResource(Res.string.update_downloading)} ${updateState.percent}%",
+                    modifier = modifier,
                 )
                 AnimatedHorizontalProgressBar(
                     value = updateState.percent / 100f,
@@ -273,18 +321,9 @@ private fun UpdateStatusBanner(
             val installLabel = stringResource(Res.string.update_install_restart)
             InlineInformationBanner(
                 text = stringResource(Res.string.update_available_banner, updateState.version),
+                modifier = modifier,
                 linkActions = {
                     action(installLabel, onClick = onInstallUpdate)
-                },
-            )
-        }
-
-        UpdateUiState.UpToDate -> {
-            val checkLabel = stringResource(Res.string.update_check_action)
-            InlineSuccessBanner(
-                text = stringResource(Res.string.update_up_to_date),
-                linkActions = {
-                    action(checkLabel, onClick = onCheckForUpdate)
                 },
             )
         }
@@ -293,14 +332,14 @@ private fun UpdateStatusBanner(
             val checkLabel = stringResource(Res.string.update_check_action)
             InlineWarningBanner(
                 text = stringResource(Res.string.update_check_failed),
+                modifier = modifier,
                 linkActions = {
                     action(checkLabel, onClick = onCheckForUpdate)
                 },
             )
         }
 
-        UpdateUiState.Idle, UpdateUiState.Checking ->
-            InlineInformationBanner(text = stringResource(Res.string.update_checking))
+        UpdateUiState.UpToDate, UpdateUiState.Idle, UpdateUiState.Checking -> Unit
     }
 }
 

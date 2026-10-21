@@ -536,6 +536,8 @@ internal class OrbitMeshes(
             sampleOffset: Float = 0f,
             membershipOffset: Float = 0f,
             withOrbit: Boolean = true,
+            /** Factor on the tubes' radii. */
+            lineScale: Float = 1f,
             cameraPoint: (Float) -> Direction,
         ): OrbitMeshes {
             // Rebuilt as the camera moves: each sample's position, depth band and highlight are worked out once.
@@ -568,8 +570,8 @@ internal class OrbitMeshes(
                 radius,
             )
             return OrbitMeshes(
-                orbit = List(ORBIT_DEPTH_BANDS) { band -> if (withOrbit) tube(ORBIT_TUBE_RADIUS, band, null) else null },
-                kiddushLevana = List(ORBIT_DEPTH_BANDS) { tube(KIDDUSH_LEVANA_TUBE_RADIUS, it, inKl) },
+                orbit = List(ORBIT_DEPTH_BANDS) { band -> if (withOrbit) tube(ORBIT_TUBE_RADIUS * lineScale, band, null) else null },
+                kiddushLevana = List(ORBIT_DEPTH_BANDS) { tube(KIDDUSH_LEVANA_TUBE_RADIUS * lineScale, it, inKl) },
             )
         }
     }

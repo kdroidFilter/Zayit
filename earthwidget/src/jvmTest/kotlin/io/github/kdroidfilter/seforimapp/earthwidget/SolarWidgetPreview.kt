@@ -52,6 +52,7 @@ class SolarWidgetPreview {
                                 inIsrael = true,
                                 fullWindow = System.getenv("SOLAR_PREVIEW_SIZE") != null,
                                 onDateSelect = if (System.getenv("SOLAR_PREVIEW_SIZE") != null) ({ _ -> }) else null,
+                                toScale = System.getenv("SOLAR_PREVIEW_TO_SCALE") != null,
                             )
                         }
                     }
@@ -60,6 +61,18 @@ class SolarWidgetPreview {
                     delay(6000)
                     val w = window
                     val bounds = Rectangle(w.locationOnScreen, w.size)
+                    // SOLAR_PREVIEW_WHEEL=40 zooms in by that many Ctrl+wheel ticks first
+                    System.getenv("SOLAR_PREVIEW_WHEEL")?.toInt()?.let { ticks ->
+                        val robot = Robot()
+                        robot.mouseMove(bounds.centerX.toInt(), bounds.centerY.toInt())
+                        robot.keyPress(java.awt.event.KeyEvent.VK_CONTROL)
+                        repeat(ticks) {
+                            robot.mouseWheel(1)
+                            delay(15)
+                        }
+                        robot.keyRelease(java.awt.event.KeyEvent.VK_CONTROL)
+                        delay(2500)
+                    }
                     val image = Robot().createMultiResolutionScreenCapture(bounds).resolutionVariants.maxBy { it.getWidth(null) }
                     val buffered = BufferedImage(image.getWidth(null), image.getHeight(null), BufferedImage.TYPE_INT_RGB)
                     buffered.graphics.drawImage(image, 0, 0, null)

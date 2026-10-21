@@ -401,6 +401,8 @@
     <string name="home_solar_speed_days">%1$d ימים בשנייה</string>
     <string name="home_solar_options_proportional_spin">סיבוב כדור הארץ יחסי למהירות</string>
     <string name="home_solar_options_proportional_spin_hint">סיבוב אחד בכל יום מדומה, כמו במציאות. בלי זה, כדור הארץ של מעגל השנה מסתובב בקצב קבוע של סיבוב בכל ⁦2⁩ שניות; כדור הארץ והשמיים בפינה תמיד מראים את הרגע המדויק.</string>
+    <string name="home_solar_options_to_scale">לפי קנה מידה אמיתי</string>
+    <string name="home_solar_options_to_scale_hint">הגדלים והמרחקים כמו במציאות (נתוני נאס״א): השמש נקודה קטנה, וכדי לראות את כדור הארץ והירח צריך להגדיל (צביטה או Ctrl+גלגלת) עד פי ⁦3000⁩.</string>
     <string name="home_solar_options_show_earth">הצג את כדור הארץ</string>
     <string name="home_solar_options_show_sky">הצג את השמיים</string>
     <string name="home_solar_options_advanced">מתקדם</string>

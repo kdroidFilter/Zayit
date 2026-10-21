@@ -40,6 +40,8 @@ import seforimapp.seforimapp.generated.resources.home_solar_options_show_earth
 import seforimapp.seforimapp.generated.resources.home_solar_options_show_fps
 import seforimapp.seforimapp.generated.resources.home_solar_options_show_sky
 import seforimapp.seforimapp.generated.resources.home_solar_options_speed
+import seforimapp.seforimapp.generated.resources.home_solar_options_to_scale
+import seforimapp.seforimapp.generated.resources.home_solar_options_to_scale_hint
 import seforimapp.seforimapp.generated.resources.home_solar_options_window
 import seforimapp.seforimapp.generated.resources.home_solar_speed_days
 import seforimapp.seforimapp.generated.resources.home_solar_speed_fraction
@@ -65,6 +67,9 @@ internal object SolarSystemSettings : WidgetSettings(SolarSystemWidget.id) {
 
     /** The solar system's Earth turns once per simulated day (true to life), else at a fixed watchable pace. */
     val proportionalSpin by boolean(true)
+
+    /** The full window only: sizes and distances true to each other, with a deep zoom on the Earth. */
+    val toScale by boolean(false)
     val earth by json<CardFrame?>(null)
     val sky by json<CardFrame?>(null)
 
@@ -119,6 +124,16 @@ internal fun SolarSystemOptionsPage(
             text = stringResource(Res.string.home_solar_options_show_sky),
             checked = state[settings.showSky],
             onCheckedChange = { state[settings.showSky] = it },
+        )
+        CheckboxRow(
+            text = stringResource(Res.string.home_solar_options_to_scale),
+            checked = state[settings.toScale],
+            onCheckedChange = { state[settings.toScale] = it },
+        )
+        Text(
+            stringResource(Res.string.home_solar_options_to_scale_hint),
+            fontSize = 12.sp,
+            color = JewelTheme.globalColors.text.info,
         )
         // Folded until asked for: tuning, not everyday settings
         var advancedShown by remember { mutableStateOf(false) }

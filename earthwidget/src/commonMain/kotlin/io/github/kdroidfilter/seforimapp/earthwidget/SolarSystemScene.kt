@@ -41,6 +41,8 @@ import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.hypot
+import kotlin.math.ln
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import io.github.erkko68.filament.Camera as FilamentCamera
@@ -66,14 +68,29 @@ internal const val KIDDUSH_LEVANA_SOLAR_RGB = 0xBFD4FF
 /** Holiday stroke: a little bolder than the orbit line (0.75 px), not a tube. */
 private const val ARC_STROKE_RADIUS = 2.4f
 
+// NASA fact sheets (nssdc.gsfc.nasa.gov/planetary/factsheet): volumetric mean radii and semimajor axes, km
+private const val SUN_RADIUS_KM = 695_700f
+private const val EARTH_RADIUS_KM = 6_371f
+private const val MOON_RADIUS_KM = 1_737.4f
+private const val MOON_ORBIT_KM = 384_400f
+private const val EARTH_ORBIT_KM = 149_598_000f
+
+/** Zoom of the to-scale view: the Earth (0.04 px at 1×) is a few px at 300×, its Moon's orbit fills the view at 3000×. */
+internal const val TO_SCALE_MAX_ZOOM = 3000f
+
+/** Lines are rebuilt this much thinner per step of zoom, to keep about their width on screen. */
+private const val LINE_ZOOM_STEP = 1.6f
+
 /**
  * Layout of the heliocentric scene in pixels of a wide [widthPx] × [heightPx] card: the orbit spans the width and,
  * seen low over the ecliptic, flattens into an ellipse that fits the height. Not to scale: the bodies are blown up
- * so the Earth's tilt and phase read at widget size.
+ * so the Earth's tilt and phase read at widget size. [toScale]: the bodies and distances true to the orbit (NASA): the
+ * Sun a few px, the Earth a fraction of one, seen by zooming in on it (see [cameraFocus]).
  */
 internal class SolarGeometry(
     widthPx: Int,
     heightPx: Int,
+    toScale: Boolean = false,
 ) {
     val halfWidth = widthPx / 2f
     val halfHeight = heightPx / 2f
@@ -83,12 +100,13 @@ internal class SolarGeometry(
     val orbitRadius = widthPx * 0.36f
 
     // Not to scale, just to read: the Sun stays clearly the biggest body
-    val sunRadius = widthPx * 0.085f
+    private val kmPerUnit = EARTH_ORBIT_KM / orbitRadius
+    val sunRadius = if (toScale) SUN_RADIUS_KM / kmPerUnit else widthPx * 0.085f
 
     // Small enough to leave most of a holiday's arc showing on either side of it
-    val earthRadius = widthPx * 0.034f
-    val moonOrbitRadius = widthPx * 0.06f
-    val moonRadius = widthPx * 0.009f
+    val earthRadius = if (toScale) EARTH_RADIUS_KM / kmPerUnit else widthPx * 0.034f
+    val moonOrbitRadius = if (toScale) MOON_ORBIT_KM / kmPerUnit else widthPx * 0.06f
+    val moonRadius = if (toScale) MOON_RADIUS_KM / kmPerUnit else widthPx * 0.009f
 
     /**
      * How far the scene is lifted: seen from above, the far side of the orbit shrinks and the near side (where the
@@ -148,6 +166,8 @@ internal data class SolarRenderState(
     val viewZoom: Float,
     /** Full-window rendering: holidays as a plain colouring of the orbit line, vignette. */
     val detailed: Boolean = false,
+    /** Sizes and distances true to each other (see [SolarGeometry]). */
+    val toScale: Boolean = false,
     val markers: List<SolarOrbitMarker>,
     /** Kiddush Levana window as the Moon's geocentric longitudes at its start and end, drawn on its orbit. */
     val kiddushLevanaStartDegrees: Float? = null,
@@ -156,6 +176,22 @@ internal data class SolarRenderState(
 
 internal fun SolarRenderState.view(): Rotation =
     Rotation.axisAngle(AxisX, viewElevationDegrees) * Rotation.axisAngle(Direction.Up, viewAzimuthDegrees)
+
+/**
+ * Point the camera looks at: [SolarGeometry.liftY] below the Sun, or in the to-scale view the Earth, more of the way
+ * there the more it is zoomed in (its distance on screen shrinking as 1/zoom), since at full scale nothing but the
+ * Sun shows otherwise.
+ */
+internal fun SolarRenderState.cameraFocus(geometry: SolarGeometry): Direction {
+    val sun = Direction(0f, -geometry.liftY, 0f)
+    if (!toScale) return sun
+    val t = (1f - 1f / (viewZoom * viewZoom)).coerceIn(0f, 1f)
+    return sun + (view() * eclipticDirection(earthLongitudeDegrees) * geometry.orbitRadius - sun) * t
+}
+
+/** Widths of the lines (orbits, holidays) in the to-scale view: divided by the zoom, in steps, so they stay thin. */
+internal fun SolarRenderState.lineScale(): Float =
+    if (toScale) LINE_ZOOM_STEP.pow(-(ln(viewZoom.coerceAtLeast(1f)) / ln(LINE_ZOOM_STEP)).roundToInt()) else 1f
 
 /** Camera azimuth that brings ecliptic longitude [longitudeDegrees] in front of the viewer. */
 internal fun azimuthFacingLongitude(longitudeDegrees: Float): Float =
@@ -172,15 +208,17 @@ internal fun SolarSystemSceneView(
      */
     animated: Boolean = true,
 ) {
-    val geometry = remember(state.widthPx, state.heightPx) { SolarGeometry(state.widthPx, state.heightPx) }
+    val geometry = remember(state.widthPx, state.heightPx, state.toScale) { SolarGeometry(state.widthPx, state.heightPx, state.toScale) }
     val camera =
         rememberCameraState(
             initialEye = Position(0f, -geometry.liftY, geometry.cameraZ),
             initialExposure = UnitExposure,
         )
+    val focus = state.cameraFocus(geometry)
+    val lineScale = state.lineScale()
     SideEffect {
-        camera.eye = Position(0f, -geometry.liftY, geometry.cameraZ)
-        camera.target = Position(0f, -geometry.liftY, 0f)
+        camera.eye = Position(focus.x, focus.y, focus.z + geometry.cameraZ)
+        camera.target = Position(focus.x, focus.y, focus.z)
         camera.projection =
             Projection.Perspective(
                 // Horizontal: the card's width spans halfWidth each side at z = 0, like perspectiveScale()
@@ -203,8 +241,10 @@ internal fun SolarSystemSceneView(
     val moonPos = earthPos + view * moonDir * geometry.moonOrbitRadius
     // ponytail: rebuilt when the camera moves; ~2k vertices for the orbit plus the arcs, cheap so far.
     val orbitMeshes =
-        remember(view, geometry) {
-            OrbitMeshes.build(geometry.orbitRadius, null, null) { deg -> view * eclipticDirection(deg) * geometry.orbitRadius }
+        remember(view, geometry, lineScale) {
+            OrbitMeshes.build(geometry.orbitRadius, null, null, lineScale = lineScale) { deg ->
+                view * eclipticDirection(deg) * geometry.orbitRadius
+            }
         }
     // Rosh Chodesh: a short graduation across the orbit, like the month ticks of a dial
     // The Moon's orbit round the Earth (a thin ring) and the stretch of it the Moon crosses during Kiddush Levana
@@ -213,7 +253,7 @@ internal fun SolarSystemSceneView(
     // a play; a camera move or another month does too
     val ringEarthStep = (state.earthLongitudeDegrees * 4f).roundToInt()
     val moonRing =
-        remember(view, geometry, ringEarthStep, state.kiddushLevanaStartDegrees, state.kiddushLevanaEndDegrees) {
+        remember(view, geometry, lineScale, ringEarthStep, state.kiddushLevanaStartDegrees, state.kiddushLevanaEndDegrees) {
             val sunToEarth = view * eclipticDirection(ringEarthStep / 4f) * geometry.orbitRadius
             val fromSun = Vec3f(sunToEarth.x, sunToEarth.y, sunToEarth.z)
 
@@ -222,29 +262,33 @@ internal fun SolarSystemSceneView(
                 return MoonOrbitPosition(x = p.x, yCam = p.y, zCam = p.z)
             }
             val ring =
-                tubeMesh((0..MOON_RING_STEPS).map { ringPoint(it * 360f / MOON_RING_STEPS) }, MOON_RING_RADIUS, normalOrigin = fromSun)
+                tubeMesh(
+                    (0..MOON_RING_STEPS).map { ringPoint(it * 360f / MOON_RING_STEPS) },
+                    MOON_RING_RADIUS * lineScale,
+                    normalOrigin = fromSun,
+                )
             val kl =
                 state.kiddushLevanaStartDegrees?.let { start ->
                     val span = ((state.kiddushLevanaEndDegrees ?: start) - start).mod(360f)
                     val steps = (span / 2f).toInt().coerceAtLeast(2)
-                    tubeMesh((0..steps).map { ringPoint(start + span * it / steps) }, ARC_STROKE_RADIUS, normalOrigin = fromSun)
+                    tubeMesh((0..steps).map { ringPoint(start + span * it / steps) }, ARC_STROKE_RADIUS * lineScale, normalOrigin = fromSun)
                 }
             ring to kl
         }
     val ticks =
-        remember(view, geometry, state.markers) {
+        remember(view, geometry, lineScale, state.markers) {
             val up = view * Direction.Up
             state.markers.filter { !it.isArc }.map { marker ->
                 val d = eclipticDirection(marker.startDegrees)
                 val inner = view * d * (geometry.orbitRadius * (1f - TICK_HALF_LENGTH))
                 val outer = view * d * (geometry.orbitRadius * (1f + TICK_HALF_LENGTH))
                 val depth = orbitDepth((view * d).z * geometry.orbitRadius, geometry.orbitRadius)
-                tickMesh(inner, outer, up, ARC_STROKE_RADIUS * 0.7f) to dimmed(marker.colorRgb, depthAlpha(depth, 0x60, 0xE0))
+                tickMesh(inner, outer, up, ARC_STROKE_RADIUS * 0.7f * lineScale) to dimmed(marker.colorRgb, depthAlpha(depth, 0x60, 0xE0))
             }
         }
     // Each holiday arc as a thicker tube over its stretch of orbit, faded by the depth of its middle
     val arcs =
-        remember(view, geometry, state.markers) {
+        remember(view, geometry, lineScale, state.markers) {
             state.markers.filter { it.isArc }.map { marker ->
                 val range = marker.arcRange()
                 val steps = ((range.endInclusive - range.start) / ARC_STEP_DEGREES).toInt().coerceAtLeast(1)
@@ -259,7 +303,7 @@ internal fun SolarSystemSceneView(
                 val band = (orbitDepth(middle.z, geometry.orbitRadius) * ORBIT_DEPTH_BANDS).toInt().coerceIn(0, ORBIT_DEPTH_BANDS - 1)
                 val alpha = depthAlpha((band + 0.5f) / ORBIT_DEPTH_BANDS, 0xB0, 0xFF)
                 // The orbit line itself, just coloured over the holiday — a stroke, not a tube
-                tubeMesh(path, ARC_STROKE_RADIUS, sides = ARC_TUBE_SIDES) to dimmed(marker.colorRgb, alpha)
+                tubeMesh(path, ARC_STROKE_RADIUS * lineScale, sides = ARC_TUBE_SIDES) to dimmed(marker.colorRgb, alpha)
             }
         }
 
@@ -273,7 +317,8 @@ internal fun SolarSystemSceneView(
         val sunReady = sunModel?.isReady == true
         val earthReady = earthModel?.isReady == true
         val moonReady = moonModel?.isReady == true
-        val sunCenter = Offset(geometry.halfWidth, geometry.halfHeight - geometry.liftY * state.viewZoom)
+        val sunScale = perspectiveScale(geometry.cameraZ, -focus.z) * state.viewZoom
+        val sunCenter = Offset(geometry.halfWidth - focus.x * sunScale, geometry.halfHeight + focus.y * sunScale)
         // Sun animation clock (0..1 over SUN_ANIMATION_MS), read only while drawing: no recomposition per frame.
         // Not composed at all while idle: an infinite transition ticks the frame clock as long as it exists.
         val sunClock: androidx.compose.runtime.State<Float> =
@@ -392,11 +437,13 @@ internal fun solarOrbitScreenPosition(
     state: SolarRenderState,
     longitudeDegrees: Float,
 ): OrbitScreenPosition {
-    val geometry = SolarGeometry(state.widthPx, state.heightPx)
+    val geometry = SolarGeometry(state.widthPx, state.heightPx, state.toScale)
+    val focus = state.cameraFocus(geometry)
     val p = state.view() * eclipticDirection(longitudeDegrees) * geometry.orbitRadius
-    val scale = perspectiveScale(geometry.cameraZ, p.z) * state.viewZoom
-    val x = geometry.halfWidth + p.x * scale
-    val y = geometry.halfHeight - (p.y + geometry.liftY) * scale
+    val scale = perspectiveScale(geometry.cameraZ, p.z - focus.z) * state.viewZoom
+    val x = geometry.halfWidth + (p.x - focus.x) * scale
+    val y = geometry.halfHeight - (p.y - focus.y) * scale
+    val sunScale = perspectiveScale(geometry.cameraZ, -focus.z) * state.viewZoom
     return OrbitScreenPosition(
         x = x,
         y = y,
@@ -404,8 +451,8 @@ internal fun solarOrbitScreenPosition(
         depth = orbitDepth(p.z, geometry.orbitRadius),
         hiddenByEarth =
             p.z < 0f &&
-                hypot(x - geometry.halfWidth, y - (geometry.halfHeight - geometry.liftY * state.viewZoom)) <
-                geometry.sunRadius * state.viewZoom,
+                hypot(x - (geometry.halfWidth - focus.x * sunScale), y - (geometry.halfHeight + focus.y * sunScale)) <
+                geometry.sunRadius * sunScale,
     )
 }
 

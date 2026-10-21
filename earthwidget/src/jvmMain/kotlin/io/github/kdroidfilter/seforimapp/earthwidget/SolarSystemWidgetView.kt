@@ -304,6 +304,8 @@ fun SolarSystemWidgetView(
     spinSecondsPerTurn: Float? = PLAY_SPIN_SECONDS_PER_TURN,
     /** Inside its own window: finer, more realistic rendering (see [SolarRenderState.detailed]). */
     fullWindow: Boolean = false,
+    /** Sizes and distances true to each other, with a deep zoom on the Earth (see [SolarRenderState.toScale]). */
+    toScale: Boolean = false,
     /** Shows a date picker (as on the Earth widget) that reports the chosen day; null on the Home card. */
     onDateSelect: ((LocalDate) -> Unit)? = null,
     /** The date picker's accent (today, the selection); the theme's focus colour by default. */
@@ -379,6 +381,7 @@ fun SolarSystemWidgetView(
     val moonLongitude = rememberSmoothAnimatedAngle(moon.longitude, ::normalizeAngle360, instant = playing)
 
     val camera = rememberOrbitCameraState()
+    camera.maxZoom = if (toScale) TO_SCALE_MAX_ZOOM else MAX_VIEW_ZOOM
     // Aimed so the Earth of [anchorDate] is right in front of the viewer; kept when the date changes (the Earth then
     // travels along its orbit), re-aimed by the recenter button.
     var anchorDate by remember { mutableStateOf(displayedDate) }
@@ -451,6 +454,7 @@ fun SolarSystemWidgetView(
                 viewElevationDegrees = defaultElevation + animatedPitch,
                 viewZoom = animatedZoom,
                 detailed = fullWindow,
+                toScale = toScale,
                 markers = markers,
                 kiddushLevanaStartDegrees = kiddushLevanaLongitudes.first,
                 kiddushLevanaEndDegrees = kiddushLevanaLongitudes.second,
@@ -701,12 +705,22 @@ private fun SolarEventMarkers(
     // Hit targets and labels sit on the middle of each holiday's stretch
     // Only the camera and the markers place them: not the Earth moving along (each frame of a play)
     val positions =
-        remember(state.widthPx, state.heightPx, state.viewAzimuthDegrees, state.viewElevationDegrees, state.viewZoom, state.markers) {
+        remember(
+            state.widthPx,
+            state.heightPx,
+            state.viewAzimuthDegrees,
+            state.viewElevationDegrees,
+            state.viewZoom,
+            state.markers,
+            // The to-scale view follows the Earth when zoomed in
+            state.toScale,
+            if (state.toScale) state.earthLongitudeDegrees else 0f,
+        ) {
             state.markers.map { solarOrbitScreenPosition(state, it.middleDegrees()) }
         }
     // Labels next to the Earth step out of its way
     val earth = solarOrbitScreenPosition(state, state.earthLongitudeDegrees)
-    val earthClearance = SolarGeometry(state.widthPx, state.heightPx).earthRadius * state.viewZoom * 1.4f
+    val earthClearance = SolarGeometry(state.widthPx, state.heightPx, state.toScale).earthRadius * state.viewZoom * 1.4f
     // Placed in priority order (the Earth's holiday, hovered, Yamim Tovim), so the important ones win a crowded spot
     val labeled =
         events.indices

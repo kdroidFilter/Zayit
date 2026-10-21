@@ -24,11 +24,13 @@ import {
   Infinity as InfinityIcon,
   Library,
   WifiOff,
+  PlayCircle,
 } from 'lucide-react';
 import { Navigation } from './components/Navigation';
 import { SiteFooter } from './components/SiteFooter';
 import { useDownloadCount } from './hooks/useDownloadCount';
 import { ImageComparison } from './components/ImageComparison';
+import { VideoEmbed } from './components/VideoEmbed';
 import { CrystalParticlesGL } from './components/CrystalParticlesGL';
 import { pagePath, type Lang } from './seo';
 import { reveal, settle, press, RISE } from './motion';
@@ -446,6 +448,33 @@ function App() {
             alt={t('seo.imageAlt')}
             priority
           />
+        </motion.div>
+      </section>
+
+
+      {/* Video Section - the presentation video in the page's language */}
+      <section id="video" className="py-10 md:py-20 px-4 md:px-6">
+        <motion.div
+          className="max-w-4xl mx-auto text-center"
+          initial={{ opacity: 0, y: RISE }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={reveal()}
+        >
+          <div
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium mb-6"
+            style={{
+              background: 'rgba(230, 210, 140, 0.1)',
+              color: 'var(--gold)',
+            }}
+          >
+            <PlayCircle size={16} />
+            {t('video.badge')}
+          </div>
+          <h2 className="text-3xl md:text-4xl font-bold mb-8 md:mb-10" style={{ color: 'var(--text-main)' }}>
+            {t('video.title')}
+          </h2>
+          <VideoEmbed videoId={isRTL ? 'T7VU3K7EL5w' : 'e8ch0H9dlHs'} title={t('video.title')} />
         </motion.div>
       </section>
 

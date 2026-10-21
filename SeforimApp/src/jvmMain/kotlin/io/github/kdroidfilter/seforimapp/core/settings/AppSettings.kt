@@ -354,7 +354,7 @@ class AppSettings(
         _showHomeWallpaperFlow.value = enabled
     }
 
-    fun isBookDetailsPaneVisible(): Boolean = settings[KEY_BOOK_DETAILS_PANE, true]
+    fun isBookDetailsPaneVisible(): Boolean = settings[KEY_BOOK_DETAILS_PANE, false]
 
     fun setBookDetailsPaneVisible(visible: Boolean) {
         settings[KEY_BOOK_DETAILS_PANE] = visible

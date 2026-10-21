@@ -194,6 +194,7 @@ internal fun SolarSystemWindow(
                             onPlayToggle = state::togglePlay,
                             timeZone = state.location.timeZone,
                             spinSecondsPerTurn = spinSecondsPerTurn(state),
+                            toScale = state[SolarSystemSettings.toScale],
                             kiddushLevanaEarliestOpinion = state.kiddushLevanaEarliest,
                             kiddushLevanaLatestOpinion = state.kiddushLevanaLatest,
                             // Beside the window controls, not below them. controlsInsets is start/end in the controls'

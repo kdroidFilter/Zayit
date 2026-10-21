@@ -51,7 +51,7 @@ class TubeMeshTest {
                     Direction((cos(a) * r).toFloat(), (sin(a) * r * 0.3).toFloat(), (sin(a) * r).toFloat())
                 }
                 val expected = OrbitMeshesReference.build(r, kl?.first, kl?.second, offsets.first, offsets.second, withOrbit, point)
-                val actual = OrbitMeshes.build(r, kl?.first, kl?.second, offsets.first, offsets.second, withOrbit, point)
+                val actual = OrbitMeshes.build(r, kl?.first, kl?.second, offsets.first, offsets.second, withOrbit, cameraPoint = point)
                 for ((e, a) in (expected.orbit + expected.kiddushLevana).zip(actual.orbit + actual.kiddushLevana)) {
                     assertEquals(e == null, a == null)
                     if (e == null || a == null) continue

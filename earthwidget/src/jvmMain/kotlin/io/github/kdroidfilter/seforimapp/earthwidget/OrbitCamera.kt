@@ -31,7 +31,7 @@ import kotlin.math.pow
 private const val FLING_FRICTION = 1.5f
 
 private const val MIN_VIEW_ZOOM = 0.6f
-private const val MAX_VIEW_ZOOM = 3f
+internal const val MAX_VIEW_ZOOM = 3f
 
 /** Zoom factor per Ctrl+wheel tick. */
 private const val ZOOM_PER_WHEEL_TICK = 1.1f
@@ -51,6 +51,16 @@ internal class OrbitCameraState {
     var isGesturing by mutableStateOf(false)
         internal set
 
+    /** Deepest [zoom]; raised by a widget that needs it (the to-scale solar system). */
+    var maxZoom: Float = MAX_VIEW_ZOOM
+        set(value) {
+            field = value
+            zoom = zoom.coerceAtMost(value)
+        }
+
+    /** Zoom the drags are slowed by: no further than at [MAX_VIEW_ZOOM], or a deep zoom would barely turn. */
+    val dragZoom: Float get() = zoom.coerceAtMost(MAX_VIEW_ZOOM)
+
     /** Allowed [pitch] offsets; set by the widget from its default elevation. */
     var pitchRange: ClosedFloatingPointRange<Float> = -90f..90f
 
@@ -67,7 +77,7 @@ internal class OrbitCameraState {
     }
 
     fun zoomBy(factor: Float) {
-        zoom = (zoom * factor).coerceIn(MIN_VIEW_ZOOM, MAX_VIEW_ZOOM)
+        zoom = (zoom * factor).coerceIn(MIN_VIEW_ZOOM, maxZoom)
     }
 
     fun reset() {
@@ -99,7 +109,7 @@ internal fun Modifier.orbitCameraGestures(
                 when (event.type) {
                     // Positive panOffset = "scroll down / right": the scene follows the fingers, like a drag.
                     PointerEventType.PanMove -> {
-                        val k = degreesPerPx() / camera.zoom
+                        val k = degreesPerPx() / camera.dragZoom
                         camera.rotate(-change.panOffset.x * k, -change.panOffset.y * k)
                     }
                     // A gesture follows the fingers directly (like a drag): no spring chasing each step,
@@ -161,7 +171,7 @@ internal fun Modifier.orbitCameraGestures(
                         }
                         if (dragging) {
                             // Horizontal: turn around the pole; vertical: tilt toward it.
-                            val k = degreesPerPx() / camera.zoom
+                            val k = degreesPerPx() / camera.dragZoom
                             camera.rotate(delta.x * k, delta.y * k)
                             change.consume()
                         }
@@ -179,7 +189,7 @@ internal fun Modifier.orbitCameraGestures(
                             if (speed > 0f) {
                                 var previous = 0f
                                 AnimationState(0f, speed).animateDecay(exponentialDecay(FLING_FRICTION)) {
-                                    val px = (value - previous) * degreesPerPx() / camera.zoom
+                                    val px = (value - previous) * degreesPerPx() / camera.dragZoom
                                     camera.rotate(velocity.x / speed * px, velocity.y / speed * px)
                                     previous = value
                                 }

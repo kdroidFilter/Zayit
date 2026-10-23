@@ -16,6 +16,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.NotesUseC
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.TocUseCase
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
+import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabPersistedStateStore
 import io.github.kdroidfilter.seforimapp.framework.session.TabThumbnailStore
 import io.github.kdroidfilter.seforimapp.testAppSettings
@@ -87,7 +88,12 @@ class PostSelectLineTest {
                     ),
                 titleUpdateManager = titleUpdateManager,
                 searchHomeViewModelFactory = {
-                    SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), testAppSettings())
+                    SearchHomeViewModel(
+                        DesktopSearchSessionStore(TabPersistedStateStore()),
+                        mockk(relaxed = true),
+                        mockk(relaxed = true),
+                        testAppSettings(),
+                    )
                 },
                 defaultDesktopName = "D1",
             )

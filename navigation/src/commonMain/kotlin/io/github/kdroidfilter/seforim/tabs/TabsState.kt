@@ -1,13 +1,14 @@
 package io.github.kdroidfilter.seforim.tabs
 
 import androidx.compose.runtime.Immutable
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 @Immutable
 data class TabItem(
     val id: Int,
     val title: String = "Default Tab",
-    val destination: TabsDestination = TabsDestination.Home(UUID.randomUUID().toString()),
+    val destination: TabsDestination = TabsDestination.Home(newTabId()),
     val tabType: TabType = TabType.SEARCH,
     // Pinned tabs stay ahead of the others and are not closed by accident.
     val pinned: Boolean = false,
@@ -20,3 +21,7 @@ data class TabsState(
     val tabs: List<TabItem>,
     val selectedTabIndex: Int,
 )
+
+/** A fresh tab id. */
+@OptIn(ExperimentalUuidApi::class)
+fun newTabId(): String = Uuid.random().toString()

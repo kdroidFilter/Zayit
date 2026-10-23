@@ -138,11 +138,12 @@ fun SearchBookTocPanel(
             onHide = { onEvent(BookContentEvent.ToggleToc) },
         )
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
-            if (searchUi.scopeBook != null) {
+            val scopeBook = searchUi.scopeBook
+            if (scopeBook != null) {
                 Box(modifier = Modifier.fillMaxHeight()) {
                     val expanded: Set<Long> = uiState.toc.expandedEntries
-                    var autoExpanded by remember(searchUi.scopeBook.id, tocCounts, tocTree) { mutableStateOf(false) }
-                    LaunchedEffect(searchUi.scopeBook.id, tocCounts, tocTree) {
+                    var autoExpanded by remember(scopeBook.id, tocCounts, tocTree) { mutableStateOf(false) }
+                    LaunchedEffect(scopeBook.id, tocCounts, tocTree) {
                         if (!autoExpanded) {
                             val idsWithChildren = tocTree?.children?.keys ?: emptySet()
                             val withResults = tocCounts.keys

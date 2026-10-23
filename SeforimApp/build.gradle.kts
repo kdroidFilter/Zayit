@@ -43,10 +43,6 @@ sentry {
 // (settings.gradle.kts); a community build has none and addons/siddur/disabled says so
 val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
 
-// The semantic search too (open core): its package (code + model) with its token or its sources beside; without
-// them, addons/semantic/disabled leaves the search lexical only
-val withSemantic = gradle.extensions.extraProperties["semanticEnabled"] == true
-
 // The verse quote links of the Talmud (open core, temporary until the DB carries them): its package, or
 // addons/quotelinks/disabled and the reader shows the lines as they are
 val withQuoteLinks = gradle.extensions.extraProperties["quoteLinksEnabled"] == true
@@ -146,11 +142,6 @@ kotlin {
         if (withSiddur) jvmTest { kotlin.srcDir("addons/siddur/test/kotlin") }
 
         jvmMain {
-            kotlin.srcDir(if (withSemantic) "addons/semantic/enabled/kotlin" else "addons/semantic/disabled/kotlin")
-            if (withSemantic) dependencies { implementation(libs.seforim.semantic) }
-        }
-
-        jvmMain {
             kotlin.srcDir(if (withQuoteLinks) "addons/quotelinks/enabled/kotlin" else "addons/quotelinks/disabled/kotlin")
             if (withQuoteLinks) dependencies { implementation(libs.seforim.quotelinks) }
         }
@@ -198,6 +189,10 @@ kotlin {
 
             // SeforimLibrary search module
             implementation(libs.seforimlibrary.search)
+
+            // The search without its UI (engines, lookup, use cases, view models), shared with the mobile apps; the
+            // semantic search (open core) comes with it in the official builds
+            implementation(project(":searchkit"))
 
             // SeforimLibrary CLI: lets the desktop binary run headless search commands
             // (`zayit cli search ...`) by delegating to its runCli() entry point.

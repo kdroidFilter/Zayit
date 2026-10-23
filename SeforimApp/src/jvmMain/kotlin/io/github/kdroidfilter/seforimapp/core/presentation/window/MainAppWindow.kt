@@ -32,6 +32,7 @@ import androidx.compose.ui.window.WindowPlacement
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import com.kdroid.gematria.converter.toHebrewNumeral
+import dev.nucleusframework.application.LocalNucleusWindow
 import dev.nucleusframework.application.NucleusApplicationScope
 import dev.nucleusframework.energymanager.EnergyManager
 import dev.nucleusframework.window.jewel.JewelDecoratedWindow
@@ -315,15 +316,15 @@ fun NucleusApplicationScope.MainAppWindow(
             // Keep the screen awake while a book or the siddur is open in the current tab and this window is
             // focused — opt-out via the General settings (enabled by default).
             val keepAwakeEnabled by appSettings.keepScreenAwakeOnBookFlow.collectAsState()
-            val shouldKeepScreenAwake =
+            val keepAwakeForTab =
                 keepAwakeEnabled &&
-                    state.isActive &&
                     selectedTab?.destination.let { it is TabsDestination.BookContent || it is TabsDestination.Siddur }
-            LaunchedEffect(shouldKeepScreenAwake) {
-                if (shouldKeepScreenAwake) {
-                    EnergyManager.keepAwake()
-                } else {
-                    EnergyManager.releaseAwake()
+            val nucleusWindow = LocalNucleusWindow.current
+            LaunchedEffect(keepAwakeForTab, nucleusWindow) {
+                // The focus comes from the window's flow, not a recomposition: a window out of sight (hidden app,
+                // covered, minimized) renders no frame, so nothing recomposes, yet losing focus must let the Mac sleep.
+                nucleusWindow.focusFlow.collect { focused ->
+                    if (keepAwakeForTab && focused) EnergyManager.keepAwake() else EnergyManager.releaseAwake()
                 }
             }
 

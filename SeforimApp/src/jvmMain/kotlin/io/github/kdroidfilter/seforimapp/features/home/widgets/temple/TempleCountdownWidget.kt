@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -183,7 +184,8 @@ private const val MIN_FRAME_MS = 20L
 /**
  * Plays the animated WebP frame by frame with Skia's [Codec]: only one decoded frame is alive at a time
  * (plus the one still on screen), instead of the whole animation in RAM. Decoded off the UI thread (up to 50 frames a
- * second of a large image), and held on its frame while its tab is hidden; stops when the card leaves composition.
+ * second of a large image), and held on its frame while its tab or its window is hidden; stops when the card leaves
+ * composition.
  */
 @Composable
 private fun AnimatedTempleBackground(modifier: Modifier = Modifier) {
@@ -194,6 +196,9 @@ private fun AnimatedTempleBackground(modifier: Modifier = Modifier) {
         try {
             withContext(Dispatchers.Default) { player.open() }
             while (true) {
+                // Waits for a frame first: none come while the window can't be seen (minimized, hidden, covered), so the
+                // animation stops decoding there instead of burning the battery behind other windows.
+                withFrameNanos { }
                 // Decoded off the UI thread; shown, and the old frames freed, back on it, between two frames drawn
                 // (a bitmap freed under the drawing would crash). Cancelled, the decoding finishes before the close.
                 val decoded = withContext(Dispatchers.Default) { player.decode() }

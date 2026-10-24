@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.notes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -10,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -19,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.core.annotations.BookNote
 import io.github.kdroidfilter.seforimapp.core.presentation.components.CardSurface
 import io.github.kdroidfilter.seforimapp.core.presentation.components.EmptyState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ListPageContainer
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ListPageLazyColumn
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ListRow
 import io.github.kdroidfilter.seforimapp.core.presentation.components.PageHeader
 import io.github.kdroidfilter.seforimapp.core.presentation.components.PageSearchField
@@ -105,8 +108,9 @@ fun NotesTabContent(tabId: String) {
             EmptyState(iconKey = AllIconsKeys.Actions.Edit, message = stringResource(Res.string.notes_empty))
         } else {
             // Books in the order of their latest note (the notes come newest first)
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                shown.groupBy { it.bookId }.forEach { (bookId, bookNotes) ->
+            val byBook = remember(shown) { shown.groupBy { it.bookId }.toList() }
+            ListPageLazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(byBook, key = { (bookId, _) -> bookId }) { (bookId, bookNotes) ->
                     BookNotesCard(
                         title = bookTitles[bookId].orEmpty(),
                         notes = bookNotes,
@@ -126,7 +130,8 @@ private fun BookNotesCard(
     onOpen: (BookNote) -> Unit,
     onDelete: (BookNote) -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(true) }
+    // Saveable: the list disposes the cards scrolled out of view
+    var expanded by rememberSaveable { mutableStateOf(true) }
     CardSurface {
         Column {
             SectionHeader(

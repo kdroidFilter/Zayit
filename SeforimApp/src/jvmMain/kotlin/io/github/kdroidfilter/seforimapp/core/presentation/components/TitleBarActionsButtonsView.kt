@@ -8,6 +8,7 @@ import io.github.kdroidfilter.seforim.tabs.TabsViewModel
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
+import io.github.kdroidfilter.seforimapp.features.notes.openNotesTab
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
@@ -21,9 +22,12 @@ import seforimapp.seforimapp.generated.resources.*
 
 // AllIconsKeys.MeetNewUi.SystemTheme was removed in Jewel 0.37 and the SVG
 // dropped from IntelliJ Platform icons 262, so the asset is shipped locally.
-private object SystemThemeIconAnchor
+private object TitleBarIconAnchor
 
-private val SystemTheme = PathIconKey("icons/system_theme.svg", SystemThemeIconAnchor::class.java)
+private val SystemTheme = PathIconKey("icons/system_theme.svg", TitleBarIconAnchor::class.java)
+
+// Lucide notebook-pen, the notes glyph elsewhere in the app, drawn in the flat title-bar palette.
+private val NotesIcon = PathIconKey("icons/notes.svg", TitleBarIconAnchor::class.java)
 
 @Composable
 fun TitleBarActionsButtonsView() {
@@ -133,10 +137,16 @@ fun TitleBarActionsButtonsView() {
         enabled = findEnabled,
     )
 
-    // Chrome-like Tab Search (open tabs + visit history) and Favorites menu.
-    // On macOS the native History/Favorites menus (searchable) cover them; shortcuts still work.
+    // Chrome-like Tab Search (open tabs + visit history), Favorites menu and the notes page.
+    // On macOS the native History/Favorites/Notes menus (searchable) cover them; shortcuts still work.
     if (!PlatformInfo.isMacOS) {
         FavoritesMenuButton()
+        TitleBarActionButton(
+            key = NotesIcon,
+            contentDescription = stringResource(Res.string.notes_title),
+            onClick = { openNotesTab(tabsViewModel) },
+            tooltipText = stringResource(Res.string.notes_show_all),
+        )
         TabSearchButton()
         ToolsMenuButton()
     }

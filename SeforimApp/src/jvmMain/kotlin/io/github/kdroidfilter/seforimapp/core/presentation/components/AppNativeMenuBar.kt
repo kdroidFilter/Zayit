@@ -26,6 +26,8 @@ import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
 import io.github.kdroidfilter.seforimapp.features.home.widgets.availableTools
+import io.github.kdroidfilter.seforimapp.features.notes.noteDestination
+import io.github.kdroidfilter.seforimapp.features.notes.openNotesTab
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
 import io.github.kdroidfilter.seforimapp.features.settings.navigation.SettingsDestination
@@ -96,27 +98,6 @@ fun AppNativeMenuBar(
     val notesWritten by noteStore.notesByBook.collectAsState()
     var recentNotes by remember { mutableStateOf<List<BookNote>>(emptyList()) }
     LaunchedEffect(notesWritten) { recentNotes = noteStore.recent(MENU_RECENT_NOTES) }
-
-    fun openNotesTab() {
-        val tabs = tabsViewModel.state.value.tabs
-        val existing = tabs.indexOfFirst { it.destination is TabsDestination.Notes }
-        if (existing >= 0) {
-            tabsViewModel.onEvent(TabsEvents.OnSelect(existing))
-        } else {
-            tabsViewModel.openTab(TabsDestination.Notes(tabId = UUID.randomUUID().toString()))
-        }
-    }
-
-    fun openNote(bookNote: BookNote) {
-        tabsViewModel.openTab(
-            TabsDestination.BookContent(
-                bookId = bookNote.bookId,
-                tabId = UUID.randomUUID().toString(),
-                lineId = bookNote.note.lineId,
-                openNotes = true,
-            ),
-        )
-    }
 
     fun openFavorite(entry: FavoriteEntry) {
         tabsViewModel.openTab(
@@ -412,7 +393,7 @@ fun AppNativeMenuBar(
                 text = menuShowAllNotes,
                 icon = NsMenuItemImage.SystemSymbol("note.text"),
             ) {
-                openNotesTab()
+                openNotesTab(tabsViewModel)
             }
             if (recentNotes.isNotEmpty()) {
                 Separator()
@@ -421,7 +402,7 @@ fun AppNativeMenuBar(
                         text = bookNote.note.note.take(MENU_TITLE_MAX_LENGTH),
                         icon = NsMenuItemImage.SystemSymbol("square.and.pencil"),
                     ) {
-                        openNote(bookNote)
+                        tabsViewModel.openTab(noteDestination(bookNote))
                     }
                 }
             }

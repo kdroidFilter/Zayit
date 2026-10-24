@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -43,6 +44,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.CardSurfac
 import io.github.kdroidfilter.seforimapp.core.presentation.components.EmptyState
 import io.github.kdroidfilter.seforimapp.core.presentation.components.InputPopup
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ListPageContainer
+import io.github.kdroidfilter.seforimapp.core.presentation.components.ListPageLazyColumn
 import io.github.kdroidfilter.seforimapp.core.presentation.components.ListRow
 import io.github.kdroidfilter.seforimapp.core.presentation.components.PageHeader
 import io.github.kdroidfilter.seforimapp.core.presentation.components.PageSearchField
@@ -148,50 +150,58 @@ private fun FavoritesPageContent(
                 message = stringResource(Res.string.favorites_empty),
             )
         } else {
-            if (folders.isNotEmpty()) {
-                FlowRow(
-                    modifier = Modifier.widthIn(max = 720.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.Start),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    maxItemsInEachRow = 2,
-                ) {
-                    folders.forEach { folder ->
-                        val folderEntries = byFolder[folder.id].orEmpty()
-                        if (query.isNotBlank() && folderEntries.isEmpty()) return@forEach
-                        FolderCard(
-                            folder = folder,
-                            entries = folderEntries,
-                            onOpen = onOpen,
-                            onDeleteEntry = onDelete,
-                            onDeleteFolder = onDeleteFolder,
-                            onMoveToFolder = onMoveToFolder,
-                            allFolders = folders,
-                            accent = accent,
-                        )
+            ListPageLazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                if (folders.isNotEmpty()) {
+                    item(key = "folders") {
+                        FlowRow(
+                            modifier = Modifier.widthIn(max = 720.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.Start),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                            maxItemsInEachRow = 2,
+                        ) {
+                            folders.forEach { folder ->
+                                val folderEntries = byFolder[folder.id].orEmpty()
+                                if (query.isNotBlank() && folderEntries.isEmpty()) return@forEach
+                                FolderCard(
+                                    folder = folder,
+                                    entries = folderEntries,
+                                    onOpen = onOpen,
+                                    onDeleteEntry = onDelete,
+                                    onDeleteFolder = onDeleteFolder,
+                                    onMoveToFolder = onMoveToFolder,
+                                    allFolders = folders,
+                                    accent = accent,
+                                )
+                            }
+                        }
                     }
                 }
-            }
 
-            if (unfiled.isNotEmpty()) {
-                Text(
-                    text = stringResource(Res.string.favorites_no_folder),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = JewelTheme.globalColors.text.info,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                )
-                CardSurface {
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        unfiled.forEachIndexed { index, entry ->
-                            FavoriteRowWithContextMenu(
-                                entry = entry,
-                                folders = folders,
-                                onOpen = { onOpen(entry) },
-                                onDelete = { onDelete(entry) },
-                                onMoveToFolder = { id -> onMoveToFolder(entry, id) },
-                                showDivider = index < unfiled.lastIndex,
-                                accent = accent,
+                if (unfiled.isNotEmpty()) {
+                    item(key = "unfiled") {
+                        Column {
+                            Text(
+                                text = stringResource(Res.string.favorites_no_folder),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = JewelTheme.globalColors.text.info,
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                             )
+                            CardSurface {
+                                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    unfiled.forEachIndexed { index, entry ->
+                                        FavoriteRowWithContextMenu(
+                                            entry = entry,
+                                            folders = folders,
+                                            onOpen = { onOpen(entry) },
+                                            onDelete = { onDelete(entry) },
+                                            onMoveToFolder = { id -> onMoveToFolder(entry, id) },
+                                            showDivider = index < unfiled.lastIndex,
+                                            accent = accent,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -258,7 +268,8 @@ private fun FolderCard(
     allFolders: List<FavoriteFolder>,
     accent: Color,
 ) {
-    var expanded by remember { mutableStateOf(true) }
+    // Saveable: the list disposes the folders once scrolled out of view
+    var expanded by rememberSaveable { mutableStateOf(true) }
 
     CardSurface(modifier = Modifier.widthIn(min = 220.dp, max = 320.dp)) {
         Column {

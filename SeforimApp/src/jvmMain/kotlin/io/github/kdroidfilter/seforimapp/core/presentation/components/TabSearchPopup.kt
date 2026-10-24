@@ -434,7 +434,7 @@ internal fun PopupRow(
 @Composable
 internal fun PopupFooterRow(
     label: String,
-    shortcutHint: String,
+    shortcutHint: String?,
     icon: IconKey = AllIconsKeys.Vcs.History,
     onClick: () -> Unit,
 ) {
@@ -466,11 +466,13 @@ internal fun PopupFooterRow(
             modifier = Modifier.weight(1f),
         )
         // Same convention as the title-bar buttons: dimmed shortcut hint next to the label
-        Text(
-            text = shortcutHint,
-            fontSize = 12.sp,
-            color = JewelTheme.globalColors.text.disabled,
-        )
+        if (shortcutHint != null) {
+            Text(
+                text = shortcutHint,
+                fontSize = 12.sp,
+                color = JewelTheme.globalColors.text.disabled,
+            )
+        }
     }
 }
 

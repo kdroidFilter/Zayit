@@ -286,6 +286,16 @@ nucleus.application {
             packageVersion = version
             debMaintainer = "elyahou.hadass@gmail.com"
             menuGroup = "Education"
+            // English Name/Comment so Latin-layout launchers find the app, Hebrew as localized variants
+            appImage {
+                desktopEntries =
+                    mapOf(
+                        "Name" to "Zayit",
+                        "Name[he]" to "זית",
+                        "Comment" to "Torah study library that leads straight to the text",
+                        "Comment[he]" to "ספריית הלימוד שמובילה ישר לטקסט",
+                    )
+            }
         }
         windows {
             iconFile.set(project.file("desktopAppIcons/WindowsIcon.ico"))

@@ -5,6 +5,7 @@ import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
 import io.github.kdroidfilter.seforim.tabs.TabType
 import io.github.kdroidfilter.seforim.tabs.TabsDestination
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeViewModel
+import io.github.kdroidfilter.seforimapp.framework.search.DesktopSearchSessionStore
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopTabsSnapshot
 import io.github.kdroidfilter.seforimapp.framework.session.DesktopsState
 import io.github.kdroidfilter.seforimapp.framework.session.SerializableTabTitle
@@ -57,7 +58,12 @@ class DesktopManagerTest {
                 ),
             titleUpdateManager = TabTitleUpdateManager(),
             searchHomeViewModelFactory = {
-                SearchHomeViewModel(TabPersistedStateStore(), mockk(relaxed = true), mockk(relaxed = true), testAppSettings())
+                SearchHomeViewModel(
+                    DesktopSearchSessionStore(TabPersistedStateStore()),
+                    mockk(relaxed = true),
+                    mockk(relaxed = true),
+                    testAppSettings(),
+                )
             },
             defaultDesktopName = "D1",
             bootState = bootState,

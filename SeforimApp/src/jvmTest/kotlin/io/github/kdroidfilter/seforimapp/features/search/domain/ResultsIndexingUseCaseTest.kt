@@ -5,6 +5,7 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
@@ -46,7 +47,7 @@ class ResultsIndexingUseCaseTest {
             val index = useCase.ensureIndex(results)
 
             assertNotNull(index)
-            assertEquals(System.identityHashCode(results), index.identity)
+            assertSame(results, index.identity)
 
             // Check book to indices mapping
             assertEquals(3, index.bookToIndices.size)

@@ -10,6 +10,7 @@ import dev.nucleusframework.application.aotTraining
 import dev.nucleusframework.application.nucleusApplication
 import dev.nucleusframework.core.runtime.NucleusApp
 import dev.nucleusframework.energymanager.EnergyManager
+import dev.nucleusframework.launcher.windows.WindowsJumpListManager
 import dev.nucleusframework.window.NucleusDecoratedWindowTheme
 import dev.nucleusframework.window.jewel.rememberJewelTitleBarStyle
 import dev.nucleusframework.window.jewel.rememberJewelWindowStyle
@@ -191,6 +192,10 @@ fun main(args: Array<String>) {
 
     val appId = "io.github.kdroidfilter.seforimapp"
 
+    // Before any window: ties the taskbar button (and the icon pinned from it) to the AUMID the
+    // jump list is stored under, so the list keeps showing while the app is closed.
+    if (PlatformInfo.isWindows && WindowsJumpListManager.isAvailable) WindowsJumpListManager.setProcessAppId()
+
     nucleusApplication(
         args,
         defaultLocale = Locale.Builder().setLanguage("he").build(),
@@ -335,6 +340,7 @@ fun main(args: Array<String>) {
                                 AppJumpList(
                                     desktopManager = desktopManager,
                                     tabsViewModel = focusedWindow.tabsViewModel,
+                                    isRestoringSession = appGraph.sessionManager.isRestoringSession,
                                     pendingDeepLink = pendingDeepLink,
                                     onClearDeepLink = { pendingDeepLink.value = null },
                                 )

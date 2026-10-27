@@ -1,7 +1,6 @@
 package io.github.kdroidfilter.seforimapp.core.presentation.components
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -17,6 +16,7 @@ import io.github.kdroidfilter.seforimapp.framework.desktop.DesktopManager
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.desktop_default_name
@@ -27,15 +27,17 @@ import seforimapp.seforimapp.generated.resources.menu_new_tab
 import seforimapp.seforimapp.generated.resources.open_tabs
 import seforimapp.seforimapp.generated.resources.search_results_tab_title
 
-private const val SCHEME_TAB = "seforim://tab/"
-private const val SCHEME_DESKTOP = "seforim://desktop/"
-private const val SCHEME_NEW_TAB = "seforim://new-tab"
-private const val SCHEME_NEW_DESKTOP = "seforim://new-desktop"
+private const val SCHEME = "seforim://"
+private const val SCHEME_TAB = "${SCHEME}tab/"
+private const val SCHEME_DESKTOP = "${SCHEME}desktop/"
+private const val SCHEME_NEW_TAB = "${SCHEME}new-tab"
+private const val SCHEME_NEW_DESKTOP = "${SCHEME}new-desktop"
 
 @Composable
 fun AppJumpList(
     desktopManager: DesktopManager,
     tabsViewModel: TabsViewModel,
+    isRestoringSession: StateFlow<Boolean>,
     pendingDeepLink: StateFlow<String?>,
     onClearDeepLink: () -> Unit,
 ) {
@@ -61,6 +63,10 @@ fun AppJumpList(
             // Only handle (and clear) seforim:// jump-list actions. Other schemes — notably
             // shareable zayit:// content links — belong to ContentDeepLinkHandler; clearing them
             // here would race that collector and swallow the link (StateFlow is conflated).
+            if (!action.startsWith(SCHEME)) return@collect
+            // The jump list outlives the app: a click while it is closed cold-starts it with the
+            // action, whose tab/desktop indices refer to the saved session, not yet restored.
+            isRestoringSession.first { !it }
             val handled =
                 when {
                     action.startsWith(SCHEME_TAB) -> {
@@ -130,10 +136,8 @@ fun AppJumpList(
                 JumpListItem(title = newDesktopLabel, arguments = SCHEME_NEW_DESKTOP),
             )
 
+        // Never cleared: Windows keeps the list after the app quits, so it still works from a
+        // pinned taskbar icon while the app is closed.
         WindowsJumpListManager.setJumpList(categories = categories, tasks = tasks)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose { WindowsJumpListManager.clearJumpList() }
     }
 }

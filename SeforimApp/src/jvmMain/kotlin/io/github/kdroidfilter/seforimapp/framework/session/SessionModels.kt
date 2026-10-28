@@ -97,6 +97,7 @@ data class BookContentPersistedState(
     val selectedCommentatorsByBook: Map<Long, Set<Long>> = emptyMap(),
     val selectedTargumSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedTargumSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
+    // Unused (the sources pane no longer filters by book), kept for the ProtoBuf field numbers
     val selectedSourcesByLine: Map<Long, Set<Long>> = emptyMap(),
     val selectedSourcesByBook: Map<Long, Set<Long>> = emptyMap(),
     // Layout
@@ -111,6 +112,8 @@ data class BookContentPersistedState(
     val previousContentSplitPosition: Float = SplitDefaults.CONTENT,
     val previousSourcesSplitPosition: Float = SplitDefaults.SOURCES,
     val previousTargumSplitPosition: Float = 0.8f,
+    // Appended last: the session is ProtoBuf, numbered by declaration order
+    val showReferences: Boolean = false,
 )
 
 // -- Virtual desktops persistence models --

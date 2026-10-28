@@ -47,6 +47,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LayoutState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.SplitDefaults
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.LocalPaneSatellite
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.CommentsPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.ReferencesPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.SourcesPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.TargumPane
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.isBookTextShown
@@ -74,6 +75,7 @@ import seforimapp.seforimapp.generated.resources.book_list
 import seforimapp.seforimapp.generated.resources.commentaries
 import seforimapp.seforimapp.generated.resources.links
 import seforimapp.seforimapp.generated.resources.notes_pane
+import seforimapp.seforimapp.generated.resources.references
 import seforimapp.seforimapp.generated.resources.search_book_details
 import seforimapp.seforimapp.generated.resources.sources
 import seforimapp.seforimapp.generated.resources.table_of_contents
@@ -87,7 +89,8 @@ import kotlin.math.roundToInt
  * right, in Hebrew); the line panes (links, commentaries, sources) belong to the inner dock around
  * the text, above its breadcrumb. [fixed] panes are the reader's furniture: they cannot float, move
  * side or be reordered, and no pane can be dropped in front of them — they can still be hidden and
- * resized.
+ * resized. A side's panes come in the order of their buttons in the reader's bar: the first one at the side's edge
+ * (beside the bar), or at the start of the row under the text.
  */
 enum class ReaderPane(
     val id: String,
@@ -123,21 +126,21 @@ enum class ReaderPane(
     Targum(
         "targum",
         Res.string.links,
-        SatellitePlacement.Docked(DockSide.Left, extent = 220.dp),
+        SatellitePlacement.Docked(DockSide.Left, order = 1, extent = 220.dp),
         toggle = BookContentEvent.ToggleTargum,
         navigation = false,
     ),
     Comments(
         "comments",
         Res.string.commentaries,
-        SatellitePlacement.Docked(DockSide.Bottom, extent = 220.dp, weight = 2f),
+        SatellitePlacement.Docked(DockSide.Bottom, order = 1, extent = 220.dp, weight = 2f),
         toggle = BookContentEvent.ToggleCommentaries,
         navigation = false,
     ),
     Sources(
         "sources",
         Res.string.sources,
-        SatellitePlacement.Docked(DockSide.Bottom, order = 1, extent = 120.dp),
+        SatellitePlacement.Docked(DockSide.Bottom, order = 0, extent = 120.dp),
         toggle = BookContentEvent.ToggleSources,
         navigation = false,
     ),
@@ -146,8 +149,17 @@ enum class ReaderPane(
     BookDetails(
         "book-details",
         Res.string.search_book_details,
-        SatellitePlacement.Docked(DockSide.Left, order = 1, extent = 280.dp),
+        SatellitePlacement.Docked(DockSide.Left, order = 0, extent = 280.dp),
         toggle = BookContentEvent.ToggleBookDetails,
+        navigation = false,
+    ),
+
+    // The places that refer to the line: a column by default, a row of columns once docked under the text
+    References(
+        "references",
+        Res.string.references,
+        SatellitePlacement.Docked(DockSide.Left, order = 2, extent = 400.dp),
+        toggle = BookContentEvent.ToggleReferences,
         navigation = false,
     ),
     ;
@@ -169,6 +181,9 @@ private val LineDockSides = setOf(DockSide.Left, DockSide.Right, DockSide.Bottom
 
 /** The navigation panes are columns, not a stack. */
 val NavigationLayeredSides = setOf(DockSide.Right)
+
+/** Beside the text, the line panes are columns next to each other, not a stack; under it they share the row. */
+val LineLayeredSides = setOf(DockSide.Left, DockSide.Right)
 
 /** The commentaries run under the text and the links, as the vertical split did. */
 val LineSideOrder = listOf(DockSide.Bottom, DockSide.Left, DockSide.Right, DockSide.Top)
@@ -261,10 +276,16 @@ private fun PaneSync(
         fun sizedByTab(pane: ReaderPane): Boolean =
             pane.navigation || (entry(pane)?.placement as? SatellitePlacement.Docked)?.side == pane.home.side
 
+        // The navigation column and the line panes beside the text are layered (each pane its own width); the
+        // line panes under the text split their row.
+        fun layered(pane: ReaderPane): Boolean {
+            val side = (entry(pane)?.placement as? SatellitePlacement.Docked)?.side ?: pane.home.side
+            return pane.navigation || side in LineLayeredSides
+        }
+
         fun extentDpOf(pane: ReaderPane): Float? {
             val docked = entry(pane)?.takeIf { it.isOpen }?.placement as? SatellitePlacement.Docked ?: return null
-            // The navigation column is layered (each pane its own width); the inner sides are split.
-            return if (pane.navigation) docked.extent?.value else workspace(pane).dockExtent(docked.side).value
+            return if (layered(pane)) docked.extent?.value else workspace(pane).dockExtent(docked.side).value
         }
 
         fun setExtent(
@@ -273,7 +294,7 @@ private fun PaneSync(
             density: Float,
         ) {
             val extent = (px / density).dp
-            if (pane.navigation) {
+            if (layered(pane)) {
                 workspace(pane).setDockedExtent(pane.idIn(groupId), extent)
             } else {
                 val side = (entry(pane)?.placement as? SatellitePlacement.Docked)?.side ?: pane.home.side
@@ -507,8 +528,8 @@ private fun writeBack(
         ReaderPane.Notes -> layout.notesSplitState.positionPercentage = ratio
         ReaderPane.Targum -> layout.targumSplitState.positionPercentage = ratio
         ReaderPane.Comments, ReaderPane.Sources -> layout.contentSplitState.positionPercentage = ratio
-        // Never planned (see plannedExtents): its size is the dock's own
-        ReaderPane.BookDetails -> Unit
+        // Never planned (see plannedExtents): their size is the dock's own
+        ReaderPane.BookDetails, ReaderPane.References -> Unit
     }
 }
 
@@ -520,7 +541,7 @@ private fun ReaderPane.position(layout: LayoutState): Float =
         ReaderPane.Notes -> layout.notesSplitState.positionPercentage
         ReaderPane.Targum -> layout.targumSplitState.positionPercentage
         ReaderPane.Comments, ReaderPane.Sources -> layout.contentSplitState.positionPercentage
-        ReaderPane.BookDetails -> 0f
+        ReaderPane.BookDetails, ReaderPane.References -> 0f
     }
 
 /** The first pane's minimum of this pane's split (the text, for the line panes), in dp. */
@@ -554,6 +575,7 @@ private fun desiredPanes(
             if (uiState.content.showTargum) add(ReaderPane.Targum)
             if (uiState.content.showCommentaries) add(ReaderPane.Comments)
             if (uiState.content.showSources) add(ReaderPane.Sources)
+            if (uiState.content.showReferences) add(ReaderPane.References)
         }
     }
 
@@ -634,13 +656,15 @@ private fun BookPaneBody(
                     modifier = modifier,
                 )
             }
+            ReaderPane.References ->
+                ReferencesPane(uiState = uiState, onEvent = onEvent, diacritics = diacritics, modifier = modifier)
             ReaderPane.Targum, ReaderPane.Comments, ReaderPane.Sources -> {
                 val book = uiState.navigation.selectedBook ?: return@BookTextMenus
                 val connections = tabUi.connections(book.id)
                 when (pane) {
                     ReaderPane.Targum -> TargumPane(uiState, onEvent, connections, diacritics, modifier)
                     ReaderPane.Comments -> CommentsPane(uiState, onEvent, connections, diacritics, modifier)
-                    else -> SourcesPane(uiState, onEvent, connections, diacritics, modifier)
+                    else -> SourcesPane(uiState, onEvent, diacritics, modifier)
                 }
             }
         }

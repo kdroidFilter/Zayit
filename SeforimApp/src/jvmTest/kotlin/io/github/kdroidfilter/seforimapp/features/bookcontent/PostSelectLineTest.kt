@@ -186,7 +186,6 @@ class PostSelectLineTest {
 
             coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
             coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
-            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
         }
 
     @Test
@@ -216,9 +215,6 @@ class PostSelectLineTest {
             coVerify {
                 commentariesUseCase.reapplySelectedLinkSourcesForLines(any(), any(), any())
             }
-            coVerify {
-                commentariesUseCase.reapplySelectedSourcesForLines(any(), any(), any())
-            }
         }
 
     // --- LoadAndSelectLine ---
@@ -246,7 +242,6 @@ class PostSelectLineTest {
 
             coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
             coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
-            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
         }
 
     // --- NavigateToPreviousLine ---
@@ -274,7 +269,6 @@ class PostSelectLineTest {
 
             coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
             coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
-            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
         }
 
     @Test
@@ -315,7 +309,6 @@ class PostSelectLineTest {
 
             coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
             coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
-            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
         }
 
     @Test
@@ -363,6 +356,5 @@ class PostSelectLineTest {
 
             coVerify { commentariesUseCase.reapplySelectedCommentators(any()) }
             coVerify { commentariesUseCase.reapplySelectedLinkSources(any()) }
-            coVerify { commentariesUseCase.reapplySelectedSources(any()) }
         }
 }

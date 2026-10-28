@@ -243,20 +243,6 @@ class CommentariesUseCase(
             ).flow.cachedIn(pagerScope)
         }
 
-    fun buildSourcesPager(
-        lineId: Long,
-        sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> =
-        cachedPager("src:$lineId:${sourceBookId ?: -1L}") { pagerScope ->
-            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-            Pager(
-                config = PagingDefaults.COMMENTS.config(placeholders = false),
-                pagingSourceFactory = {
-                    LineTargumPagingSource(repository, lineId, ids, setOf(ConnectionType.SOURCE))
-                },
-            ).flow.cachedIn(pagerScope)
-        }
-
     // ========== Multi-line pagers for multi-selection ==========
 
     /**
@@ -294,23 +280,6 @@ class CommentariesUseCase(
         }
 
     /**
-     * Construit un Pager pour les sources de plusieurs lignes
-     */
-    fun buildSourcesPagerForLines(
-        lineIds: List<Long>,
-        sourceBookId: Long? = null,
-    ): Flow<PagingData<CommentaryWithText>> =
-        cachedPager("srcL:${lineIds.joinToString(",")}:${sourceBookId ?: -1L}") { pagerScope ->
-            val ids = sourceBookId?.let { setOf(it) } ?: emptySet()
-            Pager(
-                config = PagingDefaults.COMMENTS.config(placeholders = false),
-                pagingSourceFactory = {
-                    MultiLineLinksPagingSource(repository, lineIds, ids, setOf(ConnectionType.SOURCE))
-                },
-            ).flow.cachedIn(pagerScope)
-        }
-
-    /**
      * Ordered char-count vector for the commentary pager built from a single base line
      * (or its TOC section). Mirrors [buildCommentariesPager]'s ordering, so the scrollbar
      * can derive accurate visual-line metrics. Returns an empty list on failure.
@@ -343,7 +312,7 @@ class CommentariesUseCase(
 
     /**
      * Ordered char-count vector for a single source/targum section attached to a base
-     * line (or its TOC section). Mirrors [buildLinksPager] / [buildSourcesPager] row
+     * line (or its TOC section). Mirrors [buildLinksPager] row
      * ordering (`b.orderIndex, l.targetLineIndex`). Returns an empty list on failure.
      */
     suspend fun getLinkCharCountsForLine(
@@ -361,7 +330,7 @@ class CommentariesUseCase(
 
     /**
      * Ordered char-count vector for a single source/targum section across multiple
-     * selected lines. Mirrors [buildLinksPagerForLines] / [buildSourcesPagerForLines]
+     * selected lines. Mirrors [buildLinksPagerForLines]
      * ordering. Returns an empty list on failure.
      */
     suspend fun getLinkCharCountsForLines(
@@ -444,39 +413,6 @@ class CommentariesUseCase(
                 }
             }
             map
-        }.getOrElse { emptyMap() }
-    }
-
-    /**
-     * Récupère les sources disponibles pour plusieurs lignes (union).
-     *
-     * Issues a single inverse-direction repository query against the union of
-     * all base lines so the order returned by the underlying SQL
-     * (`l.isDeclaredBase DESC, b.orderIndex, sl.lineIndex`) is respected
-     * globally. Per-lineId iteration would interleave per-source-book entries
-     * by lineId rather than by catalog position.
-     */
-    suspend fun getAvailableSourcesForLines(lineIds: List<Long>): Map<String, Long> {
-        if (lineIds.isEmpty()) return emptyMap()
-        return runSuspendCatching {
-            val selectedBook =
-                stateManager.state
-                    .first()
-                    .navigation.selectedBook
-            if (selectedBook?.hasSourceConnection != true) return@runSuspendCatching emptyMap<String, Long>()
-
-            val allBaseIds =
-                lineIds
-                    .flatMap { resolveBaseLineIds(it) }
-                    .distinct()
-            if (allBaseIds.isEmpty()) return@runSuspendCatching emptyMap<String, Long>()
-
-            val links =
-                repository
-                    .getCommentarySummariesForLines(allBaseIds, includeSources = true)
-                    .filter { it.link.connectionType == ConnectionType.SOURCE }
-
-            buildSourceMap(links, selectedBook.title.trim())
         }.getOrElse { emptyMap() }
     }
 
@@ -992,7 +928,6 @@ class CommentariesUseCase(
 
         val commentaries = connections.filter { it.link.connectionType == ConnectionType.COMMENTARY }
         val targumLinks = connections.filter { it.link.connectionType == ConnectionType.TARGUM }
-        val sourceLinks = connections.filter { it.link.connectionType == ConnectionType.SOURCE }
 
         val commentatorGroups =
             if (commentaries.isNotEmpty()) {
@@ -1005,7 +940,6 @@ class CommentariesUseCase(
         return LineConnectionsSnapshot(
             commentatorGroups = commentatorGroups,
             targumSources = buildSourceMap(targumLinks, currentBookTitle),
-            sources = buildSourceMap(sourceLinks, currentBookTitle),
         )
     }
 
@@ -1027,11 +961,6 @@ class CommentariesUseCase(
      * Récupère les sources de liens disponibles pour une ligne
      */
     suspend fun getAvailableLinks(lineId: Long): Map<String, Long> = lineConnections(lineId).targumSources
-
-    /**
-     * Récupère les sources disponibles pour une ligne
-     */
-    suspend fun getAvailableSources(lineId: Long): Map<String, Long> = lineConnections(lineId).sources
 
     // Off the main thread: callers launch it from the UI, and grouping sorts every line's commentators.
     suspend fun loadLineConnections(lineIds: List<Long>): Map<Long, LineConnectionsSnapshot> =
@@ -1071,7 +1000,7 @@ class CommentariesUseCase(
         val currentState = stateManager.state.first()
         val selectedBook = currentState.navigation.selectedBook
 
-        val allConnections = repository.getCommentarySummariesForLines(allBaseIds, includeSources = true)
+        val allConnections = repository.getCommentarySummariesForLines(allBaseIds)
         if (allConnections.isEmpty()) return storeAndMerge(missing.associateWith { LineConnectionsSnapshot() })
 
         val connectionsBySource = allConnections.groupBy { it.link.sourceLineId }
@@ -1264,40 +1193,6 @@ class CommentariesUseCase(
         }
     }
 
-    suspend fun updateSelectedSources(
-        lineId: Long,
-        selectedIds: Set<Long>,
-    ) {
-        val currentContent = stateManager.state.first().content
-        val bookId =
-            stateManager.state
-                .first()
-                .navigation.selectedBook
-                ?.id ?: return
-
-        val byLine = currentContent.selectedSourcesByLine.toMutableMap()
-        if (selectedIds.isEmpty()) {
-            byLine.remove(lineId)
-        } else {
-            byLine[lineId] = selectedIds
-        }
-
-        val byBook = currentContent.selectedSourcesByBook.toMutableMap()
-        if (selectedIds.isEmpty()) {
-            byBook.remove(bookId)
-        } else {
-            byBook[bookId] = selectedIds
-        }
-
-        stateManager.updateContent {
-            copy(
-                selectedSourcesByLine = byLine,
-                selectedSourcesByBook = byBook,
-                selectedSourceIds = selectedIds,
-            )
-        }
-    }
-
     /**
      * Réapplique les commentateurs sélectionnés pour une nouvelle ligne
      */
@@ -1361,27 +1256,6 @@ class CommentariesUseCase(
         }
     }
 
-    suspend fun reapplySelectedSources(line: Line) {
-        val currentState = stateManager.state.first()
-        val bookId = currentState.navigation.selectedBook?.id ?: line.bookId
-        val remembered = currentState.content.selectedSourcesByBook[bookId] ?: emptySet()
-
-        if (remembered.isEmpty()) return
-
-        try {
-            val available = getAvailableSources(line.id)
-            val availableIds = available.values.toSet()
-            val intersection = remembered.intersect(availableIds)
-
-            if (intersection.isNotEmpty()) {
-                updateSelectedSources(line.id, intersection)
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-        }
-    }
-
     /**
      * Réapplique les commentateurs sélectionnés pour plusieurs lignes (multi-sélection).
      * Ne sélectionne des commentateurs que s'il y en a de mémorisés pour ce livre.
@@ -1434,33 +1308,6 @@ class CommentariesUseCase(
 
             if (intersection.isNotEmpty()) {
                 updateSelectedLinkSources(primaryLineId, intersection)
-            }
-        } catch (e: CancellationException) {
-            throw e
-        } catch (_: Exception) {
-        }
-    }
-
-    /**
-     * Réapplique les sources sélectionnées pour plusieurs lignes (multi-sélection)
-     */
-    suspend fun reapplySelectedSourcesForLines(
-        lineIds: List<Long>,
-        primaryLineId: Long,
-        bookId: Long,
-    ) {
-        val currentState = stateManager.state.first()
-        val remembered = currentState.content.selectedSourcesByBook[bookId] ?: emptySet()
-
-        if (remembered.isEmpty()) return
-
-        try {
-            val available = getAvailableSourcesForLines(lineIds)
-            val availableIds = available.values.toSet()
-            val intersection = remembered.intersect(availableIds)
-
-            if (intersection.isNotEmpty()) {
-                updateSelectedSources(primaryLineId, intersection)
             }
         } catch (e: CancellationException) {
             throw e

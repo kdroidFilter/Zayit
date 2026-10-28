@@ -11,7 +11,6 @@ class LineConnectionsSnapshotTest {
 
         assertTrue(snapshot.commentatorGroups.isEmpty())
         assertTrue(snapshot.targumSources.isEmpty())
-        assertTrue(snapshot.sources.isEmpty())
     }
 
     @Test
@@ -42,35 +41,18 @@ class LineConnectionsSnapshotTest {
     }
 
     @Test
-    fun `snapshot can be created with sources`() {
-        val sources =
-            mapOf(
-                "Source1" to 200L,
-                "Source2" to 201L,
-                "Source3" to 202L,
-            )
-        val snapshot = LineConnectionsSnapshot(sources = sources)
-
-        assertEquals(3, snapshot.sources.size)
-        assertTrue(snapshot.sources.containsKey("Source1"))
-    }
-
-    @Test
     fun `snapshot can be created with all data`() {
         val groups = listOf(CommentatorGroup("G1", emptyList()))
         val targum = mapOf("T1" to 1L)
-        val sources = mapOf("S1" to 2L)
 
         val snapshot =
             LineConnectionsSnapshot(
                 commentatorGroups = groups,
                 targumSources = targum,
-                sources = sources,
             )
 
         assertEquals(1, snapshot.commentatorGroups.size)
         assertEquals(1, snapshot.targumSources.size)
-        assertEquals(1, snapshot.sources.size)
     }
 
     @Test
@@ -79,16 +61,17 @@ class LineConnectionsSnapshotTest {
             LineConnectionsSnapshot(
                 targumSources = mapOf("Original" to 1L),
             )
-        val modified = original.copy(sources = mapOf("New" to 2L))
+        val groups = listOf(CommentatorGroup("New", emptyList()))
+        val modified = original.copy(commentatorGroups = groups)
 
         assertEquals(mapOf("Original" to 1L), modified.targumSources)
-        assertEquals(mapOf("New" to 2L), modified.sources)
+        assertEquals(groups, modified.commentatorGroups)
     }
 
     @Test
     fun `snapshot equals works correctly`() {
-        val snapshot1 = LineConnectionsSnapshot(sources = mapOf("A" to 1L))
-        val snapshot2 = LineConnectionsSnapshot(sources = mapOf("A" to 1L))
+        val snapshot1 = LineConnectionsSnapshot(targumSources = mapOf("A" to 1L))
+        val snapshot2 = LineConnectionsSnapshot(targumSources = mapOf("A" to 1L))
 
         assertEquals(snapshot1, snapshot2)
     }

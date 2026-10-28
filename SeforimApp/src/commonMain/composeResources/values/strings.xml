@@ -276,6 +276,16 @@
     <string name="select_at_least_one_commentator">אנא בחר לפחות מפרש אחד מהרשימה</string>
     <string name="select_line_for_sources">בחר שורה כדי לצפות במקורות</string>
     <string name="no_sources_for_line">אין מקורות זמינים לשורה זו</string>
+    <string name="references">מראי מקומות</string>
+    <string name="show_references">מראי מקומות</string>
+    <string name="show_references_tooltip">הצג את הספרים שמזכירים שורה זו</string>
+    <string name="select_line_for_references">בחר שורה כדי לראות אילו ספרים מזכירים אותה</string>
+    <string name="no_references_for_line">אין מראי מקומות לשורה זו</string>
+    <string name="references_summary">%1$d ספרים · %2$d מקומות</string>
+    <string name="references_more_from_book">עוד %1$d מקומות מ%2$s</string>
+    <string name="references_one_more_from_book">עוד מקום אחד מ%1$s</string>
+    <string name="references_ein_mishpat">עין משפט</string>
+    <string name="references_mesorat_hashas">מסורת הש״ס</string>
     <string name="no_commentators_available">אין מפרשים זמינים</string>
 
     <!-- Line Links View (special links strings) -->

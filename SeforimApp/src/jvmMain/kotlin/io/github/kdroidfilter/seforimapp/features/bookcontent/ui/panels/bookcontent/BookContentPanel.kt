@@ -21,6 +21,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.references.LinePlaces
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
@@ -28,7 +29,6 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.search.SearchHomeUiState
-import io.github.kdroidfilter.seforimlibrary.core.models.ConnectionType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
@@ -299,18 +299,23 @@ fun CommentsPane(
 fun SourcesPane(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
-    lineConnections: Map<Long, LineConnectionsSnapshot>,
     diacritics: DiacriticsMode,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
-        LineTargumView(
-            uiState = uiState,
-            onEvent = onEvent,
-            lineConnections = lineConnections,
-            availabilityType = ConnectionType.SOURCE,
-            diacritics = diacritics,
-        )
+        LinePlacesView(kind = LinePlaces.Sources, uiState = uiState, onEvent = onEvent, diacritics = diacritics)
+    }
+}
+
+@Composable
+fun ReferencesPane(
+    uiState: BookContentState,
+    onEvent: (BookContentEvent) -> Unit,
+    diacritics: DiacriticsMode,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier) {
+        LinePlacesView(kind = LinePlaces.References, uiState = uiState, onEvent = onEvent, diacritics = diacritics)
     }
 }
 

@@ -22,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.isChumash
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.placesLines
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.platform.PlatformInfo
 import io.github.kdroidfilter.seforimapp.icons.*
@@ -87,11 +88,15 @@ fun EndVerticalBar(
     val noBookSelected = selectedBook == null
     val selectedLine = uiState.content.primaryLine
     val providers = uiState.providers
+    val repository = LocalAppGraph.current.repository
+    // The places panes' lines: a heading's whole section, as their panes list it
+    val placesLineIds = uiState.content.placesLines().map { it.id }
 
     val lineAvailability by produceState(
         initialValue = LineResourceAvailability(),
-        key1 = selectedLine?.id,
-        key2 = providers,
+        selectedLine?.id,
+        providers,
+        placesLineIds,
     ) {
         if (selectedLine == null || providers == null) {
             value = LineResourceAvailability()
@@ -106,9 +111,14 @@ fun EndVerticalBar(
             runSuspendCatching {
                 providers.getAvailableCommentatorsForLine(selectedLine.id)
             }.getOrNull()?.isNotEmpty()
+        // The line panes' own queries, so a button is enabled exactly when its pane has something to show
         val sourcesAvailable =
             runSuspendCatching {
-                providers.getAvailableSourcesForLine(selectedLine.id)
+                repository.getSourcesForLines(placesLineIds)
+            }.getOrNull()?.isNotEmpty()
+        val referencesAvailable =
+            runSuspendCatching {
+                repository.getReferencesForLines(placesLineIds)
             }.getOrNull()?.isNotEmpty()
 
         value =
@@ -116,6 +126,7 @@ fun EndVerticalBar(
                 targumAvailable = targumAvailable,
                 commentariesAvailable = commentariesAvailable,
                 sourcesAvailable = sourcesAvailable,
+                referencesAvailable = referencesAvailable,
             )
     }
 
@@ -175,6 +186,8 @@ fun EndVerticalBar(
             val targumEnabled = selectedBook?.hasTargumConnection == true
             val commentaryEnabled = selectedBook?.hasCommentaryConnection == true
             val sourcesEnabled = selectedBook?.hasSourceConnection == true
+            // Ein mishpat and masoret hashas have no flag of their own: OTHER covers the books that have them
+            val referencesEnabled = selectedBook?.hasReferenceConnection == true || selectedBook?.hasOtherConnection == true
             val linksEnabled = (selectedBook?.hasReferenceConnection == true) || (selectedBook?.hasOtherConnection == true)
 
             // Hide both buttons on Home (no book selected)
@@ -191,6 +204,11 @@ fun EndVerticalBar(
                     selectedLine != null &&
                         lineAvailability.sourcesAvailable == false &&
                         !uiState.content.showSources
+
+                val referencesDisabledForLine =
+                    selectedLine != null &&
+                        lineAvailability.referencesAvailable == false &&
+                        !uiState.content.showReferences
 
                 val targumTooltip =
                     when {
@@ -222,6 +240,24 @@ fun EndVerticalBar(
                         label = stringResource(Res.string.show_targumim),
                         enabled = !targumDisabledForLine,
                         shortcutHint = if (PlatformInfo.isMacOS) "K+⇧+⌘" else "K+Shift+Ctrl",
+                    )
+                }
+
+                if (referencesEnabled) {
+                    val referencesLabel = stringResource(Res.string.show_references)
+                    SelectableIconButtonWithToolip(
+                        toolTipText =
+                            when {
+                                referencesDisabledForLine -> stringResource(Res.string.no_references_for_line)
+                                selectedLine == null -> stringResource(Res.string.select_line_for_references)
+                                else -> stringResource(Res.string.show_references_tooltip)
+                            },
+                        onClick = { onEvent(BookContentEvent.ToggleReferences) },
+                        isSelected = uiState.content.showReferences,
+                        icon = Library_books,
+                        iconDescription = referencesLabel,
+                        label = referencesLabel,
+                        enabled = !referencesDisabledForLine,
                     )
                 }
 
@@ -274,6 +310,7 @@ private data class LineResourceAvailability(
     val targumAvailable: Boolean? = null,
     val commentariesAvailable: Boolean? = null,
     val sourcesAvailable: Boolean? = null,
+    val referencesAvailable: Boolean? = null,
 )
 
 /** The text's zoom in and out, shared by the reading screens' end bars. */

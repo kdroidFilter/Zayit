@@ -147,14 +147,6 @@ class BookContentViewModel(
                         }
                         else -> state.content.selectedLinkSourcesByBook[bookId].orEmpty()
                     }
-                val selectedSources: Set<Long> =
-                    when {
-                        lineId != null -> {
-                            val perLine = state.content.selectedSourcesByLine[lineId].orEmpty()
-                            perLine.ifEmpty { state.content.selectedSourcesByBook[bookId].orEmpty() }
-                        }
-                        else -> state.content.selectedSourcesByBook[bookId].orEmpty()
-                    }
                 state.copy(
                     providers =
                         Providers(
@@ -166,15 +158,11 @@ class BookContentViewModel(
                             prefetchCommentaries = commentariesUseCase::prefetchCommentaries,
                             buildLinksPagerFor = commentariesUseCase::buildLinksPager,
                             getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
-                            buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
-                            getAvailableSourcesForLine = commentariesUseCase::getAvailableSources,
                             // Multi-line providers
                             buildCommentariesPagerForLines = commentariesUseCase::buildCommentariesPagerForLines,
                             getCommentatorGroupsForLines = commentariesUseCase::getCommentatorGroupsForLines,
                             buildLinksPagerForLines = commentariesUseCase::buildLinksPagerForLines,
                             getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
-                            buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
-                            getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
                             getCommentaryCharCountsForLine = commentariesUseCase::getCommentaryCharCountsForLine,
                             getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                             getLinkCharCountsForLine = commentariesUseCase::getLinkCharCountsForLine,
@@ -186,7 +174,6 @@ class BookContentViewModel(
                         state.content.copy(
                             selectedCommentatorIds = selectedCommentators,
                             selectedTargumSourceIds = selectedLinks,
-                            selectedSourceIds = selectedSources,
                         ),
                 )
             }.stateIn(
@@ -212,14 +199,6 @@ class BookContentViewModel(
                             }
                             else -> s.content.selectedLinkSourcesByBook[bookId].orEmpty()
                         }
-                    val selectedSources: Set<Long> =
-                        when {
-                            lineId != null -> {
-                                val perLine = s.content.selectedSourcesByLine[lineId].orEmpty()
-                                perLine.ifEmpty { s.content.selectedSourcesByBook[bookId].orEmpty() }
-                            }
-                            else -> s.content.selectedSourcesByBook[bookId].orEmpty()
-                        }
                     s.copy(
                         providers =
                             Providers(
@@ -231,15 +210,11 @@ class BookContentViewModel(
                                 prefetchCommentaries = commentariesUseCase::prefetchCommentaries,
                                 buildLinksPagerFor = commentariesUseCase::buildLinksPager,
                                 getAvailableLinksForLine = commentariesUseCase::getAvailableLinks,
-                                buildSourcesPagerFor = commentariesUseCase::buildSourcesPager,
-                                getAvailableSourcesForLine = commentariesUseCase::getAvailableSources,
                                 // Multi-line providers
                                 buildCommentariesPagerForLines = commentariesUseCase::buildCommentariesPagerForLines,
                                 getCommentatorGroupsForLines = commentariesUseCase::getCommentatorGroupsForLines,
                                 buildLinksPagerForLines = commentariesUseCase::buildLinksPagerForLines,
                                 getAvailableLinksForLines = commentariesUseCase::getAvailableLinksForLines,
-                                buildSourcesPagerForLines = commentariesUseCase::buildSourcesPagerForLines,
-                                getAvailableSourcesForLines = commentariesUseCase::getAvailableSourcesForLines,
                                 getCommentaryCharCountsForLine = commentariesUseCase::getCommentaryCharCountsForLine,
                                 getCommentaryCharCountsForLines = commentariesUseCase::getCommentaryCharCountsForLines,
                                 getLinkCharCountsForLine = commentariesUseCase::getLinkCharCountsForLine,
@@ -251,7 +226,6 @@ class BookContentViewModel(
                             s.content.copy(
                                 selectedCommentatorIds = selectedCommentators,
                                 selectedTargumSourceIds = selectedLinks,
-                                selectedSourceIds = selectedSources,
                             ),
                     )
                 },
@@ -644,6 +618,9 @@ class BookContentViewModel(
                 BookContentEvent.ToggleSources ->
                     contentUseCase.toggleSources()
 
+                BookContentEvent.ToggleReferences ->
+                    stateManager.updateContent { copy(showReferences = !showReferences) }
+
                 BookContentEvent.ToggleBookDetails ->
                     appSettings.setBookDetailsPaneVisible(!appSettings.isBookDetailsPaneVisible())
 
@@ -720,9 +697,6 @@ class BookContentViewModel(
                 is BookContentEvent.SelectedTargumSourcesChanged ->
                     commentariesUseCase.updateSelectedLinkSources(event.lineId, event.selectedIds)
 
-                is BookContentEvent.SelectedSourcesChanged ->
-                    commentariesUseCase.updateSelectedSources(event.lineId, event.selectedIds)
-
                 // State
                 BookContentEvent.SaveState ->
                     stateManager.saveAllStates()
@@ -798,7 +772,7 @@ class BookContentViewModel(
                         val persisted = persistedBeforeLoad ?: persistedStore.get(tabId)?.bookContent
                         val shouldEnsureSelectionForPanes =
                             persisted?.let {
-                                it.showCommentaries || it.showTargum || it.showSources
+                                it.showCommentaries || it.showTargum || it.showSources || it.showReferences
                             } == true
                         // Restaurer la sélection multi-ligne ou simple
                         val selectedLineIds = persisted?.selectedLineIds?.takeIf { it.isNotEmpty() }
@@ -1042,12 +1016,10 @@ class BookContentViewModel(
             val primaryLineId = currentState.content.primarySelectedLineId ?: lineIds.firstOrNull() ?: line.id
             commentariesUseCase.reapplySelectedCommentatorsForLines(lineIds, primaryLineId, bookId)
             commentariesUseCase.reapplySelectedLinkSourcesForLines(lineIds, primaryLineId, bookId)
-            commentariesUseCase.reapplySelectedSourcesForLines(lineIds, primaryLineId, bookId)
         } else {
             val primaryLine = selectedLines.firstOrNull() ?: line
             commentariesUseCase.reapplySelectedCommentators(primaryLine)
             commentariesUseCase.reapplySelectedLinkSources(primaryLine)
-            commentariesUseCase.reapplySelectedSources(primaryLine)
         }
 
         if (syncAltToc) {

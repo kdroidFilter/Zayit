@@ -251,7 +251,6 @@ class BookContentStateManagerPersistenceTest {
             copy(
                 selectedCommentatorsByLine = mapOf(10L to setOf(1L, 2L)),
                 selectedLinkSourcesByLine = mapOf(10L to setOf(100L)),
-                selectedSourcesByLine = mapOf(10L to setOf(500L)),
             )
         }
 
@@ -262,7 +261,6 @@ class BookContentStateManagerPersistenceTest {
         val state = stateManager.state.value
         assertTrue(state.content.selectedCommentatorsByLine.isEmpty())
         assertTrue(state.content.selectedLinkSourcesByLine.isEmpty())
-        assertTrue(state.content.selectedSourcesByLine.isEmpty())
     }
 
     @Test

@@ -257,6 +257,7 @@ fun EndVerticalBar(
                         iconDescription = referencesLabel,
                         label = referencesLabel,
                         enabled = !referencesDisabledForLine,
+                        shortcutHint = if (PlatformInfo.isMacOS) "K+⇧+⌥+⌘" else "K+Shift+Alt+Ctrl",
                     )
                 }
 

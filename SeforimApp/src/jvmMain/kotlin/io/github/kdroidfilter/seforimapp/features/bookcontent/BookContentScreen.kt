@@ -852,8 +852,8 @@ fun BookContentScreen(
 }
 
 /**
- * Book-view shortcuts: Ctrl/Cmd+B tree (Shift: contents), Ctrl/Cmd+K commentaries (Shift: links, Alt: sources),
- * Ctrl/Cmd+J nikud.
+ * Book-view shortcuts: Ctrl/Cmd+B tree (Shift: contents), Ctrl/Cmd+K commentaries (Shift: links, Alt: sources,
+ * Alt+Shift: references), Ctrl/Cmd+J nikud.
  */
 fun handleBookShortcut(
     keyEvent: KeyEvent,
@@ -867,6 +867,7 @@ fun handleBookShortcut(
             Key.B -> if (keyEvent.isShiftPressed) BookContentEvent.ToggleToc else BookContentEvent.ToggleBookTree
             Key.K ->
                 when {
+                    keyEvent.isAltPressed && keyEvent.isShiftPressed -> BookContentEvent.ToggleReferences
                     keyEvent.isAltPressed -> BookContentEvent.ToggleSources
                     keyEvent.isShiftPressed -> BookContentEvent.ToggleTargum
                     else -> BookContentEvent.ToggleCommentaries

@@ -273,6 +273,8 @@ nucleus.application {
             TargetFormat.Zip,
             TargetFormat.Nsis,
             TargetFormat.Pacman,
+            // Microsoft Store package, built locally (packageGraalvmAppX), unsigned: the Store signs it
+            TargetFormat.AppX,
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true
@@ -317,6 +319,24 @@ nucleus.application {
                 multiLanguageInstaller = true // Default: false
                 // Languages: "en_US", "fr_FR", "de_DE", "es_ES", "ja_JP", "zh_CN", etc.
                 installerLanguages = listOf("he_IL")
+            }
+
+            // Identity from Partner Center (Store ID 9NC26MP2QMPS, Product identity), the display name one of the names
+            // reserved there (Zayit, זית)
+            appx {
+                applicationId = "Zayit"
+                identityName = "KdroidFilter.Zayit"
+                publisher = "CN=D541E802-6D30-446A-864E-2E8ABD2DAA5E"
+                publisherDisplayName = "KdroidFilter"
+                displayName = "זית"
+                languages = listOf("he-IL", "en-US")
+                backgroundColor = "transparent"
+                minVersion = "10.0.17763.0"
+                maxVersionTested = "10.0.26100.0"
+                storeLogo.set(project.file("desktopAppIcons/appx/StoreLogo.png"))
+                square44x44Logo.set(project.file("desktopAppIcons/appx/Square44x44Logo.png"))
+                square150x150Logo.set(project.file("desktopAppIcons/appx/Square150x150Logo.png"))
+                wide310x150Logo.set(project.file("desktopAppIcons/appx/Wide310x150Logo.png"))
             }
         }
         macOS {

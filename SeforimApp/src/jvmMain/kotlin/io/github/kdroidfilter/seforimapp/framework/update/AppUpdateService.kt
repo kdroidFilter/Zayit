@@ -2,6 +2,7 @@ package io.github.kdroidfilter.seforimapp.framework.update
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
+import dev.nucleusframework.core.runtime.ExecutableRuntime
 import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.nativehttp.NativeHttpClient
 import dev.nucleusframework.updater.DownloadProgress
@@ -441,11 +442,12 @@ class AppUpdateService(
                 updaterProvider = {
                     // Releases ship several assets per platform; force the auto-update format so the
                     // feed picks the silent installer (NSIS on Windows, .zip on macOS) and not the
-                    // user-facing Rust wrapper exe / .dmg. The env override still wins when set.
+                    // user-facing Rust wrapper exe / .dmg. The env override still wins when set. The Store's
+                    // package (AppX) keeps its own type: the Store updates it, Nucleus then reports no update support.
                     val resolvedExecutableType =
                         config.executableType
                             ?: when (os) {
-                                Platform.Windows -> "nsis"
+                                Platform.Windows -> if (ExecutableRuntime.isAppX()) null else "nsis"
                                 Platform.MacOS -> "zip"
                                 else -> null
                             }

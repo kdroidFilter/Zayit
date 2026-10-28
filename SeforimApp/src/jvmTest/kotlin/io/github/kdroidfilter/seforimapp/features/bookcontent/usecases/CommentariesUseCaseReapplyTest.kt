@@ -119,39 +119,6 @@ class CommentariesUseCaseReapplyTest {
         assertEquals(sources, state.content.selectedLinkSourcesByLine[lineId])
     }
 
-    // ==================== Source Selection State Tests ====================
-
-    @Test
-    fun `selectedSourcesByBook persists remembered sources`() {
-        // Given: Remembered sources for a book
-        val rememberedIds = setOf(500L, 600L)
-
-        // When: Setting remembered sources
-        stateManager.updateContent {
-            copy(selectedSourcesByBook = mapOf(testBookId to rememberedIds))
-        }
-
-        // Then: Sources are persisted
-        val state = stateManager.state.value
-        assertEquals(rememberedIds, state.content.selectedSourcesByBook[testBookId])
-    }
-
-    @Test
-    fun `selectedSourcesByLine tracks per-line sources`() {
-        // Given: Per-line source selections
-        val lineId = 10L
-        val sources = setOf(500L)
-
-        // When: Setting per-line sources
-        stateManager.updateContent {
-            copy(selectedSourcesByLine = mapOf(lineId to sources))
-        }
-
-        // Then: Per-line sources are tracked
-        val state = stateManager.state.value
-        assertEquals(sources, state.content.selectedSourcesByLine[lineId])
-    }
-
     // ==================== Intersection Logic Tests ====================
 
     @Test
@@ -202,7 +169,6 @@ class CommentariesUseCaseReapplyTest {
             copy(
                 selectedCommentatorsByLine = mapOf(10L to setOf(1L, 2L)),
                 selectedLinkSourcesByLine = mapOf(10L to setOf(100L)),
-                selectedSourcesByLine = mapOf(10L to setOf(500L)),
             )
         }
 
@@ -213,17 +179,13 @@ class CommentariesUseCaseReapplyTest {
         val state = stateManager.state.value
         assertTrue(state.content.selectedCommentatorsByLine.isEmpty())
         assertTrue(state.content.selectedLinkSourcesByLine.isEmpty())
-        assertTrue(state.content.selectedSourcesByLine.isEmpty())
     }
 
     @Test
     fun `resetForNewBook clears current selection IDs`() {
         // Given: State with current selection IDs
         stateManager.updateContent {
-            copy(
-                selectedTargumSourceIds = setOf(100L),
-                selectedSourceIds = setOf(500L),
-            )
+            copy(selectedTargumSourceIds = setOf(100L))
         }
 
         // When: Resetting for new book
@@ -232,6 +194,5 @@ class CommentariesUseCaseReapplyTest {
         // Then: Current selection IDs are cleared
         val state = stateManager.state.value
         assertTrue(state.content.selectedTargumSourceIds.isEmpty())
-        assertTrue(state.content.selectedSourceIds.isEmpty())
     }
 }

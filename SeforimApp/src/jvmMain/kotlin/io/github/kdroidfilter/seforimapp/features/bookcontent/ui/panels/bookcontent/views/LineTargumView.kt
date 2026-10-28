@@ -52,9 +52,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.jewel.foundation.theme.JewelTheme
@@ -63,10 +61,7 @@ import org.jetbrains.jewel.ui.component.Text
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.links
 import seforimapp.seforimapp.generated.resources.no_links_for_line
-import seforimapp.seforimapp.generated.resources.no_sources_for_line
 import seforimapp.seforimapp.generated.resources.select_line_for_links
-import seforimapp.seforimapp.generated.resources.select_line_for_sources
-import seforimapp.seforimapp.generated.resources.sources
 
 // Per-side vertical padding applied by `LinkItem`'s Column. Exposed so the scrollbar
 // can derive the exact per-item padding contribution as `2 × LinkItemVerticalPaddingPerSide`.
@@ -90,11 +85,6 @@ private fun SingleLineTargumView(
     onHide: () -> Unit = {},
     highlightQuery: String = "",
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
-    availabilityType: ConnectionType = ConnectionType.TARGUM,
-    fontCodeFlow: StateFlow<String> = LocalAppGraph.current.appSettings.targumFontCodeFlow,
-    titleRes: StringResource = Res.string.links,
-    selectLineRes: StringResource = Res.string.select_line_for_links,
-    emptyRes: StringResource = Res.string.no_links_for_line,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     val rawTextSize by appSettings.textSizeFlow.collectAsState()
@@ -118,7 +108,7 @@ private fun SingleLineTargumView(
     val currentOnScroll by rememberUpdatedState(onScroll)
 
     // Selected font for targumim
-    val targumFontCode by fontCodeFlow.collectAsState()
+    val targumFontCode by appSettings.targumFontCodeFlow.collectAsState()
     val targumFontFamily = FontCatalog.familyFor(targumFontCode)
     val boldScaleForPlatform = FontCatalog.boldScaleFor(targumFontCode)
 
@@ -131,7 +121,7 @@ private fun SingleLineTargumView(
                 .hoverable(paneInteractionSource),
     ) {
         PaneHeader(
-            label = stringResource(titleRes),
+            label = stringResource(Res.string.links),
             interactionSource = paneInteractionSource,
             onHide = onHide,
         )
@@ -140,19 +130,14 @@ private fun SingleLineTargumView(
             when (selectedLine) {
                 null -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(text = stringResource(selectLineRes))
+                        Text(text = stringResource(Res.string.select_line_for_links))
                     }
                 }
 
                 else -> {
                     val cachedSources =
-                        remember(selectedLine.id, lineConnections, availabilityType) {
-                            lineConnections[selectedLine.id]?.let { snapshot ->
-                                when (availabilityType) {
-                                    ConnectionType.SOURCE -> snapshot.sources
-                                    else -> snapshot.targumSources
-                                }
-                            }
+                        remember(selectedLine.id, lineConnections) {
+                            lineConnections[selectedLine.id]?.targumSources
                         }
 
                     var titleToIdMap by remember(selectedLine.id, cachedSources) {
@@ -160,13 +145,7 @@ private fun SingleLineTargumView(
                     }
 
                     LaunchedEffect(selectedLine.id, lineConnections) {
-                        val cached =
-                            lineConnections[selectedLine.id]?.let { snapshot ->
-                                when (availabilityType) {
-                                    ConnectionType.SOURCE -> snapshot.sources
-                                    else -> snapshot.targumSources
-                                }
-                            }
+                        val cached = lineConnections[selectedLine.id]?.targumSources
                         if (cached != null) {
                             titleToIdMap = cached
                             return@LaunchedEffect
@@ -179,7 +158,7 @@ private fun SingleLineTargumView(
 
                     if (titleToIdMap.isEmpty()) {
                         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(text = stringResource(emptyRes))
+                            Text(text = stringResource(Res.string.no_links_for_line))
                         }
                     } else {
                         // Preserve insertion order from the provider — the SQL
@@ -219,7 +198,7 @@ private fun SingleLineTargumView(
                                 )
                             }
                         val annotationCache =
-                            remember(selectedLine.id, availabilityType) {
+                            remember(selectedLine.id) {
                                 StableAnnotatedCache()
                             }
 
@@ -252,7 +231,6 @@ private fun SingleLineTargumView(
                             initialValue = emptyList<Int>(),
                             selectedLine.id,
                             sectionBookIds,
-                            availabilityType,
                         ) {
                             value =
                                 runSuspendCatching {
@@ -263,7 +241,7 @@ private fun SingleLineTargumView(
                                                     getLinkCharCountsRef(
                                                         selectedLine.id,
                                                         bookId,
-                                                        availabilityType,
+                                                        ConnectionType.TARGUM,
                                                     )
                                                 }
                                             }.awaitAll()
@@ -392,39 +370,24 @@ fun LineTargumView(
     onEvent: (BookContentEvent) -> Unit,
     diacritics: DiacriticsMode,
     lineConnections: Map<Long, LineConnectionsSnapshot> = emptyMap(),
-    availabilityType: ConnectionType = ConnectionType.TARGUM,
 ) {
     val appSettings = LocalAppGraph.current.appSettings
     val providers = uiState.providers ?: return
     val contentState = uiState.content
     val selectedLineIds = contentState.selectedLineIds.toList()
-    // Multi-sélection manuelle (Ctrl+click) = afficher targum/sources de toutes les lignes
-    // TOC entry selection = afficher targum/sources seulement de la ligne primaire
+    // Manual multi-selection (Ctrl+click) shows the targum of every selected line;
+    // a TOC entry selection shows only the primary line's targum
     val isManualMultiSelection = selectedLineIds.size > 1 && !contentState.isTocEntrySelection
     val windowInfo = LocalWindowInfo.current
     val findQuery by appSettings.findQueryFlow(uiState.tabId).collectAsState("")
     val showFind by appSettings.findBarOpenFlow(uiState.tabId).collectAsState()
     val activeQuery = if (showFind) findQuery else ""
 
-    // Sélectionner les bons providers et callbacks selon le type
-    val isSourceType = availabilityType == ConnectionType.SOURCE
-
-    val buildPagerFor =
-        if (isSourceType) providers.buildSourcesPagerFor else providers.buildLinksPagerFor
-    val getAvailableForLine =
-        if (isSourceType) providers.getAvailableSourcesForLine else providers.getAvailableLinksForLine
-    val initiallySelectedIds =
-        if (isSourceType) contentState.selectedSourceIds else contentState.selectedTargumSourceIds
-
     val onSelectedSourcesChange =
-        remember(contentState.primaryLine, isSourceType) {
+        remember(contentState.primaryLine) {
             { ids: Set<Long> ->
                 contentState.primaryLine?.let { line ->
-                    if (isSourceType) {
-                        onEvent(BookContentEvent.SelectedSourcesChanged(line.id, ids))
-                    } else {
-                        onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
-                    }
+                    onEvent(BookContentEvent.SelectedTargumSourcesChanged(line.id, ids))
                 }
                 Unit
             }
@@ -452,23 +415,7 @@ fun LineTargumView(
             }
         }
 
-    val onHide =
-        remember(isSourceType) {
-            {
-                if (isSourceType) {
-                    onEvent(BookContentEvent.ToggleSources)
-                } else {
-                    onEvent(BookContentEvent.ToggleTargum)
-                }
-            }
-        }
-
-    // Titres et messages selon le type
-    val titleRes = if (isSourceType) Res.string.sources else Res.string.links
-    val selectLineRes =
-        if (isSourceType) Res.string.select_line_for_sources else Res.string.select_line_for_links
-    val emptyRes = if (isSourceType) Res.string.no_sources_for_line else Res.string.no_links_for_line
-    val fontCodeFlow = if (isSourceType) appSettings.sourceFontCodeFlow else appSettings.targumFontCodeFlow
+    val onHide = remember { { onEvent(BookContentEvent.ToggleTargum) } }
 
     if (isManualMultiSelection) {
         MultiLineTargumView(
@@ -476,19 +423,18 @@ fun LineTargumView(
             uiState = uiState,
             onEvent = onEvent,
             diacritics = diacritics,
-            availabilityType = availabilityType,
             highlightQuery = activeQuery,
             onHide = onHide,
         )
     } else {
         SingleLineTargumView(
             selectedLine = contentState.primaryLine,
-            buildLinksPagerFor = buildPagerFor,
-            getAvailableLinksForLine = getAvailableForLine,
+            buildLinksPagerFor = providers.buildLinksPagerFor,
+            getAvailableLinksForLine = providers.getAvailableLinksForLine,
             getLinkCharCountsForLine = providers.getLinkCharCountsForLine,
             commentariesScrollIndex = contentState.commentariesScrollIndex,
             commentariesScrollOffset = contentState.commentariesScrollOffset,
-            initiallySelectedSourceIds = initiallySelectedIds,
+            initiallySelectedSourceIds = contentState.selectedTargumSourceIds,
             onSelectedSourcesChange = onSelectedSourcesChange,
             onLinkClick = onLinkClick,
             onOpenBook = onEvent,
@@ -496,11 +442,6 @@ fun LineTargumView(
             onHide = onHide,
             highlightQuery = activeQuery,
             lineConnections = lineConnections,
-            availabilityType = availabilityType,
-            fontCodeFlow = fontCodeFlow,
-            titleRes = titleRes,
-            selectLineRes = selectLineRes,
-            emptyRes = emptyRes,
             diacritics = diacritics,
         )
     }
@@ -516,7 +457,6 @@ private fun MultiLineTargumView(
     uiState: BookContentState,
     onEvent: (BookContentEvent) -> Unit,
     diacritics: DiacriticsMode,
-    availabilityType: ConnectionType,
     highlightQuery: String,
     onHide: () -> Unit,
 ) {
@@ -550,24 +490,9 @@ private fun MultiLineTargumView(
     val paneInteractionSource = remember { MutableInteractionSource() }
 
     // Use multi-line provider to get aggregated available links
-    val titleToIdMap by produceState<Map<String, Long>>(emptyMap(), selectedLineIds, availabilityType) {
-        value =
-            when (availabilityType) {
-                ConnectionType.SOURCE -> providers.getAvailableSourcesForLines(selectedLineIds)
-                else -> providers.getAvailableLinksForLines(selectedLineIds)
-            }
+    val titleToIdMap by produceState<Map<String, Long>>(emptyMap(), selectedLineIds) {
+        value = providers.getAvailableLinksForLines(selectedLineIds)
     }
-
-    val titleRes =
-        when (availabilityType) {
-            ConnectionType.SOURCE -> Res.string.sources
-            else -> Res.string.links
-        }
-    val emptyRes =
-        when (availabilityType) {
-            ConnectionType.SOURCE -> Res.string.no_sources_for_line
-            else -> Res.string.no_links_for_line
-        }
 
     Column(
         modifier =
@@ -576,7 +501,7 @@ private fun MultiLineTargumView(
                 .hoverable(paneInteractionSource),
     ) {
         PaneHeader(
-            label = stringResource(titleRes),
+            label = stringResource(Res.string.links),
             interactionSource = paneInteractionSource,
             onHide = onHide,
         )
@@ -584,7 +509,7 @@ private fun MultiLineTargumView(
         Column(modifier = Modifier.padding(horizontal = 8.dp)) {
             if (titleToIdMap.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(text = stringResource(emptyRes))
+                    Text(text = stringResource(Res.string.no_links_for_line))
                 }
             } else {
                 // Preserve insertion order from the provider — the underlying
@@ -601,14 +526,8 @@ private fun MultiLineTargumView(
                 val sourceSections =
                     availableSources.mapNotNull { meta ->
                         val pagerFlow =
-                            remember(selectedLineIds, meta.bookId, availabilityType) {
-                                when (availabilityType) {
-                                    ConnectionType.SOURCE ->
-                                        providers.buildSourcesPagerForLines(selectedLineIds, meta.bookId)
-
-                                    else ->
-                                        providers.buildLinksPagerForLines(selectedLineIds, meta.bookId)
-                                }.distinctUntilChanged()
+                            remember(selectedLineIds, meta.bookId) {
+                                providers.buildLinksPagerForLines(selectedLineIds, meta.bookId).distinctUntilChanged()
                             }
                         val lazyPagingItems = pagerFlow.collectAsLazyPagingItems()
                         SourceSection(
@@ -618,7 +537,7 @@ private fun MultiLineTargumView(
                         )
                     }
                 val annotationCache =
-                    remember(selectedLineIds, availabilityType) {
+                    remember(selectedLineIds) {
                         StableAnnotatedCache()
                     }
 
@@ -648,7 +567,6 @@ private fun MultiLineTargumView(
                     initialValue = emptyList<Int>(),
                     selectedLineIds,
                     sectionBookIds,
-                    availabilityType,
                 ) {
                     value =
                         runSuspendCatching {
@@ -659,7 +577,7 @@ private fun MultiLineTargumView(
                                             getLinkCharCountsRef(
                                                 selectedLineIds,
                                                 bookId,
-                                                availabilityType,
+                                                ConnectionType.TARGUM,
                                             )
                                         }
                                     }.awaitAll()

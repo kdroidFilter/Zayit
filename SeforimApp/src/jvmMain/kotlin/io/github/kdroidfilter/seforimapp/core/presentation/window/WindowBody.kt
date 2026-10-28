@@ -36,6 +36,7 @@ import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcont
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.LocalBookTextReady
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.isBookTextShown
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.DockedPaneCard
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.LineLayeredSides
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.LineSideOrder
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.NavigationLayeredSides
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panes.PaneCard
@@ -107,6 +108,7 @@ fun WindowBody(openWindow: OpenWindow) {
                     workspace = lineWorkspace,
                     modifier = Modifier.weight(1f).fillMaxWidth().onSizeChanged { innerSize = it },
                     sideOrder = LineSideOrder,
+                    layeredSides = LineLayeredSides,
                     splitter = { ReaderSplitter() },
                     panel = { panel -> DockedPaneCard(bottomOpen) { panel() } },
                 ) {

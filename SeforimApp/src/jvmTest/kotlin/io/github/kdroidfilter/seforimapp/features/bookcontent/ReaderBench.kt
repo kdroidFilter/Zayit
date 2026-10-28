@@ -196,7 +196,6 @@ private suspend fun postSelect(
             .firstOrNull() ?: line
     comm.reapplySelectedCommentators(primary)
     comm.reapplySelectedLinkSources(primary)
-    comm.reapplySelectedSources(primary)
 }
 
 private suspend fun refresh(src: LinesPagingSource): List<Line> =

@@ -154,6 +154,9 @@ sealed interface BookContentEvent {
 
     data object ToggleSources : BookContentEvent
 
+    /** Shows or hides the pane of the places that refer to the selected line (its REFERENCE links). */
+    data object ToggleReferences : BookContentEvent
+
     /** Shows or hides the book-details pane (in every tab: one setting). */
     data object ToggleBookDetails : BookContentEvent
 
@@ -226,11 +229,6 @@ sealed interface BookContentEvent {
 
     // Targum events
     data class SelectedTargumSourcesChanged(
-        val lineId: Long,
-        val selectedIds: Set<Long>,
-    ) : BookContentEvent
-
-    data class SelectedSourcesChanged(
         val lineId: Long,
         val selectedIds: Set<Long>,
     ) : BookContentEvent

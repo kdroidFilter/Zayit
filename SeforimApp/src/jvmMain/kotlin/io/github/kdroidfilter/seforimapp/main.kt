@@ -190,6 +190,9 @@ fun main(args: Array<String>) {
     // when nothing is in flight; never throws (failures are logged).
 //    DbDeltaRecoveryBootstrap.runOnce()
 
+    // Probes the GPU (and RAM) before the Home asks whether it can show its 3D widgets
+    PlatformInfo.warmUp()
+
     val appId = "io.github.kdroidfilter.seforimapp"
 
     // Before any window: ties the taskbar button (and the icon pinned from it) to the AUMID the

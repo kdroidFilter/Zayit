@@ -188,7 +188,6 @@ fun EndVerticalBar(
             val sourcesEnabled = selectedBook?.hasSourceConnection == true
             // Ein mishpat and masoret hashas have no flag of their own: OTHER covers the books that have them
             val referencesEnabled = selectedBook?.hasReferenceConnection == true || selectedBook?.hasOtherConnection == true
-            val linksEnabled = (selectedBook?.hasReferenceConnection == true) || (selectedBook?.hasOtherConnection == true)
 
             // Hide both buttons on Home (no book selected)
             if (!noBookSelected) {
@@ -288,20 +287,6 @@ fun EndVerticalBar(
                     )
                 }
             }
-            // Show Links button (UI-only for now)
-//            SelectableIconButtonWithToolip(
-//                toolTipText = when {
-//                    noBookSelected -> stringResource(Res.string.please_select_a_book)
-//                    linksEnabled -> stringResource(Res.string.show_links_tooltip)
-//                    else -> stringResource(Res.string.links_not_available_in_book)
-//                },
-//                onClick = { },
-//                isSelected = false,
-//                icon = Library_books,
-//                iconDescription = stringResource(Res.string.show_links),
-//                label = stringResource(Res.string.show_links),
-//                enabled = linksEnabled
-//            )
         },
     )
 }

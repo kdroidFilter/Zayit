@@ -259,8 +259,6 @@
     <string name="write_note">כתוב הערה</string>
     <string name="show_targumim_tooltip">הצג תרגומים</string>
     <string name="show_targumim">תרגומים</string>
-    <string name="show_links_tooltip">הצג קישורים על שורה זאת</string>
-    <string name="show_links">קישורים</string>
 
     <!-- Book Content Screen - Main Content -->
     <string name="search_placeholder">חפש</string>
@@ -297,7 +295,6 @@
     <string name="not_available_in_book">לא זמין בספר זה</string>
     <string name="targum_not_available_in_book">אין תרגומים זמינים בספר זה</string>
     <string name="commentaries_not_available_in_book">אין מפרשים זמינים בספר זה</string>
-    <string name="links_not_available_in_book">אין קישורים זמינים בספר זה</string>
     <string name="please_select_a_book">אנא בחר ספר</string>
 
     <!-- Home Page View -->

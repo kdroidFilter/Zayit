@@ -19,7 +19,6 @@ import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.pinnedTabLabel
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
-import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.MarkedRange
@@ -539,12 +538,9 @@ class BookContentViewModel(
                 }
 
                 is BookContentEvent.PassageSelected -> {
-                    if (stateManager.state.value.content
-                            .needsLineSelectionFor(event.line.id)
-                    ) {
-                        selectLine(event.line)
-                    }
-                    stateManager.updateContent { copy(selectedPassage = SelectedPassage(event.line.id, event.keys)) }
+                    val content = stateManager.state.value.content
+                    if (content.needsLineSelectionFor(event.line.id)) selectLine(event.line)
+                    stateManager.updateContent { copy(selectedPassage = event.passage) }
                 }
 
                 is BookContentEvent.LoadAndSelectLine ->

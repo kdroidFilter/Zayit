@@ -44,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
-import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -60,9 +59,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotat
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentKey
 import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
-import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.commentKeyOf
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
@@ -689,21 +686,21 @@ private fun CommentariesPagedList(
             highlightsByBook.mapValues { (_, lines) -> lines.groupBy { it.lineId } }
         }
 
-    // The passage selected in the text: its commentaries stay, the others fade, and the column brings the first in view
+    // The passage selected in the text: the commentary lines it leads to stay, the others fade, and the column brings
+    // the first in view once. Nothing fades when none of its commentary books is open here.
     val singleLineId = (selection as? LineSelection.Single)?.lineId
-    val selectedKeys = config.selectedPassage?.takeIf { it.lineId == singleLineId }?.keys
-    val commentKeys = rememberCommentKeys(selectedKeys?.let { singleLineId }, lazyPagingItems)
-    // Nothing fades when no open commentator explains the passage (its commentator closed since, for one)
-    val passageHasCommentaries = selectedKeys != null && selectedKeys.any { it.bookTitle in config.selectedCommentators }
-    // Once per selection: the column brings the passage's first commentary in view as soon as its key is read, then
-    // leaves the scroll to the reader (pages loaded later must not pull it back)
-    val currentCommentKeys by rememberUpdatedState(commentKeys)
-    LaunchedEffect(selectedKeys) {
-        val keys = selectedKeys ?: return@LaunchedEffect
+    val passage = config.selectedPassage?.takeIf { it.lineId == singleLineId }
+    val openBooks =
+        remember(
+            config.selectedCommentators,
+            config.titleToIdMap,
+        ) { config.selectedCommentators.mapNotNull { config.titleToIdMap[it] }.toSet() }
+    val passageHasCommentaries = passage != null && passage.targetBookIds.any { it in openBooks }
+    LaunchedEffect(passage) {
+        val targets = passage?.targetLineIds ?: return@LaunchedEffect
         val first =
-            snapshotFlow {
-                lazyPagingItems.itemSnapshotList.items.indexOfFirst { currentCommentKeys[it.link.targetLineId] in keys }
-            }.first { it >= 0 }
+            snapshotFlow { lazyPagingItems.itemSnapshotList.items.indexOfFirst { it.link.targetLineId in targets } }
+                .first { it >= 0 }
         if (listState.layoutInfo.visibleItemsInfo.none { it.index == first }) listState.animateScrollToItem(first)
     }
 
@@ -808,9 +805,7 @@ private fun CommentariesPagedList(
                         val lineHighlights =
                             highlightsByBookLine[commentary.link.targetBookId]
                                 ?.get(commentary.link.targetLineId) ?: emptyList()
-                        // A commentary whose key is not read yet, or has none, never fades
-                        val key = commentKeys[commentary.link.targetLineId]
-                        val isOutsidePassage = passageHasCommentaries && key != null && key !in selectedKeys.orEmpty()
+                        val isOutsidePassage = passageHasCommentaries && commentary.link.targetLineId !in passage.targetLineIds
                         CommentaryItem(
                             modifier = if (isOutsidePassage) Modifier.alpha(OUTSIDE_PASSAGE_ALPHA) else Modifier,
                             linkId = commentary.link.id,
@@ -865,51 +860,6 @@ private fun CommentariesPagedList(
 }
 
 private const val OUTSIDE_PASSAGE_ALPHA = 0.35f
-
-/** The keys read for the commentaries of [lineId]: [readIds] are the commentary lines already looked at, keyed or not. */
-private data class CommentKeysRead(
-    val lineId: Long,
-    val baseHeRef: String?,
-    val keys: Map<Long, CommentKey>,
-    val readIds: Set<Long>,
-)
-
-/**
- * The key of each loaded commentary of [lineId] (by its line id), read from its reference against the line's; empty
- * while no passage of [lineId] is selected, so a pane nobody points to costs nothing. Each new page reads only its own
- * commentaries.
- */
-@Composable
-private fun rememberCommentKeys(
-    lineId: Long?,
-    lazyPagingItems: LazyPagingItems<CommentaryWithText>,
-): Map<Long, CommentKey> {
-    val repository = LocalAppGraph.current.repository
-    val loaded = lazyPagingItems.itemSnapshotList.items
-    // Tied to the line it was read for: produceState keeps its value across keys, and another line's keys would match
-    // nothing here
-    val read by produceState<CommentKeysRead?>(null, lineId, loaded.size) {
-        if (lineId == null) return@produceState
-        val previous = value?.takeIf { it.lineId == lineId }
-        val missing = lazyPagingItems.itemSnapshotList.items.filter { it.link.targetLineId !in previous?.readIds.orEmpty() }
-        if (missing.isEmpty() && previous != null) return@produceState
-        val ids = missing.map { it.link.targetLineId } + if (previous == null) listOf(lineId) else emptyList()
-        val lines = runSuspendCatching { repository.getLinesByIds(ids) }.getOrNull()?.associateBy { it.id } ?: return@produceState
-        val baseHeRef = previous?.baseHeRef ?: lines[lineId]?.heRef
-        val keys =
-            missing.mapNotNull { item ->
-                commentKeyOf(baseHeRef, lines[item.link.targetLineId]?.heRef, item.targetBookTitle)?.let { item.link.targetLineId to it }
-            }
-        value =
-            CommentKeysRead(
-                lineId = lineId,
-                baseHeRef = baseHeRef,
-                keys = previous?.keys.orEmpty() + keys,
-                readIds = previous?.readIds.orEmpty() + missing.map { it.link.targetLineId },
-            )
-    }
-    return read?.takeIf { it.lineId == lineId }?.keys.orEmpty()
-}
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable

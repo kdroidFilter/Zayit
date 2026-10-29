@@ -47,6 +47,35 @@ data class ParsedHtmlElement(
 private val WHITESPACE_REGEX = Regex("\\s+")
 
 /**
+ * An anchor's number: the whole part of its `data-order` (`2` of `2.1`), else its `data-label`, written in digits or
+ * as a Hebrew numeral (`יב`). Shared by the parser and the offline resolution of the anchors, which must agree.
+ */
+fun anchorOrder(
+    order: String?,
+    label: String?,
+): Int? {
+    order?.let { value ->
+        val digits = value.takeWhile { it in '0'..'9' }
+        if (digits.isNotEmpty()) return digits.toIntOrNull()
+    }
+    val value = label?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+    if (value.all { it in '0'..'9' }) return value.toIntOrNull()
+    var sum = 0
+    for (c in value) sum += HEBREW_NUMERAL_VALUES[c] ?: 0
+    return sum.takeIf { it > 0 }
+}
+
+private val HEBREW_NUMERAL_VALUES =
+    "אבגדהוזחטיכלמנסעפצקרשת".withIndex().associate { (i, c) ->
+        c to
+            when {
+                i < 10 -> i + 1
+                i < 19 -> (i - 8) * 10
+                else -> (i - 17) * 100
+            }
+    } + mapOf('ך' to 20, 'ם' to 40, 'ן' to 50, 'ף' to 80, 'ץ' to 90)
+
+/**
  * The elements parsed so far, and the anchors met since the last text, waiting for the text they stand before. Only
  * the anchors of [anchorCommentators] are kept: the others cost no more than skipping their empty tag.
  */
@@ -131,9 +160,11 @@ class HtmlParser {
                 if (tag == "i" && node.hasAttr("data-commentator")) {
                     val commentator = node.attr("data-commentator")
                     if (commentator in list.anchorCommentators) {
-                        orderOf(node.attr("data-order"))?.let { list.pendingAnchors += CommentAnchor(commentator, it) }
+                        val order = anchorOrder(node.attr("data-order").ifEmpty { null }, node.attr("data-label").ifEmpty { null })
+                        order?.let { list.pendingAnchors += CommentAnchor(commentator, it) }
                     }
-                    return
+                    // An anchor is empty; the rare one holding a note keeps it shown
+                    if (node.childNodes().none { it !is TextNode || !it.isBlank }) return
                 }
 
                 // Detect footnote marker: <sup class="footnote-marker">
@@ -325,18 +356,6 @@ class HtmlParser {
         val payload = src.substring(comma + 1)
         val bytes = runCatching { Base64.decode(payload) }.getOrNull() ?: return null
         return mime to bytes
-    }
-
-    // The `2` of `data-order="2.1"`, read without allocating
-    private fun orderOf(value: String): Int? {
-        var order = 0
-        var digits = 0
-        for (c in value) {
-            if (c !in '0'..'9') break
-            order = order * 10 + (c - '0')
-            digits++
-        }
-        return order.takeIf { digits > 0 }
     }
 
     // Adds a line break element only if necessary

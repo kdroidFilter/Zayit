@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent
 
-import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentKey
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 
 /**
@@ -123,7 +123,7 @@ sealed interface BookContentEvent {
     /** A plain click on a passage of [line]: selects the line and the passage. A click outside any passage lets it go. */
     data class PassageSelected(
         val line: Line,
-        val keys: Set<CommentKey>,
+        val passage: SelectedPassage,
     ) : BookContentEvent
 
     data class LoadAndSelectLine(

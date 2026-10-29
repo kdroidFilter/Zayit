@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.*
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -62,6 +63,7 @@ import androidx.compose.ui.zIndex
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
+import io.github.kdroidfilter.seforim.htmlparser.CommentAnchor
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
@@ -85,11 +87,14 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.noteDisplayRange
 import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
-import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentKey
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.AnchorTarget
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentAnchorIndex
 import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentSegment
 import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.at
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.commentAnchorIndex
 import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.commentSegments
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.passageOf
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookFindMatches
@@ -655,6 +660,11 @@ fun BookContentView(
 
     // Backed by a ConcurrentHashMap: the prefetcher writes from EfficiencyCoreDispatcher while
     // LineItem reads during composition on the main thread.
+    // Where this book's commentary anchors lead, read off the main thread once per book
+    val anchorIndex by produceState(CommentAnchorIndex.EMPTY, bookId) {
+        value = withContext(Dispatchers.IO) { commentAnchorIndex(bookId) }
+    }
+
     val stableAnnotatedCache =
         remember(bookId, textSize, boldScaleForPlatform, diacritics) {
             StableAnnotatedCache()
@@ -706,6 +716,7 @@ fun BookContentView(
                                 boldScale = boldScaleForPlatform,
                                 footnoteMarkerColor = footnoteMarkerColor,
                                 invertImages = isDarkTheme,
+                                anchorCommentators = anchorIndex.commentators,
                             )
                         if (stableAnnotatedCache.get(key) != null) continue
                         stableAnnotatedCache.put(
@@ -716,6 +727,7 @@ fun BookContentView(
                                 boldScale = boldScaleForPlatform,
                                 footnoteMarkerColor = footnoteMarkerColor,
                                 imageContentBuilder = prefetchImageBuilder,
+                                anchorCommentators = anchorIndex.commentators,
                             ),
                         )
                     }
@@ -1054,25 +1066,18 @@ fun BookContentView(
                                         userNotes = lineNotes,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
-                                        selectedPassageKeys = selectedPassage?.takeIf { it.lineId == line.id }?.keys,
-                                        passageCommentators =
-                                            remember(
-                                                lineConnections[line.id],
-                                                passageCommentatorIds,
-                                                primaryLineCommentatorIds,
-                                                primarySelectedLineId,
+                                        selectedAnchors = selectedPassage?.takeIf { it.lineId == line.id }?.anchors,
+                                        anchorTargets = anchorIndex.of(line.id),
+                                        anchorCommentators = anchorIndex.commentators,
+                                        passageBooks =
+                                            if (line.id ==
+                                                primarySelectedLineId
                                             ) {
-                                                val ids =
-                                                    if (line.id ==
-                                                        primarySelectedLineId
-                                                    ) {
-                                                        primaryLineCommentatorIds
-                                                    } else {
-                                                        passageCommentatorIds
-                                                    }
-                                                lineConnections[line.id].commentatorTitles(ids)
+                                                primaryLineCommentatorIds
+                                            } else {
+                                                passageCommentatorIds
                                             },
-                                        onPassageClick = { keys -> onEvent(BookContentEvent.PassageSelected(line, keys)) },
+                                        onPassageClick = { passage -> onEvent(BookContentEvent.PassageSelected(line, passage)) },
                                         onHover = { onLineHover(line.id) },
                                         isSelected = isCurrentSelected,
                                         isPrimary = useThickBar,
@@ -1441,10 +1446,13 @@ private fun LineItem(
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
     // The passage of this line selected, by the commentaries it opens; a plain click on a passage reports it instead of [onClick]
-    selectedPassageKeys: Set<CommentKey>? = null,
-    // Titles of the open commentators: only their passages answer the pointer
-    passageCommentators: Set<String> = emptySet(),
-    onPassageClick: (Set<CommentKey>) -> Unit = {},
+    selectedAnchors: Set<CommentAnchor>? = null,
+    // Where this line's anchors lead (resolved offline), and the commentators the parser keeps them for
+    anchorTargets: Map<CommentAnchor, AnchorTarget> = emptyMap(),
+    anchorCommentators: Set<String> = emptySet(),
+    // The commentary books open in the pane: only the passages leading there answer the pointer
+    passageBooks: Set<Long> = emptySet(),
+    onPassageClick: (SelectedPassage) -> Unit = {},
     onHover: () -> Unit = {},
     isSelected: Boolean = false,
     isPrimary: Boolean = false,
@@ -1497,13 +1505,13 @@ private fun LineItem(
                 val up = waitForUpOrCancellation()
                 if (up != null && !up.isConsumed) {
                     // One click, one event: the passage it lands on, else the line. Shift extends the text selection.
-                    val keys =
+                    val passage =
                         if (isModifier || downEvent.keyboardModifiers.isShiftPressed) {
                             null
                         } else {
-                            passageHit.keysAt(downEvent.changes.first().position, up.position, viewConfiguration.touchSlop)
+                            passageHit.passageAt(downEvent.changes.first().position, up.position, viewConfiguration.touchSlop)
                         }
-                    if (keys != null) currentOnPassageClick(keys) else onClick(isModifier)
+                    if (passage != null) currentOnPassageClick(passage) else onClick(isModifier)
                 }
             }
         }.onPointerEvent(PointerEventType.Enter) { onHover() }
@@ -1516,7 +1524,7 @@ private fun LineItem(
     val localAnnotatedCache = remember { StableAnnotatedCache() }
     val annotationCache = annotatedCache ?: localAnnotatedCache
     val annotationCacheKey =
-        remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
+        remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme, anchorCommentators) {
             htmlAnnotationCacheKey(
                 lineId = lineId,
                 processedContent = processedContent,
@@ -1524,6 +1532,7 @@ private fun LineItem(
                 boldScale = boldScale,
                 footnoteMarkerColor = footnoteMarkerColor,
                 invertImages = isDarkTheme,
+                anchorCommentators = anchorCommentators,
             )
         }
 
@@ -1536,6 +1545,7 @@ private fun LineItem(
             footnoteMarkerColor = footnoteMarkerColor,
             imageColorFilter = imageColorFilter,
             annotatedCache = annotationCache,
+            anchorCommentators = anchorCommentators,
         )
 
     if (E2e.enabled) SideEffect { E2eReader.lineDrawn(lineId, ready = lineAnnotation != null) }
@@ -1565,12 +1575,12 @@ private fun LineItem(
     // A solid line of the primary accent, unlike the notes' dotted one.
     val allSegments = remember(annotated) { annotated.commentSegments() }
     val segments =
-        remember(allSegments, passageCommentators) {
-            allSegments.filter { segment -> segment.keys.any { it.bookTitle in passageCommentators } }
+        remember(allSegments, anchorTargets, passageBooks) {
+            allSegments.filter { passageOf(lineId, it, anchorTargets, passageBooks) != null }
         }
     var hover by remember(lineId) { mutableStateOf<LineHover?>(null) }
     // The selected one stays drawn even if its line's commentators, once it is the primary, no longer answer the pointer
-    val selectedPassage = selectedPassageKeys?.let { keys -> allSegments.firstOrNull { it.keys == keys } }
+    val selectedPassage = selectedAnchors?.let { anchors -> allSegments.firstOrNull { it.anchors == anchors } }
     val underlineColor = JewelTheme.globalColors.outlines.focused
     val trays = remember(lineId) { PassageTrays() }
 
@@ -1648,6 +1658,7 @@ private fun LineItem(
     var noteLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
     SideEffect {
         passageHit.segments = segments
+        passageHit.passageOf = { passageOf(lineId, it, anchorTargets, passageBooks) }
         passageHit.layout = { noteLayout }
     }
 
@@ -1710,18 +1721,11 @@ private fun LineItem(
     )
 }
 
-// Titles of the commentators [ids] among a line's
-private fun LineConnectionsSnapshot?.commentatorTitles(ids: Set<Long>): Set<String> =
-    if (this == null || ids.isEmpty()) {
-        emptySet()
-    } else {
-        commentatorGroups.flatMap { it.commentators }.filter { it.bookId in ids }.mapTo(mutableSetOf()) { it.name }
-    }
-
 /** Where a point of a line's text falls among its passages: set by the line once its text is laid out. */
 private class PassageHit {
     var segments: List<CommentSegment> = emptyList()
     var layout: () -> TextLayoutResult? = { null }
+    var passageOf: (CommentSegment) -> SelectedPassage? = { null }
 
     fun at(position: Offset): CommentSegment? {
         val result = layout() ?: return null
@@ -1730,12 +1734,12 @@ private class PassageHit {
         return segments.at(result.getOffsetForPosition(position))
     }
 
-    // A click, not a drag (beyond [slop]), on a passage: its commentaries
-    fun keysAt(
+    // A click, not a drag (beyond [slop]), on a passage: the passage with the commentary lines it leads to
+    fun passageAt(
         down: Offset,
         up: Offset,
         slop: Float,
-    ): Set<CommentKey>? = if ((up - down).getDistance() > slop) null else at(up)?.keys
+    ): SelectedPassage? = if ((up - down).getDistance() > slop) null else at(up)?.let(passageOf)
 }
 
 /** The pointer on a line, and the passage under it if any. */

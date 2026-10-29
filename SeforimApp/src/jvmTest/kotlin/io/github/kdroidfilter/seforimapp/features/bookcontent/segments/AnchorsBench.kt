@@ -42,8 +42,8 @@ class AnchorsBench {
                 val stripped = raw.map { it.replace(anchor, "") }
                 val anchored = raw.count { it.contains("data-commentator") }
                 log("== $title: ${lines.size} lines, $anchored with anchors, ${raw.sumOf { it.length } / lines.size} chars avg")
-                val parseRaw = perLine(raw) { buildAnnotatedFromHtml(it, 20f, anchorCommentators = ANCHORED_COMMENTATORS) }
-                val parseStripped = perLine(stripped) { buildAnnotatedFromHtml(it, 20f, anchorCommentators = ANCHORED_COMMENTATORS) }
+                val parseRaw = perLine(raw) { buildAnnotatedFromHtml(it, 20f, anchorCommentators = TUR_COMMENTATORS) }
+                val parseStripped = perLine(stripped) { buildAnnotatedFromHtml(it, 20f, anchorCommentators = TUR_COMMENTATORS) }
                 log(
                     "parse   with anchors %.1f us/line, without %.1f us/line (+%.1f us, %+.0f%%)".format(
                         parseRaw,
@@ -81,7 +81,7 @@ class AnchorsBench {
                         parserStripped,
                     ),
                 )
-                val annotated = raw.map { buildAnnotatedFromHtml(it, 20f, anchorCommentators = ANCHORED_COMMENTATORS) }
+                val annotated = raw.map { buildAnnotatedFromHtml(it, 20f, anchorCommentators = TUR_COMMENTATORS) }
                 val segs = perLine(annotated) { it.commentSegments() }
                 log("commentSegments %.2f us/line".format(segs))
 
@@ -114,28 +114,25 @@ class AnchorsBench {
                     ),
                 )
 
-                // Commentaries' keys of one line (the pane's query + mapping), on the first anchored lines
-                val withLinks = lines.filter { it.content.contains("data-commentator") }.take(50)
-                var queried = 0
+                // Where this book's anchors lead: the bundled index, read once per book
                 val t = System.nanoTime()
-                for (line in withLinks) {
-                    val links = repository.getCommentariesForLines(listOf(line.id)).take(60)
-                    val targets = repository.getLinesByIds(links.map { it.link.targetLineId } + line.id).associateBy { it.id }
-                    links.forEach { commentKeyOf(line.heRef, targets[it.link.targetLineId]?.heRef, it.targetBookTitle) }
-                    queried += links.size
-                }
-                log(
-                    "keys: %.2f ms/line (%d commentaries avg)".format(
-                        (System.nanoTime() - t) / 1e6 / withLinks.size,
-                        queried / withLinks.size,
-                    ),
-                )
+                val index = commentAnchorIndex(bookId)
+                log("anchor index: %.1f ms to read, %d commentators".format((System.nanoTime() - t) / 1e6, index.commentators.size))
             }
 
             // The invariant on every state write while a passage is selected
             val line = repository.getLines(380L, 25, 26).first()
             val section = repository.getLines(380L, 0, 128).toSet()
-            val passage = SelectedPassage(line.id, setOf(CommentKey("פרישה", 2)))
+            val passage =
+                SelectedPassage(
+                    line.id,
+                    setOf(
+                        io.github.kdroidfilter.seforim.htmlparser
+                            .CommentAnchor("Prisha", 2),
+                    ),
+                    setOf(1L),
+                    setOf(5063L),
+                )
             for ((label, lines) in listOf("1 line" to setOf(line), "128-line section" to section)) {
                 val before =
                     BookContentState(
@@ -164,5 +161,9 @@ class AnchorsBench {
                 (System.nanoTime() - t) / 1e3 / items.size
             }
         return rounds.sorted()[rounds.size / 2]
+    }
+
+    private companion object {
+        val TUR_COMMENTATORS = setOf("Beit Yosef", "Bach", "Prisha", "Drisha", "Darkhei Moshe")
     }
 }

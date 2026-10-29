@@ -1,6 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent.state
 
-import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentKey
+import io.github.kdroidfilter.seforim.htmlparser.CommentAnchor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import kotlin.test.Test
@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class SelectedPassageStateTest {
     private val line7 = Line(id = 7, bookId = 380, lineIndex = 25, content = "")
     private val line8 = Line(id = 8, bookId = 380, lineIndex = 27, content = "")
-    private val passage = SelectedPassage(7, setOf(CommentKey("פרישה", 2)))
+    private val passage = SelectedPassage(7, setOf(CommentAnchor("Prisha", 2)), setOf(113L), setOf(5063L))
 
     private fun state(
         line: Line,

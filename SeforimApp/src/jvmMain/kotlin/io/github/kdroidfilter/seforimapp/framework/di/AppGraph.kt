@@ -21,6 +21,7 @@ import io.github.kdroidfilter.seforimapp.features.database.update.navigation.Dat
 import io.github.kdroidfilter.seforimapp.features.home.widgets.ToolWindows
 import io.github.kdroidfilter.seforimapp.features.onboarding.data.OnboardingProcessRepository
 import io.github.kdroidfilter.seforimapp.features.onboarding.navigation.ProgressBarState
+import io.github.kdroidfilter.seforimapp.framework.crashreporting.CrashReporting
 import io.github.kdroidfilter.seforimapp.framework.database.CatalogCache
 import io.github.kdroidfilter.seforimapp.framework.database.DatabasePathProvider
 import io.github.kdroidfilter.seforimapp.framework.database.DatabaseVersionManager
@@ -73,5 +74,6 @@ abstract class AppGraph : ViewModelGraph {
 
     /** App self-update facade (Nucleus updater + native SSL). */
     abstract val appUpdateService: AppUpdateService
+    abstract val crashReporting: CrashReporting
     abstract val toolWindows: ToolWindows
 }

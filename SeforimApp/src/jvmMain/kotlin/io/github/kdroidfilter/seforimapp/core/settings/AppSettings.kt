@@ -57,6 +57,14 @@ class AppSettings(
     private val _keepScreenAwakeOnBookFlow = MutableStateFlow(isKeepScreenAwakeOnBookEnabled())
     val keepScreenAwakeOnBookFlow: StateFlow<Boolean> = _keepScreenAwakeOnBookFlow.asStateFlow()
 
+    // StateFlow for the anonymous error reports setting
+    private val _errorReportingFlow = MutableStateFlow(isErrorReportingEnabled())
+    val errorReportingFlow: StateFlow<Boolean> = _errorReportingFlow.asStateFlow()
+
+    // StateFlow for the automatic update check setting
+    private val _autoUpdateCheckFlow = MutableStateFlow(isAutoUpdateCheckEnabled())
+    val autoUpdateCheckFlow: StateFlow<Boolean> = _autoUpdateCheckFlow.asStateFlow()
+
     private val _homeWidgetsLayoutFlow = MutableStateFlow(settings.getStringOrNull(KEY_HOME_WIDGETS_LAYOUT))
     val homeWidgetsLayoutFlow: StateFlow<String?> = _homeWidgetsLayoutFlow.asStateFlow()
 
@@ -303,6 +311,22 @@ class AppSettings(
     fun setKeepScreenAwakeOnBookEnabled(enabled: Boolean) {
         settings[KEY_KEEP_SCREEN_AWAKE_ON_BOOK] = enabled
         _keepScreenAwakeOnBookFlow.value = enabled
+    }
+
+    // Anonymous error reports (enabled by default); apply it through CrashReporting, which starts or stops Sentry
+    fun isErrorReportingEnabled(): Boolean = settings[KEY_ERROR_REPORTING, true]
+
+    fun setErrorReportingEnabled(enabled: Boolean) {
+        settings[KEY_ERROR_REPORTING] = enabled
+        _errorReportingFlow.value = enabled
+    }
+
+    // Check for app updates at startup (enabled by default); the settings button still checks on demand
+    fun isAutoUpdateCheckEnabled(): Boolean = settings[KEY_AUTO_UPDATE_CHECK, true]
+
+    fun setAutoUpdateCheckEnabled(enabled: Boolean) {
+        settings[KEY_AUTO_UPDATE_CHECK] = enabled
+        _autoUpdateCheckFlow.value = enabled
     }
 
     /** Null goes back to the default layout. */
@@ -593,6 +617,8 @@ class AppSettings(
                 KEY_CLOSE_TREE_ON_NEW_BOOK,
                 KEY_PERSIST_SESSION,
                 KEY_KEEP_SCREEN_AWAKE_ON_BOOK,
+                KEY_ERROR_REPORTING,
+                KEY_AUTO_UPDATE_CHECK,
                 KEY_FONT_BOOK,
                 KEY_FONT_COMMENTARY,
                 KEY_FONT_TARGUM,
@@ -674,6 +700,8 @@ class AppSettings(
         private const val KEY_DATABASE_PATH = "database_path"
         private const val KEY_PERSIST_SESSION = "persist_session"
         private const val KEY_KEEP_SCREEN_AWAKE_ON_BOOK = "keep_screen_awake_on_book"
+        private const val KEY_ERROR_REPORTING = "error_reporting"
+        private const val KEY_AUTO_UPDATE_CHECK = "auto_update_check"
         private const val KEY_FONT_BOOK = "font_book"
         private const val KEY_FONT_COMMENTARY = "font_commentary"
         private const val KEY_FONT_TARGUM = "font_targum"

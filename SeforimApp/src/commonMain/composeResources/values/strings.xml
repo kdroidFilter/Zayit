@@ -476,6 +476,9 @@
     <string name="settings_persist_session_description">כאשר אפשרות זו מופעלת, האפליקציה תשמור את הלשוניות הפתוחות ומיקום הקריאה שלך, ותשחזר אותם בהפעלה הבאה.</string>
     <string name="settings_keep_screen_awake">מנע כיבוי מסך בזמן קריאה</string>
     <string name="settings_keep_screen_awake_description">כאשר אפשרות זו מופעלת, המסך לא ייכבה ולא ייכנס למצב שינה כל עוד ספר פתוח בלשונית הנוכחית והחלון פעיל.</string>
+    <string name="settings_auto_update_check">בדיקת עדכונים אוטומטית בהפעלה</string>
+    <string name="settings_error_reporting">שליחת דיווחי שגיאות אנונימיים לשיפור האפליקציה</string>
+    <string name="settings_error_reporting_description">כאשר אפשרות זו מופעלת, נשלח דיווח טכני אנונימי במקרה של שגיאה או קריסה: פרטי השגיאה, גרסת האפליקציה ומערכת ההפעלה. הדיווח אינו כולל כתובת IP, שם מחשב או שם משתמש, ולא את תוכן הלימוד, החיפושים או ההערות שלכם.</string>
     <string name="settings_show_home_wallpaper">הצג תמונת רקע בדף הבית</string>
     <string name="settings_show_home_wallpaper_description">כאשר אפשרות זו מופעלת, יוצג נוף של כרם זיתים כרקע דקורטיבי בדף הבית.</string>
     <string name="settings_compact_mode">מצב קומפקטי לסרגל הצדדי</string>

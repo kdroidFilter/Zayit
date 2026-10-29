@@ -23,12 +23,15 @@ object UrlOpener {
         }.start()
     }
 
+    // On macOS and Windows, `Desktop.browse` hands any URI to the default browser, so a mailto goes through `Desktop.mail`
     private fun browseOrFallback(url: String) {
         val desktop = if (Desktop.isDesktopSupported()) Desktop.getDesktop() else null
-        if (desktop != null && desktop.isSupported(Desktop.Action.BROWSE)) {
-            desktop.browse(URI.create(url))
-        } else {
-            fallback(url)
+        val uri = URI.create(url)
+        when {
+            uri.scheme.equals("mailto", ignoreCase = true) && desktop?.isSupported(Desktop.Action.MAIL) == true ->
+                desktop.mail(uri)
+            desktop?.isSupported(Desktop.Action.BROWSE) == true -> desktop.browse(uri)
+            else -> fallback(url)
         }
     }
 

@@ -12,4 +12,8 @@ sealed interface GeneralSettingsEvents {
     data class SetKeepScreenAwakeOnBook(
         val value: Boolean,
     ) : GeneralSettingsEvents
+
+    data class SetAutoUpdateCheck(
+        val value: Boolean,
+    ) : GeneralSettingsEvents
 }

@@ -24,12 +24,13 @@ class GeneralSettingsViewModel(
     private val keepAwake = MutableStateFlow(appSettings.isKeepScreenAwakeOnBookEnabled())
 
     val state =
-        combine(dbPath, closeTree, persist, keepAwake) { path, c, p, k ->
+        combine(dbPath, closeTree, persist, keepAwake, appSettings.autoUpdateCheckFlow) { path, c, p, k, u ->
             GeneralSettingsState(
                 databasePath = path,
                 closeTreeOnNewBook = c,
                 persistSession = p,
                 keepScreenAwakeOnBook = k,
+                autoUpdateCheck = u,
             )
         }.stateIn(
             viewModelScope,
@@ -39,6 +40,7 @@ class GeneralSettingsViewModel(
                 closeTreeOnNewBook = closeTree.value,
                 persistSession = persist.value,
                 keepScreenAwakeOnBook = keepAwake.value,
+                autoUpdateCheck = appSettings.autoUpdateCheckFlow.value,
             ),
         )
 
@@ -56,6 +58,7 @@ class GeneralSettingsViewModel(
                 appSettings.setKeepScreenAwakeOnBookEnabled(event.value)
                 keepAwake.value = event.value
             }
+            is GeneralSettingsEvents.SetAutoUpdateCheck -> appSettings.setAutoUpdateCheckEnabled(event.value)
         }
     }
 }

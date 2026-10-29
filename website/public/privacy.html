@@ -18,7 +18,7 @@
 <body>
 <main>
   <h1>זית: מדיניות פרטיות</h1>
-  <p class="date">עודכן לאחרונה: 28 באוקטובר 2026</p>
+  <p class="date">עודכן לאחרונה: 29 באוקטובר 2026</p>
 
   <p>זית היא אפליקציה למחשב ללימוד ספרי הקודש. מדיניות זו מסבירה אילו מידע האפליקציה מעבדת.</p>
 
@@ -31,8 +31,13 @@
   <h2>הורדת הספרייה</h2>
   <p>בהפעלה הראשונה, ובעת עדכון, האפליקציה מורידה את מאגר הספרים מ-GitHub. כמו בכל הורדה, GitHub רואה את כתובת ה-IP שלכם; על כך חלה <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">הצהרת הפרטיות של GitHub</a>.</p>
 
-  <h2>דיווח על קריסות</h2>
-  <p>אם האפליקציה קורסת, נשלח דיווח טכני לשירות Sentry: פרטי השגיאה, גרסת האפליקציה ומערכת ההפעלה. הדיווח אינו כולל את תוכן הלימוד, החיפושים או ההערות שלכם, ומשמש לתיקון תקלות בלבד.</p>
+  <h2>עדכוני האפליקציה</h2>
+  <p>בכל הפעלה זית בודקת ב-GitHub אם יש גרסה חדשה (GitHub רואה את כתובת ה-IP שלכם, כמו בכל הורדה). ניתן לבטל בדיקה זו בהגדרות ← כללי ← „בדיקת עדכונים אוטומטית בהפעלה”; לאחר מכן האפליקציה אינה פונה לרשת בהפעלה, ועדכונים נבדקים רק כשתלחצו על הלחצן. עדכונים קטנים מותקנים ביציאה מהאפליקציה; עדכונים גדולים מותקנים רק לאחר אישורכם.</p>
+  <p><strong>Linux (חבילות deb ו-rpm):</strong> כדי לאפשר התקנת עדכונים ללא סיסמה, ההתקנה מוסיפה מדיניות polkit (<span dir="ltr"><code>/usr/share/polkit-1/actions/dev.nucleusframework.zayit.update.policy</code></span>), המתירה למשתמש המחובר באופן מקומי להפעיל ללא סיסמה, בהרשאות root, את התוכנית <span dir="ltr"><code>/opt/Zayit/nucleus-update-helper</code></span> בלבד. תוכנית זו מתקינה רק חבילה של זית החתומה במפתח ה-GPG של זית שמצורף לאפליקציה, ורק גרסה חדשה יותר מהמותקנת. המדיניות נמחקת בהסרת האפליקציה; למי שמעדיף שתידרש סיסמה, ניתן למחוק את הקובץ הזה (הוא ייווצר מחדש בעדכון הבא של החבילה).</p>
+
+  <h2>דיווחי שגיאות אנונימיים</h2>
+  <p>כאשר האפליקציה קורסת או נתקלת בשגיאה, נשלח דיווח טכני אנונימי לשירות <a href="https://sentry.io/privacy/">Sentry</a> (שרתים באיחוד האירופי): פרטי השגיאה, גרסת האפליקציה ומערכת ההפעלה. הדיווח אינו כולל כתובת IP, שם מחשב או שם משתמש (נתיב תיקיית הבית מוחלף ב-<span dir="ltr">~</span>), ולא את תוכן הלימוד, החיפושים או ההערות שלכם. הוא משמש לתיקון תקלות בלבד.</p>
+  <p>הדיווחים מופעלים כברירת מחדל, וניתן לבטלם בכל עת בהגדרות ← ניהול נתונים ← „שליחת דיווחי שגיאות אנונימיים לשיפור האפליקציה”. לאחר הביטול, האפליקציה אינה מתחברת עוד ל-Sentry.</p>
 
   <h2>גיבוי ל-Google Drive (לבחירתכם)</h2>
   <p>אם תפעילו את הגיבוי, תתחברו לחשבון Google שלכם, והאפליקציה תקבל גישה לתיקייה נסתרת משלה ב-Drive בלבד (<span dir="ltr">drive.appdata</span>), לא לקבצים האחרים שלכם, וכן לכתובת הדוא"ל לצורך הצגת החשבון המחובר. הגיבויים (ההגדרות, הסימניות וההערות) נשמרים ב-Drive שלכם ואינם עוברים דרכנו. ניתוק החשבון בהגדרות מבטל את הגישה. על השימוש ב-Drive חלה <a href="https://policies.google.com/privacy">מדיניות הפרטיות של Google</a>.</p>
@@ -50,7 +55,7 @@
 
   <div dir="ltr" lang="en">
     <h1>Zayit: Privacy policy</h1>
-    <p class="date">Last updated: October 28, 2026</p>
+    <p class="date">Last updated: October 29, 2026</p>
 
     <p>Zayit is a desktop application for studying Jewish texts. This policy explains what information the app handles.</p>
 
@@ -63,8 +68,13 @@
     <h2>Library download</h2>
     <p>On first launch, and when it updates, the app downloads the library of books from GitHub. As with any download, GitHub sees your IP address; the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a> applies.</p>
 
-    <h2>Crash reports</h2>
-    <p>If the app crashes, a technical report is sent to the Sentry service: the error details, the app version and the operating system. It does not include what you study, search or write, and is used only to fix bugs.</p>
+    <h2>App updates</h2>
+    <p>Each time it starts, Zayit checks GitHub for a new version (GitHub sees your IP address, as with any download). You can turn this check off in Settings → General → "Check for updates automatically at startup"; the app then makes no network request at startup, and updates are only checked when you press the button. Small updates install when you quit the app; larger ones install only once you approve them.</p>
+    <p><strong>Linux (deb and rpm packages):</strong> to install updates without a password, the package adds a polkit policy (<code>/usr/share/polkit-1/actions/dev.nucleusframework.zayit.update.policy</code>) that lets a user logged in locally run, as root and without a password, only the program <code>/opt/Zayit/nucleus-update-helper</code>. That program installs only a Zayit package signed with the Zayit GPG key bundled in the app, and only a newer version than the one installed. The policy is removed when you uninstall the app; if you prefer to be asked for a password, you can delete that file (the next package update recreates it).</p>
+
+    <h2>Anonymous error reports</h2>
+    <p>When the app crashes or runs into an error, an anonymous technical report is sent to the <a href="https://sentry.io/privacy/">Sentry</a> service (servers in the European Union): the error details, the app version and the operating system. It does not include your IP address, computer name or user name (the home folder path is replaced by <code>~</code>), nor what you study, search or write. It is used only to fix bugs.</p>
+    <p>The reports are on by default, and you can turn them off at any time in Settings → Data management → "Send anonymous error reports to improve the app". Once they are off, the app no longer connects to Sentry.</p>
 
     <h2>Google Drive backup (optional)</h2>
     <p>If you turn on backup, you sign in to your Google account and the app gets access only to its own hidden folder in Drive (<code>drive.appdata</code>), not to your other files, and to your email address to show the connected account. The backups (settings, bookmarks and notes) are stored in your Drive and never pass through us. Disconnecting the account in the settings revokes the access. The <a href="https://policies.google.com/privacy">Google Privacy Policy</a> applies to Drive.</p>

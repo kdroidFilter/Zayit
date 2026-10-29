@@ -1,5 +1,6 @@
 package io.github.kdroidfilter.seforimapp.features.bookcontent
 
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 
 /**
@@ -119,6 +120,12 @@ sealed interface BookContentEvent {
         val isModifierPressed: Boolean = false,
     ) : BookContentEvent
 
+    /** A plain click on a passage of [line]: selects the line and the passage. A click outside any passage lets it go. */
+    data class PassageSelected(
+        val line: Line,
+        val passage: SelectedPassage,
+    ) : BookContentEvent
+
     data class LoadAndSelectLine(
         val lineId: Long,
     ) : BookContentEvent
@@ -206,6 +213,11 @@ sealed interface BookContentEvent {
 
     data class CommentariesPageChanged(
         val page: Int,
+    ) : BookContentEvent
+
+    /** The commentators the commentaries pane shows on its current page (none once it goes). */
+    data class CommentariesVisibleChanged(
+        val commentatorIds: Set<Long>,
     ) : BookContentEvent
 
     data object FlushCommentariesState : BookContentEvent

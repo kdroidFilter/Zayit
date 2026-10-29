@@ -37,6 +37,8 @@ internal data class HtmlAnnotationCacheKey(
     val boldScale: Float,
     val footnoteMarkerColor: Color,
     val invertImages: Boolean,
+    // The commentators whose anchors became passages: an annotation built without them must not serve a line wanting them
+    val anchorCommentators: Set<String> = emptySet(),
 )
 
 @Stable
@@ -64,12 +66,13 @@ internal fun rememberAsyncHtmlAnnotation(
     footnoteMarkerColor: Color,
     imageColorFilter: @Composable () -> ColorFilter?,
     annotatedCache: StableAnnotatedCache,
+    anchorCommentators: Set<String> = emptySet(),
 ): LineAnnotation? {
     val imageContentBuilder = remember(imageColorFilter) { SkiaHtmlImageBuilder.build(imageColorFilter) }
     val cached =
         annotatedCache.get(cacheKey)
             ?: if (html.length <= SYNC_ANNOTATION_MAX_CHARS) {
-                buildLineAnnotation(html, baseTextSize, boldScale, footnoteMarkerColor, imageContentBuilder)
+                buildLineAnnotation(html, baseTextSize, boldScale, footnoteMarkerColor, imageContentBuilder, anchorCommentators)
                     .also { annotatedCache.put(cacheKey, it) }
             } else {
                 null
@@ -92,6 +95,7 @@ internal fun rememberAsyncHtmlAnnotation(
                     boldScale = boldScale,
                     footnoteMarkerColor = footnoteMarkerColor,
                     imageContentBuilder = imageContentBuilder,
+                    anchorCommentators = anchorCommentators,
                 )
             }
         annotatedCache.put(cacheKey, built)
@@ -111,6 +115,7 @@ internal fun htmlAnnotationCacheKey(
     boldScale: Float,
     footnoteMarkerColor: Color,
     invertImages: Boolean,
+    anchorCommentators: Set<String> = emptySet(),
 ): HtmlAnnotationCacheKey =
     HtmlAnnotationCacheKey(
         itemId = lineId,
@@ -120,6 +125,7 @@ internal fun htmlAnnotationCacheKey(
         boldScale = boldScale,
         footnoteMarkerColor = footnoteMarkerColor,
         invertImages = invertImages,
+        anchorCommentators = anchorCommentators,
     )
 
 internal fun htmlAnnotationPlaceholderText(contentLength: Int): String {
@@ -140,6 +146,7 @@ internal fun buildLineAnnotation(
     boldScale: Float,
     footnoteMarkerColor: Color,
     imageContentBuilder: HtmlImageContentBuilder,
+    anchorCommentators: Set<String> = emptySet(),
 ): LineAnnotation {
     val inline = mutableMapOf<String, InlineTextContent>()
     val annotated =
@@ -150,6 +157,8 @@ internal fun buildLineAnnotation(
             footnoteMarkerColor = footnoteMarkerColor,
             inlineContent = inline,
             imageContentBuilder = imageContentBuilder,
+            // Their passages, for the commentaries a click on the text brings forward
+            anchorCommentators = anchorCommentators,
         )
     return LineAnnotation(annotated, inline.toMap())
 }

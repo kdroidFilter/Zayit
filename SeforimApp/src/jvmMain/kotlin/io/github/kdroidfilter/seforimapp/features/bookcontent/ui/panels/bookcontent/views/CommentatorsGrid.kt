@@ -155,6 +155,10 @@ internal fun CommentatorsGridScaffold(
     initialPage: Int,
     onPageChange: (Int) -> Unit,
     onFlushPersist: () -> Unit,
+    // The commentators of the page shown (empty once the grid goes), for the text to offer their passages only
+    onVisibleChange: (List<String>) -> Unit = {},
+    // The commentator of the passage selected in the text: its page is the one shown, whatever repaginates
+    focusCommentator: String? = null,
     column: @Composable (commentatorId: Long) -> Unit,
 ) {
     val selected = config.selectedCommentators
@@ -200,6 +204,9 @@ internal fun CommentatorsGridScaffold(
         }
 
         val currentOnPageChange by rememberUpdatedState(onPageChange)
+        val currentOnVisibleChange by rememberUpdatedState(onVisibleChange)
+        LaunchedEffect(pagerState.settledPage, pages) { currentOnVisibleChange(pages.getOrNull(pagerState.settledPage).orEmpty()) }
+        DisposableEffect(Unit) { onDispose { currentOnVisibleChange(emptyList()) } }
 
         // Anchor = commentator the user is focused on. Used to follow:
         //   - page navigation (anchor tracks the first item of the current page)
@@ -232,6 +239,11 @@ internal fun CommentatorsGridScaffold(
                 }
             }
             previousSelected.value = selected.toList()
+        }
+        // The selected passage's commentator anchors the pager, so its commentary stays on the page shown even when a
+        // new line (or a resize) repaginates
+        LaunchedEffect(focusCommentator, selected) {
+            if (focusCommentator != null && focusCommentator in selected) anchorName.value = focusCommentator
         }
         LaunchedEffect(recentlyAdded.value) {
             if (recentlyAdded.value != null) {

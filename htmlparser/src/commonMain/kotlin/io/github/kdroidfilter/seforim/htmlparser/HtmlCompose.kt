@@ -64,6 +64,40 @@ fun plainTextFromHtml(html: String): String =
         }
     }
 
+/**
+ * Tag of the string annotations [buildAnnotatedFromHtml] puts on each passage commentaries attach to: from one anchor
+ * to the next. Read them with [commentAnchorsOf].
+ */
+const val COMMENT_SEGMENT_TAG: String = "comment-segment"
+
+private const val ANCHOR_SEPARATOR = '\u001E'
+private const val ORDER_SEPARATOR = '\u001F'
+
+/** The anchors of a [COMMENT_SEGMENT_TAG] annotation's value. */
+fun commentAnchorsOf(annotationValue: String): List<CommentAnchor> =
+    annotationValue.split(ANCHOR_SEPARATOR).mapNotNull { anchor ->
+        val commentator = anchor.substringBefore(ORDER_SEPARATOR)
+        anchor.substringAfter(ORDER_SEPARATOR, "").toIntOrNull()?.let { CommentAnchor(commentator, it) }
+    }
+
+// Each passage runs from its anchors (several commentaries often share a spot) to the next ones. The anchors come in
+// text order, so one pass groups them.
+private fun AnnotatedString.Builder.addCommentSegments(anchors: List<Pair<Int, CommentAnchor>>) {
+    val value = StringBuilder()
+    var i = 0
+    while (i < anchors.size) {
+        val start = anchors[i].first
+        value.setLength(0)
+        while (i < anchors.size && anchors[i].first == start) {
+            if (value.isNotEmpty()) value.append(ANCHOR_SEPARATOR)
+            value.append(anchors[i].second.commentator).append(ORDER_SEPARATOR).append(anchors[i].second.order)
+            i++
+        }
+        val end = if (i < anchors.size) anchors[i].first else length
+        if (start < end) addStringAnnotation(COMMENT_SEGMENT_TAG, value.toString(), start, end)
+    }
+}
+
 fun buildAnnotatedFromHtml(
     html: String,
     baseTextSize: Float,
@@ -76,8 +110,10 @@ fun buildAnnotatedFromHtml(
     linkColor: Color = footnoteMarkerColor,
     inlineContent: MutableMap<String, InlineTextContent>? = null,
     imageContentBuilder: HtmlImageContentBuilder? = null,
+    // The commentators whose anchors become passages ([COMMENT_SEGMENT_TAG]); none by default, which costs nothing
+    anchorCommentators: Set<String> = emptySet(),
 ): AnnotatedString {
-    val parsedElements = htmlParser.parse(html)
+    val parsedElements = htmlParser.parse(html, anchorCommentators)
 
     // Optimization: we only add styles if necessary
     val headerSizes =
@@ -96,6 +132,7 @@ fun buildAnnotatedFromHtml(
 
     return buildAnnotatedString {
         var imageIndex = 0
+        val anchors = mutableListOf<Pair<Int, CommentAnchor>>()
         parsedElements.forEach { e ->
             if (e.isLineBreak) {
                 append("\n")
@@ -136,6 +173,7 @@ fun buildAnnotatedFromHtml(
             val start = length
             append(e.text)
             val end = length
+            e.anchors.forEach { (offset, anchor) -> anchors += start + offset to anchor }
 
             // Citation link, opened through LocalUriHandler. The surrounding spaces stay outside the link.
             e.href?.let { href ->
@@ -211,5 +249,6 @@ fun buildAnnotatedFromHtml(
                 }
             addStyle(SpanStyle(fontSize = fontSize), start, end)
         }
+        if (anchors.isNotEmpty()) addCommentSegments(anchors)
     }
 }

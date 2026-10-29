@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.runtime.*
+import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -27,6 +28,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -36,6 +42,7 @@ import androidx.compose.ui.input.pointer.isCtrlPressed
 import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -56,6 +63,7 @@ import androidx.compose.ui.zIndex
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
+import io.github.kdroidfilter.seforim.htmlparser.CommentAnchor
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.UserHighlight
@@ -73,11 +81,20 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.presentation.text.applyUserHighlights
 import io.github.kdroidfilter.seforimapp.core.presentation.text.drawNoteUnderlines
 import io.github.kdroidfilter.seforimapp.core.presentation.text.findAllMatchesOriginal
+import io.github.kdroidfilter.seforimapp.core.presentation.text.forEachRowSpan
 import io.github.kdroidfilter.seforimapp.core.presentation.text.normalizeQueryForHebrew
 import io.github.kdroidfilter.seforimapp.core.presentation.text.noteDisplayRanges
 import io.github.kdroidfilter.seforimapp.core.presentation.text.withBackground
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.AnchorTarget
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentAnchorIndex
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentSegment
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.at
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.commentAnchorIndex
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.commentSegments
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.passageOf
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.LineConnectionsSnapshot
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.notes.NoteDraftAnchor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookFindMatches
@@ -123,6 +140,10 @@ fun BookContentView(
     modifier: Modifier = Modifier,
     draftNote: NoteDraftAnchor? = null,
     isTocEntrySelection: Boolean = false,
+    // The passage of the primary line selected in the text, part of the selection
+    selectedPassage: SelectedPassage? = null,
+    // The commentators (book ids) the commentaries pane shows on its page: a passage none of them explains is plain text
+    passageCommentatorIds: Set<Long> = emptySet(),
     // Lines by index, tinted, with an end mark after the last: a passage to read, such as the day's limud
     markedLines: IntRange? = null,
     // Each verse twice, then its targum: shnayim mikra
@@ -637,6 +658,11 @@ fun BookContentView(
 
     // Backed by a ConcurrentHashMap: the prefetcher writes from EfficiencyCoreDispatcher while
     // LineItem reads during composition on the main thread.
+    // Where this book's commentary anchors lead, read off the main thread once per book
+    val anchorIndex by produceState(CommentAnchorIndex.EMPTY, bookId) {
+        value = withContext(Dispatchers.IO) { commentAnchorIndex(bookId) }
+    }
+
     val stableAnnotatedCache =
         remember(bookId, textSize, boldScaleForPlatform, diacritics) {
             StableAnnotatedCache()
@@ -688,6 +714,7 @@ fun BookContentView(
                                 boldScale = boldScaleForPlatform,
                                 footnoteMarkerColor = footnoteMarkerColor,
                                 invertImages = isDarkTheme,
+                                anchorCommentators = anchorIndex.commentators,
                             )
                         if (stableAnnotatedCache.get(key) != null) continue
                         stableAnnotatedCache.put(
@@ -698,6 +725,7 @@ fun BookContentView(
                                 boldScale = boldScaleForPlatform,
                                 footnoteMarkerColor = footnoteMarkerColor,
                                 imageContentBuilder = prefetchImageBuilder,
+                                anchorCommentators = anchorIndex.commentators,
                             ),
                         )
                     }
@@ -1036,6 +1064,11 @@ fun BookContentView(
                                         userNotes = lineNotes,
                                         fontFamily = hebrewFontFamily,
                                         onClick = { isModifier -> onLineSelect(line, isModifier) },
+                                        selectedAnchors = selectedPassage?.takeIf { it.lineId == line.id }?.anchors,
+                                        anchorTargets = anchorIndex.of(line.id),
+                                        anchorCommentators = anchorIndex.commentators,
+                                        passageBooks = passageCommentatorIds,
+                                        onPassageClick = { passage -> onEvent(BookContentEvent.PassageSelected(line, passage)) },
                                         onHover = { onLineHover(line.id) },
                                         isSelected = isCurrentSelected,
                                         isPrimary = useThickBar,
@@ -1403,6 +1436,14 @@ private fun LineItem(
     lineContent: String,
     fontFamily: FontFamily,
     onClick: (isModifierPressed: Boolean) -> Unit,
+    // The passage of this line selected, by the commentaries it opens; a plain click on a passage reports it instead of [onClick]
+    selectedAnchors: Set<CommentAnchor>? = null,
+    // Where this line's anchors lead (resolved offline), and the commentators the parser keeps them for
+    anchorTargets: Map<CommentAnchor, AnchorTarget> = emptyMap(),
+    anchorCommentators: Set<String> = emptySet(),
+    // The commentary books open in the pane: only the passages leading there answer the pointer
+    passageBooks: Set<Long> = emptySet(),
+    onPassageClick: (SelectedPassage) -> Unit = {},
     onHover: () -> Unit = {},
     isSelected: Boolean = false,
     isPrimary: Boolean = false,
@@ -1436,6 +1477,9 @@ private fun LineItem(
             { if (isDarkTheme) SkiaHtmlImageBuilder.InvertColorFilter else null }
         }
 
+    // Where a plain click lands among this line's passages, set once its text is laid out
+    val passageHit = remember(lineId) { PassageHit() }
+    val currentOnPassageClick by rememberUpdatedState(onPassageClick)
     val textModifier =
         remember(lineId) {
             Modifier.fillMaxWidth()
@@ -1451,7 +1495,14 @@ private fun LineItem(
                 // Wait for release
                 val up = waitForUpOrCancellation()
                 if (up != null && !up.isConsumed) {
-                    onClick(isModifier)
+                    // One click, one event: the passage it lands on, else the line. Shift extends the text selection.
+                    val passage =
+                        if (isModifier || downEvent.keyboardModifiers.isShiftPressed) {
+                            null
+                        } else {
+                            passageHit.passageAt(downEvent.changes.first().position, up.position, viewConfiguration.touchSlop)
+                        }
+                    if (passage != null) currentOnPassageClick(passage) else onClick(isModifier)
                 }
             }
         }.onPointerEvent(PointerEventType.Enter) { onHover() }
@@ -1464,7 +1515,7 @@ private fun LineItem(
     val localAnnotatedCache = remember { StableAnnotatedCache() }
     val annotationCache = annotatedCache ?: localAnnotatedCache
     val annotationCacheKey =
-        remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme) {
+        remember(lineId, processedContent, baseTextSize, boldScale, footnoteMarkerColor, isDarkTheme, anchorCommentators) {
             htmlAnnotationCacheKey(
                 lineId = lineId,
                 processedContent = processedContent,
@@ -1472,6 +1523,7 @@ private fun LineItem(
                 boldScale = boldScale,
                 footnoteMarkerColor = footnoteMarkerColor,
                 invertImages = isDarkTheme,
+                anchorCommentators = anchorCommentators,
             )
         }
 
@@ -1484,6 +1536,7 @@ private fun LineItem(
             footnoteMarkerColor = footnoteMarkerColor,
             imageColorFilter = imageColorFilter,
             annotatedCache = annotationCache,
+            anchorCommentators = anchorCommentators,
         )
 
     if (E2e.enabled) SideEffect { E2eReader.lineDrawn(lineId, ready = lineAnnotation != null) }
@@ -1507,6 +1560,20 @@ private fun LineItem(
 
     val annotated = lineAnnotation.annotated
     val inlineImageContent = lineAnnotation.inlineContent
+
+    // The passages commentaries explain: with the pointer on the line, each is underlined apart from the next, the one
+    // under the pointer more; a click selects it (its underline stays, marked) and the pane fades the other commentaries.
+    // A solid line of the primary accent, unlike the notes' dotted one.
+    val allSegments = remember(annotated) { annotated.commentSegments() }
+    val segments =
+        remember(allSegments, anchorTargets, passageBooks) {
+            allSegments.filter { passageOf(lineId, it, anchorTargets, passageBooks) != null }
+        }
+    var hover by remember(lineId) { mutableStateOf<LineHover?>(null) }
+    // The selected one stays drawn even if its line's commentators, once it is the primary, no longer answer the pointer
+    val selectedPassage = selectedAnchors?.let { anchors -> allSegments.firstOrNull { it.anchors == anchors } }
+    val underlineColor = JewelTheme.globalColors.outlines.focused
+    val trays = remember(lineId) { PassageTrays() }
 
     // Plain text of the line WITH diacritics: user-highlight offsets are stored against this
     // representation, so it is needed to remap them when diacritics are hidden. The text is
@@ -1580,6 +1647,11 @@ private fun LineItem(
         }
     val noteUnderlineColor = JewelTheme.globalColors.text.info
     var noteLayout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    SideEffect {
+        passageHit.segments = segments
+        passageHit.passageOf = { passageOf(lineId, it, anchorTargets, passageBooks) }
+        passageHit.layout = { noteLayout }
+    }
 
     if (findMatchLocator != null) {
         val matchStart =
@@ -1606,8 +1678,19 @@ private fun LineItem(
                     } else {
                         Modifier
                     },
-                ).drawBehind {
+                )
+                // Always tracked, so the pointer's leaving is seen even while no passage is selectable
+                .passageHover(passageHit) { hover = it }
+                .drawBehind {
                     val layout = noteLayout ?: return@drawBehind
+                    hover?.let { (underPointer) ->
+                        segments.forEach { segment ->
+                            if (segment == selectedPassage) return@forEach
+                            val alpha = if (segment == underPointer) HOVERED_UNDERLINE_ALPHA else PASSAGE_UNDERLINE_ALPHA
+                            with(trays) { draw(layout, segment, underlineColor.copy(alpha = alpha)) }
+                        }
+                    }
+                    selectedPassage?.let { with(trays) { draw(layout, it, underlineColor.copy(alpha = HOVERED_UNDERLINE_ALPHA)) } }
                     bookSelection?.selectedRangeOf(lineIndex, layout.layoutInput.text.length)?.takeIf { !it.isEmpty() }?.let {
                         drawPath(layout.getPathForRange(it.first, it.last + 1), selectionBackground)
                     }
@@ -1627,6 +1710,109 @@ private fun LineItem(
             if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
         },
     )
+}
+
+/** Where a point of a line's text falls among its passages: set by the line once its text is laid out. */
+private class PassageHit {
+    var segments: List<CommentSegment> = emptyList()
+    var layout: () -> TextLayoutResult? = { null }
+    var passageOf: (CommentSegment) -> SelectedPassage? = { null }
+
+    fun at(position: Offset): CommentSegment? {
+        val result = layout() ?: return null
+        // Below the text the nearest offset is its last character: not a passage under the pointer
+        if (position.y > result.size.height) return null
+        return segments.at(result.getOffsetForPosition(position))
+    }
+
+    // A click, not a drag (beyond [slop]), on a passage: the passage with the commentary lines it leads to
+    fun passageAt(
+        down: Offset,
+        up: Offset,
+        slop: Float,
+    ): SelectedPassage? = if ((up - down).getDistance() > slop) null else at(up)?.let(passageOf)
+}
+
+/** The pointer on a line, and the passage under it if any. */
+private data class LineHover(
+    val passage: CommentSegment?,
+)
+
+@OptIn(ExperimentalComposeUiApi::class)
+private fun Modifier.passageHover(
+    hit: PassageHit,
+    onHover: (LineHover?) -> Unit,
+): Modifier =
+    onPointerEvent(PointerEventType.Move) { onHover(LineHover(hit.at(it.changes.first().position))) }
+        .onPointerEvent(PointerEventType.Exit) { onHover(null) }
+
+private const val PASSAGE_UNDERLINE_ALPHA = 0.35f
+private const val HOVERED_UNDERLINE_ALPHA = 0.9f
+private val PassageUnderlineWidth = 2.dp
+
+// Past the bottom of the text's last row, clear of its letters' tails and vowels (negative: below it)
+private val PassageUnderlineLift = (-3).dp
+
+// Each end pushed just past the passage's outer letters, so the tray holds them; the space between two passages keeps
+// their trays apart
+private val PassageUnderlineOutset = 1.dp
+
+// The rims rising at a passage's two ends, so its underline holds it like a tray
+private val PassageRimHeight = 9.dp
+
+/**
+ * The trays of a line's passages, traced once per layout (and density): a hovered frame only strokes them. Tracing
+ * asks the layout for each row's ends, the costly part (~0.5 ms for a Tur line's twenty passages).
+ */
+private class PassageTrays {
+    private var layout: TextLayoutResult? = null
+    private var density = 0f
+    private val paths = HashMap<CommentSegment, Path>()
+
+    fun DrawScope.draw(
+        layout: TextLayoutResult,
+        passage: CommentSegment,
+        color: Color,
+    ) {
+        if (layout !== this@PassageTrays.layout || density != this@PassageTrays.density) {
+            paths.clear()
+            this@PassageTrays.layout = layout
+            this@PassageTrays.density = density
+        }
+        val tray = paths.getOrPut(passage) { trayOf(layout, passage) }
+        drawPath(tray, color, style = Stroke(width = PassageUnderlineWidth.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+    }
+}
+
+/**
+ * A passage underlined row by row as a tray: the line under it rises at its first and last character, just past them.
+ * A row only continuing the passage has the line alone.
+ */
+private fun DrawScope.trayOf(
+    layout: TextLayoutResult,
+    passage: CommentSegment,
+): Path {
+    val tray = Path()
+    val text = layout.layoutInput.text.text
+    // Without the space that may close the passage
+    val end = (passage.end.coerceAtMost(text.length) downTo passage.start + 1).firstOrNull { !text[it - 1].isWhitespace() } ?: return tray
+    val outset = PassageUnderlineOutset.toPx()
+    val rim = PassageRimHeight.toPx()
+    layout.forEachRowSpan(passage.start, end) { row, from, to, xFrom, xTo ->
+        if (from >= to) return@forEachRowSpan
+        // Each end pushed outwards, whichever side it stands on
+        val direction = if (xTo >= xFrom) 1f else -1f
+        val a = xFrom - direction * outset
+        val b = xTo + direction * outset
+        // Only the text's last row has room below it; a row with another under it keeps the line on its own bottom
+        val lift = if (row == layout.lineCount - 1) PassageUnderlineLift else 0.dp
+        val y = layout.getLineBottom(row) - lift.toPx()
+        tray.moveTo(a, if (from == passage.start) y - rim else y)
+        tray.lineTo(a, y)
+        tray.lineTo(b, y)
+        if (to == end) tray.lineTo(b, y - rim)
+    }
+    return tray
 }
 
 // The selection bar's slot at the start of a line: the same whether the bar is thick or thin, so content never shifts.

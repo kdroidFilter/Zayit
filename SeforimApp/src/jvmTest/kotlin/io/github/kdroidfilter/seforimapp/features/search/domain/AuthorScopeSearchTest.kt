@@ -1,6 +1,7 @@
 package io.github.kdroidfilter.seforimapp.features.search.domain
 
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.viewModelScope
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
 import io.github.kdroidfilter.seforim.tabs.SearchScope
 import io.github.kdroidfilter.seforim.tabs.TabTitleUpdateManager
@@ -16,8 +17,10 @@ import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -87,6 +90,10 @@ class AuthorScopeSearchTest : SearchIntegrationTestBase() {
             vm.filterByBookId(rashba.first())
             vm.showOnlyCategory(null)
             assertEquals(SearchScope.Author(RASHBA), vm.searchScope)
+
+            // Those relaunched searches run off this thread: end them before tearDown closes the index under them
+            vm.viewModelScope.coroutineContext.job
+                .cancelAndJoin()
         }
 
     private companion object {

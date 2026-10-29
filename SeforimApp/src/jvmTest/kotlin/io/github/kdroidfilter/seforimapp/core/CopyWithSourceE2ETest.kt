@@ -114,9 +114,12 @@ class CopyWithSourceE2ETest {
 
     /**
      * Find the first book under [rootTitle] that exposes at least two consecutive lines with
-     * non-blank, distinct `heRef` values — used to exercise multi-line range formatting.
+     * non-blank `heRef` values that differ by [refKey] — used to exercise multi-line range formatting.
      */
-    private suspend fun firstUsableMultiLineSampleUnder(rootTitle: String): Pair<Book, List<Line>>? {
+    private suspend fun firstUsableMultiLineSampleUnder(
+        rootTitle: String,
+        refKey: (String) -> String = { it },
+    ): Pair<Book, List<Line>>? {
         val repo = repository!!
         val root = roots.firstOrNull { it.title == rootTitle } ?: return null
         val books = repo.getBooksUnderCategoryTree(root.id)
@@ -124,7 +127,7 @@ class CopyWithSourceE2ETest {
             val lines = repo.getLines(book.id, 0, 128).filter { !it.heRef.isNullOrBlank() }
             if (lines.size < 2) continue
             val first = lines.first()
-            val last = lines.firstOrNull { it.heRef != first.heRef } ?: continue
+            val last = lines.firstOrNull { refKey(it.heRef!!) != refKey(first.heRef!!) } ?: continue
             return book to listOf(first, last)
         }
         return null
@@ -246,7 +249,9 @@ class CopyWithSourceE2ETest {
     fun talmud_multi_line_selection_trims_both_ends() =
         runBlocking {
             skipIfNoData()
-            val sample = firstUsableMultiLineSampleUnder("תלמוד") ?: return@runBlocking
+            // Lines on different dafs, so the range survives dropping the in-page line segment
+            val sample =
+                firstUsableMultiLineSampleUnder("תלמוד") { it.substringBeforeLast(',') } ?: return@runBlocking
             val (book, lines) = sample
             val first = lines.first()
             val last = lines.last()

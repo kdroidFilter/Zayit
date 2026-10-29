@@ -25,6 +25,7 @@ import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.intui.standalone.theme.IntUiTheme
 import java.awt.image.BufferedImage
 import java.io.File
+import java.time.LocalDate
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -113,7 +114,9 @@ class WidgetSizesScreenshotTest {
                         LocalTabSelected provides false,
                         LocalLayoutDirection provides LayoutDirection.Rtl,
                     ) {
-                        val state = HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE, HomeWidgetsLayout(testAppSettings()))
+                        val state =
+                            HomeWidgetsState(HomeUserLocation.preview, Community.SEPHARADE, HomeWidgetsLayout(testAppSettings()))
+                                .apply { selectDate(SHOWN_DATE) }
                         Box(Modifier.background(JewelTheme.globalColors.panelBackground)) {
                             val modifier = Modifier.size(width, height)
                             widget.Content(state, modifier)
@@ -175,6 +178,10 @@ class WidgetSizesScreenshotTest {
         val LIBRARY_DB_WIDGETS = setOf("dictionary")
 
         const val HOUR = 3_600_000L
+
+        // A fixed day, so the date-driven widgets (calendar, tefila) don't pass or fail with the day the tests run on:
+        // a month of six weeks and a Rosh Chodesh
+        val SHOWN_DATE: LocalDate = LocalDate.of(2026, 10, 11)
         const val STORE_READ_MS = 150L
 
         // As long as real entries: a book, its part and its chapter

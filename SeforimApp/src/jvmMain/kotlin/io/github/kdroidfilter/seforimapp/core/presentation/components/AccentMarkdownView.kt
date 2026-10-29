@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.takeOrElse
@@ -57,6 +58,7 @@ import seforimapp.seforimapp.generated.resources.notoserifhebrew
  * @param modifier modifier for the outer container
  * @param includeH3 whether to include custom h3 heading styling (About/Conditions use it, Licence doesn't)
  * @param extraItems additional items appended after the markdown blocks (e.g. a checkbox)
+ * @param transform applied to the file's text before it is rendered (e.g. dropping what does not apply here)
  */
 @Composable
 fun AccentMarkdownView(
@@ -64,8 +66,10 @@ fun AccentMarkdownView(
     modifier: Modifier = Modifier,
     includeH3: Boolean = true,
     extraItems: (LazyListScope.() -> Unit)? = null,
+    transform: (String) -> String = { it },
 ) {
-    val markdown by produceState("", resourcePath) { value = Res.readBytes(resourcePath).decodeToString() }
+    val currentTransform by rememberUpdatedState(transform)
+    val markdown by produceState("", resourcePath) { value = currentTransform(Res.readBytes(resourcePath).decodeToString()) }
     val blocks = rememberBlocks(markdown)
     val renderer = rememberAccentRenderer(fontSize = 14.sp, lineHeight = TextUnit.Unspecified, color = Color.Unspecified, includeH3)
 

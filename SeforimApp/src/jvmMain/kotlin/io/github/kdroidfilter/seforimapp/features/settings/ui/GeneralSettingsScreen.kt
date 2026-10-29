@@ -35,6 +35,7 @@ import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettin
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsState
 import io.github.kdroidfilter.seforimapp.features.settings.general.GeneralSettingsViewModel
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
+import io.github.kdroidfilter.seforimapp.framework.update.InstallInfo
 import io.github.kdroidfilter.seforimapp.framework.update.UpdateMode
 import io.github.kdroidfilter.seforimapp.framework.update.UpdateUiState
 import io.github.kdroidfilter.seforimapp.theme.PreviewContainer
@@ -214,11 +215,14 @@ private fun AppHeader(
             }
         }
 
-        CheckboxRow(
-            text = stringResource(Res.string.settings_auto_update_check),
-            checked = autoUpdateCheck,
-            onCheckedChange = onAutoUpdateCheckChange,
-        )
+        // The Store updates its package itself: nothing for the user to turn off there
+        if (InstallInfo.selfUpdates) {
+            CheckboxRow(
+                text = stringResource(Res.string.settings_auto_update_check),
+                checked = autoUpdateCheck,
+                onCheckedChange = onAutoUpdateCheckChange,
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),

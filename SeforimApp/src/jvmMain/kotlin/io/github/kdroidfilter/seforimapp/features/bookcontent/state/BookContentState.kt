@@ -230,6 +230,9 @@ data class ContentState(
     val commentariesColumnScrollOffsetByCommentator: Map<Long, Int> = emptyMap(),
     // Current page of the commentaries vertical pager (restored on tab re-entry)
     val commentariesPageIndex: Int = 0,
+    // The commentators (book ids) the commentaries pane shows on that page: only their passages answer in the text.
+    // Reported by the pane, which alone knows its page size. Not persisted.
+    val visibleCommentatorIds: Set<Long> = emptySet(),
     // Visibility of the commentators selection sidebar inside the commentaries pane
     val isCommentatorsListVisible: Boolean = true,
     // Filters selected in UI (for current line)

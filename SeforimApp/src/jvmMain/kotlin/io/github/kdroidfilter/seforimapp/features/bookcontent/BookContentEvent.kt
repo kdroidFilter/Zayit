@@ -215,6 +215,11 @@ sealed interface BookContentEvent {
         val page: Int,
     ) : BookContentEvent
 
+    /** The commentators the commentaries pane shows on its current page (none once it goes). */
+    data class CommentariesVisibleChanged(
+        val commentatorIds: Set<Long>,
+    ) : BookContentEvent
+
     data object FlushCommentariesState : BookContentEvent
 
     data object ToggleCommentatorsList : BookContentEvent

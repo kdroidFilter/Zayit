@@ -142,10 +142,8 @@ fun BookContentView(
     isTocEntrySelection: Boolean = false,
     // The passage of the primary line selected in the text, part of the selection
     selectedPassage: SelectedPassage? = null,
-    // The commentators (book ids) open in the commentaries pane: a passage none of them explains is plain text. The
-    // book's choice for most lines, the pane's own for the primary line, which it shows.
+    // The commentators (book ids) the commentaries pane shows on its page: a passage none of them explains is plain text
     passageCommentatorIds: Set<Long> = emptySet(),
-    primaryLineCommentatorIds: Set<Long> = emptySet(),
     // Lines by index, tinted, with an end mark after the last: a passage to read, such as the day's limud
     markedLines: IntRange? = null,
     // Each verse twice, then its targum: shnayim mikra
@@ -1069,14 +1067,7 @@ fun BookContentView(
                                         selectedAnchors = selectedPassage?.takeIf { it.lineId == line.id }?.anchors,
                                         anchorTargets = anchorIndex.of(line.id),
                                         anchorCommentators = anchorIndex.commentators,
-                                        passageBooks =
-                                            if (line.id ==
-                                                primarySelectedLineId
-                                            ) {
-                                                primaryLineCommentatorIds
-                                            } else {
-                                                passageCommentatorIds
-                                            },
+                                        passageBooks = passageCommentatorIds,
                                         onPassageClick = { passage -> onEvent(BookContentEvent.PassageSelected(line, passage)) },
                                         onHover = { onLineHover(line.id) },
                                         isSelected = isCurrentSelected,

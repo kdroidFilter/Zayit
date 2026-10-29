@@ -688,6 +688,9 @@ class BookContentViewModel(
                         }
                     }
 
+                is BookContentEvent.CommentariesVisibleChanged ->
+                    stateManager.updateContent(save = false) { copy(visibleCommentatorIds = event.commentatorIds) }
+
                 is BookContentEvent.CommentariesPageChanged ->
                     stateManager.updateContent(save = false) {
                         copy(commentariesPageIndex = event.page)

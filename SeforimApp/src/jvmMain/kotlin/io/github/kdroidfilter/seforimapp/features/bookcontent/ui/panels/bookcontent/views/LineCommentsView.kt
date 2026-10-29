@@ -20,7 +20,9 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -44,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -80,6 +83,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
@@ -592,6 +596,13 @@ private fun CommentatorsGrid(
         initialPage = columnScroll.pageIndex,
         onPageChange = { page -> onEvent(BookContentEvent.CommentariesPageChanged(page)) },
         onFlushPersist = { onEvent(BookContentEvent.FlushCommentariesState) },
+        onVisibleChange = { names ->
+            onEvent(BookContentEvent.CommentariesVisibleChanged(names.mapNotNullTo(mutableSetOf()) { config.titleToIdMap[it] }))
+        },
+        focusCommentator =
+            config.selectedPassage
+                ?.takeIf { it.lineId == (selection as? LineSelection.Single)?.lineId }
+                ?.let { passage -> config.selectedCommentators.firstOrNull { config.titleToIdMap[it] in passage.targetBookIds } },
     ) { commentatorId ->
         val pagerFlow =
             remember(commentatorId, pagerFlowCache) {
@@ -686,22 +697,25 @@ private fun CommentariesPagedList(
             highlightsByBook.mapValues { (_, lines) -> lines.groupBy { it.lineId } }
         }
 
-    // The passage selected in the text: the commentary lines it leads to stay, the others fade, and the column brings
-    // the first in view once. Nothing fades when none of its commentary books is open here.
+    // The passage selected in the text: the commentary lines it leads to stand out on a light tint, and the column brings
+    // the first in view once. Nothing fades: a commentary not linked may still be about it.
     val singleLineId = (selection as? LineSelection.Single)?.lineId
     val passage = config.selectedPassage?.takeIf { it.lineId == singleLineId }
-    val openBooks =
-        remember(
-            config.selectedCommentators,
-            config.titleToIdMap,
-        ) { config.selectedCommentators.mapNotNull { config.titleToIdMap[it] }.toSet() }
-    val passageHasCommentaries = passage != null && passage.targetBookIds.any { it in openBooks }
-    LaunchedEffect(passage) {
+    val passageColor = JewelTheme.globalColors.outlines.focused
+    // The column's own scroll restore yields to the passage when the passage leads here
+    val passageLeadsHere = passage != null && commentatorId in passage.targetBookIds
+    val currentShouldRestore by rememberUpdatedState(shouldRestore)
+    LaunchedEffect(passage, pagerFlow) {
         val targets = passage?.targetLineIds ?: return@LaunchedEffect
-        val first =
-            snapshotFlow { lazyPagingItems.itemSnapshotList.items.indexOfFirst { it.link.targetLineId in targets } }
-                .first { it >= 0 }
-        if (listState.layoutInfo.visibleItemsInfo.none { it.index == first }) listState.animateScrollToItem(first)
+        // After the first load and the column's restore, which would otherwise move it back
+        snapshotFlow { currentShouldRestore || lazyPagingItems.loadState.refresh is LoadState.Loading }.first { !it }
+        val index = loadedIndexOf(lazyPagingItems, targets) ?: return@LaunchedEffect
+        // Brought in view unless already wholly shown
+        val layout = listState.layoutInfo
+        val shown = layout.visibleItemsInfo.firstOrNull { it.index == index }
+        val isWhollyShown =
+            shown != null && shown.offset >= layout.viewportStartOffset && shown.offset + shown.size <= layout.viewportEndOffset
+        if (!isWhollyShown) listState.animateScrollToItem(index)
     }
 
     // Ordered char-count vector for every commentary matching this selection ×
@@ -764,7 +778,9 @@ private fun CommentariesPagedList(
     val restoreOffset = remember(pagerFlow) { initialOffset }
     LaunchedEffect(pagerFlow, lazyPagingItems.loadState.refresh, shouldRestore) {
         if (shouldRestore && lazyPagingItems.loadState.refresh !is LoadState.Loading) {
-            if (lazyPagingItems.itemCount > 0) {
+            if (passageLeadsHere) {
+                currentOnRestore()
+            } else if (lazyPagingItems.itemCount > 0) {
                 val safeIndex = restoreIndex.coerceIn(0, lazyPagingItems.itemCount - 1)
                 val safeOffset = restoreOffset.coerceAtLeast(0)
                 listState.scrollToItem(safeIndex, safeOffset)
@@ -805,9 +821,9 @@ private fun CommentariesPagedList(
                         val lineHighlights =
                             highlightsByBookLine[commentary.link.targetBookId]
                                 ?.get(commentary.link.targetLineId) ?: emptyList()
-                        val isOutsidePassage = passageHasCommentaries && commentary.link.targetLineId !in passage.targetLineIds
                         CommentaryItem(
-                            modifier = if (isOutsidePassage) Modifier.alpha(OUTSIDE_PASSAGE_ALPHA) else Modifier,
+                            isInPassage = passage != null && commentary.link.targetLineId in passage.targetLineIds,
+                            passageColor = passageColor,
                             linkId = commentary.link.id,
                             targetText = commentary.targetText,
                             textSizes = config.textSizes,
@@ -859,7 +875,28 @@ private fun CommentariesPagedList(
     }
 }
 
-private const val OUTSIDE_PASSAGE_ALPHA = 0.35f
+private const val PASSAGE_TINT_ALPHA = 0.1f
+private const val PAGE_LOAD_TIMEOUT_MS = 3_000L
+
+/**
+ * The position in the column (placeholders counted) of the first commentary among [targets], asking for the next
+ * pages while it is not loaded yet; null when the column ends, or a page does not come, without it.
+ */
+private suspend fun loadedIndexOf(
+    items: LazyPagingItems<CommentaryWithText>,
+    targets: Set<Long>,
+): Int? {
+    while (true) {
+        val snapshot = items.itemSnapshotList
+        val index = snapshot.indexOfFirst { it != null && it.link.targetLineId in targets }
+        if (index >= 0) return index
+        if (items.loadState.append.endOfPaginationReached || items.itemCount == 0) return null
+        val count = items.itemCount
+        // Reading the last item asks the pager for the next page
+        items[count - 1]
+        withTimeoutOrNull(PAGE_LOAD_TIMEOUT_MS) { snapshotFlow { items.itemCount }.first { it > count } } ?: return null
+    }
+}
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -876,12 +913,19 @@ private fun CommentaryItem(
     userHighlights: List<UserHighlight> = emptyList(),
     onSecondaryClick: () -> Unit = {},
     onLayoutWidthMeasure: (Int) -> Unit = {},
-    modifier: Modifier = Modifier,
+    // Led to by the passage selected in the text: on a light tint of the accent, faded in, kept while selected
+    isInPassage: Boolean = false,
+    passageColor: Color = Color.Unspecified,
 ) {
+    val passageTint by animateFloatAsState(if (isInPassage) 1f else 0f, tween(durationMillis = 250))
     Column(
         modifier =
-            modifier
-                .fillMaxWidth()
+            Modifier
+                .drawBehind {
+                    if (passageTint > 0f) {
+                        drawRoundRect(passageColor.copy(alpha = PASSAGE_TINT_ALPHA * passageTint), cornerRadius = CornerRadius(6.dp.toPx()))
+                    }
+                }.fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)
                 .onPointerEvent(PointerEventType.Press) { event ->
                     // Record this commentary line as the highlight target (analogous to the main

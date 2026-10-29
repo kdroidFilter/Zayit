@@ -10,6 +10,15 @@ import kotlin.io.encoding.ExperimentalEncodingApi
 /** Unicode "object replacement character" used as placeholder text for inline images. */
 const val INLINE_IMAGE_PLACEHOLDER: String = "\uFFFC"
 
+/**
+ * Where a commentary attaches to the text: an empty `<i data-commentator="Bach" data-order="2.1">` placed before the
+ * words it explains. [order] is the comment's number in its section (the `2` of `2.1`).
+ */
+data class CommentAnchor(
+    val commentator: String,
+    val order: Int,
+)
+
 data class ParsedHtmlElement(
     val text: String,
     val isBold: Boolean = false,
@@ -17,8 +26,6 @@ data class ParsedHtmlElement(
     val isSmall: Boolean = false,
     val isHeader: Boolean = false,
     val headerLevel: Int? = null,
-    val commentator: String? = null,
-    val commentatorOrder: String? = null,
     val isLineBreak: Boolean = false,
     val isFootnoteMarker: Boolean = false,
     val isFootnoteContent: Boolean = false,
@@ -28,16 +35,38 @@ data class ParsedHtmlElement(
     val imageHeight: Int? = null,
     /** Target of a citation link (`<a class="ref" href="seforim://line/<id>">`), null for plain text. */
     val href: String? = null,
+    /**
+     * The anchors standing in this element's text, at their offset in it. An anchor leaves no text: it never splits
+     * the words around it into two elements (two spans to lay out and draw).
+     */
+    val anchors: List<Pair<Int, CommentAnchor>> = emptyList(),
 ) {
     val isImage: Boolean get() = imageBytes != null
 }
 
 private val WHITESPACE_REGEX = Regex("\\s+")
 
+/**
+ * The elements parsed so far, and the anchors met since the last text, waiting for the text they stand before. Only
+ * the anchors of [anchorCommentators] are kept: the others cost no more than skipping their empty tag.
+ */
+private class ParsedElements(
+    val anchorCommentators: Set<String>,
+) : ArrayList<ParsedHtmlElement>() {
+    val pendingAnchors = mutableListOf<CommentAnchor>()
+
+    fun takeAnchors(at: Int): List<Pair<Int, CommentAnchor>> =
+        if (pendingAnchors.isEmpty()) emptyList() else pendingAnchors.map { at to it }.also { pendingAnchors.clear() }
+}
+
 class HtmlParser {
-    fun parse(html: String): List<ParsedHtmlElement> {
+    /** Parses [html]; the commentary anchors of [anchorCommentators] are kept (none by default), the others skipped. */
+    fun parse(
+        html: String,
+        anchorCommentators: Set<String> = emptySet(),
+    ): List<ParsedHtmlElement> {
         val doc = Jsoup.parse(html)
-        val out = mutableListOf<ParsedHtmlElement>()
+        val out = ParsedElements(anchorCommentators)
         for (child in doc.body().childNodes()) {
             processNode(
                 node = child,
@@ -47,8 +76,6 @@ class HtmlParser {
                 isSmall = false,
                 isHeader = false,
                 headerLevel = null,
-                commentator = null,
-                commentatorOrder = null,
                 isFootnoteMarker = false,
                 isFootnoteContent = false,
                 href = null,
@@ -63,14 +90,12 @@ class HtmlParser {
 
     private fun processNode(
         node: Node,
-        list: MutableList<ParsedHtmlElement>,
+        list: ParsedElements,
         isBold: Boolean,
         isItalic: Boolean,
         isSmall: Boolean,
         isHeader: Boolean,
         headerLevel: Int?,
-        commentator: String?,
-        commentatorOrder: String?,
         isFootnoteMarker: Boolean,
         isFootnoteContent: Boolean,
         href: String?,
@@ -85,8 +110,6 @@ class HtmlParser {
                     isSmall = isSmall,
                     isHeader = isHeader,
                     headerLevel = headerLevel,
-                    commentator = commentator,
-                    commentatorOrder = commentatorOrder,
                     isFootnoteMarker = isFootnoteMarker,
                     isFootnoteContent = isFootnoteContent,
                     href = href,
@@ -102,6 +125,14 @@ class HtmlParser {
 
                 if (tag == "img") {
                     appendImage(list, node)
+                    return
+                }
+
+                if (tag == "i" && node.hasAttr("data-commentator")) {
+                    val commentator = node.attr("data-commentator")
+                    if (commentator in list.anchorCommentators) {
+                        orderOf(node.attr("data-order"))?.let { list.pendingAnchors += CommentAnchor(commentator, it) }
+                    }
                     return
                 }
 
@@ -130,8 +161,6 @@ class HtmlParser {
                         isSmall = nextSmall,
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
-                        commentator = commentator,
-                        commentatorOrder = commentatorOrder,
                         isFootnoteMarker = nextFootnoteMarker,
                         isFootnoteContent = nextFootnoteContent,
                         href = nextHref,
@@ -148,8 +177,6 @@ class HtmlParser {
                         isSmall = nextSmall,
                         isHeader = nextHeader,
                         headerLevel = nextHeaderLevel,
-                        commentator = commentator,
-                        commentatorOrder = commentatorOrder,
                         isFootnoteMarker = nextFootnoteMarker,
                         isFootnoteContent = nextFootnoteContent,
                         href = nextHref,
@@ -160,15 +187,13 @@ class HtmlParser {
     }
 
     private fun appendSegment(
-        list: MutableList<ParsedHtmlElement>,
+        list: ParsedElements,
         textRaw: String,
         isBold: Boolean,
         isItalic: Boolean,
         isSmall: Boolean,
         isHeader: Boolean,
         headerLevel: Int?,
-        commentator: String?,
-        commentatorOrder: String?,
         isFootnoteMarker: Boolean,
         isFootnoteContent: Boolean,
         href: String?,
@@ -206,8 +231,6 @@ class HtmlParser {
                     last.isSmall == isSmall &&
                     last.isHeader == isHeader &&
                     last.headerLevel == headerLevel &&
-                    last.commentator == commentator &&
-                    last.commentatorOrder == commentatorOrder &&
                     last.isFootnoteMarker == isFootnoteMarker &&
                     last.isFootnoteContent == isFootnoteContent &&
                     last.href == href
@@ -226,11 +249,13 @@ class HtmlParser {
                     }
 
                 val newText = last.text + separator + trimmedText
-                list[list.lastIndex] = last.copy(text = newText)
+                // Anchors met since: at the end of the text so far (most merges have none, and allocate nothing)
+                val anchors = if (list.pendingAnchors.isEmpty()) last.anchors else last.anchors + list.takeAnchors(at = last.text.length)
+                list[list.lastIndex] = last.copy(text = newText, anchors = anchors)
 
                 // Gère l'espace de fin si nécessaire
                 if (hasTrailingSpace && !newText.endsWith(" ")) {
-                    list[list.lastIndex] = last.copy(text = newText + " ")
+                    list[list.lastIndex] = list.last().copy(text = newText + " ")
                 }
                 return
             }
@@ -260,11 +285,10 @@ class HtmlParser {
                 isSmall = isSmall,
                 isHeader = isHeader,
                 headerLevel = headerLevel,
-                commentator = commentator,
-                commentatorOrder = commentatorOrder,
                 isFootnoteMarker = isFootnoteMarker,
                 isFootnoteContent = isFootnoteContent,
                 href = href,
+                anchors = list.takeAnchors(at = 0),
             ),
         )
     }
@@ -272,7 +296,7 @@ class HtmlParser {
     // Emits an image element if the `src` is a supported `data:image/...;base64,...` URI.
     // Non-data URIs are ignored (no network fetch — images must be pre-embedded in the DB).
     private fun appendImage(
-        list: MutableList<ParsedHtmlElement>,
+        list: ParsedElements,
         node: Element,
     ) {
         val src = node.attr("src").takeIf { it.isNotBlank() } ?: return
@@ -303,8 +327,20 @@ class HtmlParser {
         return mime to bytes
     }
 
+    // The `2` of `data-order="2.1"`, read without allocating
+    private fun orderOf(value: String): Int? {
+        var order = 0
+        var digits = 0
+        for (c in value) {
+            if (c !in '0'..'9') break
+            order = order * 10 + (c - '0')
+            digits++
+        }
+        return order.takeIf { digits > 0 }
+    }
+
     // Adds a line break element only if necessary
-    private fun appendLineBreak(list: MutableList<ParsedHtmlElement>) {
+    private fun appendLineBreak(list: ParsedElements) {
         if (list.isEmpty()) return // no <br> at the beginning
         val last = list.last()
         if (!last.isLineBreak) { // avoids <br><br> → double line

@@ -12,6 +12,7 @@ import androidx.compose.ui.text.AnnotatedString
 import io.github.kdroidfilter.seforim.htmlparser.HtmlImageContentBuilder
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.ANCHORED_COMMENTATORS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
@@ -150,6 +151,8 @@ internal fun buildLineAnnotation(
             footnoteMarkerColor = footnoteMarkerColor,
             inlineContent = inline,
             imageContentBuilder = imageContentBuilder,
+            // Their passages, for the commentaries a click on the text brings forward
+            anchorCommentators = ANCHORED_COMMENTATORS,
         )
     return LineAnnotation(annotated, inline.toMap())
 }

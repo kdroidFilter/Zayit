@@ -200,6 +200,10 @@ private fun BookContentPanelContent(
                     lazyPagingItems = lazyPagingItems,
                     selectedLineIds = uiState.content.selectedLineIds,
                     primarySelectedLineId = uiState.content.primarySelectedLineId,
+                    selectedPassage = uiState.content.selectedPassage,
+                    // Only the passages these commentators explain can be selected: none while the pane is hidden
+                    passageCommentatorIds = if (uiState.content.showCommentaries) bookCommentatorIds else emptySet(),
+                    primaryLineCommentatorIds = if (uiState.content.showCommentaries) openCommentatorIds else emptySet(),
                     isTocEntrySelection = uiState.content.isTocEntrySelection,
                     markedLines =
                         uiState.content.markedRange

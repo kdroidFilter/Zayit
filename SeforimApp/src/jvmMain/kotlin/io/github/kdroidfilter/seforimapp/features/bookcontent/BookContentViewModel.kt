@@ -19,12 +19,14 @@ import io.github.kdroidfilter.seforimapp.core.history.HistoryStore
 import io.github.kdroidfilter.seforimapp.core.presentation.tabs.pinnedTabLabel
 import io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode
 import io.github.kdroidfilter.seforimapp.core.settings.AppSettings
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentStateManager
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.MarkedRange
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.NavigationState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.Providers
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.StateKeys
+import io.github.kdroidfilter.seforimapp.features.bookcontent.state.needsLineSelectionFor
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.BookContentUseCaseFactory
 import io.github.kdroidfilter.seforimapp.features.bookcontent.usecases.altTocIdOfSearchMatch
 import io.github.kdroidfilter.seforimapp.features.search.domain.BookDetailsLoader
@@ -530,8 +532,20 @@ class BookContentViewModel(
                 }
 
                 // Content
-                is BookContentEvent.LineSelected ->
+                is BookContentEvent.LineSelected -> {
                     selectLine(event.line, event.isModifierPressed)
+                    // A click on the line outside any passage lets the passage go
+                    if (!event.isModifierPressed) stateManager.updateContent { copy(selectedPassage = null) }
+                }
+
+                is BookContentEvent.PassageSelected -> {
+                    if (stateManager.state.value.content
+                            .needsLineSelectionFor(event.line.id)
+                    ) {
+                        selectLine(event.line)
+                    }
+                    stateManager.updateContent { copy(selectedPassage = SelectedPassage(event.line.id, event.keys)) }
+                }
 
                 is BookContentEvent.LoadAndSelectLine ->
                     loadAndSelectLine(event.lineId)

@@ -3,6 +3,7 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.state
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import androidx.paging.PagingData
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
 import io.github.kdroidfilter.seforimlibrary.core.models.*
 import io.github.kdroidfilter.seforimlibrary.dao.repository.CommentaryWithText
 import kotlinx.coroutines.flow.Flow
@@ -198,6 +199,9 @@ data class ContentState(
     val primarySelectedLineId: Long? = null,
     // True si la multi-sélection vient d'un clic sur un TOC entry (pas Ctrl+click)
     val isTocEntrySelection: Boolean = false,
+    // The passage of the primary line clicked in the text, part of the selection: any other change of the selection
+    // lets it go (see BookContentStateManager.update). Not persisted.
+    val selectedPassage: SelectedPassage? = null,
     val commentaries: List<CommentaryWithText> = emptyList(),
     // Visibility
     val showCommentaries: Boolean = false,
@@ -257,6 +261,13 @@ data class ContentState(
     val selectedLineIds: Set<Long>
         get() = selectedLines.mapTo(mutableSetOf()) { it.id }
 }
+
+/**
+ * Whether a click on a passage of [lineId] must select its line first: not when the line is the primary of the
+ * selection and that selection is the line alone or its TOC section, which selecting it again would give anyway.
+ */
+fun ContentState.needsLineSelectionFor(lineId: Long): Boolean =
+    !(primarySelectedLineId == lineId && (selectedLines.size == 1 || isTocEntrySelection))
 
 /**
  * Layout state uses SplitPaneState to directly bind with UI panes

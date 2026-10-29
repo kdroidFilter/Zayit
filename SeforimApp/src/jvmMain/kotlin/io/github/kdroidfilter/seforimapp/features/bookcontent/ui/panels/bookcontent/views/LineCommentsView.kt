@@ -20,6 +20,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -43,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.PagingData
+import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import io.github.kdroidfilter.seforim.htmlparser.SkiaHtmlImageBuilder
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
@@ -58,6 +60,9 @@ import io.github.kdroidfilter.seforimapp.core.presentation.text.highlightAnnotat
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.selection.CommentaryLineRef
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.CommentKey
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.SelectedPassage
+import io.github.kdroidfilter.seforimapp.features.bookcontent.segments.commentKeyOf
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorGroup
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.CommentatorItem
@@ -77,6 +82,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
 import org.jetbrains.compose.splitpane.rememberSplitPaneState
@@ -209,6 +215,7 @@ fun LineCommentsView(
                             compact = compact,
                             prefetchedGroups = prefetched,
                             diacritics = diacritics,
+                            selectedPassage = contentState.selectedPassage,
                         )
                     }
                 }
@@ -233,6 +240,8 @@ private fun CommentariesContent(
     compact: Boolean,
     prefetchedGroups: List<CommentatorGroup>?,
     diacritics: DiacriticsMode,
+    // The passage selected in the text on this line: its commentaries stay, the others fade
+    selectedPassage: SelectedPassage?,
 ) {
     val commentatorSelection =
         rememberCommentarySelectionData(
@@ -305,6 +314,7 @@ private fun CommentariesContent(
                 textSizes = textSizes,
                 findQueryText = findQueryText,
                 diacritics = diacritics,
+                selectedPassage = selectedPassage,
             )
         },
     )
@@ -537,6 +547,7 @@ private fun CommentariesDisplay(
     textSizes: AnimatedTextSizes,
     findQueryText: String,
     diacritics: DiacriticsMode,
+    selectedPassage: SelectedPassage? = null,
 ) {
     if (selectedCommentators.isEmpty()) {
         CenteredMessage(
@@ -554,6 +565,7 @@ private fun CommentariesDisplay(
             textSizes = textSizes,
             findQueryText = findQueryText,
             diacritics = diacritics,
+            selectedPassage = selectedPassage,
             onEvent = onEvent,
         )
 
@@ -677,6 +689,24 @@ private fun CommentariesPagedList(
             highlightsByBook.mapValues { (_, lines) -> lines.groupBy { it.lineId } }
         }
 
+    // The passage selected in the text: its commentaries stay, the others fade, and the column brings the first in view
+    val singleLineId = (selection as? LineSelection.Single)?.lineId
+    val selectedKeys = config.selectedPassage?.takeIf { it.lineId == singleLineId }?.keys
+    val commentKeys = rememberCommentKeys(selectedKeys?.let { singleLineId }, lazyPagingItems)
+    // Nothing fades when no open commentator explains the passage (its commentator closed since, for one)
+    val passageHasCommentaries = selectedKeys != null && selectedKeys.any { it.bookTitle in config.selectedCommentators }
+    // Once per selection: the column brings the passage's first commentary in view as soon as its key is read, then
+    // leaves the scroll to the reader (pages loaded later must not pull it back)
+    val currentCommentKeys by rememberUpdatedState(commentKeys)
+    LaunchedEffect(selectedKeys) {
+        val keys = selectedKeys ?: return@LaunchedEffect
+        val first =
+            snapshotFlow {
+                lazyPagingItems.itemSnapshotList.items.indexOfFirst { currentCommentKeys[it.link.targetLineId] in keys }
+            }.first { it >= 0 }
+        if (listState.layoutInfo.visibleItemsInfo.none { it.index == first }) listState.animateScrollToItem(first)
+    }
+
     // Ordered char-count vector for every commentary matching this selection ×
     // commentator (same filter + order as the pager). The scrollbar converts every
     // value to `ceil(charCount / capacity) * capacity` to derive visual-line count.
@@ -778,7 +808,11 @@ private fun CommentariesPagedList(
                         val lineHighlights =
                             highlightsByBookLine[commentary.link.targetBookId]
                                 ?.get(commentary.link.targetLineId) ?: emptyList()
+                        // A commentary whose key is not read yet, or has none, never fades
+                        val key = commentKeys[commentary.link.targetLineId]
+                        val isOutsidePassage = passageHasCommentaries && key != null && key !in selectedKeys.orEmpty()
                         CommentaryItem(
+                            modifier = if (isOutsidePassage) Modifier.alpha(OUTSIDE_PASSAGE_ALPHA) else Modifier,
                             linkId = commentary.link.id,
                             targetText = commentary.targetText,
                             textSizes = config.textSizes,
@@ -830,6 +864,53 @@ private fun CommentariesPagedList(
     }
 }
 
+private const val OUTSIDE_PASSAGE_ALPHA = 0.35f
+
+/** The keys read for the commentaries of [lineId]: [readIds] are the commentary lines already looked at, keyed or not. */
+private data class CommentKeysRead(
+    val lineId: Long,
+    val baseHeRef: String?,
+    val keys: Map<Long, CommentKey>,
+    val readIds: Set<Long>,
+)
+
+/**
+ * The key of each loaded commentary of [lineId] (by its line id), read from its reference against the line's; empty
+ * while no passage of [lineId] is selected, so a pane nobody points to costs nothing. Each new page reads only its own
+ * commentaries.
+ */
+@Composable
+private fun rememberCommentKeys(
+    lineId: Long?,
+    lazyPagingItems: LazyPagingItems<CommentaryWithText>,
+): Map<Long, CommentKey> {
+    val repository = LocalAppGraph.current.repository
+    val loaded = lazyPagingItems.itemSnapshotList.items
+    // Tied to the line it was read for: produceState keeps its value across keys, and another line's keys would match
+    // nothing here
+    val read by produceState<CommentKeysRead?>(null, lineId, loaded.size) {
+        if (lineId == null) return@produceState
+        val previous = value?.takeIf { it.lineId == lineId }
+        val missing = lazyPagingItems.itemSnapshotList.items.filter { it.link.targetLineId !in previous?.readIds.orEmpty() }
+        if (missing.isEmpty() && previous != null) return@produceState
+        val ids = missing.map { it.link.targetLineId } + if (previous == null) listOf(lineId) else emptyList()
+        val lines = runSuspendCatching { repository.getLinesByIds(ids) }.getOrNull()?.associateBy { it.id } ?: return@produceState
+        val baseHeRef = previous?.baseHeRef ?: lines[lineId]?.heRef
+        val keys =
+            missing.mapNotNull { item ->
+                commentKeyOf(baseHeRef, lines[item.link.targetLineId]?.heRef, item.targetBookTitle)?.let { item.link.targetLineId to it }
+            }
+        value =
+            CommentKeysRead(
+                lineId = lineId,
+                baseHeRef = baseHeRef,
+                keys = previous?.keys.orEmpty() + keys,
+                readIds = previous?.readIds.orEmpty() + missing.map { it.link.targetLineId },
+            )
+    }
+    return read?.takeIf { it.lineId == lineId }?.keys.orEmpty()
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun CommentaryItem(
@@ -845,10 +926,11 @@ private fun CommentaryItem(
     userHighlights: List<UserHighlight> = emptyList(),
     onSecondaryClick: () -> Unit = {},
     onLayoutWidthMeasure: (Int) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier =
-            Modifier
+            modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = CommentaryItemVerticalPaddingPerSide)
                 .onPointerEvent(PointerEventType.Press) { event ->
@@ -1209,6 +1291,8 @@ private fun Providers.buildCommentariesPagerFor(
  */
 @Immutable
 internal data class CommentariesLayoutConfig(
+    // The passage selected in the text, on a single selected line
+    val selectedPassage: SelectedPassage?,
     val selectedCommentators: ImmutableList<String>,
     val titleToIdMap: Map<String, Long>,
     val onCommentClick: (CommentaryWithText) -> Unit,
@@ -1229,6 +1313,7 @@ private fun rememberCommentariesLayoutConfig(
     textSizes: AnimatedTextSizes,
     findQueryText: String,
     diacritics: DiacriticsMode,
+    selectedPassage: SelectedPassage?,
     onEvent: (BookContentEvent) -> Unit,
 ): CommentariesLayoutConfig {
     val appSettings = LocalAppGraph.current.appSettings
@@ -1248,8 +1333,10 @@ private fun rememberCommentariesLayoutConfig(
         findQueryText,
         diacritics,
         maxCommentatorsPerPage,
+        selectedPassage,
     ) {
         CommentariesLayoutConfig(
+            selectedPassage = selectedPassage,
             selectedCommentators = selectedCommentators,
             titleToIdMap = titleToIdMap,
             onCommentClick = { commentary ->

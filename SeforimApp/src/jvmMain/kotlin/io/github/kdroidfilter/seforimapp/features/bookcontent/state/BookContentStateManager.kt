@@ -149,7 +149,7 @@ class BookContentStateManager(
         save: Boolean = true,
         transform: BookContentState.() -> BookContentState,
     ) {
-        _state.update { it.transform() }
+        _state.update { it.transform().withPassageOfItsSelection(previous = it) }
         if (save) {
             saveAllStates()
         }
@@ -314,4 +314,20 @@ class BookContentStateManager(
             current.copy(bookContent = persisted)
         }
     }
+}
+
+/**
+ * The selected passage belongs to the line selection: it stands only on the primary line, and a selection that changes
+ * without setting it again lets it go. Every state write goes through here, so no path can leave a stale passage.
+ */
+internal fun BookContentState.withPassageOfItsSelection(previous: BookContentState): BookContentState {
+    val passage = content.selectedPassage ?: return this
+    // By identity first, then by ids: most writes (scrolling…) carry the same set, and lines never need comparing whole
+    val lines = content.selectedLines
+    val previousLines = previous.content.selectedLines
+    val selectionChanged =
+        content.primarySelectedLineId != previous.content.primarySelectedLineId ||
+            (lines !== previousLines && lines.mapTo(HashSet()) { it.id } != previousLines.mapTo(HashSet()) { it.id })
+    val isStale = passage.lineId != content.primarySelectedLineId || (selectionChanged && passage == previous.content.selectedPassage)
+    return if (isStale) copy(content = content.copy(selectedPassage = null)) else this
 }

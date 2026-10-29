@@ -38,12 +38,9 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
-import androidx.compose.ui.input.pointer.isCtrlPressed
-import androidx.compose.ui.input.pointer.isMetaPressed
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -70,6 +67,8 @@ import io.github.kdroidfilter.seforimapp.features.author.plainPersonLinks
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookTabUi
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.EnhancedHorizontalSplitPane
+import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.components.asStable
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.BookContentPanel
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.ContentAwareScrollbarShell
 import io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcontent.views.HomeSearchCallbacks
@@ -86,11 +85,16 @@ import io.github.santimattius.structured.annotations.StructuredScope
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
+import org.jetbrains.compose.splitpane.ExperimentalSplitPaneApi
+import org.jetbrains.compose.splitpane.rememberSplitPaneState
 import org.jetbrains.jewel.foundation.theme.JewelTheme
 import org.jetbrains.jewel.ui.Orientation
 import org.jetbrains.jewel.ui.component.*
@@ -190,6 +194,7 @@ fun SearchResultInBookShellMvi(
     }
 }
 
+@OptIn(ExperimentalSplitPaneApi::class, FlowPreview::class)
 @Composable
 private fun SearchResultContentMvi(
     state: SearchUiState,
@@ -327,15 +332,9 @@ private fun SearchResultContentMvi(
     val selectedLineId = preview?.hit?.lineId
     val showBookDetails by appSettings.bookDetailsPaneFlow.collectAsState()
     val listFocus = remember { FocusRequester() }
-    val windowInfo = LocalWindowInfo.current
 
-    // In a new tab by default; [inPlace] (Ctrl, or the preview's button) opens it in this tab
-    fun openResult(
-        result: SearchResult,
-        inPlace: Boolean,
-    ) {
-        actions.onOpenResult(result, !inPlace)
-    }
+    // In a new tab
+    fun openResult(result: SearchResult) = actions.onOpenResult(result, true)
 
     // Up and down move the selection through the list, Enter opens it
     fun onListKey(event: KeyEvent): Boolean {
@@ -346,7 +345,7 @@ private fun SearchResultContentMvi(
                 Key.DirectionDown -> (index + 1).coerceAtMost(items.lastIndex)
                 Key.DirectionUp -> (index - 1).coerceAtLeast(0)
                 Key.Enter, Key.NumPadEnter -> {
-                    preview?.let { openResult(it.hit, false) }
+                    preview?.let { openResult(it.hit) }
                     return true
                 }
                 else -> return false
@@ -356,22 +355,26 @@ private fun SearchResultContentMvi(
         return true
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
-        // Wide windows read the selected passage beside the list, as a mail client
-        val twoPanes = maxWidth >= TWO_PANES_MIN_WIDTH
-        val listWidth = (maxWidth * 0.34f).coerceIn(LIST_MIN_WIDTH, LIST_MAX_WIDTH)
-        Column(
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxHeight(),
-        ) {
-            Row(Modifier.fillMaxSize()) {
-                val listModifier = if (twoPanes) Modifier.width(listWidth) else Modifier.fillMaxWidth()
+    // The list's share of the width, resized as a docked pane and kept for every search tab
+    val splitState = rememberSplitPaneState(remember { appSettings.getSearchListSplit() })
+    LaunchedEffect(splitState) {
+        snapshotFlow { splitState.positionPercentage }
+            .drop(1)
+            .debounce(SPLIT_SAVE_DELAY_MS)
+            .collect(appSettings::setSearchListSplit)
+    }
+
+    Box(modifier = Modifier.fillMaxSize().onPreviewKeyEvent(keyHandler)) {
+        // The selected passage beside the list, as a mail client
+        EnhancedHorizontalSplitPane(
+            splitPaneState = splitState.asStable(),
+            firstMinSize = LIST_MIN_WIDTH.value,
+            secondMinSize = PREVIEW_MIN_WIDTH.value,
+            firstContent = {
                 // One card: the bar, the tabs and the status over the list, as a mail client's search
                 // The list follows the reading text's zoom, as the passage beside it
                 CompositionLocalProvider(LocalResultTextScale provides zoom.textSize / AppSettings.DEFAULT_TEXT_SIZE) {
-                    Column(listModifier.fillMaxHeight().card()) {
+                    Column(Modifier.fillMaxSize().card()) {
                         Column(Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 6.dp)) {
                             // The home page's smart bar: references, books and authors open; a text search runs here
                             // The logo beside the bar, as Google's
@@ -521,17 +524,12 @@ private fun SearchResultContentMvi(
                                                 bookFontCode = bookFontCode,
                                                 breadcrumbs = breadcrumbs,
                                                 onRequestBreadcrumb = actions.onRequestBreadcrumb,
-                                                // Wide: a click shows the passage beside the list, a double click opens it; narrow: opens it
+                                                // A click shows the passage beside the list, a double click opens it
                                                 onClick = { result ->
-                                                    if (twoPanes) {
-                                                        actions.onSelectResult(result.lineId)
-                                                        listFocus.requestFocus()
-                                                    } else {
-                                                        val mods = windowInfo.keyboardModifiers
-                                                        openResult(result, mods.isCtrlPressed || mods.isMetaPressed)
-                                                    }
+                                                    actions.onSelectResult(result.lineId)
+                                                    listFocus.requestFocus()
                                                 },
-                                                onOpen = { result -> openResult(result, false) },
+                                                onOpen = { result -> openResult(result) },
                                                 onMoreInBook = { actions.onMoreFromBook(item.hit.bookId) },
                                             )
                                         }
@@ -576,42 +574,42 @@ private fun SearchResultContentMvi(
                         }
                     }
                 }
-                if (twoPanes) {
-                    Column(Modifier.weight(1f).fillMaxHeight()) {
-                        // The query's book is already in the details pane when a result of it is shown
-                        val duplicate =
-                            entity is SearchEntity.BookEntity && showBookDetails && entity.book.id == preview?.hit?.bookId
-                        if (entity != null && !duplicate) {
-                            EntityPanel(
-                                entity = entity,
-                                onOpenBookAt = actions.onOpenBookAt,
-                                onOpenAuthor = actions.onOpenAuthor,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-                        }
-                        // Until the first result's passage is loaded, the pane says so
-                        if (preview == null && (items.isNotEmpty() || state.isLoading)) {
-                            Box(Modifier.weight(1f).fillMaxWidth().card(), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
-                            }
-                        }
-                        preview?.let { shown ->
-                            PassagePreview(
-                                preview = shown,
-                                pieces = breadcrumbs[shown.hit.lineId],
-                                query = state.executedQuery,
-                                bookFontCode = bookFontCode,
-                                // The passage follows the zoom, as the books
-                                textSize = mainTextSize,
-                                onOpen = { openResult(shown.hit, false) },
-                                onOpenLine = { lineId -> actions.onOpenBookAt(shown.hit.bookId, lineId) },
-                                modifier = Modifier.weight(1f).then(zoom.modifier),
-                            )
+            },
+            secondContent = {
+                Column(Modifier.fillMaxSize()) {
+                    // The query's book is already in the details pane when a result of it is shown
+                    val duplicate =
+                        entity is SearchEntity.BookEntity && showBookDetails && entity.book.id == preview?.hit?.bookId
+                    if (entity != null && !duplicate) {
+                        EntityPanel(
+                            entity = entity,
+                            onOpenBookAt = actions.onOpenBookAt,
+                            onOpenAuthor = actions.onOpenAuthor,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    // Until the first result's passage is loaded, the pane says so
+                    if (preview == null && (items.isNotEmpty() || state.isLoading)) {
+                        Box(Modifier.weight(1f).fillMaxWidth().card(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
                         }
                     }
+                    preview?.let { shown ->
+                        PassagePreview(
+                            preview = shown,
+                            pieces = breadcrumbs[shown.hit.lineId],
+                            query = state.executedQuery,
+                            bookFontCode = bookFontCode,
+                            // The passage follows the zoom, as the books
+                            textSize = mainTextSize,
+                            onOpen = { openResult(shown.hit) },
+                            onOpenLine = { lineId -> actions.onOpenBookAt(shown.hit.bookId, lineId) },
+                            modifier = Modifier.weight(1f).then(zoom.modifier),
+                        )
+                    }
                 }
-            }
-        }
+            },
+        )
 
         // Find bar overlay
         if (showFind) {
@@ -1123,10 +1121,10 @@ private fun Modifier.card(): Modifier =
         .background(JewelTheme.globalColors.panelBackground)
 
 private val LIST_MIN_WIDTH = 380.dp
-private val LIST_MAX_WIDTH = 580.dp
+private val PREVIEW_MIN_WIDTH = 300.dp
 
-// Below this the list takes the whole width, and a result opens on click
-private val TWO_PANES_MIN_WIDTH = 1000.dp
+// A drag writes the split once it rests
+private const val SPLIT_SAVE_DELAY_MS = 300L
 
 /** The book or author a query names, as Google's knowledge panel: what it is, and buttons to go there. */
 @Composable

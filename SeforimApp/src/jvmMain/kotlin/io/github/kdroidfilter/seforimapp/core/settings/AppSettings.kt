@@ -378,6 +378,13 @@ class AppSettings(
         _showHomeWallpaperFlow.value = enabled
     }
 
+    // The share of a search tab's width its results list takes, beside the selected passage
+    fun getSearchListSplit(): Float = settings[KEY_SEARCH_LIST_SPLIT, DEFAULT_SEARCH_LIST_SPLIT]
+
+    fun setSearchListSplit(ratio: Float) {
+        settings[KEY_SEARCH_LIST_SPLIT] = ratio
+    }
+
     fun isBookDetailsPaneVisible(): Boolean = settings[KEY_BOOK_DETAILS_PANE, false]
 
     fun setBookDetailsPaneVisible(visible: Boolean) {
@@ -750,5 +757,9 @@ class AppSettings(
         // Not portable: what a machine's GPU handles
         private const val KEY_ANTI_ALIASING = "anti_aliasing_3d"
         private const val KEY_BOOK_DETAILS_PANE = "book_details_pane"
+
+        // Not portable: a pane size, as the docked panes'
+        private const val KEY_SEARCH_LIST_SPLIT = "search_list_split"
+        private const val DEFAULT_SEARCH_LIST_SPLIT = 0.34f
     }
 }

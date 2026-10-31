@@ -5,6 +5,8 @@ import androidx.compose.runtime.Stable
 import dev.nucleusframework.core.runtime.ExecutableRuntime
 import dev.nucleusframework.core.runtime.Platform
 import dev.nucleusframework.nativehttp.NativeHttpClient
+import dev.nucleusframework.store.microsoft.StoreUpdateCheck
+import dev.nucleusframework.store.microsoft.StoreUpdateState
 import dev.nucleusframework.updater.DownloadProgress
 import dev.nucleusframework.updater.NucleusUpdater
 import dev.nucleusframework.updater.UpdateInfo
@@ -232,6 +234,8 @@ data class AppUpdateConfig(
  *   [installPendingOnClose] silently on close.
  * - Other Linux PATCH → pre-download at startup, then prompt (icon + dialog) since `pkexec` needs interaction.
  * - Any MINOR/MAJOR → prompt; download on user action; warns about a possible ~3.5 GB DB update.
+ * - The Microsoft Store install ([storeUpdates]) → asks the Store instead of the GitHub feed, always prompts (the
+ *   Store installs behind its own dialog and Windows relaunches the app), and opens the dialog for a mandatory one.
  *
  * [checkOnStartup] is suspending (driven by the startup `LaunchedEffect`); [startDownload] launches
  * on the app-lifetime [scope] so a user-triggered download survives the dialog being closed.
@@ -242,6 +246,7 @@ class AppUpdateService(
     private val config: AppUpdateConfig,
     private val os: Platform,
     private val linuxPasswordless: Boolean = false,
+    private val storeUpdates: StoreUpdates? = null,
     // App-lifetime scope so a user-triggered download keeps running after the dialog is closed.
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) {
@@ -261,6 +266,7 @@ class AppUpdateService(
         if (config.fakeState != null) return // state pre-seeded by initialFakeState()
         if (_state.value != UpdateUiState.Idle) return
         _state.value = UpdateUiState.Checking
+        storeUpdates?.let { return checkStore(it) }
         // Building the updater reads the system trust store: not on the UI thread this startup check is called from
         val updater = withContext(Dispatchers.IO) { updater }
         when (val result = updater.checkForUpdates()) {
@@ -309,6 +315,10 @@ class AppUpdateService(
         val current = _state.value
         if (current !is UpdateUiState.Available) return
         if (downloadJob?.isActive == true) return
+        storeUpdates?.let {
+            downloadJob = launchStoreInstall(scope, it, current)
+            return
+        }
         val info = pendingInfo ?: return
         downloadJob = launchDownload(scope, info, current.level, current.mode, current.needsDbWarning)
     }
@@ -345,6 +355,67 @@ class AppUpdateService(
         ) {
             errorln { "[update] download failed: ${e.message}" }
             _state.value = UpdateUiState.Error(e.message ?: "download failed")
+        }
+    }
+
+    private suspend fun checkStore(store: StoreUpdates) {
+        try {
+            when (val check = store.check()) {
+                StoreUpdateCheck.UpToDate -> _state.value = UpdateUiState.UpToDate
+                is StoreUpdateCheck.Available -> {
+                    val level = storeUpdateLevel(store.currentVersion, check.version)
+                    val version = check.version?.let(::storeSemanticVersion).orEmpty()
+                    infoln { "[update] Store has v$version level=$level mandatory=${check.isMandatory}" }
+                    val available = UpdateUiState.Available(version, level, UpdateMode.PROMPT, needsDbWarning(level))
+                    _state.value = available
+                    if (check.isMandatory) openDialog()
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (
+            @Suppress("TooGenericExceptionCaught") e: Exception,
+        ) {
+            errorln { "[update] Store check failed: ${e.message}" }
+            _state.value = UpdateUiState.Error(e.message ?: "update check failed")
+        }
+    }
+
+    private fun launchStoreInstall(
+        @StructuredScope scope: CoroutineScope,
+        store: StoreUpdates,
+        available: UpdateUiState.Available,
+    ): Job = scope.launch { installFromStore(store, available) }
+
+    /** Windows closes the app during [StoreUpdateState.Installing]; the states after it only show if it does not. */
+    private suspend fun installFromStore(
+        store: StoreUpdates,
+        available: UpdateUiState.Available,
+    ) {
+        try {
+            infoln { "[update] Store install start v${available.version}" }
+            store.install().collect { progress ->
+                _state.value =
+                    when (progress.state) {
+                        StoreUpdateState.Completed, StoreUpdateState.UpToDate -> UpdateUiState.UpToDate
+                        StoreUpdateState.Cancelled -> available
+                        else ->
+                            UpdateUiState.Downloading(
+                                available.version,
+                                available.level,
+                                available.mode,
+                                available.needsDbWarning,
+                                (progress.progress * PERCENT).toInt(),
+                            )
+                    }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (
+            @Suppress("TooGenericExceptionCaught") e: Exception,
+        ) {
+            errorln { "[update] Store install failed: ${e.message}" }
+            _state.value = UpdateUiState.Error(e.message ?: "install failed")
         }
     }
 
@@ -402,7 +473,7 @@ class AppUpdateService(
         _dialogVisible.value = false
     }
 
-    fun isUpdateSupported(): Boolean = config.fakeState != null || updater.isUpdateSupported()
+    fun isUpdateSupported(): Boolean = config.fakeState != null || storeUpdates != null || updater.isUpdateSupported()
 
     private fun initialFakeState(): UpdateUiState? {
         val fake = config.fakeState ?: return null
@@ -430,6 +501,8 @@ class AppUpdateService(
     companion object {
         const val DOWNLOAD_URL = "https://kdroidfilter.github.io/Zayit/download"
 
+        private const val PERCENT = 100
+
         private const val GITHUB_OWNER = "kdroidFilter"
         private const val GITHUB_REPO = "Zayit"
 
@@ -443,7 +516,7 @@ class AppUpdateService(
                     // Releases ship several assets per platform; force the auto-update format so the
                     // feed picks the silent installer (NSIS on Windows, .zip on macOS) and not the
                     // user-facing Rust wrapper exe / .dmg. The env override still wins when set. The Store's
-                    // package (AppX) keeps its own type: the Store updates it, Nucleus then reports no update support.
+                    // package (AppX) keeps its own type: Nucleus then reports no update support, storeUpdates has them.
                     val resolvedExecutableType =
                         config.executableType
                             ?: when (os) {
@@ -467,6 +540,13 @@ class AppUpdateService(
                 config = config,
                 os = os,
                 linuxPasswordless = os == Platform.Linux && hasLinuxUpdateHelper(),
+                // The Store's install, unless a feed is forced for QA
+                storeUpdates =
+                    if (os == Platform.Windows && ExecutableRuntime.isAppX() && config.feedUrl == null) {
+                        MicrosoftStoreUpdatesAdapter(dryRun = config.dryRun)
+                    } else {
+                        null
+                    },
             )
     }
 }

@@ -8,7 +8,7 @@ filekitCore = "0.16.0"
 hebrewNumerals = "0.2.6"
 jsoup = "1.23.2"
 jvmToolchain = "25"
-nucleus = "3.0.0-dev-202610272317"
+nucleus = "3.0.0-dev-202610312124"
 koalaplotCore = "0.12.1"
 kotlin = "2.4.20"
 compose = "1.12.1"
@@ -79,6 +79,7 @@ nucleus-decorated-window-tao = { module = "dev.nucleusframework:nucleus.decorate
 nucleus-decorated-window-jewel = { module = "dev.nucleusframework:nucleus.decorated-window-jewel", version.ref = "nucleus" }
 nucleus-graalvm-runtime = { module = "dev.nucleusframework:nucleus.graalvm-runtime", version.ref = "nucleus" }
 nucleus-updater-runtime = { module = "dev.nucleusframework:nucleus.updater-runtime", version.ref = "nucleus" }
+nucleus-microsoft-store = { module = "dev.nucleusframework:nucleus.microsoft-store", version.ref = "nucleus" }
 nucleus-native-ssl = { module = "dev.nucleusframework:nucleus.native-ssl", version.ref = "nucleus" }
 nucleus-native-http = { module = "dev.nucleusframework:nucleus.native-http", version.ref = "nucleus" }
 nucleus-energy-manager = { module = "dev.nucleusframework:nucleus.energy-manager", version.ref = "nucleus"}

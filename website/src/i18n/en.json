@@ -142,7 +142,7 @@
     "createdByName": "Elie Gambache",
     "sourceCode": "Source Code",
     "support": "Support the Project",
-    "license": "Zayit's core is open source under AGPL v3. The smart siddur and the semantic search are Zayit's own work, included free in the official builds.",
+    "license": "Zayit's core is open under the Zayit Public License, based on the AGPL v3. The smart siddur and the semantic search are Zayit's own work, included free in the official builds.",
     "openCore": "How the open core works"
   },
   "comparison": {

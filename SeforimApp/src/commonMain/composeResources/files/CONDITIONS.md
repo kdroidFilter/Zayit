@@ -20,7 +20,7 @@
 ## 💡 רישיון היישום
 
 יישום זית חינמי, ובנוי כ"ליבה פתוחה": הליבה שלו היא קוד פתוח, המופץ תחת רישיון
-[**AGPL v3**](https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/LICENSE).
+[**רישיון זית הציבורי (Zayit Public License)**](https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/LICENSE), המבוסס על AGPL v3.
 הגרסאות הרשמיות כוללות בנוסף מודולים קנייניים שאינם קוד פתוח, כגון **הסידור החכם** ו**החיפוש הסמנטי**.
 מודולים אלו מוגנים בזכויות יוצרים, ואין להעתיקם, להפיצם או לעשות בהם שימוש מחוץ ליישום זית.
 

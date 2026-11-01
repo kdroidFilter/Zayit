@@ -1,39 +1,136 @@
 ================================================================================
-ADDITIONAL TERMS pursuant to Section 7 of the GNU AGPL v3
+                             ZAYIT PUBLIC LICENSE
+                                  Version 1.0
 ================================================================================
 
-Copyright (C) 2025 Elie Gambache.
+SPDX identifier: LicenseRef-Zayit-PL-1.0
 
-This program is licensed under the GNU Affero General Public License, version 3
-(the full text of which follows below). In accordance with Section 7 of that
-license, the following ADDITIONAL TERMS apply and must be preserved in all
-copies, modified versions, and derivative works of this software:
+Copyright (C) 2025-2026 Elie Gambache.
 
-  ATTRIBUTION REQUIREMENT (AGPL v3, §7b)
+PREAMBLE
 
-  Any use, reproduction, modification, or distribution of this software, or of
-  any work derived from it in whole or in part, must conspicuously display the
-  following attribution:
+Zayit is open core: its core is free software, and its official builds also
+include proprietary modules. This license keeps the core under the terms of the
+GNU Affero General Public License, version 3, so that anyone can use, study,
+modify and share it, and so that every modified version, including one offered
+over a network, stays free.
 
-      "Powered by the technologies that drive Zayit — https://zayitapp.com/"
+In exchange, and in the spirit of the Q Public License under which Qt was once
+published, whoever distributes a modified version of the Software gives the
+original author the right to reuse those modifications in Zayit's official
+builds, without having to sign anything.
 
-  This requirement applies to every form of use of the source code or any
-  portion thereof, INCLUDING BUT NOT LIMITED TO its ingestion, processing, or
-  reuse by an automated system, a machine-learning model, or a large language
-  model (LLM). Any output, derivative work, or product generated with the
-  assistance of such a system that incorporates or is based on this code must
-  carry the attribution above.
+This license is not the GNU AGPL and is not endorsed by the Free Software
+Foundation. It uses the unmodified text of the GNU AGPL v3, reproduced at the
+end of this file, as its base terms and adds the terms below.
 
-  The attribution must appear in a location reasonably visible to end users
-  (for example, an application "About" screen, the project documentation, or
-  source-file headers) and must not be removed, hidden, or obscured.
+1. DEFINITIONS
 
-These additional terms are authorized by Section 7 of the GNU AGPL v3 and form
-an integral part of the license governing this software. The full text of the
-GNU Affero General Public License, version 3, follows.
+  "Licensor": Elie Gambache, and any successor or assignee of the Licensor's
+  rights in the Software.
+
+  "Software": the work that the Licensor distributes under this License, in
+  source or object form, and any part of it. Modules that the Licensor
+  distributes under other terms are not part of the Software.
+
+  "Modification": any change to, addition to or deletion from the Software,
+  and any work based on the Software within the meaning of the Base Terms.
+
+  "Modified Version": the Software together with one or more Modifications.
+
+  "Convey" and "Propagate": as defined in the GNU AGPL v3.
+
+  "Submit": to send a Modification to the Licensor or to the Software's
+  official repository, in any form (pull request, patch, issue, email...),
+  with a view to its inclusion in the Software.
+
+  "You": the person or entity exercising rights under this License.
+
+2. BASE TERMS
+
+The Licensor grants You the rights of the GNU Affero General Public License,
+version 3 (the "Base Terms"), whose unmodified text is reproduced at the end of
+this file, subject to Sections 3 to 5 of this License. For this purpose:
+
+  a) Every reference in the Base Terms to "this License" means this Zayit
+     Public License, and the Software is "the Program".
+
+  b) You may Convey the Software and any Modified Version, and make them
+     available under Section 13 of the Base Terms, only under this License.
+     The option of the Base Terms to use any later version of the GNU AGPL
+     does not apply.
+
+  c) Sections 3 to 5 of this License are conditions of the license granted to
+     You, not "further restrictions" or "additional terms" within the meaning
+     of Sections 7 and 10 of the Base Terms: no recipient may remove them.
+
+  d) In case of conflict between the Base Terms and Sections 3 to 5 of this
+     License, Sections 3 to 5 prevail.
+
+3. GRANT BACK TO THE LICENSOR
+
+When You Convey a Modified Version, make it available to users interacting
+with it remotely through a computer network, or Submit a Modification, You
+grant the Licensor, for each of Your Modifications it contains:
+
+  a) Copyright. A perpetual, worldwide, non-exclusive, no-charge,
+     royalty-free, irrevocable license to reproduce, prepare derivative works
+     of, publicly display, publicly perform, distribute and sublicense Your
+     Modifications and such derivative works, under any terms, including
+     proprietary terms, in addition to this License.
+
+  b) Patents. A perpetual, worldwide, non-exclusive, no-charge, royalty-free,
+     irrevocable license, under the patent claims licensable by You that are
+     necessarily infringed by Your Modifications alone or by their combination
+     with the Software, to make, have made, use, offer to sell, sell, import
+     and otherwise transfer Your Modifications as part of any work distributed
+     by the Licensor.
+
+You represent that You have the right to grant these licenses. If a
+Modification includes a third party's work, You identify it and its license,
+and these grants cover only what You have the right to grant.
+
+These grants do not require You to send Your Modifications to the Licensor.
+They cover any copy of them that the Licensor obtains lawfully, for instance as
+a recipient of Your Modified Version, through the source code offered under
+Section 13 of the Base Terms, or from a public repository.
+
+The licenses granted under this Section remain in force even after this
+License terminates for You.
+
+4. ATTRIBUTION
+
+Any use, reproduction, modification or distribution of the Software, or of any
+work derived from it in whole or in part, must conspicuously display the
+following attribution:
+
+    "Powered by the technologies that drive Zayit — https://zayitapp.com/"
+
+This requirement applies to every form of use of the source code or any
+portion thereof, including its ingestion, processing or reuse by an automated
+system, a machine-learning model or a large language model. Any output,
+derivative work or product generated with the assistance of such a system that
+incorporates or is based on the Software must carry the attribution above.
+
+The attribution must appear in a location reasonably visible to end users (for
+example an application "About" screen, the project documentation or
+source-file headers) and must not be removed, hidden or obscured.
+
+5. TRADEMARKS
+
+This License grants no right to use the names "Zayit" or "זית", their logos,
+or any other trademark of the Licensor, except as required to comply with
+Section 4 and to describe the origin of the Software. A Modified Version
+Conveyed to the public must not be presented as an official build of Zayit.
+
+6. DISCLAIMER AND LIMITATION OF LIABILITY
+
+Sections 15 and 16 of the GNU AGPL v3 (Disclaimer of Warranty, Limitation of
+Liability) apply to the Software and to this License.
 
 ================================================================================
-
+BASE TERMS: the GNU Affero General Public License, version 3, unmodified.
+================================================================================
 
                     GNU AFFERO GENERAL PUBLIC LICENSE
                        Version 3, 19 November 2007

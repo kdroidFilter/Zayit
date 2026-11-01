@@ -5,41 +5,31 @@ clean and legally clear.
 
 ## License of your contributions (inbound = outbound)
 
-Zayit is licensed under the **GNU AGPL v3** together with the **additional
-attribution term** under Section 7(b) of that license (the "Powered by the
-technologies that drive Zayit — https://zayitapp.com/" requirement). See
+Zayit is licensed under the **Zayit Public License**: the GNU AGPL v3,
+plus a grant back to the maintainer, the "Powered by the technologies that drive
+Zayit — https://zayitapp.com/" attribution and a trademark clause. See
 [`LICENSE`](LICENSE) for the full text.
 
-By submitting a contribution (pull request, patch, or any other form), you agree
-that your contribution is licensed under the same terms as the project, namely
-the GNU AGPL v3 **and** the additional attribution term under Section 7(b), and
-under the Contributor License Agreement below.
+By submitting a contribution (pull request, patch, or any other form), you
+license it under the same terms as the project. There is no CLA to sign.
 
-## Contributor License Agreement (CLA)
+## Open core and the grant back
 
 Zayit is **open core** (see "Open core" in the [README](README.MD)): its core is
-free under the AGPL v3, and its official builds also include proprietary modules,
-such as the smart siddur. So that your contribution can be part of those builds,
-you sign the [Zayit Contributor License Agreement](CLA.md) once:
+free under the Zayit Public License, and its official builds also include
+proprietary modules, such as the smart siddur. Section 3 of the license lets
+your contribution be part of those builds too:
 
 - You **keep the copyright** on your contribution — there is no copyright
   assignment.
-- You grant the maintainer a broad license on it, which allows distributing it
-  under other terms too (including with proprietary modules), and a patent
-  license.
-
-On your first pull request, the CLA bot asks you to sign by commenting:
-
-```
-I have read the CLA Document and I hereby sign the CLA
-```
-
-Your signature covers all your later pull requests. A CI check blocks a pull
-request until all its authors have signed.
+- By submitting it (or by distributing a modified version, in a fork for
+  instance), you grant the maintainer a broad license on it, which allows
+  distributing it under other terms too (including with proprietary modules),
+  and a patent license.
 
 ## Developer Certificate of Origin (DCO)
 
-Every commit must also be signed off under the
+Every commit must be signed off under the
 [Developer Certificate of Origin 1.1](https://developercertificate.org/). By
 signing off, you certify that you wrote the code or otherwise have the right to
 submit it under the project's license.

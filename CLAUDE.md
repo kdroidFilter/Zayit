@@ -212,7 +212,7 @@ See `TAB_SYSTEM_README.md` for complete details. Key points:
 
 ### Git & Pull Requests
 - **DCO sign-off required**: every commit needs a `Signed-off-by:` trailer (`git commit -s`); the "Check DCO sign-off" CI job blocks PRs otherwise. Fix unsigned commits with `git rebase --signoff <base>` then `git push --force-with-lease`.
-- **CLA**: contributors sign `CLA.md` once (CLA Assistant bot on their first PR); the maintainer is allowlisted.
+- **License**: the Zayit Public License (`LICENSE`): the AGPL v3 plus a grant back (Section 3) that gives the maintainer every submitted or forked modification under any terms, so there is no CLA.
 - **PRs target `master`** (`gh pr create --base master`); releases are tagged from `master`.
 
 ## Development Tips

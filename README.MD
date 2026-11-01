@@ -192,7 +192,7 @@ Zayit welcomes contributions from the community: bug fixes and features listed i
 
 **Note:** PRs introducing new features not listed in the roadmap will likely be declined.
 
-Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. In short: contributions are licensed under the same terms as the project (AGPL v3 + the §7b attribution term), you keep your copyright, you sign the [CLA](CLA.md) once (the bot asks on your first pull request), and every commit must be signed off (`git commit -s`, DCO).
+Please read [`CONTRIBUTING.md`](CONTRIBUTING.md) first. In short: contributions are licensed under the same terms as the project (the Zayit Public License), you keep your copyright, there is no CLA to sign, and every commit must be signed off (`git commit -s`, DCO).
 
 ### Getting started
 
@@ -263,17 +263,21 @@ with permission from **[The ImageMaster](https://www.theimagemaster.com/)**) and
 **[Culmus project](https://culmus.sourceforge.io/)** (their own licenses).
 
 ## License and sharing
-Zayit is free and open source, published under **[AGPL v3](https://raw.githubusercontent.com/kdroidFilter/SeforimApp/refs/heads/master/LICENSE)**.
+Zayit's core is free software, published under the **[Zayit Public License](LICENSE)**: the GNU AGPL v3, plus a grant back to the maintainer, an attribution term and a trademark clause.
 Sharing is encouraged - it is a good deed.
 
-**Additional attribution term (AGPL v3, §7b).** Any use, reproduction, modification, or distribution of this software — or of any work derived from it, in whole or in part — must conspicuously display the attribution:
+**Attribution (Section 4).** Any use, reproduction, modification, or distribution of this software — or of any work derived from it, in whole or in part — must conspicuously display the attribution:
 
 > Powered by the technologies that drive Zayit — https://zayitapp.com/
 
 This applies to every form of use of the source code or any portion thereof, **including its ingestion, processing, or reuse by an automated system, a machine-learning model, or a large language model (LLM)**. Any output or derivative produced with the help of such a system that incorporates or is based on this code must carry the attribution above. See the top of [`LICENSE`](LICENSE) for the full text.
 
+**Grant back (Section 3).** Whoever distributes a modified version (a fork, for instance), offers it over a network, or submits a contribution, gives the maintainer the right to reuse those modifications in Zayit's official builds, under any terms. That is why there is no CLA to sign.
+
+The Zayit Public License is not the GNU AGPL: because of these terms, it is not an OSI-approved license.
+
 ## Open core
-Zayit is **open core**. Everything in this repository is free and open source under the AGPL v3 (with the §7b term
+Zayit is **open core**. Everything in this repository is free under the Zayit Public License (see
 above), and builds into a complete application.
 
 The **official builds** (the releases of this repository and of [zayitapp.com](https://zayitapp.com/)) also include
@@ -305,7 +309,7 @@ gh auth refresh -h github.com -s read:packages
 gh api users/kdroidFilter/packages/maven/io.github.kdroidfilter.seforim-siddur --jq .name
 ```
 
-Contributions go into the open core; the [CLA](CLA.md) lets them ship in the official builds as well.
+Contributions go into the open core; Section 3 of the license lets them ship in the official builds as well.
 
 ---
 

@@ -197,10 +197,8 @@ fun NucleusApplicationScope.MainAppWindow(
                     tabsVm.closeSelectedTab(repeat = keyEvent.isRepeat)
                     true
                 } else if (isCtrlOrCmd && keyEvent.key == Key.Tab) {
-                    val count = currentTabs.size
-                    if (count > 0) {
-                        val direction = if (keyEvent.isShiftPressed) -1 else 1
-                        val newIndex = (currentIndex + direction + count) % count
+                    if (currentTabs.isNotEmpty()) {
+                        val newIndex = cycledTabIndex(currentIndex, currentTabs.size, backward = keyEvent.isShiftPressed)
                         tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                     }
                     true
@@ -376,20 +374,10 @@ fun NucleusApplicationScope.MainAppWindow(
                                         tabsVm.closeSelectedTab(repeat = keyEvent.isRepeat)
                                         true
                                     }
-                                    // Ctrl/Cmd + Shift + Tab => previous tab
-                                    isCtrlOrCmd && keyEvent.key == Key.Tab && keyEvent.isShiftPressed -> {
-                                        val count = tabs.size
-                                        if (count > 0) {
-                                            val newIndex = (selectedIndex - 1 + count) % count
-                                            tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
-                                        }
-                                        true
-                                    }
-                                    // Ctrl/Cmd + Tab => next tab
+                                    // Ctrl/Cmd + Tab => next tab, Ctrl/Cmd + Shift + Tab => previous tab
                                     isCtrlOrCmd && keyEvent.key == Key.Tab -> {
-                                        val count = tabs.size
-                                        if (count > 0) {
-                                            val newIndex = (selectedIndex + 1) % count
+                                        if (tabs.isNotEmpty()) {
+                                            val newIndex = cycledTabIndex(selectedIndex, tabs.size, backward = keyEvent.isShiftPressed)
                                             tabsVm.onEvent(TabsEvents.OnSelect(newIndex))
                                         }
                                         true
@@ -499,3 +487,13 @@ fun NucleusApplicationScope.MainAppWindow(
         }
     }
 }
+
+/**
+ * The tab Ctrl+Tab (or Ctrl+Shift+Tab when [backward]) selects, cycling. The strip reads right to left from the
+ * end of the group (see DesktopSession), so the next tab in reading order is the previous index.
+ */
+internal fun cycledTabIndex(
+    current: Int,
+    count: Int,
+    backward: Boolean,
+): Int = (current + (if (backward) 1 else -1) + count) % count

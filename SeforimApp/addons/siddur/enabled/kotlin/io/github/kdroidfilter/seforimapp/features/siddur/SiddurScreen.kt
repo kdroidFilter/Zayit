@@ -2,7 +2,10 @@ package io.github.kdroidfilter.seforimapp.features.siddur
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,11 +46,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
@@ -71,6 +83,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.Selectable
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBar
 import io.github.kdroidfilter.seforimapp.core.presentation.components.VerticalLateralBarPosition
 import io.github.kdroidfilter.seforimapp.core.presentation.components.rememberAppTextZoom
+import io.github.kdroidfilter.seforimapp.core.presentation.tabs.LocalTabSelected
 import io.github.kdroidfilter.seforimapp.core.presentation.typography.FontCatalog
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.LocalWindowViewModelStoreOwner
 import io.github.kdroidfilter.seforimapp.earthwidget.EarthWidgetLocation
@@ -510,7 +523,7 @@ fun SiddurTabContent(
                             Divider(Orientation.Horizontal, Modifier.fillMaxWidth())
                         }
                         VerticallyScrollableContainer(listState as ScrollableState, modifier = Modifier.weight(1f).fillMaxWidth()) {
-                            SelectionContainer(Modifier.fillMaxSize()) {
+                            SelectionContainer(Modifier.fillMaxSize().then(rememberKeyScroll(listState))) {
                                 SiddurText(
                                     items = items,
                                     listState = listState,
@@ -882,6 +895,31 @@ private fun highlights(
         }
     }
 
+// As in a book: the arrows and PageUp/PageDown scroll the text, from wherever the focus is in it (a click selects in it)
+@Composable
+private fun rememberKeyScroll(listState: LazyListState): Modifier {
+    val scope = rememberCoroutineScope()
+    val step = with(LocalDensity.current) { ARROW_SCROLL_STEP.toPx() }
+    val focusRequester = remember { FocusRequester() }
+    val selected = LocalTabSelected.current
+    LaunchedEffect(selected) { if (selected) focusRequester.requestFocus() }
+    return Modifier
+        .focusRequester(focusRequester)
+        .onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val page = listState.layoutInfo.run { viewportEndOffset - viewportStartOffset } * PAGE_SCROLL_FRACTION
+            when (event.key) {
+                // Instant: a held arrow repeats faster than an animation ends
+                Key.DirectionUp -> scope.launch { listState.scrollBy(-step) }
+                Key.DirectionDown -> scope.launch { listState.scrollBy(step) }
+                Key.PageUp -> scope.launch { listState.animateScrollBy(-page) }
+                Key.PageDown -> scope.launch { listState.animateScrollBy(page) }
+                else -> return@onPreviewKeyEvent false
+            }
+            true
+        }.focusable()
+}
+
 @Composable
 private fun SiddurText(
     items: List<BookItem>,
@@ -1135,6 +1173,10 @@ private val BookItem.contentType: Int
 
 // The mark beside the day's additions, as a book marks its selected line
 private val SPECIAL_MARK_WIDTH = 4.dp
+private val ARROW_SCROLL_STEP = 48.dp
+
+// A page keeps a line of the last one in sight
+private const val PAGE_SCROLL_FRACTION = 0.9f
 
 /** Draws the mark in the slot at the line's start, its full height: drawn, as a child sized to the line laid its text out twice. */
 private fun Modifier.specialMark(color: Color): Modifier =

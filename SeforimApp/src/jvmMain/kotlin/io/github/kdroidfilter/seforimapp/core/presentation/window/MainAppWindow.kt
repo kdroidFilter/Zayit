@@ -58,6 +58,7 @@ import io.github.kdroidfilter.seforimapp.core.selectionCopyShortcut
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindow
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowEvents
 import io.github.kdroidfilter.seforimapp.features.settings.SettingsWindowViewModel
+import io.github.kdroidfilter.seforimapp.features.support.SupportDialog
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.desktop.OpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
@@ -300,6 +301,11 @@ fun NucleusApplicationScope.MainAppWindow(
                 onClose = { settingsWindowViewModel.onEvent(SettingsWindowEvents.OnClose) },
                 initialDestination = settingsDialogState.initialDestination,
             )
+        }
+        // The support dialog, modal to its window the same way
+        val supportDialogOwnerWindowId by appGraph.mainAppState.supportDialogOwnerWindowId.collectAsState()
+        if (supportDialogOwnerWindowId == openWindow.id) {
+            SupportDialog(onClose = { appGraph.mainAppState.closeSupportDialog() })
         }
 
         CompositionLocalProvider(

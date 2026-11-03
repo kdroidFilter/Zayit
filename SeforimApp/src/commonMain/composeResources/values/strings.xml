@@ -853,4 +853,18 @@
     <string name="siddur_zman_tzeit">צאת הכוכבים %1$s</string>
     <string name="siddur_open_siddur">פתח סידור</string>
 
+    <string name="support_tooltip">תמכו בעבודתי</string>
+    <string name="support_dialog_title">תמיכה בזית</string>
+    <string name="support_dialog_headline">תמכו בהמשך הפיתוח של זית</string>
+    <string name="support_dialog_investment">השקעתי בזית זמן רב וכסף רב, ולמרבה הצער כמעט לא התקבלו תרומות. כל תמיכה מאפשרת לי לשפר את זית עצמה, כך שבסופו של דבר היא חוזרת אליכם.</string>
+    <string name="support_dialog_apps">כדי לעודד תמיכה, החלטתי למכור יישומים שבהם אני משתדל להמחיש בצורה הטובה ביותר מושגים מן התורה, בעזרת מנוע תלת מימד שניתן לשלוט בו באופן מלא: המשכן, תיבת נח ועוד. ובעזרת ה׳ יבואו עוד.</string>
+    <string name="support_dialog_call">אם עבודתי מוצאת חן בעיניכם, הדרך הטובה ביותר לתמוך בה היא לרכוש את היישומים שלי.</string>
+    <string name="support_app_teiva_name">תיבת נח בתלת מימד</string>
+    <string name="support_app_teiva_description">התיבה כפי שהתורה מתארת אותה, בגודלה האמיתי</string>
+    <string name="support_app_mishkan_name">תבנית – המשכן בתלת מימד</string>
+    <string name="support_app_mishkan_description">המשכן וכליו כפי שעמדו במדבר</string>
+    <string name="support_app_shechita_name">שחיטה בתלת מימד</string>
+    <string name="support_app_shechita_description">הפרה והתרנגולת בתלת מימד, ללימוד הלכות שחיטה</string>
+    <string name="support_open_in_store">פתח בחנות</string>
+    <string name="support_close">סגור</string>
 </resources>

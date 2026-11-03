@@ -226,7 +226,7 @@ export function DownloadPage() {
                     </p>
                   )}
                   {selected === 'windows' ? (
-                    <WindowsAction packages={packages} arch={detected?.os === 'windows' ? detected.arch : null} />
+                    <WindowsAction />
                   ) : (
                     <TerminalAction os={selected} />
                   )}
@@ -286,21 +286,18 @@ function OsPicker({ selected, detectedOs, onSelect }: { selected: Os | null; det
   );
 }
 
-function WindowsAction({ packages, arch }: { packages: Package[]; arch: Arch | null }) {
+// The Microsoft Store's own installer for Zayit: a small .exe that installs the Store version, which the Store updates
+const STORE_INSTALLER_URL = 'https://get.microsoft.com/installer/download/9NC26MP2QMPS?cid=website_cta_psi';
+
+function WindowsAction() {
   const { t } = useTranslation();
-  const installers = packages.filter((p) => p.format === 'exe');
-  const recommended = installers.find((p) => p.arch === (arch ?? 'x64')) ?? installers[0] ?? packages[0];
-  if (!recommended) return null;
 
   return (
     <div className="text-center">
-      <motion.a href={recommended.url} className="dl-primary" whileTap={{ scale: 0.97 }} transition={press}>
+      <motion.a href={STORE_INSTALLER_URL} className="dl-primary" whileTap={{ scale: 0.97 }} transition={press}>
         <Download size={20} />
         {t('dl.windows.cta')}
       </motion.a>
-      <p className="mt-3 text-sm" style={{ color: 'var(--gold-muted)' }}>
-        {archLabel(t, 'windows', recommended.arch)} · {formatSize(recommended.size)}
-      </p>
       <p className="mt-5 text-sm" style={{ color: 'var(--text-muted)' }}>
         {t('dl.windows.hint')}
       </p>

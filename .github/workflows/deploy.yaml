@@ -168,6 +168,22 @@ jobs:
             cp "$src.asc" "staging/zayit_${VERSION}_${{ matrix.arch }}.deb.asc"
           fi
 
+      # The app folder as a .tar.gz, once per architecture (beside the .deb), for the Flathub manifest to repackage
+      - name: Build & stage Linux .tar.gz (Flathub)
+        if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'deb'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :SeforimApp:packageGraalvmTar
+          src="$(find SeforimApp/build/compose/binaries/main/graalvm-tar.gz -name '*.tar.gz' | head -n1)"
+          [ -n "$src" ] || { echo "::error::No .tar.gz produced"; exit 1; }
+          case "${{ matrix.arch }}" in
+            amd64) tar_arch=x86_64 ;;
+            arm64) tar_arch=aarch64 ;;
+            *)     tar_arch="${{ matrix.arch }}" ;;
+          esac
+          cp "$src" "staging/zayit-${VERSION}-linux-${tar_arch}.tar.gz"
+
       - name: Build & stage Linux .rpm
         if: startsWith(matrix.os, 'ubuntu') && matrix.pkg == 'rpm'
         shell: bash

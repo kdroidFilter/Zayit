@@ -180,11 +180,7 @@
     "mobile": "Zayit runs on computers. Open this page on your Windows, Mac or Linux computer to install it.",
     "windows": {
       "cta": "Download for Windows",
-      "hint": "Run the installer: it installs Zayit from the Microsoft Store, which keeps it up to date.",
-      "offline": {
-        "title": "Advanced option: offline installer",
-        "hint": "The full installer, without the Microsoft Store: it works without an internet connection, and Zayit then updates on its own."
-      }
+      "hint": "Run the installer: it installs Zayit from the Microsoft Store, which keeps it up to date."
     },
     "terminal": {
       "macHint": "Paste this command in Terminal. It downloads the right version for your Mac and installs it in Applications.",
@@ -193,22 +189,24 @@
       "copied": "Copied"
     },
     "files": {
-      "title": "All files",
       "macNote": "The disk image isn't notarized by Apple yet, so macOS may block it on first launch. The command above avoids this."
     },
     "offline": {
       "title": "Installing on a computer without internet",
-      "body": "Zayit downloads its library on first launch. Without a connection, bring the library with you.",
-      "step1": "Download every file below into the same folder.",
-      "step2": "Install Zayit and choose “Offline installation”.",
+      "body": "Zayit downloads its library on first launch. Without a connection, bring the app and its library with you.",
+      "step1": "Download the installer and every library file into the same folder (a USB key, for instance).",
+      "step2": "On the computer without internet, install Zayit and choose “Offline installation”.",
       "step3": "Select the .part01 file: Zayit assembles the rest.",
-      "total": "Total"
+      "total": "Total",
+      "app": "The app",
+      "library": "The library"
     },
     "error": {
       "title": "Couldn't reach GitHub",
       "body": "The files are also on the releases page.",
       "cta": "Open the releases page"
     },
-    "notes": "What's new"
+    "notes": "What's new",
+    "offlineLink": "No internet on this computer? Offline installation"
   }
 }

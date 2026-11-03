@@ -212,6 +212,27 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat :SeforimApp:packageGraalvmNsis
 
+      # Microsoft Store package (x64 only for now), unsigned: the Store signs it. Kept out of the GitHub release
+      # (an unsigned MSIX cannot be installed from there); the msstore job submits it
+      - name: Build Microsoft Store package (GraalVM)
+        if: startsWith(matrix.os, 'windows') && matrix.graalvm
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\gradlew.bat :SeforimApp:packageGraalvmAppX
+          $appx = Get-ChildItem "SeforimApp\build\compose\binaries\main\graalvm-appx\zayit-$env:VERSION-win-x64.appx"
+          New-Item -ItemType Directory -Force msstore | Out-Null
+          # msstore publish only takes .msix / .msixupload; .appx and .msix are the same format
+          Copy-Item $appx.FullName "msstore\Zayit-$env:VERSION-x64.msix"
+
+      - name: Upload Microsoft Store package
+        if: startsWith(matrix.os, 'windows') && matrix.graalvm
+        uses: actions/upload-artifact@v6
+        with:
+          name: msstore-x64
+          path: msstore/*.msix
+          if-no-files-found: error
+
       # Windows JVM build (ARM64)
       - name: Build Windows NSIS installer (JVM)
         if: startsWith(matrix.os, 'windows') && !matrix.graalvm
@@ -333,3 +354,39 @@ jobs:
           artifacts-path: artifacts
           tag: ${{ env.TAG }}
           release-type: release
+
+  # Submits the x64 MSIX to Partner Center for certification, beside the GitHub release (a Store failure never
+  # holds it back). Tag pushes only: a manual run reuses the last tag's version, which the Store already has.
+  # A new submission replaces one still in certification. Needs the PARTNER_CENTER_* secrets of an Entra app
+  # with the Manager role in Partner Center.
+  msstore:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: windows-latest
+    steps:
+      - name: Download Microsoft Store package
+        uses: actions/download-artifact@v7
+        with:
+          name: msstore-x64
+          path: msstore
+
+      - name: Setup Microsoft Store Developer CLI
+        uses: microsoft/setup-msstore-cli@v1
+
+      - name: Configure Microsoft Store Developer CLI
+        shell: pwsh
+        run: >-
+          msstore reconfigure
+          --tenantId ${{ secrets.PARTNER_CENTER_TENANT_ID }}
+          --sellerId ${{ secrets.PARTNER_CENTER_SELLER_ID }}
+          --clientId ${{ secrets.PARTNER_CENTER_CLIENT_ID }}
+          --clientSecret ${{ secrets.PARTNER_CENTER_CLIENT_SECRET }}
+
+      # Store ID 9NC26MP2QMPS. Replaces the package, keeps the listing, and commits for certification
+      - name: Submit to the Microsoft Store
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msix = Get-ChildItem msstore\*.msix | Select-Object -First 1
+          msstore publish $msix.FullName --appId 9NC26MP2QMPS
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

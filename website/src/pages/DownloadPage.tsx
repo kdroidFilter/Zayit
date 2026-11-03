@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, Check, Copy, Download, ExternalLink, HardDrive, Smartphone, Sparkles } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Copy, Download, ExternalLink, HardDrive, Smartphone, Sparkles } from 'lucide-react';
 import { Navigation } from '../components/Navigation';
 import { SiteFooter } from '../components/SiteFooter';
 import { useDownloadCount } from '../hooks/useDownloadCount';
@@ -230,7 +230,11 @@ export function DownloadPage() {
                   ) : (
                     <TerminalAction os={selected} />
                   )}
-                  <FileList os={selected} packages={packages} />
+                  {selected === 'windows' ? (
+                    <OfflineInstallers packages={packages} />
+                  ) : (
+                    <FileList os={selected} packages={packages} />
+                  )}
                 </motion.div>
               </AnimatePresence>
             )}
@@ -339,7 +343,41 @@ function TerminalAction({ os }: { os: 'mac' | 'linux' }) {
 
 const FORMAT_ORDER: Format[] = ['exe', 'msi', 'dmg', 'deb', 'rpm', 'pacman'];
 
-function FileList({ os, packages }: { os: Os; packages: Package[] }) {
+/** The Windows installers that don't go through the Store, folded away as an advanced option. */
+function OfflineInstallers({ packages }: { packages: Package[] }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  if (packages.length === 0) return null;
+
+  return (
+    <div className="mt-8 pt-4" style={{ borderTop: '1px solid var(--card-border)' }}>
+      <button className="dl-advanced" onClick={() => setOpen(!open)} aria-expanded={open}>
+        <span>{t('dl.windows.offline.title')}</span>
+        <motion.span animate={{ rotate: open ? 180 : 0 }} transition={settle} className="flex">
+          <ChevronDown size={18} />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={settle}
+            className="overflow-hidden"
+          >
+            <p className="mt-3 text-sm" style={{ color: 'var(--text-muted)' }}>
+              {t('dl.windows.offline.hint')}
+            </p>
+            <FileList os="windows" packages={packages} bare />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function FileList({ os, packages, bare = false }: { os: Os; packages: Package[]; bare?: boolean }) {
   const { t } = useTranslation();
   if (packages.length === 0) return null;
   const sorted = [...packages].sort(
@@ -347,8 +385,8 @@ function FileList({ os, packages }: { os: Os; packages: Package[] }) {
   );
 
   return (
-    <div className="mt-8 pt-6" style={{ borderTop: '1px solid var(--card-border)' }}>
-      <h2 className="dl-label">{t('dl.files.title')}</h2>
+    <div className={bare ? 'mt-2' : 'mt-8 pt-6'} style={bare ? undefined : { borderTop: '1px solid var(--card-border)' }}>
+      {!bare && <h2 className="dl-label">{t('dl.files.title')}</h2>}
       <ul className="mt-2">
         {sorted.map((p) => (
           <li key={p.name}>

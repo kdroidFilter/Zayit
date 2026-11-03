@@ -277,6 +277,8 @@ nucleus.application {
             TargetFormat.Pacman,
             // Microsoft Store package, built locally (packageGraalvmAppX), unsigned: the Store signs it
             TargetFormat.AppX,
+            // the app folder as a .tar.gz on the GitHub release, which the Flathub manifest repackages
+            TargetFormat.Tar,
         )
         vendor = "KDroidFilter"
         cleanupNativeLibs = true

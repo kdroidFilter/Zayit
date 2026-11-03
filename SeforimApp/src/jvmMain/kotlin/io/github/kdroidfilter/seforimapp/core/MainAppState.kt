@@ -38,4 +38,16 @@ class MainAppState(
     fun setShowOnBoarding(value: Boolean?) {
         _showOnboarding.value = value
     }
+
+    // The "support my work" dialog (Windows only), opened from the title bar heart of the window that owns it
+    private val _supportDialogOwnerWindowId = MutableStateFlow<String?>(null)
+    val supportDialogOwnerWindowId: StateFlow<String?> = _supportDialogOwnerWindowId.asStateFlow()
+
+    fun openSupportDialog(ownerWindowId: String) {
+        _supportDialogOwnerWindowId.value = ownerWindowId
+    }
+
+    fun closeSupportDialog() {
+        _supportDialogOwnerWindowId.value = null
+    }
 }

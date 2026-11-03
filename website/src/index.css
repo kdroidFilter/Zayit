@@ -371,6 +371,25 @@ section[id] {
   border: 1px solid var(--card-border);
 }
 
+.dl-advanced {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gold-soft);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.dl-advanced:hover {
+  color: var(--gold);
+}
+
 .dl-link {
   display: inline-flex;
   align-items: center;

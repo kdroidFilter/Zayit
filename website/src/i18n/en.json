@@ -180,7 +180,11 @@
     "mobile": "Zayit runs on computers. Open this page on your Windows, Mac or Linux computer to install it.",
     "windows": {
       "cta": "Download for Windows",
-      "hint": "Run the installer: it installs Zayit from the Microsoft Store, which keeps it up to date."
+      "hint": "Run the installer: it installs Zayit from the Microsoft Store, which keeps it up to date.",
+      "offline": {
+        "title": "Advanced option: offline installer",
+        "hint": "The full installer, without the Microsoft Store: it works without an internet connection, and Zayit then updates on its own."
+      }
     },
     "terminal": {
       "macHint": "Paste this command in Terminal. It downloads the right version for your Mac and installs it in Applications.",

@@ -2,13 +2,20 @@ package io.github.kdroidfilter.seforimapp.features.bookcontent.ui.panels.bookcon
 
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.selection.LocalTextSelectionColors
 import androidx.compose.foundation.text.selection.SelectionContainer
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,6 +34,7 @@ import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.isPrimaryPressed
 import androidx.compose.ui.input.pointer.isShiftPressed
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.TextLayoutResult
@@ -40,9 +48,14 @@ import io.github.kdroidfilter.seforimapp.core.presentation.utils.rememberCopyToC
 import io.github.kdroidfilter.seforimlibrary.core.models.Line
 import io.github.kdroidfilter.seforimlibrary.dao.repository.SeforimRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.skia.Codec
 import org.jetbrains.skia.Data
+import kotlin.math.abs
 
 /** A character of the book: [offset] in the displayed text of the line at [lineIndex]. */
 data class TextPoint(
@@ -67,22 +80,54 @@ class BookSelection {
     var pressedAt: TextPoint? = null
         private set
 
-    /** The Shift+click selection, from its first character to its end in reading order; null without one. */
-    var range: ClosedRange<TextPoint>? by mutableStateOf(null)
+    /** The fixed end of the book view's own selection (Shift+click, Shift+arrows); null without one. */
+    var anchor: TextPoint? by mutableStateOf(null)
         private set
+
+    /** The moving end of the book view's own selection, the one Shift+click and Shift+arrows move. */
+    var focus: TextPoint? by mutableStateOf(null)
+        private set
+
+    /** The book view's own selection, from its first character to its end in reading order; null without one. */
+    val range: ClosedRange<TextPoint>?
+        get() {
+            val from = anchor ?: return null
+            val to = focus ?: return null
+            return if (to < from) to..from else from..to
+        }
 
     /** The current selection (Compose's or [range]) located in the book, once read from the database. */
     var resolved: ResolvedSelection? by mutableStateOf(null)
+
+    /**
+     * Whether Compose holds a selection (a drag, a double click) right now, [resolved] locating it once read. Plain
+     * field: written by the selection's observer, read by the keys.
+     */
+    var composeSelectionActive: Boolean = false
+
+    /** True while [range] was last moved by the keyboard: its reading from the database can wait for the keys to rest. */
+    var adjustedByKeys: Boolean = false
+        private set
+
+    /** The x a run of Shift+Up/Down keeps to, as a text editor's goal column; null until the first vertical move. */
+    var goalX: Float? = null
+        private set
+
+    // The layouts and positions of the lines composed now, by line index, for the keyboard's moves
+    private val layouts = HashMap<Int, LineLayout>()
 
     /** A primary press at [point]; true when it extends the selection, the press then being the book view's. */
     fun press(
         point: TextPoint,
         shift: Boolean,
     ): Boolean {
-        val from = pressedAt
+        val from = anchor ?: pressedAt
         if (shift && from != null) {
-            range = if (point < from) point..from else from..point
+            anchor = from
+            focus = point
             resolved = null
+            adjustedByKeys = false
+            goalX = null
             return true
         }
         pressedAt = point
@@ -91,16 +136,102 @@ class BookSelection {
     }
 
     fun clear() {
-        range = null
+        anchor = null
+        focus = null
         resolved = null
+        adjustedByKeys = false
+        goalX = null
     }
 
-    /** The offsets of [lineIndex]'s displayed text ([length] chars) inside the Shift+click selection. */
+    /**
+     * Seeds [anchor] and [focus] from the current selection before the first keyboard move: the book view's own as
+     * it is; Compose's located one from its end nearest the press it started at, which stays fixed. False when
+     * nothing is selected (a plain click's caret does not start one, Shift+Up/Down then staying the line moves), or
+     * Compose's selection is not located yet.
+     */
+    fun seedForKeys(): Boolean {
+        if (anchor != null && focus != null) return true
+        val compose = resolved?.takeIf { !it.owned }?.range ?: return false
+        val press = pressedAt ?: compose.start
+        if (press.distanceTo(compose.start) <= press.distanceTo(compose.endInclusive)) {
+            anchor = compose.start
+            focus = compose.endInclusive
+        } else {
+            anchor = compose.endInclusive
+            focus = compose.start
+        }
+        resolved = null
+        return true
+    }
+
+    /** Moves [focus] to [point] from the keyboard, [anchor] staying; [goalX] is kept for vertical moves only. */
+    fun extend(
+        point: TextPoint,
+        goalX: Float? = null,
+    ) {
+        if (anchor == null) anchor = focus ?: point
+        focus = point
+        resolved = null
+        adjustedByKeys = true
+        this.goalX = goalX
+    }
+
+    /** The offsets of [lineIndex]'s displayed text ([length] chars) inside the book view's own selection. */
     fun selectedRangeOf(
         lineIndex: Int,
         length: Int,
     ): IntRange = range?.offsetsIn(lineIndex, length) ?: IntRange.EMPTY
+
+    /** Records the layout of [lineIndex] as composed by [owner] (a line's composition). */
+    fun publishLayout(
+        lineIndex: Int,
+        owner: Any,
+        layout: TextLayoutResult,
+    ) {
+        layouts.getOrPut(lineIndex) { LineLayout(owner) }.also {
+            it.owner = owner
+            it.layout = layout
+        }
+    }
+
+    /** Records where the text of [lineIndex] is placed, as composed by [owner]. */
+    fun publishCoordinates(
+        lineIndex: Int,
+        owner: Any,
+        coordinates: LayoutCoordinates,
+    ) {
+        layouts.getOrPut(lineIndex) { LineLayout(owner) }.also {
+            it.owner = owner
+            it.coordinates = coordinates
+        }
+    }
+
+    /** Forgets what [owner] published for [lineIndex], its composition leaving (another one may have taken over). */
+    fun forgetLayout(
+        lineIndex: Int,
+        owner: Any,
+    ) {
+        if (layouts[lineIndex]?.owner === owner) layouts.remove(lineIndex)
+    }
+
+    /** The layout of [lineIndex] while it is composed. */
+    fun layoutOf(lineIndex: Int): TextLayoutResult? = layouts[lineIndex]?.layout
+
+    /** Where the text of [lineIndex] is placed while it is composed and attached. */
+    fun coordinatesOf(lineIndex: Int): LayoutCoordinates? = layouts[lineIndex]?.coordinates?.takeIf { it.isAttached }
+
+    private class LineLayout(
+        var owner: Any,
+    ) {
+        var layout: TextLayoutResult? = null
+        var coordinates: LayoutCoordinates? = null
+    }
 }
+
+// Lines apart first, then characters: the end of a selection nearer a press
+private fun TextPoint.distanceTo(other: TextPoint): Pair<Int, Int> = abs(lineIndex - other.lineIndex) to abs(offset - other.offset)
+
+private operator fun Pair<Int, Int>.compareTo(other: Pair<Int, Int>): Int = compareValuesBy(this, other, { it.first }, { it.second })
 
 /** The offsets of [lineIndex]'s displayed text ([length] chars) inside this range, empty when outside. */
 internal fun ClosedRange<TextPoint>.offsetsIn(
@@ -130,6 +261,12 @@ data class ResolvedSelection(
 /** The [BookSelection] of the book view around the current SelectionContainer; null elsewhere (commentaries…). */
 val LocalBookSelection = staticCompositionLocalOf<BookSelection?> { null }
 
+/**
+ * The color the book view draws its own selection in: Compose's selection color, captured before the container hides
+ * Compose's highlight under the book view's selection.
+ */
+val LocalBookSelectionColor = compositionLocalOf { Color.Unspecified }
+
 /** A [SelectionContainer] whose lines record their presses in [selection], extend it on Shift+click, and copy it. */
 @Composable
 fun BookSelectionContainer(
@@ -138,7 +275,15 @@ fun BookSelectionContainer(
     content: @Composable () -> Unit,
 ) {
     val copyToClipboard = rememberCopyToClipboard()
-    CompositionLocalProvider(LocalBookSelection provides selection) {
+    val scope = rememberCoroutineScope()
+    val selectionColors = LocalTextSelectionColors.current
+    // While the book view's own selection is drawn, Compose's (a drag it was seeded from) would stay drawn under it
+    val hiddenColors = remember(selectionColors) { TextSelectionColors(selectionColors.handleColor, Color.Transparent) }
+    val ownSelection by remember(selection) { derivedStateOf { selection?.range != null } }
+    CompositionLocalProvider(
+        LocalBookSelection provides selection,
+        LocalBookSelectionColor provides selectionColors.backgroundColor,
+    ) {
         // On the container itself: its own Ctrl/Cmd+C would copy its (empty) selection
         SelectionContainer(
             modifier =
@@ -157,18 +302,32 @@ fun BookSelectionContainer(
                             Modifier
                         },
                     ).onPreviewKeyEvent { event ->
-                        val owned = selection?.resolved?.takeIf { it.owned }
-                        if (owned != null && event.isPlainCopy()) {
-                            copyToClipboard(owned.text)
-                            true
+                        if (selection?.range == null || !event.isPlainCopy()) return@onPreviewKeyEvent false
+                        val owned = selection.resolved?.takeIf { it.owned }
+                        if (owned != null) {
+                            if (owned.text.isNotEmpty()) copyToClipboard(owned.text)
                         } else {
-                            false
+                            // Moved by the keys and not read yet: the copy waits for it rather than take Compose's
+                            scope.launch {
+                                val read =
+                                    withTimeoutOrNull(COPY_WAIT_MS) {
+                                        snapshotFlow { selection.resolved?.takeIf { it.owned } }.filterNotNull().first()
+                                    }
+                                read?.text?.takeIf { it.isNotEmpty() }?.let { copyToClipboard(it) }
+                            }
                         }
+                        true
                     },
-            content = content,
-        )
+        ) {
+            CompositionLocalProvider(LocalTextSelectionColors provides if (ownSelection) hiddenColors else selectionColors) {
+                content()
+            }
+        }
     }
 }
+
+// How long a copy waits for a selection the keys just moved to be read
+private const val COPY_WAIT_MS = 2_000L
 
 /**
  * A line's primary presses for [selection], [layout] giving the character under the pointer (null while the line is a

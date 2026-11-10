@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.takeOrElse
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -47,6 +48,7 @@ import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
@@ -864,12 +866,70 @@ fun BookContentView(
         scope.launch { listState.animateScrollToItem(targetIndex, 0) }
     }
 
+    // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
+    // mikra, whose items are more than their line). Its offsets index the text as displayed: new for another diacritics mode
+    val bookSelection = remember(bookId, shnayimMikra, diacritics) { if (shnayimMikra) null else BookSelection() }
+    // Read by the remembered key handler: a new selection comes with another diacritics mode
+    val currentBookSelection by rememberUpdatedState(bookSelection)
+    val currentDiacritics by rememberUpdatedState(diacritics)
+    val currentLazyPagingItems by rememberUpdatedState(lazyPagingItems)
+
+    /** The displayed text of the book line [lineIndex]: from its layout when composed, else from the loaded lines. */
+    fun displayedTextOf(lineIndex: Int): String? {
+        if (lineIndex < 0 || bookLineCount?.let { lineIndex >= it } == true) return null
+        currentBookSelection?.layoutOf(lineIndex)?.let { return it.layoutInput.text.text }
+        val loaded = currentLazyPagingItems.itemSnapshotList.items
+        val index = loaded.binarySearchBy(lineIndex) { it.lineIndex }
+        return loaded.getOrNull(index)?.let { displayedLineText(it.content, currentDiacritics) }
+    }
+
+    /** Scrolls the list so the selection's focus [point] is on screen. */
+    fun revealFocus(
+        selection: BookSelection,
+        point: TextPoint,
+        @StructuredScope scope: CoroutineScope,
+    ) {
+        val layout = selection.layoutOf(point.lineIndex)
+        val text = selection.coordinatesOf(point.lineIndex)
+        val list = findMatchLocator.list?.takeIf { it.isAttached }
+        if (layout == null || text == null || list == null) {
+            // Not composed: brought to the top of the list
+            scope.launch { loadLine(point.lineIndex)?.let { listState.scrollToItem(it) } }
+            return
+        }
+        val caret = layout.getCursorRect(point.offset.coerceIn(0, layout.layoutInput.text.length))
+        val top = list.localPositionOf(text, Offset(0f, caret.top)).y
+        val bottom = top + caret.height
+        val viewport = list.size.height
+        val delta =
+            when {
+                top < 0f -> top
+                bottom > viewport -> bottom - viewport
+                else -> return
+            }
+        scope.launch { listState.scrollBy(delta) }
+    }
+
+    /** Shift+arrows move the selection's focus ([moveFocusByKey]); not in shnayim mikra, which has no book selection. */
+    fun adjustSelection(
+        keyEvent: KeyEvent,
+        @StructuredScope scope: CoroutineScope,
+    ): Boolean {
+        val selection = currentBookSelection ?: return false
+        if (!selection.moveFocusByKey(keyEvent, ::displayedTextOf)) return false
+        selection.focus?.let { revealFocus(selection, it, scope) }
+        return true
+    }
+
     // Global preview handler: handle basic navigation keys regardless of inner focus
     val previewKeyHandler =
         remember(onEvent) {
             { keyEvent: KeyEvent ->
                 // Ctrl/Cmd+F handled globally at window level; do not intercept here
-                if (keyEvent.type == KeyEventType.KeyDown) {
+                if (keyEvent.type == KeyEventType.KeyDown && adjustSelection(keyEvent, scope)) {
+                    // Before the plain arrows: Shift+arrows extend the selection
+                    true
+                } else if (keyEvent.type == KeyEventType.KeyDown) {
                     when (keyEvent.key) {
                         Key.DirectionUp -> {
                             onEvent(BookContentEvent.NavigateToPreviousLine)
@@ -938,9 +998,6 @@ fun BookContentView(
         }
     }
 
-    // Both ends of a Shift+click selection, to copy the lines between them Compose never composed (not in shnayim
-    // mikra, whose items are more than their line). Its offsets index the text as displayed: new for another diacritics mode
-    val bookSelection = remember(bookId, shnayimMikra, diacritics) { if (shnayimMikra) null else BookSelection() }
     BookSelectionContainer(
         selection = bookSelection,
         modifier =
@@ -1664,7 +1721,13 @@ private fun LineItem(
         DisposableEffect(findMatchLocator, lineId) { onDispose { findMatchLocator.forget(lineId) } }
     }
 
-    val selectionBackground = LocalTextSelectionColors.current.backgroundColor
+    // Compose's selection color, which the container hides under the book view's own selection
+    val selectionBackground = LocalBookSelectionColor.current.takeOrElse { LocalTextSelectionColors.current.backgroundColor }
+    // The line's layout and place, for the Shift+arrow moves: dropped when the line leaves the composition
+    val selectionOwner = remember { Any() }
+    if (bookSelection != null) {
+        DisposableEffect(bookSelection, lineIndex) { onDispose { bookSelection.forgetLayout(lineIndex, selectionOwner) } }
+    }
     Text(
         text = displayText,
         textAlign = TextAlign.Justify,
@@ -1674,7 +1737,9 @@ private fun LineItem(
             textModifier
                 .then(
                     if (bookSelection != null) {
-                        Modifier.selectableLine(bookSelection, lineIndex) { noteLayout }
+                        Modifier
+                            .selectableLine(bookSelection, lineIndex) { noteLayout }
+                            .onPlaced { bookSelection.publishCoordinates(lineIndex, selectionOwner, it) }
                     } else {
                         Modifier
                     },
@@ -1706,6 +1771,7 @@ private fun LineItem(
         onTextLayout = { result ->
             noteLayout = result
             findMatchLocator?.publishLayout(lineId, result)
+            bookSelection?.publishLayout(lineIndex, selectionOwner, result)
             val cw = result.layoutInput.constraints.maxWidth
             if (cw > 0 && cw != Int.MAX_VALUE) onLayoutWidthMeasure(cw)
         },

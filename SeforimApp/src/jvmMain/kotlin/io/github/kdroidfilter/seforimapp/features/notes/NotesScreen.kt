@@ -24,6 +24,7 @@ import io.github.kdroidfilter.seforimapp.core.presentation.components.ListRow
 import io.github.kdroidfilter.seforimapp.core.presentation.components.PageHeader
 import io.github.kdroidfilter.seforimapp.core.presentation.components.PageSearchField
 import io.github.kdroidfilter.seforimapp.core.presentation.components.SectionHeader
+import io.github.kdroidfilter.seforimapp.core.presentation.text.markdownToPlainText
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.icons.NotebookPen
@@ -111,7 +112,7 @@ private fun BookNotesCard(
                     notes.forEachIndexed { index, bookNote ->
                         val note = bookNote.note
                         ListRow(
-                            title = note.note,
+                            title = markdownToPlainText(note.note),
                             subtitle =
                                 listOf(
                                     note.quote,

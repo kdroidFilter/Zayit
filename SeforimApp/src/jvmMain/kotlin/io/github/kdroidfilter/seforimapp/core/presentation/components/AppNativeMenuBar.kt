@@ -22,6 +22,7 @@ import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteEntry
 import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
+import io.github.kdroidfilter.seforimapp.core.presentation.text.markdownToPlainText
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.AccentColor
 import io.github.kdroidfilter.seforimapp.core.presentation.theme.IntUiThemes
 import io.github.kdroidfilter.seforimapp.core.presentation.utils.hasFindInPage
@@ -399,7 +400,7 @@ fun AppNativeMenuBar(
                 Separator()
                 recentNotes.forEach { bookNote ->
                     Item(
-                        text = bookNote.note.note.take(MENU_TITLE_MAX_LENGTH),
+                        text = markdownToPlainText(bookNote.note.note).take(MENU_TITLE_MAX_LENGTH),
                         icon = NsMenuItemImage.SystemSymbol("square.and.pencil"),
                     ) {
                         tabsViewModel.openTab(noteDestination(bookNote))

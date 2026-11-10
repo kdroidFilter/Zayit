@@ -212,6 +212,8 @@
     <string name="no_notes_for_selection">אין הערות על השורות שנבחרו. בחר טקסט ולחץ "הוסף הערה".</string>
     <string name="notes_info_word_level">אין צורך לכתוב הערה על השורה כולה: ניתן לסמן מילים מסוימות, ללחוץ לחיצה ימנית ולבחור "הוסף הערה" כדי לכתוב הערה על קטע מדויק בלבד.</string>
     <string name="delete_note">מחק הערה</string>
+    <string name="note_edit">עריכה</string>
+    <string name="note_preview">תצוגה</string>
 
     <!-- Book Content Screen - End Vertical Bar -->
     <string name="tools">כלים</string>

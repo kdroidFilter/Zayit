@@ -41,6 +41,7 @@ import io.github.kdroidfilter.seforimapp.core.favorites.FavoriteFolder
 import io.github.kdroidfilter.seforimapp.core.history.VisitEntry
 import io.github.kdroidfilter.seforimapp.core.history.VisitKind
 import io.github.kdroidfilter.seforimapp.core.history.destination
+import io.github.kdroidfilter.seforimapp.core.presentation.text.markdownToPlainText
 import io.github.kdroidfilter.seforimapp.features.home.widgets.CellSpan
 import io.github.kdroidfilter.seforimapp.features.home.widgets.FitColumn
 import io.github.kdroidfilter.seforimapp.features.home.widgets.HomeWidget
@@ -254,7 +255,12 @@ internal object NotesWidget : HomeWidget {
                     ) {
                         VectorIcon(NotebookPen, Modifier.padding(top = 1.dp), accent)
                         Column(Modifier.weight(1f)) {
-                            Text(bookNote.note.note, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(
+                                markdownToPlainText(bookNote.note.note),
+                                fontSize = 13.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                             Text(
                                 listOf(bookNote.note.quote, bookTitle).filter { it.isNotBlank() }.joinToString(" · "),
                                 fontSize = 11.sp,

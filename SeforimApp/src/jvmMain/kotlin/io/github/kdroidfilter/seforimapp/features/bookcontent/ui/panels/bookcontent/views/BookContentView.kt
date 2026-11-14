@@ -338,6 +338,13 @@ fun BookContentView(
         val snapshot = lazyPagingItems.itemSnapshotList
         val index = snapshot.indices.firstOrNull { snapshot[it]?.id == primarySelectedLineId }
         if (index != null) {
+            // The pages land a frame before the list lays them out: judged on that stale layout (the
+            // loading item alone), the line looks off screen and the list jumps past the lines above it,
+            // the book's title among them. Wait for a layout that holds the line's index.
+            withTimeoutOrNull(1500L.milliseconds) {
+                snapshotFlow { listState.layoutInfo }
+                    .first { info -> info.totalItemsCount > index && info.visibleItemsInfo.isNotEmpty() }
+            }
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
             val viewportEnd = layoutInfo.viewportEndOffset

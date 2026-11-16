@@ -117,6 +117,17 @@ class BookFindMatchesTest {
         }
 
     @Test
+    fun `counts matches whatever the punctuation, in the query or the text`() =
+        runTest {
+            // Line 2 reads "ויברא אלהים, ויברא"
+            assertEquals(1, find("אלהים ויברא").occurrences)
+            assertEquals(1, find("אלהים; ויברא!").occurrences)
+            assertEquals(0, find(",.").occurrences)
+            assertTrue(queryNarrows("אלהים, ויברא", "אלהים"))
+            assertTrue(queryNarrows("אלהים ויברא", "אלהים,"))
+        }
+
+    @Test
     fun `matches against the displayed text, not the html`() =
         runTest {
             assertEquals(0, find("<b>").occurrences)

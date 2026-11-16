@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupProperties
 import io.github.kdroidfilter.seforim.tabs.TabType
+import io.github.kdroidfilter.seforimapp.core.presentation.text.markdownToPlainText
 import io.github.kdroidfilter.seforimapp.features.notes.noteDestination
 import io.github.kdroidfilter.seforimapp.features.notes.openNotesTab
 import io.github.kdroidfilter.seforimapp.features.notes.rememberUserNotes
@@ -104,7 +105,7 @@ private fun NotesPopupContent(onDismiss: () -> Unit) {
                 item(key = "book-$bookId") { PopupSectionHeader(userNotes.bookTitles[bookId].orEmpty()) }
                 items(bookNotes, key = { "note-" + it.note.id }) { bookNote ->
                     PopupRow(
-                        label = bookNote.note.note,
+                        label = markdownToPlainText(bookNote.note.note),
                         tabType = TabType.NOTES,
                         onClick = {
                             tabsViewModel.openTab(noteDestination(bookNote))

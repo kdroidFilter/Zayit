@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -54,6 +55,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.kdroidfilter.seforim.htmlparser.buildAnnotatedFromHtml
 import io.github.kdroidfilter.seforimapp.core.annotations.NoteStore
+import io.github.kdroidfilter.seforimapp.core.presentation.components.AccentMarkdown
+import io.github.kdroidfilter.seforimapp.core.presentation.utils.UrlOpener
 import io.github.kdroidfilter.seforimapp.features.bookcontent.BookContentEvent
 import io.github.kdroidfilter.seforimapp.features.bookcontent.PlainTextMenus
 import io.github.kdroidfilter.seforimapp.features.bookcontent.state.BookContentState
@@ -72,12 +75,15 @@ import org.jetbrains.jewel.ui.component.IconActionButton
 import org.jetbrains.jewel.ui.component.InlineInformationBanner
 import org.jetbrains.jewel.ui.component.Text
 import org.jetbrains.jewel.ui.component.TextArea
+import org.jetbrains.jewel.ui.component.Tooltip
 import org.jetbrains.jewel.ui.icons.AllIconsKeys
 import seforimapp.seforimapp.generated.resources.Res
 import seforimapp.seforimapp.generated.resources.delete_note
 import seforimapp.seforimapp.generated.resources.no_notes_for_selection
 import seforimapp.seforimapp.generated.resources.no_notes_saved
 import seforimapp.seforimapp.generated.resources.note_body_placeholder
+import seforimapp.seforimapp.generated.resources.note_edit
+import seforimapp.seforimapp.generated.resources.note_preview
 import seforimapp.seforimapp.generated.resources.notes_info_word_level
 import seforimapp.seforimapp.generated.resources.notes_pane
 import java.time.Instant
@@ -408,11 +414,15 @@ private fun NoteCard(
 }
 
 /**
- * Auto-saving note editor: a multi-line field plus a footer carrying the last-edit stamp and a
- * hover-revealed trash button. Text changes are debounced and pushed to [onPersist] (no explicit
- * save). [onDelete] removes the note (or the draft's created note); when [clearOnDelete] is true the
- * field is also emptied so the draft editor stays in place. [timestampMillis] (when > 0) renders the
- * footer stamp; [cardHovered] gates the trash button's visibility.
+ * Auto-saving note editor with two modes. In edit mode it is a multi-line field whose changes are
+ * debounced and pushed to [onPersist] (no explicit save), and flushed on focus loss. In view mode the
+ * note is rendered as Markdown; a double-click or the footer's edit action switches back to editing.
+ * Saved notes open in view mode; blank or [autoFocus]ed (draft) notes open in edit mode, and a blank
+ * note is always edited since there is nothing to render.
+ *
+ * The footer carries the last-edit stamp ([timestampMillis], when > 0) plus the hover-revealed
+ * ([cardHovered]) mode toggle and trash. [onDelete] removes the note (or the draft's created note);
+ * when [clearOnDelete] is true the field is also emptied so the draft editor stays in place.
  */
 @OptIn(FlowPreview::class, ExperimentalFoundationApi::class)
 @Composable
@@ -429,8 +439,17 @@ private fun NoteEditor(
     val focusRequester = remember { FocusRequester() }
     val currentOnPersist by rememberUpdatedState(onPersist)
     var hadFocus by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(initialText.isBlank() || autoFocus) }
+    // Bumped to focus the field once it is (re)composed after leaving view mode.
+    var focusRequests by remember { mutableIntStateOf(0) }
+    val isBlank = state.text.isBlank()
+    val showField = editing || isBlank
+
     if (autoFocus) {
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    }
+    LaunchedEffect(focusRequests) {
+        if (focusRequests > 0) focusRequester.requestFocus()
     }
     LaunchedEffect(Unit) {
         snapshotFlow { state.text.toString() }
@@ -440,58 +459,136 @@ private fun NoteEditor(
             .catch { }
             .collect { currentOnPersist(it) }
     }
+    val startEditing: () -> Unit = {
+        editing = true
+        focusRequests++
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        PlainTextMenus {
-            TextArea(
-                state = state,
-                placeholder = { Text(stringResource(Res.string.note_body_placeholder)) },
-                // A bounded max height is required inside the LazyColumn (infinite incoming height).
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 64.dp, max = 220.dp)
-                        .focusRequester(focusRequester)
-                        // Persist immediately when the field loses focus (clicking outside it),
-                        // instead of waiting for the debounce.
-                        .onFocusChanged { focusState ->
-                            if (hadFocus && !focusState.isFocused) {
-                                currentOnPersist(state.text.toString())
-                            }
-                            hadFocus = focusState.isFocused
-                        },
-            )
+        if (showField) {
+            PlainTextMenus {
+                TextArea(
+                    state = state,
+                    placeholder = { Text(stringResource(Res.string.note_body_placeholder)) },
+                    // A bounded max height is required inside the LazyColumn (infinite incoming height).
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 64.dp, max = 220.dp)
+                            .focusRequester(focusRequester)
+                            // Persist immediately when the field loses focus (clicking outside it),
+                            // instead of waiting for the debounce, then show the rendered note.
+                            .onFocusChanged { focusState ->
+                                if (hadFocus && !focusState.isFocused) {
+                                    currentOnPersist(state.text.toString())
+                                    if (state.text.isNotBlank()) editing = false
+                                }
+                                hadFocus = focusState.isFocused
+                            },
+                )
+            }
+        } else {
+            NoteMarkdownView(markdown = state.text.toString(), onDoubleClick = startEditing)
         }
 
-        // Fixed-height footer so revealing the trash on hover never reflows the card.
-        Row(
-            modifier = Modifier.fillMaxWidth().height(26.dp).padding(top = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            val stamp = timestampMillis?.takeIf { it > 0L }
-            if (stamp != null) {
-                Text(
-                    text = formatNoteTime(stamp),
-                    fontSize = 11.sp,
-                    color =
-                        JewelTheme.globalColors.text.info
-                            .copy(alpha = 0.7f),
-                    modifier = Modifier.weight(1f),
-                )
-            } else {
-                Spacer(modifier = Modifier.weight(1f))
-            }
+        NoteFooter(
+            timestampMillis = timestampMillis,
+            showActions = cardHovered && !isBlank,
+            editing = showField,
+            // Explicit targets rather than a toggle: pressing the button may first blur the field,
+            // which already switches to view mode on its own. Leaving edit mode flushes the text too.
+            onToggleMode =
+                if (showField) {
+                    {
+                        currentOnPersist(state.text.toString())
+                        editing = false
+                    }
+                } else {
+                    startEditing
+                },
+            onDelete = {
+                if (clearOnDelete) state.clearText()
+                onDelete()
+            },
+        )
+    }
+}
 
-            val canDelete = state.text.isNotBlank()
-            if (cardHovered && canDelete) {
+/**
+ * Read-only Markdown rendering of a note, sized like the edit field's text. A double-click asks to
+ * edit; a single tap clears focus like a tap anywhere else in the pane (this detector consumes it).
+ */
+@Composable
+private fun NoteMarkdownView(
+    markdown: String,
+    onDoubleClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val focusManager = LocalFocusManager.current
+    val currentOnDoubleClick by rememberUpdatedState(onDoubleClick)
+    AccentMarkdown(
+        markdown = markdown,
+        onUrlClick = UrlOpener::open,
+        fontSize = 13.sp,
+        lineHeight = 20.sp,
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectTapGestures(
+                        onTap = { focusManager.clearFocus() },
+                        onDoubleTap = { currentOnDoubleClick() },
+                    )
+                }.padding(horizontal = 6.dp, vertical = 4.dp),
+    )
+}
+
+/**
+ * Fixed-height note footer: the last-edit stamp, then (while [showActions]) the edit/preview toggle
+ * and the trash. The height never changes, so revealing the actions on hover never reflows the card.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun NoteFooter(
+    timestampMillis: Long?,
+    showActions: Boolean,
+    editing: Boolean,
+    onToggleMode: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth().height(26.dp).padding(top = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        val stamp = timestampMillis?.takeIf { it > 0L }
+        if (stamp != null) {
+            Text(
+                text = formatNoteTime(stamp),
+                fontSize = 11.sp,
+                color =
+                    JewelTheme.globalColors.text.info
+                        .copy(alpha = 0.7f),
+                modifier = Modifier.weight(1f),
+            )
+        } else {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+
+        if (showActions) {
+            val modeLabel = stringResource(if (editing) Res.string.note_preview else Res.string.note_edit)
+            Tooltip({ Text(modeLabel) }) {
                 IconActionButton(
-                    key = AllIconsKeys.General.Delete,
-                    onClick = {
-                        if (clearOnDelete) state.clearText()
-                        onDelete()
-                    },
-                    contentDescription = stringResource(Res.string.delete_note),
+                    key = if (editing) AllIconsKeys.Actions.Preview else AllIconsKeys.Actions.Edit,
+                    onClick = onToggleMode,
+                    contentDescription = modeLabel,
                 )
             }
+            IconActionButton(
+                key = AllIconsKeys.General.Delete,
+                onClick = onDelete,
+                contentDescription = stringResource(Res.string.delete_note),
+            )
         }
     }
 }

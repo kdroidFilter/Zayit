@@ -129,4 +129,118 @@ class BookSelectionTest {
         val mode = io.github.kdroidfilter.seforimapp.core.presentation.text.DiacriticsMode.None
         assertNull(highlightRangesOf(TextPoint(4, 0)..TextPoint(4, 4), listOf(line), mode))
     }
+
+    // ==================== Anchor and focus (Shift+arrows) ====================
+
+    @Test
+    fun `a Shift press sets the anchor and the focus, the range sorted`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(5, 2), shift = false)
+        selection.press(TextPoint(3, 1), shift = true)
+        assertEquals(TextPoint(5, 2), selection.anchor)
+        assertEquals(TextPoint(3, 1), selection.focus)
+        assertEquals(TextPoint(3, 1)..TextPoint(5, 2), selection.range)
+    }
+
+    @Test
+    fun `extending moves the focus only, across the anchor`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(2, 5), shift = false)
+        selection.press(TextPoint(2, 5), shift = true)
+        assertTrue(selection.seedForKeys())
+        selection.extend(TextPoint(2, 6))
+        assertEquals(TextPoint(2, 5)..TextPoint(2, 6), selection.range)
+        selection.extend(TextPoint(2, 4))
+        assertEquals(TextPoint(2, 5), selection.anchor)
+        assertEquals(TextPoint(2, 4)..TextPoint(2, 5), selection.range)
+        assertTrue(selection.adjustedByKeys)
+    }
+
+    @Test
+    fun `back on the anchor the selection is empty but kept`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(2, 5), shift = false)
+        selection.press(TextPoint(2, 5), shift = true)
+        assertTrue(selection.seedForKeys())
+        selection.extend(TextPoint(2, 6))
+        selection.extend(TextPoint(2, 5))
+        assertEquals(TextPoint(2, 5)..TextPoint(2, 5), selection.range)
+        assertTrue(selection.selectedRangeOf(2, 10).isEmpty())
+    }
+
+    @Test
+    fun `nothing to seed from without a selection`() {
+        assertFalse(BookSelection().seedForKeys())
+        // A plain click is a caret, not a selection: Shift+arrows stay the view's line moves
+        val clicked = BookSelection()
+        clicked.press(TextPoint(2, 5), shift = false)
+        assertFalse(clicked.seedForKeys())
+        assertNull(clicked.range)
+    }
+
+    @Test
+    fun `a Shift+click selection is adjusted from its own focus`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(2, 5), shift = false)
+        selection.press(TextPoint(4, 1), shift = true)
+        assertTrue(selection.seedForKeys())
+        assertEquals(TextPoint(2, 5), selection.anchor)
+        assertEquals(TextPoint(4, 1), selection.focus)
+    }
+
+    @Test
+    fun `a Compose selection is anchored at its end nearest the press`() {
+        val down = BookSelection()
+        down.press(TextPoint(2, 9), shift = false)
+        down.resolved = ResolvedSelection("x", TextPoint(2, 9)..TextPoint(4, 5), emptyList(), owned = false)
+        assertTrue(down.seedForKeys())
+        assertEquals(TextPoint(2, 9), down.anchor)
+        assertEquals(TextPoint(4, 5), down.focus)
+        assertNull(down.resolved)
+
+        // Dragged upward: pressed at the end
+        val up = BookSelection()
+        up.press(TextPoint(4, 5), shift = false)
+        up.resolved = ResolvedSelection("x", TextPoint(2, 9)..TextPoint(4, 5), emptyList(), owned = false)
+        up.seedForKeys()
+        assertEquals(TextPoint(4, 5), up.anchor)
+        assertEquals(TextPoint(2, 9), up.focus)
+    }
+
+    @Test
+    fun `a Compose selection not located yet is not replaced by the caret`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(2, 9), shift = false)
+        selection.composeSelectionActive = true
+        assertFalse(selection.seedForKeys())
+        assertNull(selection.range)
+    }
+
+    @Test
+    fun `a Shift press after the keys extends from their anchor`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(2, 9), shift = false)
+        selection.resolved = ResolvedSelection("x", TextPoint(2, 9)..TextPoint(4, 5), emptyList(), owned = false)
+        selection.seedForKeys()
+        selection.extend(TextPoint(4, 6))
+        assertTrue(selection.press(TextPoint(6, 0), shift = true))
+        assertEquals(TextPoint(2, 9)..TextPoint(6, 0), selection.range)
+        // A plain press drops it all
+        selection.press(TextPoint(1, 0), shift = false)
+        assertNull(selection.anchor)
+        assertNull(selection.focus)
+        assertNull(selection.goalX)
+    }
+
+    @Test
+    fun `the goal x is kept by vertical moves only`() {
+        val selection = BookSelection()
+        selection.press(TextPoint(1, 0), shift = false)
+        selection.press(TextPoint(1, 3), shift = true)
+        assertTrue(selection.seedForKeys())
+        selection.extend(TextPoint(2, 0), goalX = 40f)
+        assertEquals(40f, selection.goalX)
+        selection.extend(TextPoint(2, 1))
+        assertNull(selection.goalX)
+    }
 }

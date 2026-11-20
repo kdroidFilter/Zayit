@@ -503,17 +503,25 @@ fun BookTextMenus(
                     val rawText = textManager.selectedText.text
                     // Mirror the current selection into the SelectionContext so the AWT
                     // keyboard dispatcher can read it without touching Compose state directly.
-                    // A new Compose selection (a drag) replaces the Shift+click one; a Shift+click leaves Compose's as is
-                    LaunchedEffect(rawText) { if (rawText.isNotEmpty()) bookSelection?.clear() }
+                    // A new Compose selection (a drag) replaces the book view's own one; a Shift+click or Shift+arrow leaves Compose's
+                    // as is, hidden under it (BookSelectionContainer)
+                    LaunchedEffect(rawText) {
+                        bookSelection?.composeSelectionActive = rawText.isNotEmpty()
+                        if (rawText.isNotEmpty()) bookSelection?.clear()
+                    }
                     LaunchedEffect(rawText, shiftRange, diacritics) {
                         bookSelection?.resolved = null
-                        // A Shift+click selection is not Compose's, still drawn from an earlier drag: nothing until read
+                        // The book view's own selection is not Compose's, still held from an earlier drag: nothing until read
                         selectionContext.setSelectedText(tabId, if (shiftRange != null) "" else rawText)
                         val pressedAt = bookSelection?.pressedAt
                         val resolved =
                             when {
                                 bookSelection == null || bookId <= 0 -> null
-                                shiftRange != null -> resolveRange(shiftRange, bookId, repository, diacritics)
+                                shiftRange != null -> {
+                                    // Moved by held Shift+arrows: read once the keys rest (each move restarts this effect)
+                                    if (bookSelection?.adjustedByKeys == true) delay(KEY_SELECTION_SETTLE_MS)
+                                    resolveRange(shiftRange, bookId, repository, diacritics)
+                                }
                                 rawText.isNotEmpty() && pressedAt != null -> {
                                     // Across lines, once the drag rests rather than on each of its moves; within a line (a
                                     // double click, a word) at once, a single line to read, before the menu opens
@@ -886,3 +894,6 @@ private fun normalizeSearchQuery(text: String): String {
 
 // How long a Compose selection rests before it is located in the book
 private const val SELECTION_SETTLE_MS = 150L
+
+// How long Shift+arrow moves rest before their selection is read from the database
+private const val KEY_SELECTION_SETTLE_MS = 80L

@@ -138,6 +138,8 @@ data class ZmanimTimes(
 
 /** The luach the zmanim are read from: its sun, and which opinions it prints. */
 enum class ZmanimOpinion {
+    /** Standard GRA and MGA calculations of the library. */
+    DEFAULT,
 
     /** אור החיים, the luach Rabbi Ovadia Yosef used: zmaniyos minutes off an ordinary sun. */
     OHR_HACHAIM,
@@ -1074,29 +1076,28 @@ private fun computeHebrewMonthOrbitLabels(
 fun computeZmanimTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
+    opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
     inIsrael: Boolean = false,
 ): ZmanimTimes {
     val calendar = zmanimCalendar(date, location, opinion, inIsrael)
-    // GRA hours, chatzos and mincha ketana are shared; both luachs print sunrise במישור
     return when (opinion) {
-            // The luach prints alos 90 במעלות in Israel and counts the MGA day from it; abroad it uses 72
-            val alosAt = alos.momentOfOccurrence
-            val mgaEndAt = mgaEnd.momentOfOccurrence
+        ZmanimOpinion.DEFAULT ->
             ZmanimTimes(
-                alosHashachar = alosAt?.toDate(),
+                alosHashachar = calendar.alosHashachar.toDate(),
                 sunrise = calendar.seaLevelSunrise?.toDate(),
                 sofZmanShmaGra = calendar.sofZmanShmaGRA.toDate(),
-                sofZmanShmaMga = calendar.getSofZmanShma(alosAt, mgaEndAt)?.toDate(),
+                sofZmanShmaMga = calendar.sofZmanShmaMGA.toDate(),
                 sofZmanTfilaGra = calendar.sofZmanTfilaGRA.toDate(),
-                sofZmanTfilaMga = calendar.getSofZmanTfila(alosAt, mgaEndAt)?.toDate(),
+                sofZmanTfilaMga = calendar.sofZmanTfilaMGA.toDate(),
                 chatzosHayom = calendar.chatzos.toDate(),
-                minchaGedola = calendar.minchaGedolaGreaterThan30.toDate(),
+                minchaGedola = calendar.minchaGedola.toDate(),
                 minchaKetana = calendar.minchaKetana.toDate(),
                 plagHamincha = calendar.plagHamincha.toDate(),
                 sunset = calendar.seaLevelSunset?.toDate(),
+                tzais = calendar.tzais.toDate(),
+                tzaisRabbeinuTam = calendar.tzais72.toDate(),
                 chatzosLayla = calendar.solarMidnight.toDate(),
             )
-        }
 
         ZmanimOpinion.OHR_HACHAIM ->
             ZmanimTimes(
@@ -1136,7 +1137,7 @@ fun zmanimCalendar(
     ).apply {
         astronomicalCalculator =
             when (opinion) {
-                ZmanimOpinion.OHR_HACHAIM -> NOAACalculator()
+                ZmanimOpinion.DEFAULT, ZmanimOpinion.OHR_HACHAIM -> NOAACalculator()
             }
     }
 }

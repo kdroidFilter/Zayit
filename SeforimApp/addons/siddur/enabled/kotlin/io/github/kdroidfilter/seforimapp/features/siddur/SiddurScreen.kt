@@ -345,6 +345,7 @@ fun SiddurTabContent(
     val ofTheHour =
         remember(location, user.inIsrael, sephardi, prefs, minute) {
             val today = java.time.LocalDate.now(location.timeZone.toZoneId())
+            val opinion = if (sephardi) ZmanimOpinion.OHR_HACHAIM else ZmanimOpinion.DEFAULT
             val zmanim = computeZmanimTimes(today, location, opinion, user.inIsrael)
             val (day, part) =
                 siddurOfTheHour(

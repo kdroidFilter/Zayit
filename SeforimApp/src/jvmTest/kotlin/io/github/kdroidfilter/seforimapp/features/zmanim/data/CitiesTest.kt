@@ -181,9 +181,3 @@ class CitiesTest {
         assertTrue(totalPlaces >= 100, "Should have at least 100 places total, got $totalPlaces")
     }
 }
-
-class CandleLightingTest {
-    @Test
-        val known = worldPlaces.values.flatMap { it.keys }.toSet()
-    }
-}

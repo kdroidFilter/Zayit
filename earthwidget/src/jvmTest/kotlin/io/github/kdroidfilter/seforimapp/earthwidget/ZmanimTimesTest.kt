@@ -37,9 +37,10 @@ class ZmanimTimesTest {
     @Test
     fun `luachs really differ`() {
         val date = LocalDate.of(2026, 9, 30)
+        val standard = computeZmanimTimes(date, jerusalem, ZmanimOpinion.DEFAULT)
         val ohr = computeZmanimTimes(date, jerusalem, ZmanimOpinion.OHR_HACHAIM)
-        assertNotEquals(itim.alosHashachar, ohr.alosHashachar)
-        assertNotEquals(itim.tzais, ohr.tzais)
+        assertNotEquals(standard.alosHashachar, ohr.alosHashachar)
+        assertNotEquals(standard.tzais, ohr.tzais)
     }
 
     @Test

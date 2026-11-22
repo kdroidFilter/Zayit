@@ -245,7 +245,7 @@ internal fun upcomingEvents(
                             add("הדלקת נרות" to candleLightingTime(date.minusDays(1), location, opinion, cityLabel, inIsrael))
                         }
                         if (!calendarOf(date.plusDays(1)).isAssurBemelacha) {
-                            add("יציאה" to havdalahTime(date, location, opinion, inIsrael))
+                            add("יציאה" to havdalahTime(date, location, opinion, inIsrael, cityLabel))
                         }
                     }
 

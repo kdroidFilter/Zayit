@@ -1339,6 +1339,7 @@ private fun GradientDot(
 private fun computeShabbatTimes(
     date: LocalDate,
     location: EarthWidgetLocation,
+    opinion: ZmanimOpinion = ZmanimOpinion.DEFAULT,
     cityLabel: String? = null,
     inIsrael: Boolean = false,
 ): ShabbatTimes {
@@ -1359,7 +1360,7 @@ private fun computeShabbatTimes(
     val parashaTitle = if (parashaName.isBlank()) "שבת" else "שבת $parashaName"
 
     val entryTime = candleLightingTime(fridayDate, location, opinion, cityLabel, inIsrael)
-    val exitTime = havdalahTime(shabbatDate, location, opinion, inIsrael)
+    val exitTime = havdalahTime(shabbatDate, location, opinion, inIsrael, cityLabel)
 
     return ShabbatTimes(
         parashaName = parashaTitle,
@@ -1381,9 +1382,10 @@ internal fun candleLightingTime(
         // אור החיים: candles 20 minutes before sunset everywhere
         ZmanimOpinion.OHR_HACHAIM -> calendar.ohrHaChaimSunset?.minus(20.minutes)?.toDate()
 
-            val candles =
-            val sunset = if (candles.fromHeight) calendar.sunset else calendar.seaLevelSunset
-            sunset?.minus(candles.minutes.minutes)?.toDate()
+        // Default: 18 minutes before sunset, 40 in Jerusalem
+        ZmanimOpinion.DEFAULT -> {
+            val minutes = if (isJerusalemLocation(location, cityLabel)) 40 else 18
+            calendar.seaLevelSunset?.minus(minutes.minutes)?.toDate()
         }
     }
 }
@@ -1394,6 +1396,7 @@ internal fun havdalahTime(
     location: EarthWidgetLocation,
     opinion: ZmanimOpinion,
     inIsrael: Boolean,
+    cityLabel: String? = null,
 ): Date? {
     val calendar = zmanimCalendar(day, location, opinion, inIsrael)
     return when (opinion) {
@@ -1404,6 +1407,13 @@ internal fun havdalahTime(
             calendar.tzaisAteretTorah.toDate()
         }
 
+        // Default: 8.5°, or 40 minutes after sunset in Jerusalem
+        ZmanimOpinion.DEFAULT ->
+            if (isJerusalemLocation(location, cityLabel)) {
+                calendar.seaLevelSunset?.plus(40.minutes)?.toDate()
+            } else {
+                calendar.tzais.toDate()
+            }
     }
 }
 

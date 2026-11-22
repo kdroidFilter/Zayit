@@ -60,6 +60,7 @@ class LuachDataTest {
 
     @Test
     fun `shemini atzeret on shabbat starts with candles on friday and ends with havdala`() {
+        val events = upcomingEvents(cholHamoed, jerusalem, ZmanimOpinion.DEFAULT, "ירושלים", inIsrael = true)
         val atzeret = events.first { it.date == LocalDate.of(2026, 10, 3) }
         assertEquals(listOf("הדלקת נרות", "יציאה"), atzeret.times.map { it.first })
         assertTrue(atzeret.times.all { it.second != null })
@@ -68,6 +69,7 @@ class LuachDataTest {
     @Test
     fun `a two-day rosh chodesh names the coming month and its first and second day`() {
         fun namesFrom(date: LocalDate) =
+            upcomingEvents(date, jerusalem, ZmanimOpinion.DEFAULT, "ירושלים", inIsrael = true)
                 .associate { it.date to it.name }
         // 30 Tishrei 5787 (Sunday 11 October 2026) and 1 Cheshvan
         val cheshvan = namesFrom(LocalDate.of(2026, 10, 11))
@@ -80,6 +82,7 @@ class LuachDataTest {
     @Test
     fun `next zmanim are the coming ones, in order`() {
         val noon = Date.from(cholHamoed.atTime(12, 30).atZone(ZoneId.of("Asia/Jerusalem")).toInstant())
+        val next = nextZmanim(noon, jerusalem, ZmanimOpinion.DEFAULT, inIsrael = true)
         assertEquals(3, next.size)
         assertTrue(next.all { it.time.after(noon) })
         assertEquals(next.sortedBy { it.time }, next)

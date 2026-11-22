@@ -38,6 +38,8 @@ class HomeWidgetsState internal constructor(
 ) {
     private val sephardi = community == Community.SEPHARADE
 
+    // עדות המזרח read the אור החיים, everyone else the default zmanim
+    val zmanimOpinion = if (sephardi) ZmanimOpinion.OHR_HACHAIM else ZmanimOpinion.DEFAULT
     val kiddushLevanaEarliest = if (sephardi) KiddushLevanaEarliestOpinion.DAYS_7 else KiddushLevanaEarliestOpinion.DAYS_3
     val kiddushLevanaLatest = if (sephardi) KiddushLevanaLatestOpinion.DAYS_15 else KiddushLevanaLatestOpinion.BETWEEN_MOLDOS
 

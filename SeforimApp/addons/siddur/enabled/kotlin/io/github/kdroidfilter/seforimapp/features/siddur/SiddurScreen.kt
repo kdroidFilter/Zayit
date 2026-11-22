@@ -91,6 +91,7 @@ import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.moladInfo
 import io.github.kdroidfilter.seforimapp.features.home.widgets.luach.rememberOpenInLibrary
 import io.github.kdroidfilter.seforimapp.features.home.widgets.rememberAccentColor
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.timeZone
 import io.github.kdroidfilter.seforimapp.framework.desktop.LocalOpenWindow
 import io.github.kdroidfilter.seforimapp.framework.di.LocalAppGraph
 import io.github.kdroidfilter.seforimapp.framework.session.SiddurPersistedState

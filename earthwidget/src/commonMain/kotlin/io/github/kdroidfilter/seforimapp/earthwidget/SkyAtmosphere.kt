@@ -148,7 +148,7 @@ internal fun twilightGlow(
     sx: Double,
     sz: Double,
 ): DoubleArray {
-    val el = Math.toDegrees(kotlin.math.asin(sunY.coerceIn(-1.0, 1.0)))
+    val el = toDegrees(kotlin.math.asin(sunY.coerceIn(-1.0, 1.0)))
     if (el > 4.0 || el < -24.0) return DoubleArray(3)
     val fade = ((4.0 - el) / 6.0).coerceIn(0.0, 1.0)
     val level = 2.0e-4 * exp(0.855 * (minOf(el, 0.0) + 6.0)) * fade
@@ -225,7 +225,7 @@ internal fun scotopic(zenith: Double): Double {
 /** Atmospheric refraction (Saemundsson), degrees, at apparent-ish elevation [h] degrees. */
 internal fun refractionDeg(h: Double): Double {
     val e = max(h, -1.5)
-    return 1.02 / tan(Math.toRadians(e + 10.3 / (e + 5.11))) / 60.0
+    return 1.02 / tan(toRadians(e + 10.3 / (e + 5.11))) / 60.0
 }
 
 /** Air mass (Rozenberg) toward elevation sine [sinAlt]. */

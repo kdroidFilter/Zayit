@@ -20,6 +20,7 @@ import io.github.kdroidfilter.seforimapp.earthwidget.KiddushLevanaLatestOpinion
 import io.github.kdroidfilter.seforimapp.earthwidget.ZmanimOpinion
 import io.github.kdroidfilter.seforimapp.features.onboarding.userprofile.Community
 import io.github.kdroidfilter.seforimapp.features.zmanim.data.ISRAEL_COUNTRY_NAME
+import io.github.kdroidfilter.seforimapp.features.zmanim.data.timeZone
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant

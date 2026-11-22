@@ -18,7 +18,6 @@ plugins {
     alias(libs.plugins.buildConfig)
     alias(libs.plugins.metro)
     alias(libs.plugins.stability.analyzer)
-    alias(libs.plugins.sqlDelight)
     alias(libs.plugins.kover)
     alias(libs.plugins.nucleus)
     alias(libs.plugins.structured.coroutines)
@@ -43,8 +42,7 @@ sentry {
 // (settings.gradle.kts); a community build has none and addons/siddur/disabled says so
 val withSiddur = gradle.extensions.extraProperties["siddurEnabled"] == true
 
-// The verse quote links of the Talmud (open core, temporary until the DB carries them): its package, or
-// addons/quotelinks/disabled and the reader shows the lines as they are
+// The verse quote links of the Talmud (open core, temporary until the DB carries them): appkit compiles its addon
 val withQuoteLinks = gradle.extensions.extraProperties["quoteLinksEnabled"] == true
 
 kotlin {
@@ -141,10 +139,7 @@ kotlin {
         }
         if (withSiddur) jvmTest { kotlin.srcDir("addons/siddur/test/kotlin") }
 
-        jvmMain {
-            kotlin.srcDir(if (withQuoteLinks) "addons/quotelinks/enabled/kotlin" else "addons/quotelinks/disabled/kotlin")
-            if (withQuoteLinks) dependencies { implementation(libs.seforim.quotelinks) }
-        }
+        // The quote links' addon itself is appkit's (its jvmMain); its test reads the real DB with the desktop's driver
         if (withQuoteLinks) jvmTest { kotlin.srcDir("addons/quotelinks/test/kotlin") }
 
         jvmTest.dependencies {
@@ -181,7 +176,7 @@ kotlin {
             implementation(libs.slf4j.simple)
             implementation(libs.split.pane.desktop)
             implementation(libs.sqlite.driver)
-            implementation(libs.zstd.jni)
+            implementation(libs.okio)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.lucene.core)
             implementation(libs.reorderable)
@@ -193,6 +188,9 @@ kotlin {
             // The search without its UI (engines, lookup, use cases, view models), shared with the mobile apps; the
             // semantic search (open core) comes with it in the official builds
             implementation(project(":searchkit"))
+
+            // The app without its desktop shell (reader, user data, settings, onboarding), shared with the mobile apps
+            implementation(project(":appkit"))
 
             // SeforimLibrary CLI: lets the desktop binary run headless search commands
             // (`zayit cli search ...`) by delegating to its runCli() entry point.
@@ -316,15 +314,6 @@ nucleus.application {
             optimize.set(true)
             consumerRules.set(true)
             configurationFiles.from(project.file("proguard-rules.pro"))
-        }
-    }
-}
-
-sqldelight {
-    databases {
-        create("UserSettingsDb") {
-            packageName.set("io.github.kdroidfilter.seforimapp.db")
-            dialect("app.cash.sqldelight:sqlite-3-24-dialect:${libs.versions.sqlDelight.get()}")
         }
     }
 }
